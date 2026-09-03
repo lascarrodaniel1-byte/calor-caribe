@@ -1,0 +1,49 @@
+{
+  "//": "Plantilla para Bubblewrap. Reemplaza calorcaribe.vercel.app por tu dominio real (sin https://) y ajusta packageId si quieres.",
+  "packageId": "app.calorcaribe.twa",
+  "host": "calorcaribe.vercel.app",
+  "name": "Calor Caribe",
+  "launcherName": "Calor Caribe",
+  "display": "standalone",
+  "themeColor": "#0e4d64",
+  "themeColorDark": "#0a3a4c",
+  "navigationColor": "#0e4d64",
+  "navigationColorDark": "#0a3a4c",
+  "navigationDividerColor": "#0e4d64",
+  "navigationDividerColorDark": "#0a3a4c",
+  "backgroundColor": "#0e4d64",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://calorcaribe.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://calorcaribe.vercel.app/icon-512-maskable.png",
+  "splashScreenFadeOutDuration": 300,
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Calor y alertas",
+      "shortName": "Calor",
+      "url": "/calor",
+      "chosenIconUrl": "https://calorcaribe.vercel.app/icon-192.png"
+    },
+    {
+      "name": "Factura de luz",
+      "shortName": "Factura",
+      "url": "/energia",
+      "chosenIconUrl": "https://calorcaribe.vercel.app/icon-192.png"
+    }
+  ],
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "orientation": "portrait",
+  "fallbackType": "customtabs",
+  "webManifestUrl": "https://calorcaribe.vercel.app/manifest.webmanifest",
+  "fullScopeUrl": "https://calorcaribe.vercel.app/",
+  "minSdkVersion": 23,
+  "features": {},
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "generatorApp": "bubblewrap-cli"
+}

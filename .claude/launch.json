@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "calor-dev",
+      "runtimeExecutable": "C:\\Users\\lenovo 81Uv\\Desktop\\Jurisbot\\dev-with-path.cmd",
+      "runtimeArgs": [],
+      "port": 3000
+    }
+  ]
+}
