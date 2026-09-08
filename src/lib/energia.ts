@@ -96,12 +96,13 @@ export function kwhDia(e: Pick<Electrodomestico, "potenciaW" | "horasDia">): num
  * Ajuste por calor / El Niño.
  *
  * Cuando la sensación térmica de la semana supera la de una tarde calurosa
- * "normal" en la costa Caribe (~42 °C de heat index máximo), el aire
- * acondicionado se usa más horas y su compresor rinde menos: ~5 % más de
- * consumo de climatización por cada grado por encima, hasta +50 %. La nevera
- * también trabaja más, pero en menor medida.
+ * "normal" en la costa Caribe (~40 °C de heat index máximo, que es lo que
+ * asumen las horas por defecto de los electrodomésticos), el aire acondicionado
+ * se usa más horas y su compresor rinde menos: ~5 % más de consumo de
+ * climatización por cada grado por encima, hasta +50 %. La nevera también
+ * trabaja más, pero en menor medida.
  */
-export const SENSACION_BASE = 42;
+export const SENSACION_BASE = 40;
 
 export function factorCalor(sensacionMaxProm: number): number {
   const exceso = Math.max(0, sensacionMaxProm - SENSACION_BASE);

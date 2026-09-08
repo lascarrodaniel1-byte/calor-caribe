@@ -130,6 +130,8 @@ export default function EnergiaPage() {
                     <strong>~{Math.round((factorPosible - 1) * 100)}%</strong> más
                     y la nevera algo más.
                   </>
+                ) : esNino ? (
+                  " Está en el rango normal esta semana, pero El Niño está activo: si llega una racha de calor tu consumo de aire puede subir entre 10% y 30%."
                 ) : (
                   " El calor de esta semana está en el rango normal; no se suma consumo extra."
                 )}
