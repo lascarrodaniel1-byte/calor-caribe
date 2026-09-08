@@ -1,7 +1,7 @@
 {
-  "//": "Plantilla para Bubblewrap. Reemplaza calorcaribe.vercel.app por tu dominio real (sin https://) y ajusta packageId si quieres.",
+  "//": "Plantilla para Bubblewrap. Reemplaza calor-caribe.vercel.app por tu dominio real (sin https://) y ajusta packageId si quieres.",
   "packageId": "app.calorcaribe.twa",
-  "host": "calorcaribe.vercel.app",
+  "host": "calor-caribe.vercel.app",
   "name": "Calor Caribe",
   "launcherName": "Calor Caribe",
   "display": "standalone",
@@ -14,8 +14,8 @@
   "backgroundColor": "#0e4d64",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://calorcaribe.vercel.app/icon-512.png",
-  "maskableIconUrl": "https://calorcaribe.vercel.app/icon-512-maskable.png",
+  "iconUrl": "https://calor-caribe.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://calor-caribe.vercel.app/icon-512-maskable.png",
   "splashScreenFadeOutDuration": 300,
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
@@ -24,13 +24,13 @@
       "name": "Calor y alertas",
       "shortName": "Calor",
       "url": "/calor",
-      "chosenIconUrl": "https://calorcaribe.vercel.app/icon-192.png"
+      "chosenIconUrl": "https://calor-caribe.vercel.app/icon-192.png"
     },
     {
       "name": "Factura de luz",
       "shortName": "Factura",
       "url": "/energia",
-      "chosenIconUrl": "https://calorcaribe.vercel.app/icon-192.png"
+      "chosenIconUrl": "https://calor-caribe.vercel.app/icon-192.png"
     }
   ],
   "signingKey": {
@@ -39,8 +39,8 @@
   },
   "orientation": "portrait",
   "fallbackType": "customtabs",
-  "webManifestUrl": "https://calorcaribe.vercel.app/manifest.webmanifest",
-  "fullScopeUrl": "https://calorcaribe.vercel.app/",
+  "webManifestUrl": "https://calor-caribe.vercel.app/manifest.webmanifest",
+  "fullScopeUrl": "https://calor-caribe.vercel.app/",
   "minSdkVersion": 23,
   "features": {},
   "isChromeOSOnly": false,

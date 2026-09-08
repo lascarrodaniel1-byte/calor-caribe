@@ -8,7 +8,7 @@ actualizas el sitio.
 ## Paso 0 — Publicar el sitio
 
 Necesitas la app en una URL HTTPS. Sigue [`DEPLOY.md`](DEPLOY.md) (Vercel).
-Anota tu dominio, p. ej. `calorcaribe.vercel.app`.
+Anota tu dominio, p. ej. `calor-caribe.vercel.app`.
 
 ## Opción A — PWABuilder (sin instalar nada, recomendada)
 
