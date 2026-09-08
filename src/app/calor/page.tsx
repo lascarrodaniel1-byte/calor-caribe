@@ -13,6 +13,11 @@ import {
   suscribirPush,
   type ParamsPush,
 } from "@/lib/pushClient";
+import {
+  estadoPermisoNotificaciones,
+  mostrarNotificacion,
+  pedirPermisoNotificaciones,
+} from "@/lib/notificaciones";
 import HeatPanel from "@/components/HeatPanel";
 import { Button, Card } from "@/components/ui";
 
@@ -78,11 +83,7 @@ function AvisosPrimerPlano({
   const ultimaBanda = useRef<string>("");
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setPermiso("unsupported");
-      return;
-    }
-    setPermiso(Notification.permission);
+    setPermiso(estadoPermisoNotificaciones());
   }, []);
 
   useEffect(() => {
@@ -94,14 +95,9 @@ function AvisosPrimerPlano({
       nivel === "peligro" ||
       nivel === "peligro-extremo";
     const clave = `${nivel}-${new Date().toDateString()}`;
-    if (
-      peligroso &&
-      ultimaBanda.current !== clave &&
-      "Notification" in window &&
-      Notification.permission === "granted"
-    ) {
+    if (peligroso && ultimaBanda.current !== clave) {
       ultimaBanda.current = clave;
-      new Notification(`Alerta de calor: ${ev.bandaPersonal.etiqueta}`, {
+      void mostrarNotificacion(`Alerta de calor: ${ev.bandaPersonal.etiqueta}`, {
         body: `Sensación térmica ${ev.heatIndex.toFixed(0)} °C en ${
           clima.municipio.nombre
         }. ${ev.bandaPersonal.resumen}`,
@@ -111,8 +107,7 @@ function AvisosPrimerPlano({
   }, [activo, clima, state.perfil]);
 
   async function activar() {
-    if (!("Notification" in window)) return;
-    const p = await Notification.requestPermission();
+    const p = await pedirPermisoNotificaciones();
     setPermiso(p);
     onToggle(p === "granted");
   }
@@ -170,8 +165,8 @@ function AvisosPush() {
     setTrabajando(true);
     setMsg(null);
     try {
-      if (Notification.permission !== "granted") {
-        const p = await Notification.requestPermission();
+      if (estadoPermisoNotificaciones() !== "granted") {
+        const p = await pedirPermisoNotificaciones();
         if (p !== "granted") {
           setMsg("Necesitas permitir las notificaciones.");
           setTrabajando(false);
