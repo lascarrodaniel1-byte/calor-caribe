@@ -2,8 +2,16 @@
 
 import { useAppState } from "@/lib/store";
 import { getMunicipio, consumoSubsistencia } from "@/lib/municipios";
-import { calcularConsumo, CATEGORIA_LABEL, precioKwhReferencia } from "@/lib/energia";
-import { formatCOP, formatKwh, formatNumber } from "@/lib/format";
+import {
+  calcularConsumo,
+  CATEGORIA_LABEL,
+  factorCalor,
+  precioKwhReferencia,
+  SENSACION_BASE,
+} from "@/lib/energia";
+import { sensacionMaxSemana } from "@/lib/heat";
+import { useClima, useEnso } from "@/lib/useClima";
+import { formatCOP, formatKwh, formatNumber, formatTemp } from "@/lib/format";
 import ApplianceManager from "@/components/ApplianceManager";
 import { Card, NumberField, SectionTitle, Stat, Bar } from "@/components/ui";
 
@@ -12,11 +20,25 @@ export default function EnergiaPage() {
   const municipio = getMunicipio(state.municipioSlug);
   const subsistencia = municipio ? consumoSubsistencia(municipio.altitud) : 173;
 
+  const { clima } = useClima({
+    modo: state.modoClima,
+    municipioSlug: state.municipioSlug,
+    ubicacion: state.ubicacion,
+  });
+  const { enso } = useEnso();
+  const esNino = enso?.fase === "El Niño";
+
+  const sensacionProm =
+    clima && clima.hourly.length ? sensacionMaxSemana(clima.hourly) : 0;
+  const factorPosible = sensacionProm ? factorCalor(sensacionProm) : 1;
+  const factor = state.ajustarPorCalor ? factorPosible : 1;
+
   const resumen = calcularConsumo(
     state.electrodomesticos,
     state.precioKwh,
     state.estrato,
     subsistencia,
+    factor,
   );
 
   const porCategoria = (() => {
@@ -30,8 +52,12 @@ export default function EnergiaPage() {
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   })();
 
+  const kwhExtraPorCalor = resumen.kwhTotal - resumen.kwhSinAjuste;
+
   if (!ready) {
-    return <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted">Cargando…</div>;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted">Cargando…</div>
+    );
   }
 
   return (
@@ -53,7 +79,7 @@ export default function EnergiaPage() {
           suffix="COP/kWh"
           hint={`Búscalo en tu factura (costo unitario). Referencia: ${formatCOP(
             precioKwhReferencia(),
-          )}.`}
+          )}${esNino ? ", suele ser mayor durante El Niño" : ""}.`}
         />
         <label className="block">
           <span className="text-sm font-medium text-foreground">Estrato</span>
@@ -80,6 +106,54 @@ export default function EnergiaPage() {
         />
       </div>
 
+      {sensacionProm > 0 && (
+        <Card
+          className={`mt-6 border-l-4 ${
+            factorPosible > 1
+              ? "border-orange-400 bg-orange-50"
+              : "border-slate-300 bg-slate-50"
+          }`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-primary">
+                Ajuste por calor{esNino ? " / El Niño" : ""}
+              </p>
+              <p className="mt-1 text-sm text-slate-700">
+                Según el pronóstico, la sensación térmica máxima ronda los{" "}
+                <strong>{formatTemp(sensacionProm)}</strong> esta semana (una
+                tarde calurosa normal en la costa: ~{SENSACION_BASE} °C).
+                {factorPosible > 1 ? (
+                  <>
+                    {" "}
+                    Con ese calor el aire acondicionado consume{" "}
+                    <strong>~{Math.round((factorPosible - 1) * 100)}%</strong> más
+                    y la nevera algo más.
+                  </>
+                ) : (
+                  " El calor de esta semana está en el rango normal; no se suma consumo extra."
+                )}
+                {esNino &&
+                  " Durante El Niño, además, la tarifa del kWh suele subir: usa el valor de tu factura más reciente."}
+              </p>
+            </div>
+            {factorPosible > 1 && (
+              <label className="flex shrink-0 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={state.ajustarPorCalor}
+                  onChange={(e) =>
+                    update({ ajustarPorCalor: e.target.checked })
+                  }
+                />
+                Aplicarlo
+              </label>
+            )}
+          </div>
+        </Card>
+      )}
+
       <section className="mt-8">
         <SectionTitle hint="Ajusta potencia, horas y días según tu uso real.">
           Electrodomésticos
@@ -92,7 +166,15 @@ export default function EnergiaPage() {
           <SectionTitle>Resultado</SectionTitle>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <Stat label="Consumo total" value={formatKwh(resumen.kwhTotal, 0)} />
+            <Stat
+              label="Consumo total"
+              value={formatKwh(resumen.kwhTotal, 0)}
+              sub={
+                kwhExtraPorCalor > 0.5
+                  ? `incluye +${formatKwh(kwhExtraPorCalor, 0)} por calor`
+                  : undefined
+              }
+            />
             <Stat
               label="Costo de la energía"
               value={formatCOP(resumen.costoEnergia)}
@@ -162,7 +244,14 @@ export default function EnergiaPage() {
               {resumen.lineas.map((l) => (
                 <div key={l.electrodomestico.id} className="text-sm">
                   <div className="flex justify-between">
-                    <span>{l.electrodomestico.nombre}</span>
+                    <span>
+                      {l.electrodomestico.nombre}
+                      {l.factorAplicado > 1 && (
+                        <span className="ml-1 text-xs text-orange-600">
+                          +{Math.round((l.factorAplicado - 1) * 100)}% calor
+                        </span>
+                      )}
+                    </span>
                     <span className="font-medium">
                       {formatKwh(l.kwh)} · {formatCOP(l.costo)}
                     </span>
@@ -188,7 +277,9 @@ export default function EnergiaPage() {
           <p className="text-xs text-muted">
             Estimación. El recibo real incluye además alumbrado público, aseo (si
             viene en la misma factura) y variaciones diarias de la tarifa. Los
-            porcentajes de subsidio/contribución son los máximos de ley.
+            porcentajes de subsidio/contribución son los máximos de ley. El
+            ajuste por calor es aproximado y se basa en el pronóstico de la
+            semana.
           </p>
         </section>
       )}

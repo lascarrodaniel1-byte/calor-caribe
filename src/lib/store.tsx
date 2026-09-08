@@ -40,6 +40,8 @@ export interface AppState {
   /** enviar el nivel de vulnerabilidad (0–7) al servidor de Web Push */
   compartirVulnerabilidad: boolean;
   // Energía
+  /** subir el consumo estimado de aire/nevera según el calor del pronóstico */
+  ajustarPorCalor: boolean;
   precioKwh: number;
   estrato: number;
   metaKwh: number;
@@ -57,6 +59,7 @@ export const ESTADO_INICIAL: AppState = {
   modoClima: "municipio",
   ubicacion: null,
   compartirVulnerabilidad: true,
+  ajustarPorCalor: true,
   precioKwh: 1050,
   estrato: 2,
   metaKwh: 173,

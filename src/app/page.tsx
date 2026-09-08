@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useAppState } from "@/lib/store";
 import { getMunicipio, consumoSubsistencia } from "@/lib/municipios";
-import { calcularConsumo } from "@/lib/energia";
+import { calcularConsumo, factorCalor } from "@/lib/energia";
 import { planificar, diasEnMes } from "@/lib/plan";
+import { sensacionMaxSemana } from "@/lib/heat";
+import { useClima } from "@/lib/useClima";
 import { formatCOP, formatKwh } from "@/lib/format";
 import HeatPanel from "@/components/HeatPanel";
 import MunicipioPicker from "@/components/MunicipioPicker";
@@ -15,6 +17,16 @@ export default function Home() {
   const { state, ready, update, setPerfil } = useAppState();
   const municipio = getMunicipio(state.municipioSlug);
 
+  const { clima } = useClima({
+    modo: state.modoClima,
+    municipioSlug: state.municipioSlug,
+    ubicacion: state.ubicacion,
+  });
+  const sensacionProm =
+    clima && clima.hourly.length ? sensacionMaxSemana(clima.hourly) : 0;
+  const factor =
+    state.ajustarPorCalor && sensacionProm ? factorCalor(sensacionProm) : 1;
+
   const tieneEquipos = state.electrodomesticos.length > 0;
   const sub = municipio ? consumoSubsistencia(municipio.altitud) : 173;
   const energia = tieneEquipos
@@ -23,6 +35,7 @@ export default function Home() {
         state.precioKwh,
         state.estrato,
         sub,
+        factor,
       )
     : null;
 
@@ -34,6 +47,7 @@ export default function Home() {
         consumoRegistrado: state.consumoRegistrado,
         diaActual: hoy.getDate(),
         diasEnMes: diasEnMes(hoy),
+        factorClima: factor,
       })
     : null;
 

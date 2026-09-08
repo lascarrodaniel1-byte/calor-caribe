@@ -84,6 +84,25 @@ export function heatIndexC(tempC: number, rh: number): number {
   return ((hiF - 32) * 5) / 9; // de vuelta a °C
 }
 
+/**
+ * Promedio de la sensación térmica (heat index) MÁXIMA de cada día en un
+ * pronóstico horario. Es la señal que usa la calculadora para estimar cuánto
+ * más trabaja el aire acondicionado durante una racha de calor o El Niño.
+ */
+export function sensacionMaxSemana(
+  horas: { time: string; tempC: number; rh: number }[],
+): number {
+  const porDia = new Map<string, number>();
+  for (const h of horas) {
+    const dia = h.time.slice(0, 10);
+    const hi = heatIndexC(h.tempC, h.rh);
+    porDia.set(dia, Math.max(porDia.get(dia) ?? -Infinity, hi));
+  }
+  const maximos = [...porDia.values()].filter((v) => Number.isFinite(v));
+  if (maximos.length === 0) return 0;
+  return maximos.reduce((s, v) => s + v, 0) / maximos.length;
+}
+
 export type NivelAlerta =
   | "normal"
   | "precaucion"

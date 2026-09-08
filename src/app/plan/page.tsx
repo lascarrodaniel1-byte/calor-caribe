@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useAppState } from "@/lib/store";
 import { getMunicipio, consumoSubsistencia } from "@/lib/municipios";
 import { planificar, diasEnMes } from "@/lib/plan";
+import { factorCalor } from "@/lib/energia";
+import { sensacionMaxSemana } from "@/lib/heat";
+import { useClima } from "@/lib/useClima";
 import { formatHoras, formatKwh, formatNumber } from "@/lib/format";
 import ApplianceManager from "@/components/ApplianceManager";
 import { Card, NumberField, SectionTitle, Stat } from "@/components/ui";
@@ -17,12 +20,23 @@ export default function PlanPage() {
 
   const subsistencia = municipio ? consumoSubsistencia(municipio.altitud) : 173;
 
+  const { clima } = useClima({
+    modo: state.modoClima,
+    municipioSlug: state.municipioSlug,
+    ubicacion: state.ubicacion,
+  });
+  const sensacionProm =
+    clima && clima.hourly.length ? sensacionMaxSemana(clima.hourly) : 0;
+  const factor =
+    state.ajustarPorCalor && sensacionProm ? factorCalor(sensacionProm) : 1;
+
   const resultado = planificar({
     electrodomesticos: state.electrodomesticos,
     metaKwh: state.metaKwh,
     consumoRegistrado: state.consumoRegistrado,
     diaActual,
     diasEnMes: totalDias,
+    factorClima: factor,
   });
 
   if (!ready) {
@@ -88,6 +102,19 @@ export default function PlanPage() {
       ) : (
         <section className="mt-8 space-y-4">
           <SectionTitle>Tu plan para los {resultado.diasRestantes} días que faltan</SectionTitle>
+
+          {factor > 1 && (
+            <p className="rounded-md bg-orange-50 px-3 py-2 text-xs text-orange-800">
+              Incluye el <strong>ajuste por calor</strong>: con la sensación
+              térmica de esta semana el aire consume ~
+              {Math.round((factor - 1) * 100)}% más, así que las horas permitidas
+              abajo ya lo tienen en cuenta. Puedes desactivarlo en{" "}
+              <Link href="/energia" className="underline">
+                Factura de luz
+              </Link>
+              .
+            </p>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat

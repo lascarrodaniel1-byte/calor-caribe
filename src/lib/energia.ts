@@ -92,16 +92,44 @@ export function kwhDia(e: Pick<Electrodomestico, "potenciaW" | "horasDia">): num
   return (e.potenciaW / 1000) * e.horasDia;
 }
 
+/**
+ * Ajuste por calor / El Niño.
+ *
+ * Cuando la sensación térmica de la semana supera la de una tarde calurosa
+ * "normal" en la costa Caribe (~42 °C de heat index máximo), el aire
+ * acondicionado se usa más horas y su compresor rinde menos: ~5 % más de
+ * consumo de climatización por cada grado por encima, hasta +50 %. La nevera
+ * también trabaja más, pero en menor medida.
+ */
+export const SENSACION_BASE = 42;
+
+export function factorCalor(sensacionMaxProm: number): number {
+  const exceso = Math.max(0, sensacionMaxProm - SENSACION_BASE);
+  return Math.min(1.5, 1 + 0.05 * exceso);
+}
+
+/** Aplica el factor de calor según la categoría del equipo. */
+export function factorPorCategoria(cat: Categoria, f: number): number {
+  if (f <= 1) return 1;
+  if (cat === "climatizacion") return f;
+  if (cat === "refrigeracion") return 1 + 0.35 * (f - 1);
+  return 1;
+}
+
 export interface LineaConsumo {
   electrodomestico: Electrodomestico;
   kwh: number;
   costo: number;
   porcentaje: number;
+  /** factor de calor aplicado a esta línea (1 = ninguno) */
+  factorAplicado: number;
 }
 
 export interface ResumenConsumo {
   lineas: LineaConsumo[];
   kwhTotal: number;
+  /** kWh totales sin el ajuste por calor (para comparar). */
+  kwhSinAjuste: number;
   costoEnergia: number;
   subsistencia: number;
   kwhSobreSubsistencia: number;
@@ -120,17 +148,24 @@ export function calcularConsumo(
   precioKwh: number,
   estrato: number,
   subsistencia: number,
+  factorClima = 1,
 ): ResumenConsumo {
-  const conKwh = electrodomesticos.map((e) => ({ e, kwh: kwhMes(e) }));
+  const conKwh = electrodomesticos.map((e) => {
+    const base = kwhMes(e);
+    const f = factorPorCategoria(e.categoria, factorClima);
+    return { e, kwh: base * f, base, factorAplicado: f };
+  });
   const kwhTotal = conKwh.reduce((s, x) => s + x.kwh, 0);
+  const kwhSinAjuste = conKwh.reduce((s, x) => s + x.base, 0);
   const costoEnergia = kwhTotal * precioKwh;
 
   const lineas: LineaConsumo[] = conKwh
-    .map(({ e, kwh }) => ({
+    .map(({ e, kwh, factorAplicado }) => ({
       electrodomestico: e,
       kwh,
       costo: kwh * precioKwh,
       porcentaje: kwhTotal > 0 ? (kwh / kwhTotal) * 100 : 0,
+      factorAplicado,
     }))
     .sort((a, b) => b.kwh - a.kwh);
 
@@ -156,6 +191,7 @@ export function calcularConsumo(
   return {
     lineas,
     kwhTotal,
+    kwhSinAjuste,
     costoEnergia,
     subsistencia,
     kwhSobreSubsistencia,

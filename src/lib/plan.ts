@@ -15,7 +15,7 @@
  *  4. Para cada uno se calculan las horas/día permitidas para el resto del mes.
  */
 
-import { Electrodomestico, kwhDia } from "./energia";
+import { Electrodomestico, factorPorCategoria } from "./energia";
 
 export interface EntradaPlan {
   electrodomesticos: Electrodomestico[];
@@ -24,6 +24,8 @@ export interface EntradaPlan {
   consumoRegistrado: number;
   diaActual: number; // 1..diasEnMes
   diasEnMes: number;
+  /** factor de mayor consumo por calor (1 = ninguno). Ver energia.factorCalor. */
+  factorClima?: number;
 }
 
 export interface LineaPlan {
@@ -57,6 +59,12 @@ export function planificar(e: EntradaPlan): ResultadoPlan {
   const diaActual = clamp(Math.round(e.diaActual), 1, diasEnMes);
   const diasRestantes = Math.max(0, diasEnMes - diaActual + 1);
   const diasPasados = Math.max(0, diaActual - 1);
+  const factorClima = e.factorClima ?? 1;
+
+  // kW efectivos por hora y kWh/día, con el ajuste por calor de cada categoría.
+  const kwHora = (x: Electrodomestico) =>
+    (x.potenciaW / 1000) * factorPorCategoria(x.categoria, factorClima);
+  const kwhDia = (x: Electrodomestico) => kwHora(x) * x.horasDia;
 
   const esenciales = e.electrodomesticos.filter((x) => x.esencial);
   const discrecionales = e.electrodomesticos.filter((x) => !x.esencial);
@@ -167,7 +175,7 @@ export function planificar(e: EntradaPlan): ResultadoPlan {
           sumaPesos > 0 ? (pesos[i] / sumaPesos) * presupuestoDiscrecional : 0,
         );
         const horasPermitidas =
-          x.potenciaW > 0 ? asignadoKwh / (x.potenciaW / 1000) / diasRestantes : 0;
+          kwHora(x) > 0 ? asignadoKwh / kwHora(x) / diasRestantes : 0;
         lineas.push({
           electrodomestico: x,
           esencial: false,
