@@ -1,6 +1,6 @@
 {
   "//": "Plantilla para Bubblewrap. Reemplaza calor-caribe.vercel.app por tu dominio real (sin https://) y ajusta packageId si quieres.",
-  "packageId": "app.calorcaribe.twa",
+  "packageId": "app.vercel.calor_caribe.twa",
   "host": "calor-caribe.vercel.app",
   "name": "Calor Caribe",
   "launcherName": "Calor Caribe",
