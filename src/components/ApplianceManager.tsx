@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  buscarPresets,
   CATEGORIA_LABEL,
   Categoria,
   Electrodomestico,
   PRESETS,
+  PresetElectrodomestico,
   kwhMes,
   nuevoId,
 } from "@/lib/energia";
@@ -26,19 +28,30 @@ export default function ApplianceManager({
     updateElectrodomestico,
     removeElectrodomestico,
   } = useAppState();
-  const [presetIdx, setPresetIdx] = useState("");
+  const [q, setQ] = useState("");
+  const [ultimo, setUltimo] = useState<string | null>(null);
 
-  function agregarPreset(idx: string) {
-    const p = PRESETS[Number(idx)];
-    setPresetIdx("");
-    if (!p) return;
+  const resultados = useMemo(() => buscarPresets(q), [q]);
+  const porCategoria = useMemo(() => {
+    const m = new Map<Categoria, PresetElectrodomestico[]>();
+    for (const p of resultados) {
+      const lista = m.get(p.categoria) ?? [];
+      lista.push(p);
+      m.set(p.categoria, lista);
+    }
+    return [...m.entries()];
+  }, [resultados]);
+
+  function agregarPreset(p: PresetElectrodomestico) {
     addElectrodomestico({ id: nuevoId(), ...p });
+    setUltimo(p.nombre);
   }
 
   function agregarVacio() {
+    const nombre = q.trim() || "Nuevo electrodoméstico";
     addElectrodomestico({
       id: nuevoId(),
-      nombre: "Nuevo electrodoméstico",
+      nombre,
       potenciaW: 100,
       horasDia: 1,
       diasMes: 30,
@@ -46,34 +59,79 @@ export default function ApplianceManager({
       esencial: false,
       prioridad: 3,
     });
+    setUltimo(nombre);
+    setQ("");
   }
 
   return (
     <div className="space-y-4">
       <Card>
-        <p className="text-sm font-medium text-foreground">Agregar electrodoméstico</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <select
-            className="w-full max-w-full min-w-0 rounded-md border border-border bg-white px-3 py-2.5 text-sm sm:w-auto"
-            value={presetIdx}
-            onChange={(e) => agregarPreset(e.target.value)}
-          >
-            <option value="">Elegir de la lista…</option>
-            {PRESETS.map((p, i) => (
-              <option key={p.nombre} value={i}>
-                {p.nombre} — {p.potenciaW} W
-              </option>
-            ))}
-          </select>
-          <span className="text-sm text-muted">o</span>
+        <p className="text-sm font-medium text-foreground">
+          Agregar electrodoméstico
+        </p>
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Busca: aire, nevera, plancha, ducha…"
+          className="mt-2 w-full rounded-md border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-primary"
+        />
+
+        {ultimo && (
+          <p className="mt-2 text-xs font-medium text-emerald-700">
+            ✓ Agregado: {ultimo}. Ajusta las horas abajo.
+          </p>
+        )}
+
+        <div className="mt-3 max-h-72 overflow-y-auto rounded-md border border-border">
+          {resultados.length === 0 ? (
+            <div className="p-3 text-sm text-muted">
+              No hay coincidencias para “{q}”.
+              <button
+                onClick={agregarVacio}
+                className="ml-1 font-semibold text-primary underline"
+              >
+                Crear “{q.trim()}” manualmente
+              </button>
+            </div>
+          ) : (
+            porCategoria.map(([cat, lista]) => (
+              <div key={cat}>
+                <p className="sticky top-0 bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                  {CATEGORIA_LABEL[cat]}
+                </p>
+                {lista.map((p) => (
+                  <button
+                    key={p.nombre}
+                    onClick={() => agregarPreset(p)}
+                    className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{p.nombre}</span>
+                      {p.nota && (
+                        <span className="block truncate text-xs text-muted">
+                          {p.nota}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 font-medium text-accent">
+                      {p.potenciaW} W
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="mt-2 flex items-center justify-between text-xs text-muted">
+          <span>
+            {resultados.length} de {PRESETS.length} equipos
+          </span>
           <Button variant="ghost" onClick={agregarVacio}>
             Crear uno manual
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted">
-          Elige uno de la lista y se agrega abajo; luego ajusta las horas a tu
-          uso real.
-        </p>
       </Card>
 
       {state.electrodomesticos.length === 0 ? (
