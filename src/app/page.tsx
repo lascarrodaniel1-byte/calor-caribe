@@ -11,7 +11,7 @@ import { formatCOP, formatKwh } from "@/lib/format";
 import HeatPanel from "@/components/HeatPanel";
 import MunicipioPicker from "@/components/MunicipioPicker";
 import ComorbilidadForm from "@/components/ComorbilidadForm";
-import { Card, LinkButton, Stat, Bar } from "@/components/ui";
+import { Button, Card, LinkButton, Stat, Bar } from "@/components/ui";
 
 export default function Home() {
   const { state, ready, update, setPerfil } = useAppState();
@@ -67,21 +67,32 @@ export default function Home() {
         tu salud y controla la factura de energía.
       </p>
 
-      {!municipio && (
+      {!state.onboarded && (
         <Card className="mt-6 border-primary/30 bg-primary/5">
-          <h2 className="font-semibold text-primary">Configuración rápida (30 segundos)</h2>
+          <h2 className="font-semibold text-primary">
+            Configuración rápida (30 segundos)
+          </h2>
           <p className="mt-1 text-sm text-muted">
-            Todo se guarda solo en este dispositivo.
+            Todo se guarda solo en este dispositivo. Puedes cambiarlo luego en
+            Ajustes.
           </p>
           <div className="mt-4 space-y-4">
             <MunicipioPicker
               value={state.municipioSlug}
-              onChange={(slug) => update({ municipioSlug: slug, onboarded: true })}
+              onChange={(slug) => update({ municipioSlug: slug })}
             />
             <div>
-              <p className="mb-2 text-sm font-medium">¿Comorbilidades en el hogar?</p>
+              <p className="mb-2 text-sm font-medium">
+                ¿Comorbilidades en el hogar? (opcional)
+              </p>
               <ComorbilidadForm perfil={state.perfil} onChange={setPerfil} />
             </div>
+            <Button
+              onClick={() => update({ onboarded: true })}
+              className="w-full sm:w-auto"
+            >
+              {state.municipioSlug ? "Continuar" : "Continuar sin municipio"}
+            </Button>
           </div>
         </Card>
       )}
