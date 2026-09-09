@@ -6,6 +6,7 @@ import {
   CATEGORIA_LABEL,
   Categoria,
   Electrodomestico,
+  esComunCosta,
   PRESETS,
   PresetElectrodomestico,
   kwhMes,
@@ -32,15 +33,25 @@ export default function ApplianceManager({
   const [ultimo, setUltimo] = useState<string | null>(null);
 
   const resultados = useMemo(() => buscarPresets(q), [q]);
-  const porCategoria = useMemo(() => {
+
+  /** Grupos [título, lista]. Sin búsqueda, "Más comunes en la costa" va primero. */
+  const grupos = useMemo(() => {
+    const out: [string, PresetElectrodomestico[]][] = [];
+    if (!q.trim()) {
+      out.push([
+        "★ Más comunes en la costa",
+        PRESETS.filter((p) => esComunCosta(p.nombre)),
+      ]);
+    }
     const m = new Map<Categoria, PresetElectrodomestico[]>();
     for (const p of resultados) {
       const lista = m.get(p.categoria) ?? [];
       lista.push(p);
       m.set(p.categoria, lista);
     }
-    return [...m.entries()];
-  }, [resultados]);
+    for (const [cat, lista] of m) out.push([CATEGORIA_LABEL[cat], lista]);
+    return out;
+  }, [resultados, q]);
 
   function agregarPreset(p: PresetElectrodomestico) {
     addElectrodomestico({ id: nuevoId(), ...p });
@@ -95,14 +106,14 @@ export default function ApplianceManager({
               </button>
             </div>
           ) : (
-            porCategoria.map(([cat, lista]) => (
-              <div key={cat}>
+            grupos.map(([titulo, lista]) => (
+              <div key={titulo}>
                 <p className="sticky top-0 bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
-                  {CATEGORIA_LABEL[cat]}
+                  {titulo}
                 </p>
                 {lista.map((p) => (
                   <button
-                    key={p.nombre}
+                    key={titulo + p.nombre}
                     onClick={() => agregarPreset(p)}
                     className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left text-sm hover:bg-slate-50"
                   >

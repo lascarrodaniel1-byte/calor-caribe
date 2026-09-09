@@ -169,10 +169,106 @@ export const PRESETS: PresetElectrodomestico[] = [
   { nombre: "Bomba de acuario / pecera", potenciaW: 20, horasDia: 24, diasMes: 30, categoria: "otro", esencial: false, prioridad: 4, busqueda: "filtro pez" },
   { nombre: "Repelente eléctrico de mosquitos", potenciaW: 5, horasDia: 10, diasMes: 30, categoria: "otro", esencial: false, prioridad: 4, busqueda: "zancudo pastilla líquido" },
   { nombre: "Herramienta eléctrica (taladro, pulidora)", potenciaW: 600, horasDia: 0.1, diasMes: 4, categoria: "otro", esencial: false, prioridad: 2, busqueda: "taladro pulidora sierra" },
+
+  // --- Ampliación ---
+  // Refrigeración
+  { nombre: "Nevera básica 9 pies (1 puerta)", potenciaW: 60, horasDia: 24, diasMes: 30, categoria: "refrigeracion", esencial: true, prioridad: 5, nota: "La más común en estratos 1–3 de la costa (~42 kWh/mes).", busqueda: "pequeña sencilla" },
+  { nombre: "Nevera 2 puertas no-frost (11–14 pies)", potenciaW: 110, horasDia: 24, diasMes: 30, categoria: "refrigeracion", esencial: true, prioridad: 5, busqueda: "nofrost mediana" },
+  { nombre: "Nevera 2 puertas inverter (eficiente)", potenciaW: 75, horasDia: 24, diasMes: 30, categoria: "refrigeracion", esencial: true, prioridad: 5, busqueda: "nofrost inverter etiqueta a" },
+  { nombre: "Vitrina refrigerada / exhibidora", potenciaW: 350, horasDia: 24, diasMes: 30, categoria: "refrigeracion", esencial: false, prioridad: 3, busqueda: "negocio tienda bebidas" },
+
+  // Climatización
+  { nombre: "Aire acondicionado 12.000 BTU (eficiente A+++)", potenciaW: 900, horasDia: 6, diasMes: 30, categoria: "climatizacion", esencial: false, prioridad: 2, busqueda: "inverter dual windfree bajo consumo" },
+  { nombre: "Aire acondicionado tipo cassette / piso-techo", potenciaW: 2600, horasDia: 6, diasMes: 30, categoria: "climatizacion", esencial: false, prioridad: 2, busqueda: "central comercial oficina" },
+  { nombre: "Ventilador industrial / de piso grande", potenciaW: 150, horasDia: 8, diasMes: 30, categoria: "climatizacion", esencial: false, prioridad: 3, busqueda: "abanico taller" },
+  { nombre: "Ventilador recargable", potenciaW: 20, horasDia: 6, diasMes: 30, categoria: "climatizacion", esencial: false, prioridad: 4, busqueda: "abanico batería apagón" },
+  { nombre: "Purificador de aire", potenciaW: 40, horasDia: 8, diasMes: 30, categoria: "climatizacion", esencial: false, prioridad: 4, busqueda: "hepa alergias" },
+
+  // Cocina
+  { nombre: "Estufa de inducción (2–4 puestos)", potenciaW: 3500, horasDia: 0.8, diasMes: 30, categoria: "cocina", esencial: false, prioridad: 2, busqueda: "cocina eléctrica completa" },
+  { nombre: "Hervidor eléctrico / pava", potenciaW: 1500, horasDia: 0.15, diasMes: 30, categoria: "cocina", esencial: false, prioridad: 3, busqueda: "tetera agua caliente" },
+  { nombre: "Máquina de arepas / asador de arepas", potenciaW: 1200, horasDia: 0.25, diasMes: 20, categoria: "cocina", esencial: false, prioridad: 3, busqueda: "arepera" },
+  { nombre: "Wafflera / sanduchera-grill", potenciaW: 1000, horasDia: 0.2, diasMes: 8, categoria: "cocina", esencial: false, prioridad: 3, busqueda: "waffle plancha" },
+  { nombre: "Freidora de aire grande / doble", potenciaW: 1800, horasDia: 0.4, diasMes: 20, categoria: "cocina", esencial: false, prioridad: 3, busqueda: "airfryer familiar" },
+  { nombre: "Dispensador de agua caliente para tinto", potenciaW: 900, horasDia: 0.5, diasMes: 30, categoria: "cocina", esencial: false, prioridad: 3, busqueda: "café oficina" },
+  { nombre: "Congelador de helados / máquina de raspao", potenciaW: 180, horasDia: 12, diasMes: 26, categoria: "cocina", esencial: false, prioridad: 2, busqueda: "negocio helado" },
+
+  // Lavado y aseo
+  { nombre: "Lavavajillas / lavaplatos eléctrico", potenciaW: 1200, horasDia: 1, diasMes: 15, categoria: "lavado", esencial: false, prioridad: 3, busqueda: "lavaloza" },
+  { nombre: "Brilladora / lustradora de pisos", potenciaW: 400, horasDia: 0.3, diasMes: 8, categoria: "lavado", esencial: false, prioridad: 3, busqueda: "encerar" },
+  { nombre: "Plancha de vapor con caldera", potenciaW: 2000, horasDia: 0.4, diasMes: 8, categoria: "lavado", esencial: false, prioridad: 2, busqueda: "centro de planchado" },
+  { nombre: "Afeitadora / máquina de cortar cabello", potenciaW: 8, horasDia: 0.1, diasMes: 15, categoria: "lavado", esencial: false, prioridad: 4, busqueda: "patillera barbería" },
+
+  // Entretenimiento
+  { nombre: "Televisor LED 50\"", potenciaW: 110, horasDia: 5, diasMes: 30, categoria: "entretenimiento", esencial: false, prioridad: 3, busqueda: "tv" },
+  { nombre: "Televisor 75\" o más", potenciaW: 210, horasDia: 5, diasMes: 30, categoria: "entretenimiento", esencial: false, prioridad: 3, busqueda: "tv pantalla grande" },
+  { nombre: "Chromecast / Fire TV / Roku", potenciaW: 4, horasDia: 5, diasMes: 30, categoria: "entretenimiento", esencial: false, prioridad: 4, busqueda: "streaming palo" },
+  { nombre: "Planta de sonido / amplificador (fiesta)", potenciaW: 300, horasDia: 3, diasMes: 6, categoria: "entretenimiento", esencial: false, prioridad: 3, busqueda: "picó parlante bafle grande potencia" },
+  { nombre: "Parlante amplificado / cabina activa", potenciaW: 120, horasDia: 3, diasMes: 15, categoria: "entretenimiento", esencial: false, prioridad: 3, busqueda: "karaoke bafle bluetooth grande" },
+
+  // Iluminación
+  { nombre: "Lámpara de escritorio LED", potenciaW: 7, horasDia: 4, diasMes: 26, categoria: "iluminacion", esencial: false, prioridad: 4, busqueda: "flexo estudio" },
+  { nombre: "Luz de emergencia recargable", potenciaW: 12, horasDia: 2, diasMes: 30, categoria: "iluminacion", esencial: false, prioridad: 4, busqueda: "apagón batería" },
+  { nombre: "Bombillo inteligente (wifi)", potenciaW: 10, horasDia: 5, diasMes: 30, categoria: "iluminacion", esencial: false, prioridad: 4, busqueda: "smart alexa foco" },
+  { nombre: "Lámpara mata-mosquitos UV", potenciaW: 15, horasDia: 10, diasMes: 30, categoria: "iluminacion", esencial: false, prioridad: 4, busqueda: "zancudo insectos trampa" },
+
+  // Cómputo
+  { nombre: "Tablet (cargador)", potenciaW: 12, horasDia: 3, diasMes: 30, categoria: "computo", esencial: false, prioridad: 4, busqueda: "ipad" },
+  { nombre: "UPS / regulador de voltaje", potenciaW: 15, horasDia: 24, diasMes: 30, categoria: "computo", esencial: false, prioridad: 4, nota: "Consumo propio en espera.", busqueda: "batería respaldo" },
+  { nombre: "Consola de streaming / mini PC", potenciaW: 30, horasDia: 4, diasMes: 30, categoria: "computo", esencial: false, prioridad: 3, busqueda: "tv box android" },
+  { nombre: "Disco duro externo / NAS", potenciaW: 18, horasDia: 6, diasMes: 30, categoria: "computo", esencial: false, prioridad: 4, busqueda: "almacenamiento servidor" },
+
+  // Agua
+  { nombre: "Ducha eléctrica de 3 temperaturas", potenciaW: 4400, horasDia: 0.33, diasMes: 30, categoria: "agua", esencial: false, prioridad: 2, busqueda: "regadera lorenzetti" },
+  { nombre: "Bomba sumergible / de pozo profundo", potenciaW: 1100, horasDia: 1, diasMes: 30, categoria: "agua", esencial: true, prioridad: 5, busqueda: "motobomba pozo aljibe" },
+  { nombre: "Bomba periférica", potenciaW: 370, horasDia: 0.8, diasMes: 30, categoria: "agua", esencial: true, prioridad: 5, busqueda: "motobomba 1/2 hp tanque" },
+  { nombre: "Bomba de filtrado de piscina", potenciaW: 750, horasDia: 4, diasMes: 30, categoria: "agua", esencial: false, prioridad: 3, busqueda: "piscina filtro" },
+  { nombre: "Bomba de calor para piscina", potenciaW: 3500, horasDia: 3, diasMes: 15, categoria: "agua", esencial: false, prioridad: 2, busqueda: "piscina climatizada" },
+
+  // Otro
+  { nombre: "Caminadora / trotadora eléctrica", potenciaW: 1500, horasDia: 0.5, diasMes: 15, categoria: "otro", esencial: false, prioridad: 2, busqueda: "gimnasio banda correr ejercicio" },
+  { nombre: "Silla / colchón de masajes", potenciaW: 60, horasDia: 0.5, diasMes: 20, categoria: "otro", esencial: false, prioridad: 4, busqueda: "masajeador" },
+  { nombre: "Concentrador de oxígeno (uso médico)", potenciaW: 350, horasDia: 8, diasMes: 30, categoria: "otro", esencial: true, prioridad: 5, nota: "Equipo médico: no debe apagarse para ahorrar.", busqueda: "oxígeno respirador salud" },
+  { nombre: "Nebulizador / equipo médico pequeño", potenciaW: 100, horasDia: 0.3, diasMes: 20, categoria: "otro", esencial: false, prioridad: 4, busqueda: "asma inhaloterapia" },
+  { nombre: "Cerca eléctrica (energizador)", potenciaW: 8, horasDia: 24, diasMes: 30, categoria: "otro", esencial: false, prioridad: 4, busqueda: "seguridad perímetro" },
+  { nombre: "Video portero / timbre con cámara", potenciaW: 6, horasDia: 24, diasMes: 30, categoria: "otro", esencial: false, prioridad: 4, busqueda: "citófono cámara puerta" },
+  { nombre: "Compresor de aire pequeño", potenciaW: 900, horasDia: 0.2, diasMes: 6, categoria: "otro", esencial: false, prioridad: 2, busqueda: "taller pintura llantas" },
+  { nombre: "Máquina de coser / fileteadora", potenciaW: 100, horasDia: 0.6, diasMes: 12, categoria: "otro", esencial: false, prioridad: 3, busqueda: "modistería overlock" },
+  { nombre: "Incubadora de huevos", potenciaW: 45, horasDia: 24, diasMes: 21, categoria: "otro", esencial: false, prioridad: 3, busqueda: "pollos aves granja" },
 ];
 
 export function nuevoId(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/**
+ * Electrodomésticos con presencia en más del ~50 % de los hogares de la costa
+ * Caribe, según la caracterización energética del sector residencial (UPME /
+ * CorpoEma) y la Encuesta de Calidad de Vida del DANE para poblaciones a menos
+ * de 1.000 m s. n. m. El ventilador es el equipo que distingue a la región.
+ */
+export const COMUNES_COSTA = new Set<string>([
+  "Nevera básica 9 pies (1 puerta)",
+  "Nevera / refrigerador (moderno)",
+  "Nevera antigua (2 puertas)",
+  "Ventilador de techo",
+  "Ventilador de pie / pedestal",
+  'Televisor LED 43"',
+  'Televisor LED 32"',
+  "Plancha de ropa",
+  "Licuadora",
+  "Lavadora (carga superior)",
+  "Bombillo LED (9 W)",
+  "Bombillo LED grande (15 W)",
+  "Microondas",
+  "Computador portátil",
+  "Equipo de sonido / minicomponente",
+  "Aire acondicionado 12.000 BTU (inverter)",
+  "Cargador de celular",
+]);
+
+export function esComunCosta(nombre: string): boolean {
+  return COMUNES_COSTA.has(nombre);
 }
 
 function normalizar(s: string): string {
