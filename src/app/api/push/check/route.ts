@@ -1,9 +1,14 @@
 import { NextRequest } from "next/server";
-import { bandaPara, heatIndexC } from "@/lib/heat";
+import {
+  bandaPara,
+  debeAvisar,
+  esNivelPeligroso,
+  heatIndexC,
+} from "@/lib/heat";
 import {
   enviarPush,
   listarSubs,
-  marcarClave,
+  marcarAviso,
   type RegistroPush,
 } from "@/lib/push";
 
@@ -26,12 +31,6 @@ function autorizado(request: NextRequest): boolean {
     request.headers.get("x-cron-secret");
   return dado === esperado;
 }
-
-const NIVELES_PELIGROSOS = new Set([
-  "precaucion-extrema",
-  "peligro",
-  "peligro-extremo",
-]);
 
 async function ejecutar(request: NextRequest) {
   if (!autorizado(request)) {
@@ -69,19 +68,27 @@ async function ejecutar(request: NextRequest) {
         return;
       }
 
-      const hi =
+      const hiExacto =
         heatIndexC(clima.actual.tempC, clima.actual.rh) + (reg.ajuste || 0);
-      const banda = bandaPara(hi);
-      const clave = `${banda.nivel}-${new Date().toDateString()}`;
+      const hi = Math.round(hiExacto);
+      const banda = bandaPara(hiExacto);
+      const fecha = new Date().toDateString();
 
-      if (!NIVELES_PELIGROSOS.has(banda.nivel) || reg.ultimaClave === clave) {
+      if (!debeAvisar(banda.nivel, hi, fecha, reg.ultimoAviso)) {
+        if (!esNivelPeligroso(banda.nivel) && reg.ultimoAviso) {
+          await marcarAviso(reg.endpoint, null);
+        }
         sinCambio++;
         return;
       }
 
+      const sube =
+        reg.ultimoAviso && hi > reg.ultimoAviso.hi
+          ? "El calor sigue subiendo — "
+          : "";
       const res = await enviarPush(reg, {
         title: `Alerta de calor: ${banda.etiqueta}`,
-        body: `Sensación térmica ${Math.round(hi)} °C en ${
+        body: `${sube}sensación térmica ${hi} °C en ${
           clima.municipio?.nombre ?? "tu zona"
         }. ${banda.resumen} Hidrátate y evita el sol.`,
         tag: "clima-push",
@@ -90,7 +97,7 @@ async function ejecutar(request: NextRequest) {
 
       if (res === "ok") {
         enviadas++;
-        await marcarClave(reg.endpoint, clave);
+        await marcarAviso(reg.endpoint, { nivel: banda.nivel, hi, fecha });
       } else if (res === "expirada") {
         expiradas++;
       } else {

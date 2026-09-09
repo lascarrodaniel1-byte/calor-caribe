@@ -171,6 +171,51 @@ export function bandaPara(hiC: number): BandaAlerta {
   return actual;
 }
 
+const ORDEN_NIVELES: NivelAlerta[] = [
+  "normal",
+  "precaucion",
+  "precaucion-extrema",
+  "peligro",
+  "peligro-extremo",
+];
+
+export function severidad(n: NivelAlerta): number {
+  const i = ORDEN_NIVELES.indexOf(n);
+  return i < 0 ? 0 : i;
+}
+
+export function esNivelPeligroso(n: NivelAlerta): boolean {
+  return severidad(n) >= severidad("precaucion-extrema");
+}
+
+export interface UltimoAviso {
+  nivel: NivelAlerta;
+  hi: number;
+  fecha: string; // Date.toDateString()
+}
+
+/**
+ * Regla de repetición de avisos de calor. Avisa cuando:
+ *  - es el primer aviso peligroso,
+ *  - sube a un nivel de alerta más alto,
+ *  - la sensación térmica sube 2 °C o más desde el último aviso, o
+ *  - cambió el día (recordatorio en olas de calor largas).
+ * No avisa si el calor no es peligroso.
+ */
+export function debeAvisar(
+  nivel: NivelAlerta,
+  hi: number,
+  fecha: string,
+  previo: UltimoAviso | null | undefined,
+): boolean {
+  if (!esNivelPeligroso(nivel)) return false;
+  if (!previo) return true;
+  if (severidad(nivel) > severidad(previo.nivel)) return true;
+  if (hi >= previo.hi + 2) return true;
+  if (fecha !== previo.fecha) return true;
+  return false;
+}
+
 /**
  * Puntaje de vulnerabilidad (0 en adelante). Cada condición desplaza hacia
  * abajo el umbral al que el calor se vuelve peligroso para esa persona.

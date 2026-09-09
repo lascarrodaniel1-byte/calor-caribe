@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import webpush, { type PushSubscription } from "web-push";
+import type { UltimoAviso } from "./heat";
 
 /**
  * Almacenamiento local de suscripciones de Web Push.
@@ -23,7 +24,8 @@ export interface RegistroPush {
   lat?: number;
   lon?: number;
   ajuste: number;
-  ultimaClave?: string;
+  /** nivel + sensación térmica del último aviso enviado a este dispositivo */
+  ultimoAviso?: UltimoAviso;
   creado: number;
   actualizado: number;
 }
@@ -118,11 +120,15 @@ export async function eliminarSub(endpoint: string): Promise<void> {
   await escribir(regs.filter((r) => r.endpoint !== endpoint));
 }
 
-async function marcarClave(endpoint: string, clave: string): Promise<void> {
+async function marcarAviso(
+  endpoint: string,
+  aviso: UltimoAviso | null,
+): Promise<void> {
   const regs = await leer();
   const i = regs.findIndex((r) => r.endpoint === endpoint);
   if (i >= 0) {
-    regs[i].ultimaClave = clave;
+    if (aviso) regs[i].ultimoAviso = aviso;
+    else delete regs[i].ultimoAviso;
     regs[i].actualizado = Date.now();
     await escribir(regs);
   }
@@ -157,4 +163,4 @@ export async function enviarPush(
   }
 }
 
-export { marcarClave };
+export { marcarAviso };

@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAppState, type AppState } from "@/lib/store";
-import { ajusteComorbilidad, evaluarCalor } from "@/lib/heat";
+import {
+  ajusteComorbilidad,
+  debeAvisar,
+  evaluarCalor,
+  type UltimoAviso,
+} from "@/lib/heat";
 import { useClima } from "@/lib/useClima";
 import {
   desuscribirPush,
@@ -80,7 +85,7 @@ function AvisosPrimerPlano({
     municipioSlug: activo ? state.municipioSlug : null,
     ubicacion: activo ? state.ubicacion : null,
   });
-  const ultimaBanda = useRef<string>("");
+  const ultimoAviso = useRef<UltimoAviso | null>(null);
 
   useEffect(() => {
     setPermiso(estadoPermisoNotificaciones());
@@ -90,20 +95,23 @@ function AvisosPrimerPlano({
     if (!activo || !clima) return;
     const ev = evaluarCalor(clima.actual.tempC, clima.actual.rh, state.perfil);
     const nivel = ev.bandaPersonal.nivel;
-    const peligroso =
-      nivel === "precaucion-extrema" ||
-      nivel === "peligro" ||
-      nivel === "peligro-extremo";
-    const clave = `${nivel}-${new Date().toDateString()}`;
-    if (peligroso && ultimaBanda.current !== clave) {
-      ultimaBanda.current = clave;
-      void mostrarNotificacion(`Alerta de calor: ${ev.bandaPersonal.etiqueta}`, {
-        body: `Sensación térmica ${ev.heatIndex.toFixed(0)} °C en ${
-          clima.municipio.nombre
-        }. ${ev.bandaPersonal.resumen}`,
-        icon: "/icon-192.png",
-      });
+    const hi = Math.round(ev.heatIndex);
+    const fecha = new Date().toDateString();
+
+    if (!debeAvisar(nivel, hi, fecha, ultimoAviso.current)) {
+      if (nivel === "normal" || nivel === "precaucion") ultimoAviso.current = null;
+      return;
     }
+
+    const sube =
+      ultimoAviso.current && hi > ultimoAviso.current.hi ? "El calor sigue subiendo — " : "";
+    ultimoAviso.current = { nivel, hi, fecha };
+    void mostrarNotificacion(`Alerta de calor: ${ev.bandaPersonal.etiqueta}`, {
+      body: `${sube}sensación térmica ${hi} °C en ${clima.municipio.nombre}. ${ev.bandaPersonal.resumen}`,
+      icon: "/icon-192.png",
+      tag: "clima-alerta",
+      renotify: true,
+    } as NotificationOptions);
   }, [activo, clima, state.perfil]);
 
   async function activar() {

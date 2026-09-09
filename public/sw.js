@@ -5,7 +5,7 @@
  *   la frecuencia real; en iOS y en muchos Android esto no se ejecuta.
  */
 
-const SHELL = "calor-shell-v4";
+const SHELL = "calor-shell-v5";
 const CFG = "calor-cfg-v1";
 const SHELL_URLS = ["/", "/calor", "/energia", "/plan", "/ajustes", "/icon-192.png"];
 
@@ -52,11 +52,19 @@ self.addEventListener("message", (event) => {
   const data = event.data;
   if (data && data.type === "config") {
     event.waitUntil(
-      caches
-        .open(CFG)
-        .then((c) =>
-          c.put("/__cfg", new Response(JSON.stringify(data.payload))),
-        ),
+      (async () => {
+        const c = await caches.open(CFG);
+        let previo = {};
+        try {
+          const r = await c.match("/__cfg");
+          if (r) previo = await r.json();
+        } catch {
+          previo = {};
+        }
+        // conserva el estado de "último aviso" al actualizar la configuración
+        const merged = { ...data.payload, ultimoAviso: previo.ultimoAviso };
+        await c.put("/__cfg", new Response(JSON.stringify(merged)));
+      })(),
     );
   }
 });
@@ -96,7 +104,7 @@ async function revisarClima() {
   const cfgCache = await caches.open(CFG);
   const res = await cfgCache.match("/__cfg");
   if (!res) return;
-  const cfg = await res.json(); // { municipioSlug|lat/lon, ajuste, ultimaClave }
+  const cfg = await res.json(); // { municipioSlug|lat/lon, ajuste, ultimoAviso }
 
   let clima;
   try {
@@ -117,23 +125,33 @@ async function revisarClima() {
     return;
   }
 
-  const hi = heatIndexC(clima.actual.tempC, clima.actual.rh) + (cfg.ajuste || 0);
-  const { etiqueta, peligroso } = banda(hi);
-  if (!peligroso) return;
+  const hiExacto =
+    heatIndexC(clima.actual.tempC, clima.actual.rh) + (cfg.ajuste || 0);
+  const hi = Math.round(hiExacto);
+  const b = banda(hiExacto);
+  const fecha = new Date().toDateString();
 
-  const hoy = new Date().toDateString();
-  const clave = `${etiqueta}-${hoy}`;
-  if (cfg.ultimaClave === clave) return;
-  cfg.ultimaClave = clave;
+  if (!debeAvisar(b, hi, fecha, cfg.ultimoAviso)) {
+    if (b.sev < 2 && cfg.ultimoAviso) {
+      delete cfg.ultimoAviso;
+      await cfgCache.put("/__cfg", new Response(JSON.stringify(cfg)));
+    }
+    return;
+  }
+
+  const sube =
+    cfg.ultimoAviso && hi > cfg.ultimoAviso.hi ? "El calor sigue subiendo — " : "";
+  cfg.ultimoAviso = { nivel: b.nivel, sev: b.sev, hi, fecha };
   await cfgCache.put("/__cfg", new Response(JSON.stringify(cfg)));
 
-  await self.registration.showNotification(`Alerta de calor: ${etiqueta}`, {
-    body: `Sensación térmica ${Math.round(hi)} °C en ${
+  await self.registration.showNotification(`Alerta de calor: ${b.etiqueta}`, {
+    body: `${sube}sensación térmica ${hi} °C en ${
       clima.municipio ? clima.municipio.nombre : "tu zona"
     }. Hidrátate y evita el sol.`,
     icon: "/icon-192.png",
     badge: "/icon-192.png",
     tag: "clima-check",
+    renotify: true,
   });
 }
 
@@ -175,8 +193,20 @@ function heatIndexC(tempC, rh) {
 }
 
 function banda(hiC) {
-  if (hiC >= 54) return { etiqueta: "Peligro extremo", peligroso: true };
-  if (hiC >= 41) return { etiqueta: "Peligro", peligroso: true };
-  if (hiC >= 32) return { etiqueta: "Precaución extrema", peligroso: true };
-  return { etiqueta: "Normal", peligroso: false };
+  if (hiC >= 54)
+    return { nivel: "peligro-extremo", etiqueta: "Peligro extremo", sev: 4 };
+  if (hiC >= 41) return { nivel: "peligro", etiqueta: "Peligro", sev: 3 };
+  if (hiC >= 32)
+    return { nivel: "precaucion-extrema", etiqueta: "Precaución extrema", sev: 2 };
+  return { nivel: "normal", etiqueta: "Normal", sev: 0 };
+}
+
+// Misma regla que src/lib/heat.debeAvisar.
+function debeAvisar(b, hi, fecha, previo) {
+  if (b.sev < 2) return false;
+  if (!previo) return true;
+  if (b.sev > (previo.sev || 0)) return true;
+  if (hi >= previo.hi + 2) return true;
+  if (fecha !== previo.fecha) return true;
+  return false;
 }
