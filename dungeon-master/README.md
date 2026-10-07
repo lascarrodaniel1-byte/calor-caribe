@@ -2,6 +2,33 @@
 
 Un Dungeon Master impulsado por Claude para jugar partidas de Dungeons & Dragons 5.ª edición por texto, solo o con amigos en el mismo teclado.
 
+La campaña está ambientada en **Velmora, el Reino del Sol Herido**: un mundo de dark fantasy donde los dioses fueron asesinados hace 99 años, el sol es un disco gris, los muertos se levantan y la magia divina cura… a cambio de llenarte de Ceniza.
+
+## El mundo
+
+- **Razas**: Humano del Faro, Enano de Karak-Dûm, Elfo Marchito, Mediano de Hollín, Varg (maldición del lobo), Nacido Pálido (sangre vampírica) y Cenizo (nacido durante el Eclipse).
+- **Clases (todas combatientes)**: Mercenario del Cuervo, Berserker de Ceniza, Caballero Juramentado, Cazador de Brujas, Degollador, Flagelante, Segador y Barbero-Cirujano. Cada una se basa en una clase de 5e (guerrero, bárbaro, paladín, explorador, pícaro, monje, brujo) con rasgos propios del mundo.
+- **Regiones y facciones**: la Ciudad-Faro de Aldenmar, las Ciénagas de Hollín, la Fortaleza Silente, el Bosque de Velo Rojo, la Marca Hueca; la Inquisición de la Llama Gris, las Hermanas de la Sutura, la Corte Pálida…
+
+Todo se define en `src/mundo.ts`; cámbialo para crear tu propio mundo.
+
+## Sistema de heridas
+
+Los PV son aguante; las **heridas** son daño real en el cuerpo y las gestiona el programa con tiradas reales (el DM no puede saltárselas):
+
+| Gravedad | PV máx. | Tratar | Convalecencia | Secuelas |
+|---|---|---|---|---|
+| Leve | — | CD 10 | 1d3 días, sana sola | Nunca |
+| Moderada | −3 | CD 13, kit de sanador | 1d4+3 días | Menor si sale mal la recuperación |
+| Grave | −6 | CD 16, herramientas de cirujano | 2d6+7 días | Menor o permanente |
+| Crítica | −10 | CD 19, herramientas de cirujano | 3d10+15 días | Siempre |
+
+- Se producen al recibir un crítico, un golpe masivo o caer a 0 PV; gravedad y ubicación (cabeza, torso, brazos, piernas) se tiran al azar, y cada combinación tiene su penalización (desventajas, brazo inútil, velocidad reducida…).
+- **Hemorragias** que hay que detener, **infecciones** si no se tratan o si el herido se esfuerza, y la **Podre** de los no-muertos, que solo se quema con fuego o se cura con remedios raros.
+- **Tratamiento**: medicina/cirugía (influyen el entorno, el material, el alcohol, las hierbas y la pericia del sanador), cauterizar o magia divina (baja un nivel la herida, pero da Ceniza).
+- **El tiempo cura… o mata**: la calidad del descanso (esfuerzo, precario, reposo, enfermería) decide si la herida avanza, se infecta o se agrava, y al cerrarse una tirada de recuperación decide si quedan secuelas: cicatrices, cojeras, un ojo perdido, una mano menos.
+- Cada raza sana distinto: los enanos resisten la infección, los elfos marchitos son inmunes a la Podre pero sanan lento, los varg cierran rápido las heridas leves, y a los nacidos pálidos la magia divina no les hace nada.
+
 - **Narra, interpreta PNJ y arbitra las reglas** de D&D 5e (SRD), en español.
 - **Los dados son reales**: el modelo no inventa resultados; pide la tirada a este programa (`crypto.randomInt`) y tú la ves en pantalla. Soporta `1d20+5`, `2d6-1`, `4d6kh3`, ventaja/desventaja y tiradas secretas del DM.
 - **Fichas de personaje**: el DM guía la creación de personaje y lleva PV, CA, atributos, inventario, oro y condiciones.
@@ -26,7 +53,9 @@ Comandos dentro del juego:
 
 | Comando | Qué hace |
 |---|---|
-| `/fichas` | Muestra las fichas de los personajes |
+| `/fichas` | Muestra las fichas de los personajes, con heridas y secuelas |
+| `/mundo` | Ambientación de Velmora |
+| `/razas` | Razas y clases disponibles |
 | `/notas` | Muestra las notas de campaña del DM |
 | `/tirar 1d20+3` | Tiras tú mismo, sin pasar por el DM |
 | `/salir` (o Ctrl+C) | Guarda y sale |
@@ -45,7 +74,9 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | Archivo | Contenido |
 |---|---|
 | `src/prompt.ts` | Instrucciones del DM (estilo, reglas, creación de personaje) — edítalo para cambiar su personalidad o ambientación |
-| `src/herramientas.ts` | Herramientas que puede usar el DM: `tirar_dados`, `guardar_personaje`, `modificar_personaje`, `anotar_mundo` |
+| `src/mundo.ts` | Ambientación, razas y clases |
+| `src/heridas.ts` | Motor de heridas: gravedad, hemorragia, infección, tratamiento, convalecencia y secuelas |
+| `src/herramientas.ts` | Herramientas que puede usar el DM: `tirar_dados`, `guardar_personaje`, `modificar_personaje`, `infligir_herida`, `tratar_herida`, `pasar_tiempo`, `anotar_mundo` |
 | `src/dados.ts` | Motor de dados |
 | `src/estado.ts` | Fichas y guardado de la partida |
 | `src/index.ts` | Bucle de juego en la terminal (streaming + bucle de herramientas) |

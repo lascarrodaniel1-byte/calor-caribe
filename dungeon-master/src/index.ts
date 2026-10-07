@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describir, tirar } from "./dados.js";
 import { cargar, fichaTexto, guardar, nuevaPartida, type Partida } from "./estado.js";
 import { ejecutar, herramientas } from "./herramientas.js";
+import { AMBIENTACION, textoRazasYClases } from "./mundo.js";
 import { SISTEMA } from "./prompt.js";
 
 const MODELO = process.env.DM_MODELO ?? "claude-opus-5-5";
@@ -22,7 +23,9 @@ const amarillo = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const cian = (s: string) => `\x1b[36m${s}\x1b[0m`;
 
 const AYUDA = `Comandos:
-  /fichas          muestra las fichas de los personajes
+  /fichas          muestra las fichas de los personajes (con heridas y secuelas)
+  /mundo           ambientación de Velmora
+  /razas           razas y clases disponibles
   /notas           muestra las notas de campaña del DM
   /tirar 1d20+3    tira dados tú mismo (sin pasar por el DM)
   /ayuda           muestra esta ayuda
@@ -108,7 +111,7 @@ async function main() {
   const reanudada = partida !== null && partida.historial.length > 0;
   partida ??= nuevaPartida();
 
-  console.log(amarillo("⚔️  Dungeon Master · D&D 5e") + gris(`  (modelo: ${MODELO}, partida: ${RUTA})`));
+  console.log(amarillo("⚔️  Dungeon Master · Velmora, el Reino del Sol Herido") + gris(`  (modelo: ${MODELO}, partida: ${RUTA})`));
   console.log(gris("Escribe /ayuda para ver los comandos.\n"));
 
   if (reanudada) {
@@ -144,6 +147,10 @@ async function main() {
       else if (cmd === "/fichas") {
         const ps = Object.values(partida.personajes);
         console.log(ps.length ? ps.map(fichaTexto).join("\n\n") : "Aún no hay personajes.");
+      } else if (cmd === "/mundo") {
+        console.log(AMBIENTACION.replace(/\*\*/g, ""));
+      } else if (cmd === "/razas") {
+        console.log(textoRazasYClases().replace(/\*\*/g, ""));
       } else if (cmd === "/notas") {
         console.log(partida.notas_mundo.length ? partida.notas_mundo.map((n) => `- ${n}`).join("\n") : "Sin notas todavía.");
       } else if (cmd === "/tirar") {
