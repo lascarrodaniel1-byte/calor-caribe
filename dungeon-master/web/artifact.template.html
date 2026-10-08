@@ -162,9 +162,9 @@
   }
   .cola strong { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--lumbre); }
 
-  /* Fichas clavadas en el poste */
+  /* Lateral: el mapa y las fichas clavadas en el poste */
   .fichas {
-    width: 380px; flex: none; overflow-y: auto; padding: 20px;
+    width: 400px; flex: none; overflow-y: auto; padding: 20px;
     background: linear-gradient(90deg, #1d120a, #2a1b11 12px, #2a1b11);
     border-left: 3px solid var(--nogal);
   }
@@ -180,6 +180,38 @@
     background: radial-gradient(circle at 35% 35%, #d9c7a0, #5a4a32 60%, #2a2016); box-shadow: 0 1px 2px #000;
   }
   .fichas .nota { color: var(--apagado); }
+  .cerrar-lateral { display: none; }
+
+  /* Mapa antiguo */
+  .mapa { margin-bottom: 22px; }
+  .donde { font: 600 17px/1.4 var(--f-narracion); color: var(--texto); margin: -6px 0 10px; }
+  .donde small { display: block; font: 400 14px var(--f-ui); color: var(--apagado); }
+  .lienzo { border: 6px solid #3b2616; box-shadow: 0 6px 16px #000a, inset 0 0 0 1px #00000055; background: #d9c49a; line-height: 0; }
+  .lienzo svg { width: 100%; height: auto; display: block; }
+  .lienzo .etiqueta-region { font: italic 600 32px "Alegreya", Georgia, serif; fill: #5a3d22; opacity: .75; letter-spacing: .02em; }
+  .lienzo .etiqueta-lugar { font: 700 28px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #e6d5b0; stroke-width: 7px; stroke-linejoin: round; }
+  .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 32px; }
+  .lienzo.ampliable { cursor: zoom-in; }
+  .velo .mapa-grande { width: min(1100px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+  .velo .mapa-grande .lienzo .etiqueta-lugar { font-size: 22px; }
+  .velo .mapa-grande .lienzo .etiqueta-lugar.actual { font-size: 26px; }
+  .velo .mapa-grande .lienzo .etiqueta-region { font-size: 26px; }
+  .lienzo .onda { animation: onda 2.4s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes onda { 0% { opacity: .8; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.2); } }
+  @media (prefers-reduced-motion: reduce) { .lienzo .onda { animation: none; opacity: .4; } }
+  .franja { display: none; }
+
+  @media (max-width: 999px) {
+    .fichas { display: none; }
+    .fichas.abierto { display: block; position: fixed; inset: 0; width: auto; z-index: 25; border-left: 0; padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
+    .cerrar-lateral { display: inline-block; }
+    .franja {
+      display: flex; align-items: center; gap: 8px; width: 100%; border: 0; border-bottom: 1px solid var(--nogal); cursor: pointer;
+      background: linear-gradient(180deg, #2c1c10, #23160d); color: var(--texto); padding: 8px 16px; font: 600 15px/1.3 var(--f-ui); text-align: left;
+    }
+    .franja span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .franja span:last-child { color: var(--lumbre); text-decoration: underline dotted; white-space: nowrap; }
+  }
 
   /* La barra de la taberna */
   .redaccion {
@@ -217,7 +249,6 @@
   .boton.peligro { background: linear-gradient(180deg, #b8463c, var(--sangre) 55%, #6e1c17); color: #fbe9e2; border-color: #4a120e; text-shadow: none; box-shadow: inset 0 1px 0 #ffffff33, 0 2px 4px #0008; }
 
   @media (max-width: 800px) {
-    .fichas { position: fixed; inset: 0; width: auto; z-index: 25; border-left: 0; padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
     .narracion { font-size: 19px; padding: 20px 20px; }
     .accion { font-size: 22px; }
     .resultado, .privado { font-size: 14px; padding: 12px 14px; }
@@ -247,6 +278,8 @@
     <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
   </header>
 
+  <button class="franja" id="franja-mapa" type="button"><span id="franja-texto">📍 Sin ubicación todavía</span><span>Ver mapa</span></button>
+
   <div class="cuerpo">
     <main class="cronica" id="cronica">
       <div class="columna" id="registro">
@@ -270,10 +303,15 @@
         </div>
       </div>
     </main>
-    <aside class="fichas" id="fichas" hidden>
-      <h2>Fichas</h2>
+    <aside class="fichas" id="fichas" aria-label="Mapa y fichas">
+      <section class="mapa" aria-labelledby="titulo-mapa">
+        <h2 id="titulo-mapa">Mapa de Velmora</h2>
+        <div class="donde" id="mapa-donde">Aún no sabemos dónde estáis.<small>El DM os situará al empezar.</small></div>
+        <div class="lienzo ampliable" id="mapa" role="button" tabindex="0" title="Ver el mapa en grande"></div>
+      </section>
+      <h2 id="titulo-fichas">Fichas</h2>
       <div id="lista-fichas"><p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p></div>
-      <button class="boton sobrio" id="cerrar-fichas" type="button">Cerrar</button>
+      <button class="boton sobrio cerrar-lateral" id="cerrar-fichas" type="button">Cerrar</button>
     </aside>
   </div>
 
@@ -306,6 +344,13 @@
   </form>
 </div>
 
+<div class="velo" id="velo-mapa" hidden>
+  <div class="mapa-grande">
+    <div class="botonera"><button class="boton sobrio" id="cerrar-mapa" type="button">Cerrar el mapa</button></div>
+    <div class="lienzo" id="mapa-grande"></div>
+  </div>
+</div>
+
 <div class="velo" id="velo-tutorial" hidden>
   <form id="form-tutorial" class="tutorial">
     <h2>Cómo se juega</h2>
@@ -316,7 +361,7 @@
       <li><strong>Pulsa «Que empiece la historia».</strong> La primera vez, Claude te pedirá permiso para narrar desde tu cuenta: acéptalo. No cuesta nada aparte de tu plan.</li>
       <li><strong>Crea tu personaje con el DM.</strong> Te preguntará raza, clase y trasfondo. Para los atributos puedes usar la serie estándar o tirar el botón <em>4d6kh3</em> seis veces (4 dados de 6, te quedas con los 3 mejores).</li>
       <li><strong>Escribe lo que hace tu personaje</strong> y pulsa Enter. Por ejemplo: <span class="ejemplo">«Me acerco a la barra, pido una cerveza negra y pregunto por el hombre sin ojos.»</span> Cuanto más concreto, mejor responde el DM.</li>
-      <li><strong>Lee la respuesta.</strong> La narración aparece en el pergamino; las tiradas, heridas y botín, en las placas de madera. Tu vida, heridas e inventario están en <em>Fichas</em>.</li>
+      <li><strong>Lee la respuesta.</strong> La narración aparece en el pergamino; las tiradas, heridas y botín, en las placas de madera. Tu vida, heridas e inventario están en <em>Fichas</em>, y dónde estáis, en el <em>mapa</em>, que el DM mueve cuando viajáis.</li>
     </ol>
     <h3>Bueno saberlo</h3>
     <ul>
@@ -476,7 +521,93 @@
     $("quien").textContent = nombre ? `Juegas como ${nombre} · cambiar` : "Elegir nombre";
   }
 
+  // ------------------------------------------------------------ mapa
+  // Relieve dibujado a mano con una semilla fija por región, para que el mapa no cambie entre visitas.
+  function azar(semilla) { let x = semilla * 9301 + 49297; return () => ((x = (x * 9301 + 49297) % 233280) / 233280); }
+  function relieve(r, i) {
+    const rnd = azar(i + 7);
+    const t = [];
+    const n = r.relieve === "ciudad" ? 0 : 9;
+    for (let k = 0; k < n; k++) {
+      const ang = rnd() * Math.PI * 2, dist = 30 + rnd() * 70;
+      const x = r.x + Math.cos(ang) * dist * 1.3, y = r.y + Math.sin(ang) * dist * .8;
+      if (r.relieve === "montanas") t.push(`<path d="M${x - 18} ${y + 12} L${x} ${y - 16} L${x + 18} ${y + 12}" fill="#c9b184" stroke="#5a3d22" stroke-width="2.5"/><path d="M${x} ${y - 16} L${x + 5} ${y - 6} L${x - 3} ${y - 2}" fill="none" stroke="#5a3d22" stroke-width="1.5"/>`);
+      else if (r.relieve === "agujas") t.push(`<path d="M${x - 7} ${y + 14} L${x} ${y - 26} L${x + 7} ${y + 14}" fill="#c4ab7c" stroke="#5a3d22" stroke-width="2.5"/>`);
+      else if (r.relieve === "bosque") t.push(`<circle cx="${x}" cy="${y}" r="10" fill="#8f6a4a" stroke="#5a2a1a" stroke-width="2"/><path d="M${x} ${y + 10} v8" stroke="#5a3d22" stroke-width="2.5"/>`);
+      else if (r.relieve === "cienaga") t.push(`<path d="M${x - 16} ${y} q8 -6 16 0 t16 0" fill="none" stroke="#5b6a4a" stroke-width="2.5"/><path d="M${x - 4} ${y - 4} l-3 -10 M${x} ${y - 4} v-12 M${x + 4} ${y - 4} l3 -10" stroke="#5b6a4a" stroke-width="2"/>`);
+      else if (r.relieve === "paramo") t.push(`<path d="M${x - 6} ${y - 6} l12 12 M${x + 6} ${y - 6} l-12 12" stroke="#6b4a2a" stroke-width="2.5"/>`);
+    }
+    if (r.relieve === "ciudad") {
+      t.push(`<circle cx="${r.x}" cy="${r.y}" r="46" fill="none" stroke="#5a3d22" stroke-width="4" stroke-dasharray="10 5"/>`);
+      for (const [dx, dy, h] of [[-18, -6, 28], [0, -14, 40], [18, -4, 24], [-6, 10, 18], [12, 12, 16]]) {
+        t.push(`<rect x="${r.x + dx - 6}" y="${r.y + dy - h / 2}" width="12" height="${h}" fill="#c9b184" stroke="#5a3d22" stroke-width="2"/>`);
+      }
+      t.push(`<path d="M${r.x} ${r.y - 34} l0 -14" stroke="#b5521f" stroke-width="3"/><circle cx="${r.x}" cy="${r.y - 50}" r="5" fill="#e0782c"/>`); // el faro
+    }
+    const ly = r.relieve === "ciudad" ? r.y + 74 : r.y + 92;
+    t.push(`<text class="etiqueta-region" x="${r.x}" y="${ly}" text-anchor="middle">${escapar(r.nombre)}</text>`);
+    return t.join("");
+  }
+
+  function pintarMapa(p) {
+    const m = p.mapa || { lugares: {}, rastro: [] };
+    const L = m.lugares || {};
+    const pos = m.posicion ? L[m.posicion] : null;
+    const ruta = m.ruta && L[m.ruta.desde] && L[m.ruta.hasta] ? m.ruta : null;
+    const partes = [];
+    partes.push(`<defs><radialGradient id="papel" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#ecdcb6"/><stop offset=".7" stop-color="#d9c49a"/><stop offset="1" stop-color="#b89a68"/></radialGradient></defs>`);
+    partes.push(`<rect width="${V.ANCHO}" height="${V.ALTO}" fill="url(#papel)"/>`);
+    // El Mar de Ceniza, al oeste
+    partes.push(`<path d="M0 0 H70 C40 120 95 210 60 330 C30 450 90 540 50 700 H0 Z" fill="#a9a48c" opacity=".55"/>`);
+    for (let k = 0; k < 7; k++) partes.push(`<path d="M${12 + (k % 2) * 14} ${70 + k * 90} q8 -6 16 0 t16 0" fill="none" stroke="#6f6a55" stroke-width="2"/>`);
+    partes.push(`<text class="etiqueta-region" x="34" y="380" text-anchor="middle" transform="rotate(-90 34 380)">Mar de Ceniza</text>`);
+    V.REGIONES.forEach((r, i) => partes.push(relieve(r, i)));
+    // Rastro de lo recorrido
+    const rastro = (m.rastro || []).map((id) => L[id]).filter(Boolean);
+    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#7a5a3a" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"/>`);
+    // Viaje en curso
+    let marca = pos ? { x: pos.x, y: pos.y } : null;
+    if (ruta) {
+      const a = L[ruta.desde], b = L[ruta.hasta];
+      partes.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8a2a1e" stroke-width="4" stroke-dasharray="14 9" stroke-linecap="round"/>`);
+      partes.push(`<circle cx="${b.x}" cy="${b.y}" r="13" fill="none" stroke="#8a2a1e" stroke-width="4"/>`);
+      marca = { x: a.x + (b.x - a.x) * ruta.progreso, y: a.y + (b.y - a.y) * ruta.progreso };
+    }
+    // Lugares
+    for (const l of Object.values(L)) {
+      const actual = (pos && l.id === pos.id && !ruta) || (ruta && l.id === ruta.hasta);
+      partes.push(`<circle cx="${l.x}" cy="${l.y}" r="${actual ? 7 : 6}" fill="#3a2414" stroke="#ecdcb6" stroke-width="2"/>`);
+      const izquierda = l.x > V.ANCHO - 200;
+      partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -12 : 12)}" y="${l.y - 10}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
+    }
+    // El sello de lacre: dónde estáis
+    if (marca) {
+      partes.push(`<circle class="onda" cx="${marca.x}" cy="${marca.y}" r="22" fill="none" stroke="#b02a1e" stroke-width="4"/>`);
+      partes.push(`<circle cx="${marca.x}" cy="${marca.y}" r="15" fill="#9e2b25" stroke="#5a120e" stroke-width="3"/><circle cx="${marca.x}" cy="${marca.y}" r="7" fill="none" stroke="#e8a090" stroke-width="2"/>`);
+    }
+    // Rosa de los vientos
+    partes.push(`<g transform="translate(925 625)" stroke="#5a3d22" stroke-width="2"><circle r="30" fill="none"/><path d="M0 -42 L7 0 L0 42 L-7 0 Z" fill="#c9b184"/><path d="M-42 0 L0 -7 L42 0 L0 7 Z" fill="#c9b184"/></g><text x="925" y="572" text-anchor="middle" class="etiqueta-region" style="font-size:20px">N</text>`);
+    const svg = `<svg viewBox="0 0 ${V.ANCHO} ${V.ALTO}" role="img" aria-label="Mapa de Velmora con la posición del grupo">${partes.join("")}</svg>`;
+    $("mapa").innerHTML = svg;
+    $("mapa-grande").innerHTML = svg;
+
+    let titulo, detalle;
+    if (ruta) {
+      titulo = `De camino a ${L[ruta.hasta].nombre}`;
+      detalle = `Desde ${L[ruta.desde].nombre} · ${Math.round(ruta.progreso * 100)} % del viaje`;
+    } else if (pos) {
+      titulo = pos.nombre;
+      detalle = pos.region + (pos.descripcion ? ` · ${pos.descripcion}` : "");
+    } else {
+      titulo = "Aún no sabemos dónde estáis.";
+      detalle = "El DM os situará al empezar.";
+    }
+    $("mapa-donde").innerHTML = `${ruta ? "🧭" : "📍"} ${escapar(titulo)}<small>${escapar(detalle)}</small>`;
+    $("franja-texto").textContent = `${ruta ? "🧭" : "📍"} ${titulo}`;
+  }
+
   function pintarFichas() {
+    pintarMapa(partida);
     const cont = $("lista-fichas");
     const pjs = Object.values(partida.personajes);
     cont.innerHTML = "";
@@ -492,6 +623,7 @@
 - Usa el motor del juego con la herramienta "motor": recibe una lista de acciones {accion, datos} y las ejecuta en orden. Las acciones posibles son las herramientas descritas abajo (tirar_dados, guardar_personaje, infligir_herida…), más "actualizar_cronica" {texto}. Tienes pocas rondas por turno: mete en una sola llamada todo lo que no dependa de un resultado anterior (por ejemplo, todas las tiradas de iniciativa o los ataques de todos los enemigos a la vez).
 - Mantén la crónica con actualizar_cronica cuando pase algo que debas recordar: es tu memoria a largo plazo. Escríbela completa cada vez (no solo lo nuevo), en menos de 2500 caracteres: dónde están, qué buscan, PNJ importantes y lo que les deben, amenazas en marcha, hilos abiertos, y tus secretos de DM.
 - Los resultados del motor se muestran solos a los jugadores. Tu texto final es la narración: no copies las tiradas ni hables de herramientas, del motor o de JSON.
+- Los jugadores ven siempre un mapa con la posición del grupo: actualízalo con la acción ubicacion cada vez que lleguen a otro lugar o viajen.
 - Varios jugadores pueden escribir a la vez; sus acciones llegan juntas con su nombre delante. Resuélvelas todas y reparte el protagonismo.
 
 ## Acciones del motor
@@ -525,7 +657,7 @@
 
   const NOMBRES_ACCIONES = ["tirar_dados", "guardar_personaje", "modificar_personaje", "infligir_herida", "tratar_herida", "pasar_tiempo",
     "avanzar_asaltos", "usar_vial", "generar_botin", "crear_objeto", "examinar_objeto", "aparecer_criatura", "danar_criatura",
-    "habilidad_criatura", "presagio_criatura", "behelit", "anotar_mundo", "actualizar_cronica"];
+    "habilidad_criatura", "presagio_criatura", "behelit", "ubicacion", "anotar_mundo", "actualizar_cronica"];
 
   const MENSAJES_ERROR = {
     not_granted: "No se dio permiso a esta página para usar Claude. Ábrela de nuevo y acepta el permiso para que el DM pueda narrar.",
@@ -614,6 +746,7 @@
             return { accion, resultado: "Crónica actualizada." };
           }
           const r = V.ejecutar(String(accion), datos ?? {}, copia);
+          if (accion === "ubicacion") pintarMapa(copia);
           if (r.aviso) {
             avisos.push({ pos: texto.length, texto: r.aviso });
             turnoVivo.avisos = avisos;
@@ -695,8 +828,18 @@
   caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
   $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
   document.querySelectorAll("[data-cmd]").forEach((b) => (b.onclick = () => enviar(b.dataset.cmd)));
-  $("ver-fichas").onclick = () => { $("fichas").hidden = !$("fichas").hidden; };
-  $("cerrar-fichas").onclick = () => { $("fichas").hidden = true; };
+  const abrirLateral = (destino) => {
+    $("fichas").classList.add("abierto");
+    $(destino).scrollIntoView({ block: "start" });
+  };
+  $("ver-fichas").onclick = () => abrirLateral("titulo-fichas");
+  $("franja-mapa").onclick = () => abrirLateral("titulo-mapa");
+  $("cerrar-fichas").onclick = () => { $("fichas").classList.remove("abierto"); };
+  const ampliarMapa = () => { $("velo-mapa").hidden = false; $("cerrar-mapa").focus(); };
+  $("mapa").onclick = ampliarMapa;
+  $("mapa").onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ampliarMapa(); } };
+  $("cerrar-mapa").onclick = () => { $("velo-mapa").hidden = true; };
+  $("velo-mapa").onclick = (ev) => { if (ev.target === $("velo-mapa")) $("velo-mapa").hidden = true; };
   $("nivel").value = leer("velmora-nivel") || "default";
   $("nivel").onchange = () => anotar("velmora-nivel", $("nivel").value);
 

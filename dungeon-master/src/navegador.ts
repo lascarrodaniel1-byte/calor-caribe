@@ -4,6 +4,7 @@
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
 import { fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import { ejecutar, herramientas } from "./herramientas.js";
+import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import { SISTEMA } from "./prompt.js";
 
@@ -17,6 +18,7 @@ export function catalogoAcciones(): string {
 /** Estado de la partida tal y como lo necesita el DM (incluye secretos que los jugadores no ven en la página). */
 export function estadoParaDM(p: Partida): string {
   const partes: string[] = [];
+  partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
   const pjs = Object.values(p.personajes);
   partes.push(`## Personajes jugadores\n${pjs.length ? pjs.map(fichaTexto).join("\n\n") : "Aún no hay personajes: hay que crearlos."}`);
   if (p.notas_mundo.length) partes.push(`## Notas de campaña\n${p.notas_mundo.map((n) => `- ${n}`).join("\n")}`);
@@ -51,4 +53,4 @@ export function estadoParaDM(p: Partida): string {
   return partes.join("\n\n");
 }
 
-export { comando, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, SISTEMA };
+export { ALTO, ANCHO, comando, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA };

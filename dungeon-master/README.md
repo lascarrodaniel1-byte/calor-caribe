@@ -72,6 +72,10 @@ Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas,
   - **Ilvara, la Tejedora de Mañanas**, que **ve el futuro**: tira sus *presagios* (d20) por adelantado y puede imponerlos en lugar de las tiradas de los jugadores; condena con profecías de muerte que solo se rompen haciendo algo que ella no haya visto.
   - **Vaerth, el Sin Rostro**, un **cambiaformas** que **roba atributos** (del mejor atributo de la víctima) y se queda con los **rasgos de su raza y su clase** y con su forma. Si a alguien le roba todo un atributo, muere vacío. Al matarlo, todo lo robado vuelve a sus dueños. Son extremadamente difíciles; varias de sus habilidades provocan **muerte instantánea** si fallas la salvación (algunas con cualquier fallo, otras si fallas por mucho).
 
+## Mapa
+
+Los jugadores ven en todo momento un mapa antiguo de Velmora con sus seis regiones, los lugares que vayan descubriendo, el rastro del camino recorrido y un sello de lacre donde está el grupo; durante un viaje, la ruta y lo que llevan recorrido. El DM lo mueve con la acción `ubicacion` cada vez que llegan a otro sitio o viajan (en la página de claude.ai, en el lateral o en «Ver mapa» en el móvil; se amplía al tocarlo).
+
 ## Behelits
 
 Huevos de piedra con un rostro desordenado, que pertenecen al **Coro de los Cinco**. Son lo más difícil de encontrar del mundo: nunca se venden y solo aparecen por azar extremo (0,1 % por objeto en saqueos, 0,3 % en hallazgos y 2 % en botín de jefe) o cuando el DM lo decide.
@@ -171,6 +175,7 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/viales.ts` | Viales y sus riesgos |
 | `src/equipo.ts` | Tablas de botín, encantamientos, maldiciones y reliquias |
 | `src/bestiario.ts` | Criaturas, jefes y el motor de habilidades especiales |
+| `src/mapa.ts` | Mapa: regiones, lugares, posición del grupo y viajes |
 | `src/behelit.ts` | Behelits, el Behelit Carmesí y el Eclipse |
 | `src/reglas.ts` | Salvaciones (con competencia según la clase) y utilidades |
 | `src/herramientas.ts` | Herramientas del DM: dados, fichas, heridas, tiempo, hemorragias, viales, botín, objetos y criaturas |

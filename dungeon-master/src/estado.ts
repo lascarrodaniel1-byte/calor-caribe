@@ -4,6 +4,7 @@ import type { EstadoJefe } from "./bestiario.js";
 import type { EstadoBehelit } from "./behelit.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
+import { mapaVacio, type EstadoMapa } from "./mapa.js";
 import { valor } from "./reglas.js";
 
 export interface Personaje {
@@ -47,10 +48,11 @@ export interface Partida {
   /** Jefes que han aparecido, con su estado. */
   jefes: Record<string, EstadoJefe>;
   behelit: EstadoBehelit;
+  mapa: EstadoMapa;
 }
 
 export function nuevaPartida(): Partida {
-  return { creada: new Date().toISOString(), historial: [], personajes: {}, notas_mundo: [], objetos: {}, jefes: {}, behelit: { carmesi_creado: false, destinados: [] } };
+  return { creada: new Date().toISOString(), historial: [], personajes: {}, notas_mundo: [], objetos: {}, jefes: {}, behelit: { carmesi_creado: false, destinados: [] }, mapa: mapaVacio() };
 }
 
 /** Rellena los campos que faltan en fichas y partidas guardadas con versiones anteriores. */
@@ -74,6 +76,9 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.objetos ??= {};
   partida.jefes ??= {};
   partida.behelit ??= { carmesi_creado: false, destinados: [] };
+  partida.mapa ??= mapaVacio();
+  partida.mapa.lugares ??= {};
+  partida.mapa.rastro ??= [];
   for (const j of Object.values(partida.jefes)) {
     j.presagios ??= [];
     j.robos ??= [];

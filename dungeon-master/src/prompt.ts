@@ -2,6 +2,7 @@ import { REGLAS_BEHELIT } from "./behelit.js";
 import { textoBestiario } from "./bestiario.js";
 import { REGLAS_EQUIPO } from "./equipo.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
+import { REGLAS_MAPA } from "./mapa.js";
 import { REGLAS_VIALES } from "./viales.js";
 import { AMBIENTACION, textoRazasYClases } from "./mundo.js";
 
@@ -40,6 +41,8 @@ ${AMBIENTACION}
 ${textoRazasYClases()}
 
 ${REGLAS_HERIDAS}
+
+${REGLAS_MAPA}
 
 ${REGLAS_VIALES}
 

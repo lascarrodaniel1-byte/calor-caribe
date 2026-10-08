@@ -31,6 +31,7 @@ import {
   tratar,
   UBICACIONES,
 } from "./heridas.js";
+import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
@@ -228,6 +229,18 @@ const esquemas = {
       .describe("aceptar: lo que se sacrifica (para un jugador, sus compañeros)"),
     destinado: z.string().optional().describe("crear_carmesi: fija el destinado (si no, lo decide el azar en secreto)"),
   }),
+  ubicacion: z.object({
+    lugar: z.string().describe("Dónde está el grupo ahora (o de dónde parte si viaja). Reutiliza el mismo nombre para el mismo sitio"),
+    region: z.enum(NOMBRES_REGIONES).optional().describe("Región, si el lugar es nuevo"),
+    cerca_de: z.string().optional().describe("Lugar conocido junto al que está, si es nuevo"),
+    tipo: z.enum(TIPOS_LUGAR).optional(),
+    descripcion: z.string().optional().describe("Una línea para el mapa"),
+    viajando_hacia: z.string().optional().describe("Destino, si están de viaje; omítelo al llegar"),
+    destino_region: z.enum(NOMBRES_REGIONES).optional(),
+    destino_cerca_de: z.string().optional(),
+    destino_tipo: z.enum(TIPOS_LUGAR).optional(),
+    progreso: z.number().min(0).max(1).optional().describe("Parte del viaje recorrida, de 0 a 1"),
+  }),
   anotar_mundo: z.object({
     nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
   }),
@@ -267,6 +280,8 @@ const descripciones: Record<Nombre, string> = {
     "Para criaturas que ven el futuro: consulta sus presagios, impón uno en lugar de una tirada (de un jugador o suya) o renueva uno al inicio de su ronda.",
   behelit:
     "Behelits: crear el Behelit Carmesí (único), intentar despertarlos en la desesperación y resolver la oferta del Coro (aceptar o rechazar).",
+  ubicacion:
+    "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos.",
   anotar_mundo:
     "Guarda un hecho importante de la campaña para no olvidarlo en sesiones futuras.",
 };
@@ -518,6 +533,11 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         }
         const texto = rechazar(partida, portador);
         return { contenido: texto, aviso: `👁  ${texto}` };
+      }
+      case "ubicacion": {
+        const e = validado.data as z.infer<typeof esquemas.ubicacion>;
+        const texto = moverGrupo(partida.mapa, { ...e, nombre: e.lugar });
+        return { contenido: texto, aviso: texto };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;
