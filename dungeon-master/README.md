@@ -34,6 +34,30 @@ Los PV son aguante; las **heridas** son daño real en el cuerpo y las gestiona e
 - **Fichas de personaje**: el DM guía la creación de personaje y lleva PV, CA, atributos, inventario, oro y condiciones.
 - **Partida guardada** en `partida.json` después de cada turno; al volver, el DM resume "lo que pasó la última vez".
 
+## Hemorragias y anemia
+
+Una herida que sangra quita PV cada asalto (1 si es grave, 1d4 si es crítica) y acumula sangre perdida. Cada poco, el personaje hace una salvación de CON con una CD que **sube cuanto más dura la hemorragia**; si falla, pierde 1 de FUE por falta de hierro. Con FUE 3 o menos se desmaya; con 0 muere desangrado. La anemia se recupera con días de descanso (más rápido en enfermería) o con Sangre de Santo.
+
+## Viales
+
+| Vial | Efecto | Riesgo |
+|---|---|---|
+| **Sangre de Santo** (curación, 50 po) | 2d4+2 PV, detiene hemorragias, baja un nivel la herida más grave, devuelve 1 de FUE | Coágulo e **infarto**: 5 % con el primero, +15 % por cada vial más el mismo día |
+| **Ceniza Viva** (resurrección, rarísima, no se vende) | Revive a un muerto reciente con 1 PV | 25 % vuelve con **amnesia**, 15 % vuelve **delirando y ataca a todos**, 5 % no vuelve |
+| **Hiel de Víbora Gris** (veneno, 30 po) | Bebida o en un arma: 4d6 de veneno, envenenado y quizá paralizado | — |
+| **Leche de Amapola Negra** (sueño, 15 po) | Duerme; sirve de anestesia para cirugía (+2) | Las dosis se acumulan: con 3, coma; con 4, paro respiratorio; con 5 o más, casi seguro **mata** |
+
+## Equipamiento y botín
+
+El botín se genera con tablas según el origen: **compra**, **saqueo**, **hallazgo** o **jefe**. Las calidades son defectuoso, normal, de calidad, encantado, **maldito** (parece encantado; la maldición queda oculta hasta que se descubre) y **reliquia** (fragmentos de dioses muertos). El DM también puede crear objetos únicos con su historia y su maldición secreta.
+
+## Bestiario y jefes
+
+Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas, y el programa lleva sus PV y resuelve sus habilidades con tiradas reales.
+
+- **Bestias y monstruos**: Hambrientos, Lobos de Ceniza, Ghules, Ogros, Trolls de ciénaga, Wyvernos, Basiliscos, Mantícoras, Banshees, Gigantes de hueso y Dragones jóvenes de ceniza.
+- **Jefes**: Vaskar el Lobo del Eclipse, el Juez Sin Ojos, Ysolde la Reina Pálida, la Madre de los Hambrientos, El Que Golpea Bajo la Piedra y Kharoth, Dragón Antiguo del Sol Herido. Son extremadamente difíciles; varias de sus habilidades provocan **muerte instantánea** si fallas la salvación (algunas con cualquier fallo, otras si fallas por mucho).
+
 ## Requisitos
 
 - Node.js 20 o superior.
@@ -56,6 +80,7 @@ Comandos dentro del juego:
 | `/fichas` | Muestra las fichas de los personajes, con heridas y secuelas |
 | `/mundo` | Ambientación de Velmora |
 | `/razas` | Razas y clases disponibles |
+| `/viales` | Qué hace cada vial |
 | `/notas` | Muestra las notas de campaña del DM |
 | `/tirar 1d20+3` | Tiras tú mismo, sin pasar por el DM |
 | `/salir` (o Ctrl+C) | Guarda y sale |
@@ -76,7 +101,11 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/prompt.ts` | Instrucciones del DM (estilo, reglas, creación de personaje) — edítalo para cambiar su personalidad o ambientación |
 | `src/mundo.ts` | Ambientación, razas y clases |
 | `src/heridas.ts` | Motor de heridas: gravedad, hemorragia, infección, tratamiento, convalecencia y secuelas |
-| `src/herramientas.ts` | Herramientas que puede usar el DM: `tirar_dados`, `guardar_personaje`, `modificar_personaje`, `infligir_herida`, `tratar_herida`, `pasar_tiempo`, `anotar_mundo` |
+| `src/viales.ts` | Viales y sus riesgos |
+| `src/equipo.ts` | Tablas de botín, encantamientos, maldiciones y reliquias |
+| `src/bestiario.ts` | Criaturas, jefes y el motor de habilidades especiales |
+| `src/reglas.ts` | Salvaciones (con competencia según la clase) y utilidades |
+| `src/herramientas.ts` | Herramientas del DM: dados, fichas, heridas, tiempo, hemorragias, viales, botín, objetos y criaturas |
 | `src/dados.ts` | Motor de dados |
 | `src/estado.ts` | Fichas y guardado de la partida |
 | `src/index.ts` | Bucle de juego en la terminal (streaming + bucle de herramientas) |

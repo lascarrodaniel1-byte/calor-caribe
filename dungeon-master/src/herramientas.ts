@@ -3,9 +3,12 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { describir, tirar } from "./dados.js";
-import { fichaTexto, type Partida, type Personaje } from "./estado.js";
+import { aparecer, buscarCriatura, danar, estadoTexto, usarHabilidad, type Criatura } from "./bestiario.js";
+import { CALIDADES_OBJETO, crearObjeto, generarBotin, ORIGENES } from "./equipo.js";
+import { fichaTexto, normalizar, type Partida, type Personaje } from "./estado.js";
 import {
   CALIDADES,
+  avanzarAsaltos,
   CAUSAS,
   ENTORNOS,
   GRAVEDADES,
@@ -18,6 +21,45 @@ import {
   UBICACIONES,
 } from "./heridas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
+import { ATRIBUTOS } from "./reglas.js";
+import { NOMBRES_VIALES, usarVial } from "./viales.js";
+
+const habilidad = z.object({
+  nombre: z.string(),
+  descripcion: z.string(),
+  salvacion: z.enum(ATRIBUTOS).optional().describe("Salvación de los objetivos; omítela si el efecto no admite salvación"),
+  cd: z.number().int().optional(),
+  dano: z.string().optional().describe('Dados de daño, p. ej. "8d10"'),
+  tipo_dano: z.string().optional(),
+  mitad_si_exito: z.boolean().optional(),
+  muerte_si_falla_por: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Muerte instantánea si falla la salvación por este margen o más (0 = cualquier fallo). Úsalo con cuidado"),
+  condicion: z.string().optional().describe("Condición que sufre quien falla"),
+  herida: z.enum(CAUSAS).optional().describe("Herida que inflige al fallar"),
+  sangre: z.number().int().min(1).optional().describe("Sangre perdida al fallar (riesgo de anemia)"),
+  ceniza: z.number().int().min(1).optional(),
+  recarga: z.number().int().min(2).max(6).optional().describe("Recarga X-6 en 1d6"),
+});
+
+const criatura = z.object({
+  nombre: z.string(),
+  categoria: z.enum(["bestia", "monstruo", "jefe"]),
+  peligro: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  region: z.string(),
+  descripcion: z.string(),
+  ca: z.number().int(),
+  pv: z.string().describe('Número fijo ("180") o dados ("8d10+40")'),
+  velocidad: z.string(),
+  atributos: z.string(),
+  ataques: z.array(z.string()),
+  rasgos: z.array(z.string()),
+  habilidades: z.array(habilidad),
+  botin: z.string().optional(),
+});
 
 const atributo = z.number().int().min(1).max(30);
 
@@ -86,6 +128,55 @@ const esquemas = {
     calidad: z.enum(CALIDADES),
     personajes: z.array(z.string()).optional().describe("Por defecto, todos los personajes"),
   }),
+  avanzar_asaltos: z.object({
+    asaltos: z.number().int().min(1).max(600).describe("Asaltos de 6 s; 10 = 1 minuto"),
+    personajes: z.array(z.string()).optional().describe("Por defecto, todos los que sangran"),
+  }),
+  usar_vial: z.object({
+    vial: z.enum(NOMBRES_VIALES),
+    receptor: z.string().optional().describe("Personaje jugador que lo bebe o lo recibe"),
+    portador: z.string().optional().describe("Personaje de cuyo inventario sale el vial (se descuenta)"),
+    objetivo_pnj: z
+      .object({ nombre: z.string(), bono_con: z.number().int() })
+      .optional()
+      .describe("Solo para envenenar a un PNJ"),
+    via: z.enum(["bebido", "arma"]).optional().describe("Hiel: bebida (CD 15) o en un arma (CD 13)"),
+    dosis: z.number().int().min(1).max(10).optional().describe("Leche de Amapola: dosis que toma ahora"),
+    herida: z.string().optional().describe("Sangre de Santo: herida que cerrar (por defecto, la más grave)"),
+  }),
+  generar_botin: z.object({
+    origen: z.enum(ORIGENES),
+    cantidad: z.number().int().min(1).max(10),
+    clase: z.enum(["arma", "armadura", "accesorio"]).optional(),
+    calidad: z.enum(CALIDADES_OBJETO).optional().describe("Fuerza una calidad (p. ej. el arma encantada de una misión)"),
+    incluir_viales: z.boolean().optional(),
+  }),
+  crear_objeto: z.object({
+    nombre: z.string(),
+    calidad: z.enum(CALIDADES_OBJETO),
+    apariencia: z.string().describe("Lo que ven y saben los jugadores"),
+    verdad: z.string().optional().describe("La verdad completa, con maldiciones ocultas"),
+    precio: z.number().int().min(0).optional(),
+  }),
+  examinar_objeto: z.object({
+    id: z.string().describe('Id del objeto, p. ej. "O4"'),
+    revelar: z.boolean().optional().describe("true cuando los jugadores descubren su verdadera naturaleza"),
+  }),
+  aparecer_criatura: z.object({
+    nombre: z.string().describe("Nombre de la criatura (del bestiario o nueva) o alias de esta instancia, p. ej. \"Ogro tuerto\""),
+    plantilla: z.string().optional().describe("Criatura del bestiario en la que se basa (si el nombre es un alias)"),
+    definicion: criatura.optional().describe("Para criaturas nuevas inventadas por ti"),
+  }),
+  danar_criatura: z.object({
+    nombre: z.string(),
+    cantidad: z.number().int().describe("Daño final tras resistencias; negativo para curarla o regenerar"),
+  }),
+  habilidad_criatura: z.object({
+    criatura: z.string().describe("Nombre de la criatura en escena"),
+    habilidad: z.string().optional().describe("Nombre de una de sus habilidades registradas"),
+    habilidad_nueva: habilidad.optional().describe("Habilidad improvisada que no está en su ficha"),
+    objetivos: z.array(z.string()).min(1).describe("Personajes jugadores afectados"),
+  }),
   anotar_mundo: z.object({
     nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
   }),
@@ -108,6 +199,19 @@ const descripciones: Record<Nombre, string> = {
     "Intenta tratar una herida: detener hemorragia, medicina/cirugía, cauterizar, magia divina o remedio raro. El programa tira y aplica el resultado.",
   pasar_tiempo:
     "Hace avanzar días: convalecencia, infecciones, agravamientos, recuperación de PV y secuelas al cerrar las heridas.",
+  avanzar_asaltos:
+    "Hace avanzar las hemorragias asalto a asalto: PV perdidos y riesgo creciente de perder FUE por anemia. Llámala al final de cada asalto si alguien sangra.",
+  usar_vial:
+    "Usa un vial (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra). El programa aplica efectos y riesgos y lo descuenta del inventario del portador.",
+  generar_botin:
+    "Genera equipo y viales al azar según el origen (compra, saqueo, hallazgo, jefe), con calidades normales, encantadas, malditas o reliquias.",
+  crear_objeto: "Registra un objeto único inventado por ti (con su verdad oculta si está maldito).",
+  examinar_objeto: "Consulta la verdad de un objeto registrado; con revelar=true, los jugadores la descubren.",
+  aparecer_criatura:
+    "Pone en escena una criatura peligrosa (del bestiario, basada en una plantilla o inventada con definicion) y lleva sus PV.",
+  danar_criatura: "Aplica daño (o curación) a una criatura en escena.",
+  habilidad_criatura:
+    "Resuelve una habilidad especial de una criatura (registrada o improvisada): salvaciones reales, daño, condiciones, heridas, anemia y muerte instantánea.",
   anotar_mundo:
     "Guarda un hecho importante de la campaña para no olvidarlo en sesiones futuras.",
 };
@@ -163,7 +267,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "guardar_personaje": {
         const e = validado.data as z.infer<typeof esquemas.guardar_personaje>;
-        const p: Personaje = {
+        const p: Personaje = normalizar({
           ...e,
           pv: e.pv ?? e.pv_max,
           inventario: e.inventario ?? [],
@@ -173,7 +277,11 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           heridas: partida.personajes[e.nombre]?.heridas ?? [],
           secuelas: partida.personajes[e.nombre]?.secuelas ?? [],
           ceniza: partida.personajes[e.nombre]?.ceniza ?? 0,
-        };
+          anemia: partida.personajes[e.nombre]?.anemia ?? 0,
+          sangrado: partida.personajes[e.nombre]?.sangrado ?? 0,
+          anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
+          dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
+        });
         partida.personajes[p.nombre] = p;
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}` };
       }
@@ -242,6 +350,74 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const ps = e.personajes?.length ? e.personajes.map((n) => buscar(partida, n)) : Object.values(partida.personajes);
         const texto = ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`).join("\n\n");
         return { contenido: texto, aviso: `⏳ ${e.dias} día(s), ${e.calidad}\n${texto}` };
+      }
+      case "avanzar_asaltos": {
+        const e = validado.data as z.infer<typeof esquemas.avanzar_asaltos>;
+        const ps = e.personajes?.length
+          ? e.personajes.map((n) => buscar(partida, n))
+          : Object.values(partida.personajes).filter((p) => p.heridas.some((h) => h.sangrando));
+        if (!ps.length) return { contenido: "Nadie está sangrando.", aviso: null };
+        const texto = ps.map((p) => avanzarAsaltos(p, e.asaltos)).join("\n");
+        return { contenido: texto, aviso: `🩸 ${texto}` };
+      }
+      case "usar_vial": {
+        const e = validado.data as z.infer<typeof esquemas.usar_vial>;
+        const port = e.portador ? buscar(partida, e.portador) : undefined;
+        const i = port ? port.inventario.findIndex((x) => x.toLowerCase().includes(e.vial.toLowerCase())) : -1;
+        if (port && i < 0) throw new Error(`${port.nombre} no lleva ${e.vial} en el inventario.`);
+        const receptor = e.receptor ? buscar(partida, e.receptor) : undefined;
+        const texto = usarVial({ ...e, receptor });
+        if (port) port.inventario.splice(i, 1);
+        return { contenido: texto + (receptor ? `\n\nFicha:\n${fichaTexto(receptor)}` : ""), aviso: `🧪 ${texto}` };
+      }
+      case "generar_botin": {
+        const e = validado.data as z.infer<typeof esquemas.generar_botin>;
+        const b = generarBotin(partida, e);
+        return { contenido: b.dm, aviso: b.jugadores ? `💰 ${e.origen === "compra" ? "A la venta" : "Botín"}:\n${b.jugadores}` : null };
+      }
+      case "crear_objeto": {
+        const e = validado.data as z.infer<typeof esquemas.crear_objeto>;
+        const o = crearObjeto(partida, e);
+        return { contenido: `Registrado ${o.nombre}: ${o.verdad}`, aviso: `✨ ${o.nombre}: ${o.apariencia}` };
+      }
+      case "examinar_objeto": {
+        const e = validado.data as z.infer<typeof esquemas.examinar_objeto>;
+        const o = partida.objetos[e.id.toUpperCase()];
+        if (!o) throw new Error(`No hay ningún objeto ${e.id}.`);
+        if (e.revelar) o.identificado = true;
+        return {
+          contenido: `${o.nombre} (${o.calidad}, ${o.precio} po). Verdad: ${o.verdad}. ${o.identificado ? "Los jugadores lo conocen." : "Los jugadores solo conocen: " + o.apariencia}`,
+          aviso: e.revelar ? `🔍 ${o.nombre}: ${o.verdad}` : null,
+        };
+      }
+      case "aparecer_criatura": {
+        const e = validado.data as z.infer<typeof esquemas.aparecer_criatura>;
+        const def: Criatura | undefined = e.definicion ?? buscarCriatura(e.plantilla ?? e.nombre);
+        if (!def) throw new Error(`"${e.plantilla ?? e.nombre}" no está en el bestiario: pasa una definicion completa para crearla.`);
+        const texto = aparecer(partida, def, e.nombre);
+        return { contenido: texto, aviso: `⚠️  ${e.nombre}${def.categoria === "jefe" ? " (JEFE)" : ""}` };
+      }
+      case "danar_criatura": {
+        const e = validado.data as z.infer<typeof esquemas.danar_criatura>;
+        const j = partida.jefes[e.nombre] ?? Object.values(partida.jefes).find((x) => x.nombre.toLowerCase() === e.nombre.toLowerCase());
+        if (!j) throw new Error(`${e.nombre} no está en escena. En escena: ${Object.keys(partida.jefes).join(", ") || "nadie"}`);
+        const texto = danar(j, e.cantidad);
+        if (j.pv <= 0) delete partida.jefes[j.nombre];
+        return { contenido: texto, aviso: `⚔️  ${j.nombre}: ${estadoTexto(j)}` };
+      }
+      case "habilidad_criatura": {
+        const e = validado.data as z.infer<typeof esquemas.habilidad_criatura>;
+        const j = partida.jefes[e.criatura] ?? Object.values(partida.jefes).find((x) => x.nombre.toLowerCase() === e.criatura.toLowerCase());
+        const h =
+          e.habilidad_nueva ??
+          j?.definicion.habilidades.find((x) => x.nombre.toLowerCase() === (e.habilidad ?? "").toLowerCase());
+        if (!h) {
+          const hay = j?.definicion.habilidades.map((x) => x.nombre).join(", ") || "ninguna registrada";
+          throw new Error(`No encuentro esa habilidad. Habilidades de ${e.criatura}: ${hay}. Usa habilidad_nueva para improvisar.`);
+        }
+        const objetivos = e.objetivos.map((n) => buscar(partida, n));
+        const texto = usarHabilidad(j, h, objetivos);
+        return { contenido: texto, aviso: `💀 ${texto}` };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;

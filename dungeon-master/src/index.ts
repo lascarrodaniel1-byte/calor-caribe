@@ -9,6 +9,7 @@ import { cargar, fichaTexto, guardar, nuevaPartida, type Partida } from "./estad
 import { ejecutar, herramientas } from "./herramientas.js";
 import { AMBIENTACION, textoRazasYClases } from "./mundo.js";
 import { SISTEMA } from "./prompt.js";
+import { VIALES } from "./viales.js";
 
 const MODELO = process.env.DM_MODELO ?? "claude-opus-5-5";
 // Modelos que aceptan fallbacks: "default" (si el modelo rechaza la petición,
@@ -26,6 +27,7 @@ const AYUDA = `Comandos:
   /fichas          muestra las fichas de los personajes (con heridas y secuelas)
   /mundo           ambientación de Velmora
   /razas           razas y clases disponibles
+  /viales          qué hace cada vial
   /notas           muestra las notas de campaña del DM
   /tirar 1d20+3    tira dados tú mismo (sin pasar por el DM)
   /ayuda           muestra esta ayuda
@@ -149,6 +151,8 @@ async function main() {
         console.log(ps.length ? ps.map(fichaTexto).join("\n\n") : "Aún no hay personajes.");
       } else if (cmd === "/mundo") {
         console.log(AMBIENTACION.replace(/\*\*/g, ""));
+      } else if (cmd === "/viales") {
+        console.log(Object.entries(VIALES).map(([n, v]) => `- ${n} (${v.tipo}): ${v.descripcion}`).join("\n"));
       } else if (cmd === "/razas") {
         console.log(textoRazasYClases().replace(/\*\*/g, ""));
       } else if (cmd === "/notas") {

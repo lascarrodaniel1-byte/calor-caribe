@@ -1,6 +1,8 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type Anthropic from "@anthropic-ai/sdk";
+import type { EstadoJefe } from "./bestiario.js";
+import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 
 export interface Personaje {
@@ -22,6 +24,14 @@ export interface Personaje {
   secuelas: string[];
   /** Marcas de Ceniza por recibir magia divina. */
   ceniza: number;
+  /** Puntos de Fuerza perdidos por pérdida de sangre (falta de hierro). */
+  anemia: number;
+  /** Sangre perdida en el episodio de hemorragia actual: cuanto más alto, más fácil perder Fuerza. */
+  sangrado: number;
+  /** Progreso hacia recuperar 1 punto de anemia. */
+  anemia_progreso: number;
+  /** Viales tomados en las últimas 24 h (se reinician con pasar_tiempo). */
+  dosis: { curacion: number; sueno: number };
 }
 
 export interface Partida {
@@ -29,21 +39,34 @@ export interface Partida {
   historial: Anthropic.Beta.BetaMessageParam[];
   personajes: Record<string, Personaje>;
   notas_mundo: string[];
+  /** Registro de objetos generados (incluye la verdad oculta de los malditos). */
+  objetos: Record<string, Objeto>;
+  /** Jefes que han aparecido, con su estado. */
+  jefes: Record<string, EstadoJefe>;
 }
 
 export function nuevaPartida(): Partida {
-  return { creada: new Date().toISOString(), historial: [], personajes: {}, notas_mundo: [] };
+  return { creada: new Date().toISOString(), historial: [], personajes: {}, notas_mundo: [], objetos: {}, jefes: {} };
+}
+
+/** Rellena los campos que faltan en fichas y partidas guardadas con versiones anteriores. */
+export function normalizar(p: Personaje): Personaje {
+  p.heridas ??= [];
+  p.secuelas ??= [];
+  p.ceniza ??= 0;
+  p.anemia ??= 0;
+  p.sangrado ??= 0;
+  p.anemia_progreso ??= 0;
+  p.dosis ??= { curacion: 0, sueno: 0 };
+  return p;
 }
 
 export function cargar(ruta: string): Partida | null {
   if (!existsSync(ruta)) return null;
   const partida = JSON.parse(readFileSync(ruta, "utf8")) as Partida;
-  // Partidas guardadas antes de existir el sistema de heridas.
-  for (const p of Object.values(partida.personajes)) {
-    p.heridas ??= [];
-    p.secuelas ??= [];
-    p.ceniza ??= 0;
-  }
+  partida.objetos ??= {};
+  partida.jefes ??= {};
+  Object.values(partida.personajes).forEach(normalizar);
   return partida;
 }
 
@@ -61,7 +84,7 @@ export function fichaTexto(p: Personaje): string {
   return [
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
-    `  FUE ${a.fue}(${mod(a.fue)}) DES ${a.des}(${mod(a.des)}) CON ${a.con}(${mod(a.con)}) ` +
+    `  FUE ${a.fue - p.anemia}(${mod(a.fue - p.anemia)})${p.anemia ? ` [anemia −${p.anemia}]` : ""} DES ${a.des}(${mod(a.des)}) CON ${a.con}(${mod(a.con)}) ` +
       `INT ${a.int}(${mod(a.int)}) SAB ${a.sab}(${mod(a.sab)}) CAR ${a.car}(${mod(a.car)})`,
     `  Inventario: ${p.inventario.join(", ") || "—"}`,
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}` : "",

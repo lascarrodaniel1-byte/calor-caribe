@@ -2,14 +2,15 @@
 // Toda la aleatoriedad pasa por dados.ts; el DM solo narra lo que sale aquí.
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
-import { clase, raza, type RasgosCuracion } from "./mundo.js";
+import { raza, type RasgosCuracion } from "./mundo.js";
+import { marcarMuerto, salvacion, valor } from "./reglas.js";
 
 export const GRAVEDADES = ["leve", "moderada", "grave", "critica"] as const;
 export const TIPOS = ["corte", "perforacion", "contusion", "quemadura", "mordedura", "necrotica"] as const;
 export const UBICACIONES = ["cabeza", "torso", "brazo izquierdo", "brazo derecho", "pierna izquierda", "pierna derecha"] as const;
 export const CAUSAS = ["critico", "cero_pv", "golpe_masivo", "menor"] as const;
 export const METODOS = ["medicina", "detener hemorragia", "cauterizar", "magia divina", "remedio raro"] as const;
-export const RECURSOS = ["kit de sanador", "herramientas de cirujano", "alcohol", "hierbas", "hierro candente"] as const;
+export const RECURSOS = ["kit de sanador", "herramientas de cirujano", "alcohol", "hierbas", "hierro candente", "paciente sedado"] as const;
 export const ENTORNOS = { "en combate": -4, intemperie: -2, refugio: 0, enfermeria: 2 } as const;
 export const CALIDADES = ["esfuerzo", "precario", "reposo", "enfermeria"] as const;
 
@@ -149,6 +150,10 @@ const esBarbero = (p?: Personaje) => p?.clase === "Barbero-Cirujano";
 const sube = (g: Gravedad): Gravedad => GRAVEDADES[Math.min(3, GRAVEDADES.indexOf(g) + 1)];
 const baja = (g: Gravedad): Gravedad | null => (g === "leve" ? null : GRAVEDADES[GRAVEDADES.indexOf(g) - 1]);
 
+export function infligirSecuela(p: Personaje, texto: string) {
+  p.secuelas.push(texto);
+}
+
 export function efecto(h: Herida): string {
   return h.gravedad === "leve" ? "dolor, sin penalización" : EFECTOS[zona(h.ubicacion)][h.gravedad];
 }
@@ -244,8 +249,8 @@ export function infligir(p: Personaje, d: DatosHerida): string {
   if (h.sangrando) {
     log.push(
       gravedad === "critica"
-        ? "Hemorragia mortal: salvación contra muerte cada minuto hasta detenerla."
-        : "Hemorragia: pierde 1d4 PV por asalto hasta detenerla.",
+        ? "Hemorragia arterial: pierde 1d4 PV por asalto y sangre a chorros (riesgo alto de anemia) hasta detenerla."
+        : "Hemorragia: pierde 1 PV por asalto y sangre (riesgo de anemia) hasta detenerla.",
     );
   }
   if (h.podre) log.push("La herida está infectada de Podre: la medicina común no la limpia.");
@@ -365,6 +370,10 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
             mods.push(`${extra} +1`);
           }
         }
+        if (d.recursos.includes("paciente sedado")) {
+          bono += 2;
+          mods.push("paciente sedado +2");
+        }
         if (regla.material) {
           const tiene = (x: Recurso) => d.recursos.includes(x);
           let pen = 0;
@@ -414,6 +423,62 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
   }
 }
 
+// ---------------------------------------------------------------- sangre
+
+/**
+ * Suma sangre perdida. Cada 3 puntos, salvación de CON con CD creciente
+ * (8 + sangre/3): cuanto más dura la hemorragia, más fácil perder Fuerza.
+ */
+export function perderSangre(p: Personaje, puntos: number, log: string[]) {
+  const antes = p.anemia;
+  let ultima = "";
+  for (let i = 0; i < puntos; i++) {
+    p.sangrado++;
+    if (p.sangrado % 3 !== 0) continue;
+    const s = salvacion(p, "con", 8 + Math.floor(p.sangrado / 3));
+    if (!s.exito) {
+      p.anemia++;
+      ultima = s.texto;
+    }
+  }
+  if (p.anemia > antes) {
+    log.push(`Pérdida de hierro: ${p.nombre} pierde ${p.anemia - antes} de FUE por la sangre (anemia ${p.anemia}, FUE efectiva ${valor(p, "fue")}). Última tirada: ${ultima}.`);
+  }
+  const fue = valor(p, "fue");
+  if (fue <= 0) {
+    marcarMuerto(p);
+    log.push(`${p.nombre} se ha desangrado. Está muerto.`);
+  } else if (fue <= 3 && !p.condiciones.includes("inconsciente (anemia)")) {
+    p.condiciones.push("inconsciente (anemia)");
+    log.push(`${p.nombre} se desploma, pálido como la cera: inconsciente por anemia.`);
+  }
+}
+
+/** Avanza la hemorragia asalto a asalto (10 asaltos = 1 minuto). */
+export function avanzarAsaltos(p: Personaje, asaltos: number): string {
+  const log: string[] = [];
+  const sangran = p.heridas.filter((h) => h.sangrando && h.gravedad !== "leve");
+  if (!sangran.length) return `${p.nombre} no tiene hemorragias activas.`;
+  let pv = 0;
+  let sangre = 0;
+  for (let i = 0; i < asaltos; i++) {
+    for (const h of sangran) {
+      if (h.gravedad === "critica") {
+        pv += tirar("1d4").total;
+        sangre += 2;
+      } else {
+        pv += 1;
+        sangre += 1;
+      }
+    }
+  }
+  p.pv = Math.max(0, p.pv - pv);
+  log.push(`${p.nombre} sangra ${asaltos} asalto(s) por ${sangran.map((h) => h.id).join(", ")}: −${pv} PV (PV ${p.pv}).`);
+  if (p.pv === 0 && !p.condiciones.includes("muerto")) log.push("¡A 0 PV y desangrándose: salvaciones contra muerte cada asalto!");
+  perderSangre(p, sangre, log);
+  return log.join("\n");
+}
+
 // ---------------------------------------------------------------- tiempo
 
 function infectar(h: Herida) {
@@ -454,11 +519,18 @@ function cerrar(p: Personaje, h: Herida, log: string[]) {
   );
 }
 
+const RECUPERA_ANEMIA: Record<Calidad, number> = { esfuerzo: 0, precario: 0.25, reposo: 0.5, enfermeria: 1 };
+
 export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): string {
   const log: string[] = [];
   const r = rasgos(p);
+  p.dosis = { curacion: 0, sueno: 0 };
+  // Las condiciones pasajeras (sueño, veneno, aturdimiento, delirio…) no duran días.
+  const PASAJERAS = /^(dormido|envenenado|paralizado|aturdido|asustado|hechizado|derribado|apresado|delirante|petrificándose)/;
+  p.condiciones = p.condiciones.filter((c) => !PASAJERAS.test(c));
   for (let dia = 1; dia <= dias; dia++) {
     const antes = log.length;
+    if (p.condiciones.includes("muerto")) break;
     for (const h of [...p.heridas]) {
       h.dias_abierta++;
       const regla = REGLAS[h.gravedad];
@@ -468,6 +540,7 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
         const t = tirar(h.gravedad === "critica" ? "4d6" : "2d6");
         p.pv = Math.max(0, p.pv - t.total);
         log.push(`${h.id} sigue sangrando: −${t.total} PV (PV ${p.pv}).${p.pv === 0 ? " ¡Cae inconsciente y está muriendo!" : ""}`);
+        perderSangre(p, h.gravedad === "critica" ? 40 : 20, log);
       }
 
       if (h.estado === "infectada") {
@@ -520,6 +593,20 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
       if (h.dias_restantes <= 0) cerrar(p, h, log);
     }
 
+    // La sangre se repone despacio, y solo si ya no hay hemorragias.
+    if (!p.heridas.some((h) => h.sangrando)) {
+      p.sangrado = 0;
+      if (p.anemia > 0) {
+        p.anemia_progreso += RECUPERA_ANEMIA[calidad];
+        while (p.anemia_progreso >= 1 && p.anemia > 0) {
+          p.anemia_progreso -= 1;
+          p.anemia--;
+          log.push(`${p.nombre} recupera 1 de FUE perdida por anemia (anemia ${p.anemia}).`);
+        }
+        if (valor(p, "fue") > 3) p.condiciones = p.condiciones.filter((c) => c !== "inconsciente (anemia)");
+      } else p.anemia_progreso = 0;
+    }
+
     // Recuperación de PV: la fiebre de una infección la impide.
     const fiebre = p.heridas.some((h) => h.estado === "infectada");
     if (!fiebre) {
@@ -550,11 +637,14 @@ Deja que el programa tire gravedad y ubicación (no las fijes salvo que la ficci
 - leve (cortes, moratones): sin penalización; sana sola en 1d3 días. Tratar: CD 10.
 - moderada (corte profundo, esguince, costilla fisurada): −3 PV máx., penalización según la zona; tratar CD 13 con kit de sanador; 1d4+3 días de convalecencia; puede dejar secuela menor.
 - grave (fractura, perforación, quemadura extensa): −6 PV máx.; puede sangrar; cirugía CD 16 con herramientas de cirujano; 2d6+7 días; secuela menor o permanente si la recuperación sale mal.
-- crítica (miembro destrozado, órgano perforado, ojo reventado): −10 PV máx.; sangra siempre (salvación contra muerte cada minuto hasta detenerla); cirugía CD 19; 3d10+15 días; SIEMPRE deja secuela.
+- crítica (miembro destrozado, órgano perforado, ojo reventado): −10 PV máx.; sangra siempre; cirugía CD 19; 3d10+15 días; SIEMPRE deja secuela.
+
+### Hemorragia y anemia (usa avanzar_asaltos)
+Mientras una herida sangra, llama a avanzar_asaltos al final de cada asalto en combate (o con 10 asaltos por cada minuto fuera de combate). Grave: −1 PV por asalto; crítica: −1d4. Además se acumula sangre perdida y, cada poco, el personaje hace una salvación de CON cuya CD crece cuanto más dura la hemorragia: si falla, pierde 1 de FUE por falta de hierro (anemia). Con FUE efectiva 3 o menos cae inconsciente; con 0 muere desangrado. La anemia se recupera con días de descanso (más rápido en enfermería; nada mientras se esfuerza) y con Sangre de Santo. Descríbela: palidez, frío, manos que tiemblan, el arma que pesa el doble.
 
 ### Tratamiento (usa tratar_herida)
 - "detener hemorragia" (CD 10, 15 si crítica): solo para la sangre; la herida sigue sin tratar.
-- "medicina": el tratamiento real. Modificadores: entorno (en combate −4, intemperie −2, refugio 0, enfermería +2), alcohol +1 (además reduce el riesgo de infección), hierbas +1, falta de material −5/−10, herida infectada CD +2. Fallar por 5 o más causa daño. Un Barbero-Cirujano suma +2 y sufre la mitad de penalización por falta de material.
+- "medicina": el tratamiento real. Modificadores: entorno (en combate −4, intemperie −2, refugio 0, enfermería +2), alcohol +1 (además reduce el riesgo de infección), hierbas +1, paciente sedado con Leche de Amapola +2, falta de material −5/−10, herida infectada CD +2. Fallar por 5 o más causa daño. Un Barbero-Cirujano suma +2 y sufre la mitad de penalización por falta de material.
 - "cauterizar": detiene la sangre y quema la Podre sin tirada, pero hace 1d6 de daño, −2 a la recuperación y deja cicatriz de quemadura. Necesita hierro candente (o un Cenizo).
 - "magia divina" (conjuros de curación, imposición de manos sobre una herida, reliquias): baja la herida un nivel de gravedad (una leve se cierra), una sola vez por herida, y da Ceniza al paciente. No cura la Podre. No funciona con Nacidos Pálidos; a los Varg les da doble Ceniza.
 - "remedio raro": solo contra la Podre; exige un ingrediente difícil de conseguir que debe ganarse en la ficción.
