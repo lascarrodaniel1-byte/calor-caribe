@@ -1,7 +1,8 @@
 // Dungeon Master de D&D en la terminal. Uso: npm run jugar [-- --nueva]
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
-import { cargar, guardar, nuevaPartida } from "./estado.js";
+import { cargar, guardar } from "./archivo.js";
+import { nuevaPartida } from "./estado.js";
 import { AYUDA, comando, MENSAJE_NUEVA, MENSAJE_REANUDAR, MODELO, RUTA, turno, type Salida } from "./motor.js";
 
 const gris = (s: string) => `\x1b[90m${s}\x1b[0m`;

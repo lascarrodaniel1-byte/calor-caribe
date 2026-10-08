@@ -7,7 +7,8 @@
   "scripts": {
     "jugar": "tsx src/index.ts",
     "servidor": "tsx src/servidor.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "artifact": "node scripts/construir-artifact.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",

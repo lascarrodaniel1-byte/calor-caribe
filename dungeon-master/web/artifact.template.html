@@ -1,0 +1,556 @@
+<title>Mesa de Velmora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  /* Layout: una mesa a pantalla completa — crónica en el centro, fichas en un cajón lateral, redacción abajo. */
+  :root {
+    color-scheme: dark;
+    --ceniza: #16171a;        /* fondo: piedra húmeda */
+    --losa: #1f2125;          /* superficies */
+    --losa-2: #2a2d32;
+    --veta: #3b3f46;          /* bordes */
+    --pergamino: #e4ddcf;     /* texto */
+    --polvo: #9a958c;         /* texto secundario */
+    --sol: #c9b26b;           /* el sol herido: acento */
+    --sol-suave: #c9b26b1f;
+    --sangre: #c2453b;        /* letal */
+    --sangre-suave: #c2453b24;
+    --musgo: #8aa37a;         /* estado tranquilo */
+    --f-titulo: "IM Fell English", "Iowan Old Style", Georgia, serif;
+    --f-narracion: "Alegreya", Georgia, serif;
+    --f-ui: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+    --f-dados: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { background: var(--ceniza); color: var(--pergamino); font: 16px/1.5 var(--f-ui); }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--sol); outline-offset: 2px; }
+
+  .app { height: 100%; display: flex; flex-direction: column; }
+  .barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--veta); background: var(--losa); }
+  .barra h1 { font: 400 24px/1 var(--f-titulo); margin: 0; letter-spacing: .01em; }
+  .estado { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--polvo); flex: 1; min-width: 0; }
+  .estado span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vela { width: 9px; height: 9px; border-radius: 50%; background: var(--musgo); flex: none; }
+  .estado.narrando .vela { background: var(--sol); animation: titila 1.2s infinite; }
+  @keyframes titila { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .estado.narrando .vela { animation: none; } }
+  .control { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--polvo); }
+  select { background: var(--losa-2); border: 1px solid var(--veta); border-radius: 6px; padding: 4px 8px; }
+  .boton { background: var(--sol); color: #1a1710; border: 0; border-radius: 6px; padding: 9px 16px; font-weight: 700; cursor: pointer; }
+  .boton:disabled { opacity: .45; cursor: default; }
+  .boton.sobrio { background: var(--losa-2); color: var(--pergamino); border: 1px solid var(--veta); font-weight: 500; }
+
+  .cuerpo { flex: 1; display: flex; min-height: 0; }
+  .cronica { flex: 1; overflow-y: auto; padding-block: 24px 12px; padding-inline: 16px; min-width: 0; }
+  .columna { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .narracion { font: 19px/1.6 var(--f-narracion); overflow-wrap: anywhere; }
+  .narracion p { margin: 0 0 .7em; }
+  .narracion p:last-child { margin-bottom: 0; }
+  .accion { font-size: 15px; padding-left: 12px; border-left: 2px solid var(--veta); overflow-wrap: anywhere; }
+  .accion b { font-weight: 700; }
+  .resultado { font: 13px/1.5 var(--f-dados); white-space: pre-wrap; background: var(--sol-suave); border-left: 2px solid var(--sol); padding: 8px 12px; overflow-wrap: anywhere; }
+  .resultado.letal { background: var(--sangre-suave); border-left-color: var(--sangre); }
+  .nota { color: var(--polvo); font-style: italic; font-size: 14px; text-align: center; }
+  .privado { font: 13px/1.5 var(--f-dados); white-space: pre-wrap; border: 1px dashed var(--veta); padding: 10px 12px; color: var(--polvo); overflow-wrap: anywhere; }
+  .privado::before { content: "Solo lo ves tú"; display: block; font: 700 11px var(--f-ui); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+  .turno { display: flex; flex-direction: column; gap: 14px; }
+  .separador { border: 0; border-top: 1px solid var(--veta); margin: 6px 0; }
+  .vacio { text-align: center; padding-block: 48px; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .vacio h2 { font: 400 34px/1.15 var(--f-titulo); margin: 0; text-wrap: balance; }
+  .vacio p { color: var(--polvo); max-width: 52ch; margin: 0; font-family: var(--f-narracion); font-size: 18px; }
+  .cola { border: 1px solid var(--veta); background: var(--losa); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+  .cola strong { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--polvo); }
+
+  .fichas { width: 340px; flex: none; border-left: 1px solid var(--veta); background: var(--losa); overflow-y: auto; padding: 16px; }
+  .fichas h2 { font: 400 22px var(--f-titulo); margin: 0 0 12px; }
+  .ficha { font: 12px/1.5 var(--f-dados); white-space: pre-wrap; background: var(--ceniza); border: 1px solid var(--veta); padding: 10px; margin-bottom: 12px; overflow-wrap: anywhere; }
+
+  .redaccion { border-top: 1px solid var(--veta); background: var(--losa); padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px)); padding-inline: 16px; }
+  .redaccion .columna { gap: 8px; }
+  .atajos { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .atajos .boton { font-size: 13px; padding: 5px 10px; }
+  .quien { margin-left: auto; font-size: 13px; color: var(--polvo); background: none; border: 0; cursor: pointer; text-decoration: underline dotted; }
+  .escribir { display: flex; gap: 8px; align-items: flex-end; }
+  textarea, input[type=text] { width: 100%; background: var(--ceniza); border: 1px solid var(--veta); border-radius: 6px; padding: 10px 12px; }
+  textarea { resize: none; min-height: 46px; max-height: 160px; font-family: var(--f-narracion); font-size: 17px; }
+
+  .velo { position: fixed; inset: 0; background: #0b0c0ee6; display: grid; place-items: center; padding: 16px; z-index: 10; }
+  .velo form { width: 100%; max-width: 420px; background: var(--losa); border: 1px solid var(--veta); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .velo h2 { font: 400 30px/1.1 var(--f-titulo); margin: 0; }
+  .velo p { margin: 0; color: var(--polvo); }
+  .aviso-error { color: var(--sangre); font-size: 14px; }
+
+  @media (max-width: 800px) {
+    .fichas { position: fixed; inset: 0; width: auto; z-index: 5; border-left: 0; padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
+    .narracion { font-size: 18px; }
+    .barra h1 { font-size: 20px; }
+  }
+</style>
+
+<div class="app">
+  <header class="barra">
+    <h1>Mesa de Velmora</h1>
+    <div class="estado" id="estado"><span class="vela"></span><span id="estado-texto">Encendiendo las velas…</span></div>
+    <label class="control" for="nivel">DM
+      <select id="nivel">
+        <option value="quick">Rápido</option>
+        <option value="default" selected>Equilibrado</option>
+        <option value="complex">Profundo (más lento)</option>
+      </select>
+    </label>
+    <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
+  </header>
+
+  <div class="cuerpo">
+    <main class="cronica" id="cronica">
+      <div class="columna" id="registro">
+        <div class="vacio" id="vacio">
+          <h2>El Reino del Sol Herido</h2>
+          <p>Hace noventa y nueve años mataron a los dioses. El sol es un disco gris y los muertos no siempre descansan. Escribid vuestro nombre y pedid al Dungeon Master que empiece.</p>
+          <button class="boton" id="empezar" type="button">Empezar la partida</button>
+        </div>
+      </div>
+    </main>
+    <aside class="fichas" id="fichas" hidden>
+      <h2>Fichas</h2>
+      <div id="lista-fichas"><p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p></div>
+      <button class="boton sobrio" id="cerrar-fichas" type="button">Cerrar</button>
+    </aside>
+  </div>
+
+  <footer class="redaccion">
+    <div class="columna">
+      <div class="atajos">
+        <button class="boton sobrio" type="button" data-cmd="/tirar 1d20">Tirar d20</button>
+        <button class="boton sobrio" type="button" data-cmd="/tirar 4d6kh3">4d6kh3</button>
+        <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
+        <button class="boton sobrio" type="button" data-cmd="/viales">Viales</button>
+        <button class="boton sobrio" type="button" data-cmd="/ayuda">Ayuda</button>
+        <button class="quien" id="quien" type="button"></button>
+      </div>
+      <form class="escribir" id="form-accion">
+        <label for="accion" hidden>Tu acción</label>
+        <textarea id="accion" rows="1" maxlength="2000" placeholder="¿Qué haces?"></textarea>
+        <button class="boton" id="enviar" type="submit">Enviar</button>
+      </form>
+    </div>
+  </footer>
+</div>
+
+<div class="velo" id="velo-nombre" hidden>
+  <form id="form-nombre">
+    <h2>Siéntate a la mesa</h2>
+    <p>Tu nombre de jugador (no el de tu personaje). Así sabrá el DM quién habla.</p>
+    <label for="nombre" hidden>Nombre</label>
+    <input type="text" id="nombre" maxlength="30" autocomplete="nickname" required>
+    <button class="boton" type="submit">Entrar</button>
+  </form>
+</div>
+
+<script>/*__MOTOR__*/</script>
+<script>
+(() => {
+  "use strict";
+  const V = window.Velmora;
+  const $ = (id) => document.getElementById(id);
+  const leer = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
+  const anotar = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  const pestana = Math.random().toString(36).slice(2, 10);
+
+  let db = null, sample = null, uid = "";
+  let nombre = leer("velmora-nombre");
+  let partida = V.nuevaPartida();
+  let cronicaDM = "";
+  let turnos = [];          // turnos ya narrados (más recientes al final)
+  let pendientes = [];      // acciones en cola
+  let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
+  let narrandoYo = false;
+  let ctl = null;
+  const privados = [];      // respuestas de comandos que solo ve este jugador
+
+  // ------------------------------------------------------------ utilidades
+  const escapar = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function markdown(s) {
+    return escapar(s.trim()).split(/\n{2,}/).map((p) => "<p>" + p
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>")
+      .replace(/\n/g, "<br>") + "</p>").join("");
+  }
+  const colorDe = (n) => { let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 45% 70%)`; };
+  const esLetal = (t) => /☠|MUERTE|muere|ZONA ROJA|devorado/i.test(t);
+
+  // ------------------------------------------------------------ pintar
+  const registro = $("registro");
+  const cronica = $("cronica");
+  const cercaDelFinal = () => cronica.scrollHeight - cronica.scrollTop - cronica.clientHeight < 160;
+
+  function pintarTurno(t, cont) {
+    for (const a of t.acciones || []) {
+      const d = document.createElement("div");
+      d.className = "accion";
+      const b = document.createElement("b");
+      b.style.color = colorDe(a.nombre);
+      b.textContent = a.nombre + ": ";
+      d.append(b, document.createTextNode(a.texto));
+      cont.append(d);
+    }
+    // La narración se intercala con los resultados en el punto del texto donde ocurrieron.
+    const texto = t.texto || "";
+    const avisos = [...(t.avisos || [])].sort((x, y) => x.pos - y.pos);
+    let desde = 0;
+    const tramo = (hasta) => {
+      const trozo = texto.slice(desde, hasta);
+      if (trozo.trim()) { const n = document.createElement("div"); n.className = "narracion"; n.innerHTML = markdown(trozo); cont.append(n); }
+      desde = hasta;
+    };
+    for (const av of avisos) {
+      tramo(Math.min(av.pos, texto.length));
+      const r = document.createElement("div");
+      r.className = "resultado" + (esLetal(av.texto) ? " letal" : "");
+      r.textContent = av.texto;
+      cont.append(r);
+    }
+    tramo(texto.length);
+    if (t.nota) { const n = document.createElement("div"); n.className = "nota"; n.textContent = t.nota; cont.append(n); }
+  }
+
+  function pintar() {
+    const alFinal = cercaDelFinal();
+    const hayAlgo = turnos.length || turnoVivo || pendientes.length || privados.length;
+    $("vacio").hidden = !!hayAlgo;
+    registro.querySelectorAll(".dinamico").forEach((n) => n.remove());
+    const frag = document.createDocumentFragment();
+    turnos.forEach((t, i) => {
+      const caja = document.createElement("div");
+      caja.className = "dinamico turno";
+      if (i) { const hr = document.createElement("hr"); hr.className = "separador"; caja.append(hr); }
+      pintarTurno(t, caja);
+      frag.append(caja);
+    });
+    if (turnoVivo) {
+      const caja = document.createElement("div");
+      caja.className = "dinamico turno";
+      if (turnos.length) { const hr = document.createElement("hr"); hr.className = "separador"; caja.append(hr); }
+      pintarTurno({ acciones: turnoVivo.acciones, texto: turnoVivo.texto || "", avisos: turnoVivo.avisos }, caja);
+      if (!turnoVivo.texto) { const n = document.createElement("div"); n.className = "nota"; n.textContent = "El DM piensa…"; caja.append(n); }
+      frag.append(caja);
+    }
+    const enCola = pendientes.filter((p) => !(turnoVivo?.ids || []).includes(p.id));
+    if (enCola.length) {
+      const c = document.createElement("div");
+      c.className = "dinamico cola";
+      c.innerHTML = "<strong>En cola para el próximo turno</strong>";
+      for (const p of enCola) {
+        const d = document.createElement("div");
+        d.className = "accion";
+        const b = document.createElement("b");
+        b.style.color = colorDe(p.nombre);
+        b.textContent = p.nombre + ": ";
+        d.append(b, document.createTextNode(p.texto));
+        c.append(d);
+      }
+      if (!turnoVivo && !narrandoYo) {
+        const btn = document.createElement("button");
+        btn.className = "boton";
+        btn.type = "button";
+        btn.textContent = "Que el DM responda";
+        btn.onclick = () => narrarCola();
+        c.append(btn);
+      }
+      frag.append(c);
+    }
+    for (const t of privados) {
+      const d = document.createElement("div");
+      d.className = "dinamico privado";
+      d.textContent = t;
+      frag.append(d);
+    }
+    registro.append(frag);
+    if (alFinal) cronica.scrollTop = cronica.scrollHeight;
+    pintarEstado();
+  }
+
+  function pintarEstado() {
+    const e = $("estado");
+    e.classList.toggle("narrando", !!turnoVivo);
+    $("estado-texto").textContent = turnoVivo
+      ? `El DM narra (lo pidió ${turnoVivo.por})…`
+      : pendientes.length ? `${pendientes.length} acción(es) esperando al DM` : "El DM espera vuestras acciones";
+    $("quien").textContent = nombre ? `Juegas como ${nombre} · cambiar` : "Elegir nombre";
+  }
+
+  function pintarFichas() {
+    const cont = $("lista-fichas");
+    const pjs = Object.values(partida.personajes);
+    cont.innerHTML = "";
+    if (!pjs.length) { cont.innerHTML = '<p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p>'; return; }
+    for (const p of pjs) { const d = document.createElement("div"); d.className = "ficha"; d.textContent = V.fichaTexto(p); cont.append(d); }
+  }
+
+  // ------------------------------------------------------------ DM
+  const INSTRUCCIONES_WEB = `
+
+## Cómo funciona esta mesa (versión web, multijugador)
+- No recuerdas nada entre turnos. En cada turno recibes: la crónica que tú mismo mantienes, el estado actual del juego (fichas, criaturas en escena, objetos, secretos), los últimos turnos y las acciones nuevas de los jugadores.
+- Usa el motor del juego con la herramienta "motor": recibe una lista de acciones {accion, datos} y las ejecuta en orden. Las acciones posibles son las herramientas descritas abajo (tirar_dados, guardar_personaje, infligir_herida…), más "actualizar_cronica" {texto}. Tienes pocas rondas por turno: mete en una sola llamada todo lo que no dependa de un resultado anterior (por ejemplo, todas las tiradas de iniciativa o los ataques de todos los enemigos a la vez).
+- Mantén la crónica con actualizar_cronica cuando pase algo que debas recordar: es tu memoria a largo plazo. Escríbela completa cada vez (no solo lo nuevo), en menos de 2500 caracteres: dónde están, qué buscan, PNJ importantes y lo que les deben, amenazas en marcha, hilos abiertos, y tus secretos de DM.
+- Los resultados del motor se muestran solos a los jugadores. Tu texto final es la narración: no copies las tiradas ni hables de herramientas, del motor o de JSON.
+- Varios jugadores pueden escribir a la vez; sus acciones llegan juntas con su nombre delante. Resuélvelas todas y reparte el protagonismo.
+
+## Acciones del motor
+`;
+
+  function instrucciones() { return V.SISTEMA + INSTRUCCIONES_WEB + V.catalogoAcciones(); }
+
+  const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
+
+  function construirEntrada(acciones) {
+    const turnosEntrada = [{ role: "user", content: instrucciones() }];
+    // Últimos turnos como conversación; los más viejos se descartan si no caben.
+    const recientes = turnos.filter((t) => t.texto || (t.acciones && t.acciones.length)).slice(-14);
+    for (const t of recientes) {
+      const res = (t.avisos || []).map((a) => a.texto).join("\n");
+      if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
+      if (t.texto) turnosEntrada.push({ role: "assistant", content: t.texto + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
+      else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
+    }
+    const final =
+      `# CRÓNICA (tu memoria)\n${cronicaDM || "(vacía: aún no ha pasado nada)"}\n\n` +
+      `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida)}\n\n` +
+      `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
+    turnosEntrada.push({ role: "user", content: final });
+    // Recorta conversación antigua si nos acercamos al límite de 256 KiB.
+    const tam = () => new Blob([turnosEntrada.map((t) => t.content).join("")]).size;
+    while (tam() > 230000 && turnosEntrada.length > 3) turnosEntrada.splice(1, 1);
+    while (turnosEntrada.length > 2 && turnosEntrada[1].role === "assistant") turnosEntrada.splice(1, 1);
+    return turnosEntrada;
+  }
+
+  const NOMBRES_ACCIONES = ["tirar_dados", "guardar_personaje", "modificar_personaje", "infligir_herida", "tratar_herida", "pasar_tiempo",
+    "avanzar_asaltos", "usar_vial", "generar_botin", "crear_objeto", "examinar_objeto", "aparecer_criatura", "danar_criatura",
+    "habilidad_criatura", "presagio_criatura", "behelit", "anotar_mundo", "actualizar_cronica"];
+
+  const MENSAJES_ERROR = {
+    not_granted: "No se dio permiso a esta página para usar Claude. Ábrela de nuevo y acepta el permiso para que el DM pueda narrar.",
+    sampling_disabled: "Tu cuenta no puede usar Claude desde páginas publicadas. Otro jugador puede pulsar «Que el DM responda».",
+    rate_limited: "Se alcanzó el límite de uso de tu cuenta. Espera un poco o deja que otro jugador pida al DM que responda.",
+    refused: "El DM no quiso narrar eso. Reformulad la acción y volved a intentarlo.",
+    prompt_too_large: "La partida es demasiado larga para enviarla entera. Pedid al DM que resuma la crónica.",
+    session_expired: "Tu sesión de Claude caducó. Vuelve a iniciar sesión.",
+    tools_unavailable: "Esta vista no puede usar el motor del juego. Abre la página desde claude.ai en el navegador o en la app.",
+  };
+
+  async function narrarCola() {
+    if (!db || narrandoYo) return;
+    if (!sample) { privados.push("Esta vista no puede usar Claude. Abre la página en claude.ai (navegador o app)."); pintar(); return; }
+    const ref = db.doc("mesa/turno");
+    const holder = (uid || "anon") + ":" + pestana;
+    const lease = await ref.acquire({ holder, ttlMs: 45000 }).catch(() => ({ acquired: false }));
+    if (!lease.acquired) { privados.push("Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno."); pintar(); return; }
+    narrandoYo = true;
+    $("enviar").disabled = false;
+    const renovar = setInterval(() => {
+      ref.acquire({ holder, ttlMs: 45000 }).catch(() => {});
+      ref.update({ latido: Date.now() }).catch(() => {});
+    }, 15000);
+    try {
+      for (let vuelta = 0; vuelta < 5; vuelta++) {
+        const snap = await db.collection("acciones").orderBy("ts").get();
+        const cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (!cola.length) break;
+        const ok = await narrar(ref, cola);
+        if (!ok) break;
+      }
+    } finally {
+      clearInterval(renovar);
+      narrandoYo = false;
+      await ref.set({ narrando: false }).catch(() => {});
+      pintar();
+    }
+  }
+
+  async function narrar(ref, cola) {
+    const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
+    const copia = JSON.parse(JSON.stringify(partida));
+    let cronicaNueva = cronicaDM;
+    let texto = "";
+    const avisos = [];
+    const vivo = { narrando: true, por: nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
+    await ref.set(vivo).catch(() => {});
+    let ultimaEscritura = 0, pendienteEscritura = null;
+    const publicarVivo = (forzar) => {
+      const ahora = Date.now();
+      if (!forzar && ahora - ultimaEscritura < 1500) {
+        clearTimeout(pendienteEscritura);
+        pendienteEscritura = setTimeout(() => publicarVivo(true), 1500);
+        return;
+      }
+      ultimaEscritura = ahora;
+      ref.update({ texto, avisos, latido: ahora }).catch(() => {});
+    };
+    turnoVivo = { ...vivo };
+    pintar();
+
+    const motor = {
+      name: "motor",
+      description: "Ejecuta acciones del motor del juego (dados, fichas, heridas, viales, botín, criaturas, behelits, crónica) en orden y devuelve sus resultados. Mete en una sola llamada todas las acciones independientes.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          acciones: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { accion: { type: "string", enum: NOMBRES_ACCIONES }, datos: { type: "object" } },
+              required: ["accion", "datos"],
+            },
+          },
+        },
+        required: ["acciones"],
+      },
+      execute(input) {
+        const lista = Array.isArray(input?.acciones) ? input.acciones : [];
+        if (!lista.length) throw new Error("Pasa al menos una acción en 'acciones'.");
+        return lista.map(({ accion, datos }) => {
+          if (accion === "actualizar_cronica") {
+            cronicaNueva = String(datos?.texto ?? "").slice(0, 4000);
+            return { accion, resultado: "Crónica actualizada." };
+          }
+          const r = V.ejecutar(String(accion), datos ?? {}, copia);
+          if (r.aviso) {
+            avisos.push({ pos: texto.length, texto: r.aviso });
+            turnoVivo.avisos = avisos;
+            publicarVivo();
+            pintar();
+          }
+          return { accion, resultado: r.contenido, ...(r.error ? { error: true } : {}) };
+        });
+      },
+    };
+
+    ctl = new AbortController();
+    try {
+      const res = await sample(construirEntrada(acciones), {
+        tools: [motor],
+        modelTier: $("nivel").value,
+        signal: ctl.signal,
+        onText: ({ text }) => { texto = text; turnoVivo.texto = text; publicarVivo(); pintar(); },
+      });
+      texto = res.text;
+      clearTimeout(pendienteEscritura);
+      // El turno ha terminado: se guarda todo de una vez.
+      const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
+      await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
+      const { historial, ...sinHistorial } = copia;
+      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: Date.now() });
+      for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});
+      partida = copia;
+      cronicaDM = cronicaNueva;
+      turnoVivo = null;
+      return true;
+    } catch (e) {
+      clearTimeout(pendienteEscritura);
+      turnoVivo = null;
+      if (e?.code !== "cancelled") privados.push(MENSAJES_ERROR[e?.code] || "El DM se interrumpió (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar.");
+      return false;
+    }
+  }
+
+  // ------------------------------------------------------------ acciones del jugador
+  async function enviar(texto) {
+    texto = texto.trim();
+    if (!texto) return;
+    if (!nombre) { pedirNombre(); return; }
+    if (texto.startsWith("/")) {
+      const r = V.comando(partida, texto);
+      if (!r) { privados.push("Comando desconocido. Escribe /ayuda."); pintar(); return; }
+      if (r.publico && db) {
+        await db.collection("turnos").add({ ts: Date.now(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `${nombre}: ${r.texto}` }] }).catch(() => {});
+      } else { privados.push(r.texto); pintar(); }
+      return;
+    }
+    if (!db) { privados.push("Esta vista no puede guardar la partida. Ábrela en claude.ai."); pintar(); return; }
+    await db.collection("acciones").add({ nombre, uid, texto, ts: Date.now() });
+    if (!turnoVivo) narrarCola();
+  }
+
+  function pedirNombre() {
+    $("nombre").value = nombre;
+    $("velo-nombre").hidden = false;
+    $("nombre").focus();
+  }
+  $("form-nombre").onsubmit = (ev) => {
+    ev.preventDefault();
+    const n = $("nombre").value.replace(/[\r\n:]/g, " ").trim().slice(0, 30);
+    if (!n) return;
+    nombre = n;
+    anotar("velmora-nombre", n);
+    $("velo-nombre").hidden = true;
+    pintarEstado();
+    $("accion").focus();
+  };
+  $("quien").onclick = pedirNombre;
+  $("empezar").onclick = () => enviar("Hola, queremos jugar una partida nueva de D&D. ¡Empecemos!");
+
+  const caja = $("accion");
+  const ajustar = () => { caja.style.height = "auto"; caja.style.height = Math.min(caja.scrollHeight, 160) + "px"; };
+  caja.addEventListener("input", ajustar);
+  caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
+  $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
+  document.querySelectorAll("[data-cmd]").forEach((b) => (b.onclick = () => enviar(b.dataset.cmd)));
+  $("ver-fichas").onclick = () => { $("fichas").hidden = !$("fichas").hidden; };
+  $("cerrar-fichas").onclick = () => { $("fichas").hidden = true; };
+  $("nivel").value = leer("velmora-nivel") || "default";
+  $("nivel").onchange = () => anotar("velmora-nivel", $("nivel").value);
+
+  // ------------------------------------------------------------ arranque
+  pintarEstado();
+  if (!nombre) pedirNombre();
+
+  (async () => {
+    const usar = (n) => (window.claude?.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null));
+    const [dbNs, userNs, sampleNs] = await Promise.all([usar("db"), usar("user"), usar("sample")]);
+    db = dbNs;
+    sample = sampleNs;
+    uid = (await userNs?.id?.().catch?.(() => "")) || "";
+    if (!db) {
+      $("estado-texto").textContent = "Abre esta página en claude.ai para jugar: aquí no se puede guardar la partida.";
+      $("empezar").disabled = true;
+      return;
+    }
+    db.doc("mesa/estado").onSnapshot((s) => {
+      const d = s.exists ? s.data() : null;
+      if (!narrandoYo) {
+        partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
+        cronicaDM = String(d?.cronica || "");
+      }
+      pintarFichas();
+    });
+    db.collection("turnos").orderBy("ts", "desc").limit(60).onSnapshot((s) => {
+      turnos = s.docs.map((d) => d.data()).reverse();
+      pintar();
+    });
+    db.collection("acciones").orderBy("ts").onSnapshot((s) => {
+      pendientes = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+      pintar();
+    });
+    // Si quien narraba cerró la página, su turno deja de latir y se da por abandonado.
+    let ultimoTurno = null;
+    const vigente = () => (ultimoTurno?.narrando && Date.now() - (ultimoTurno.latido || 0) < 60000 ? ultimoTurno : null);
+    db.doc("mesa/turno").onSnapshot((s) => {
+      if (narrandoYo) return;
+      ultimoTurno = s.exists ? s.data() : null;
+      turnoVivo = vigente();
+      pintar();
+    });
+    setInterval(() => {
+      if (narrandoYo || !ultimoTurno?.narrando) return;
+      const antes = !!turnoVivo;
+      turnoVivo = vigente();
+      if (antes !== !!turnoVivo) pintar();
+    }, 10000);
+  })();
+})();
+</script>

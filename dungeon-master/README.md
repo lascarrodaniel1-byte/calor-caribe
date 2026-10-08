@@ -111,6 +111,16 @@ npm run jugar                            # continúa la partida guardada, o empi
 npm run jugar -- --nueva                 # empieza desde cero
 ```
 
+### Jugar en claude.ai, sin API key ni servidor
+
+La Mesa de Velmora también existe como página publicada en claude.ai: https://claude.ai/artifact/58LBrXChBQ5HzE2zRJy3SC
+
+- El DM es Claude, con la cuenta de quien pulsa «Enviar»: no hace falta API key ni pagar aparte (gasta el uso normal del plan de Claude de ese jugador).
+- La partida se guarda en la base de datos de la página: todos ven lo mismo en vivo, aunque cierren y vuelvan.
+- Usa el mismo motor que la terminal (heridas, zonas vitales, viales, botín, jefes, behelits), empaquetado dentro de la página.
+- Para invitar a alguien: menú **Compartir** de la página, con permiso para usarla (Contributor) o editarla (Editor si es de fuera de tu organización). Cada jugador necesita una cuenta de Claude.
+- Para regenerar la página tras cambiar el motor: `npm run artifact` (genera `dist/mesa-de-velmora.html`) y publícala de nuevo en la misma dirección.
+
 ### Multijugador por el navegador
 
 Una persona arranca la mesa y el resto entra desde el navegador del móvil o del PC:
@@ -166,6 +176,9 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/herramientas.ts` | Herramientas del DM: dados, fichas, heridas, tiempo, hemorragias, viales, botín, objetos y criaturas |
 | `src/dados.ts` | Motor de dados |
 | `src/estado.ts` | Fichas y guardado de la partida |
+| `src/navegador.ts`, `web/artifact.template.html`, `scripts/construir-artifact.mjs` | Versión para claude.ai: el motor empaquetado para el navegador y la página de la mesa |
+| `src/archivo.ts` | Guardar y cargar la partida en disco |
+| `src/mesa.ts` | Comandos de mesa (`/tirar`, `/fichas`…) |
 | `src/motor.ts` | Un turno del DM (streaming + bucle de herramientas) y los comandos de mesa, compartidos por la terminal y la web |
 | `src/index.ts` | Juego en la terminal |
 | `src/servidor.ts` | Mesa multijugador: servidor web con eventos en vivo |

@@ -1,5 +1,13 @@
 // Tiradas de dados con notación estándar de D&D: "1d20+5", "2d6", "4d6kh3", "d100-1".
-import { randomInt } from "node:crypto";
+/** Entero aleatorio en [min, max) con el generador criptográfico (Node 20+ y navegadores). */
+function randomInt(min: number, max: number): number {
+  const rango = max - min;
+  const limite = Math.floor(0x100000000 / rango) * rango;
+  const buf = new Uint32Array(1);
+  do globalThis.crypto.getRandomValues(buf);
+  while (buf[0] >= limite);
+  return min + (buf[0] % rango);
+}
 
 export type Modo = "normal" | "ventaja" | "desventaja";
 

@@ -1,5 +1,4 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoJefe } from "./bestiario.js";
 import type { EstadoBehelit } from "./behelit.js";
@@ -67,9 +66,11 @@ export function normalizar(p: Personaje): Personaje {
   return p;
 }
 
-export function cargar(ruta: string): Partida | null {
-  if (!existsSync(ruta)) return null;
-  const partida = JSON.parse(readFileSync(ruta, "utf8")) as Partida;
+/** Completa una partida guardada con versiones anteriores del programa. */
+export function normalizarPartida(partida: Partida): Partida {
+  partida.historial ??= [];
+  partida.notas_mundo ??= [];
+  partida.personajes ??= {};
   partida.objetos ??= {};
   partida.jefes ??= {};
   partida.behelit ??= { carmesi_creado: false, destinados: [] };
@@ -88,10 +89,6 @@ export function cargar(ruta: string): Partida | null {
     }
   }
   return partida;
-}
-
-export function guardar(ruta: string, partida: Partida): void {
-  writeFileSync(ruta, JSON.stringify(partida, null, 2));
 }
 
 export function fichaTexto(p: Personaje): string {

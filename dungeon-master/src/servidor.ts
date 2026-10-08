@@ -5,7 +5,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { networkInterfaces } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cargar, fichaTexto, guardar, nuevaPartida } from "./estado.js";
+import { cargar, guardar } from "./archivo.js";
+import { fichaTexto, nuevaPartida } from "./estado.js";
 import { comando, MENSAJE_NUEVA, MENSAJE_REANUDAR, MODELO, RUTA, turno, type Salida } from "./motor.js";
 
 const PUERTO = Number(process.env.PORT ?? 8080);
