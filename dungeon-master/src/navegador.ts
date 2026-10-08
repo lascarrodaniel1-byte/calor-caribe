@@ -6,7 +6,7 @@ import { fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./est
 import { ejecutar, herramientas } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
-import { SISTEMA } from "./prompt.js";
+import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
 
 /** Catálogo compacto de las acciones del motor, para el prompt del DM. */
 export function catalogoAcciones(): string {
@@ -53,4 +53,4 @@ export function estadoParaDM(p: Partida): string {
   return partes.join("\n\n");
 }
 
-export { ALTO, ANCHO, comando, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA };
+export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA_WEB };

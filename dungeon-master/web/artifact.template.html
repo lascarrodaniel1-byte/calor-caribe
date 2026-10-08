@@ -268,9 +268,9 @@
     <div class="estado" id="estado"><span class="vela"></span><span id="estado-texto">Encendiendo las velas…</span></div>
     <label class="control" for="nivel">DM
       <select id="nivel">
-        <option value="quick">Rápido</option>
-        <option value="default" selected>Equilibrado</option>
-        <option value="complex">Profundo (más lento)</option>
+        <option value="quick" selected>Rápido (gasta menos)</option>
+        <option value="default">Equilibrado</option>
+        <option value="complex">Profundo (gasta más)</option>
       </select>
     </label>
     <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
@@ -367,7 +367,7 @@
     <ul>
       <li>Si varios escribís a la vez, las acciones esperan en cola y el DM las resuelve juntas en el siguiente turno.</li>
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
-      <li>Arriba eliges el DM: <em>Rápido</em>, <em>Equilibrado</em> o <em>Profundo</em> (narra mejor, pero puede tardar un par de minutos).</li>
+      <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
       <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
       <li>«Tirar d20» y «/tirar» los ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
     </ul>
@@ -618,31 +618,31 @@
   // ------------------------------------------------------------ DM
   const INSTRUCCIONES_WEB = `
 
-## Cómo funciona esta mesa (versión web, multijugador)
-- No recuerdas nada entre turnos. En cada turno recibes: la crónica que tú mismo mantienes, el estado actual del juego (fichas, criaturas en escena, objetos, secretos), los últimos turnos y las acciones nuevas de los jugadores.
-- Usa el motor del juego con la herramienta "motor": recibe una lista de acciones {accion, datos} y las ejecuta en orden. Las acciones posibles son las herramientas descritas abajo (tirar_dados, guardar_personaje, infligir_herida…), más "actualizar_cronica" {texto}. Tienes pocas rondas por turno: mete en una sola llamada todo lo que no dependa de un resultado anterior (por ejemplo, todas las tiradas de iniciativa o los ataques de todos los enemigos a la vez).
-- Mantén la crónica con actualizar_cronica cuando pase algo que debas recordar: es tu memoria a largo plazo. Escríbela completa cada vez (no solo lo nuevo), en menos de 2500 caracteres: dónde están, qué buscan, PNJ importantes y lo que les deben, amenazas en marcha, hilos abiertos, y tus secretos de DM.
-- Los resultados del motor se muestran solos a los jugadores. Tu texto final es la narración: no copies las tiradas ni hables de herramientas, del motor o de JSON.
-- Los jugadores ven siempre un mapa con la posición del grupo: actualízalo con la acción ubicacion cada vez que lleguen a otro lugar o viajen.
-- Varios jugadores pueden escribir a la vez; sus acciones llegan juntas con su nombre delante. Resuélvelas todas y reparte el protagonismo.
+## Cómo funciona esta mesa
+- No recuerdas nada entre turnos. Cada turno recibes tu crónica, el estado del juego (fichas, mapa, criaturas, secretos), los últimos turnos resumidos y las acciones nuevas.
+- Usa el motor con la herramienta "motor": una lista de acciones {accion, datos} que se ejecutan en orden. Cada ronda cuesta: mete en una sola llamada todo lo que no dependa de un resultado anterior (todas las iniciativas, todos los ataques enemigos…) y no consultes reglas que ya conoces.
+- actualizar_cronica cuando pase algo que debas recordar: escríbela completa (no solo lo nuevo), en menos de 2000 caracteres: dónde están, qué buscan, PNJ y deudas, amenazas, hilos abiertos y tus secretos.
+- Los resultados del motor se muestran solos a los jugadores: no copies tiradas ni hables de herramientas ni de JSON.
 
-## Acciones del motor
 `;
 
-  function instrucciones() { return V.SISTEMA + INSTRUCCIONES_WEB + V.catalogoAcciones(); }
+  function instrucciones() { return V.SISTEMA_WEB + INSTRUCCIONES_WEB + V.catalogoCompacto(); }
 
   const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
 
   function construirEntrada(acciones) {
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Últimos turnos como conversación; los más viejos se descartan si no caben.
-    const recientes = turnos.filter((t) => t.texto || (t.acciones && t.acciones.length)).slice(-14);
-    for (const t of recientes) {
-      const res = (t.avisos || []).map((a) => a.texto).join("\n");
+    // Para gastar menos: solo los últimos 8 turnos; los 3 más recientes enteros, los demás recortados y sin resultados.
+    const recientes = turnos.filter((t) => t.texto || (t.acciones && t.acciones.length)).slice(-8);
+    const recorta = (txt, n) => (txt.length > n ? txt.slice(0, n) + " […]" : txt);
+    recientes.forEach((t, i) => {
+      const reciente = i >= recientes.length - 3;
+      const res = reciente ? (t.avisos || []).map((a) => recorta(a.texto, 400)).join("\n") : "";
       if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
-      if (t.texto) turnosEntrada.push({ role: "assistant", content: t.texto + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
+      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, 700)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
       else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
-    }
+    });
     const final =
       `# CRÓNICA (tu memoria)\n${cronicaDM || "(vacía: aún no ha pasado nada)"}\n\n` +
       `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida)}\n\n` +
@@ -657,7 +657,7 @@
 
   const NOMBRES_ACCIONES = ["tirar_dados", "guardar_personaje", "modificar_personaje", "infligir_herida", "tratar_herida", "pasar_tiempo",
     "avanzar_asaltos", "usar_vial", "generar_botin", "crear_objeto", "examinar_objeto", "aparecer_criatura", "danar_criatura",
-    "habilidad_criatura", "presagio_criatura", "behelit", "ubicacion", "anotar_mundo", "actualizar_cronica"];
+    "habilidad_criatura", "presagio_criatura", "behelit", "ubicacion", "anotar_mundo", "actualizar_cronica", "consultar_reglas"];
 
   const MENSAJES_ERROR = {
     not_granted: "No se dio permiso a esta página para usar Claude. Ábrela de nuevo y acepta el permiso para que el DM pueda narrar.",
@@ -741,6 +741,10 @@
         const lista = Array.isArray(input?.acciones) ? input.acciones : [];
         if (!lista.length) throw new Error("Pasa al menos una acción en 'acciones'.");
         return lista.map(({ accion, datos }) => {
+          if (accion === "consultar_reglas") {
+            try { return { accion, resultado: V.consultarReglas(datos?.tema, datos?.nombre) }; }
+            catch (err) { return { accion, resultado: String(err?.message || err), error: true }; }
+          }
           if (accion === "actualizar_cronica") {
             cronicaNueva = String(datos?.texto ?? "").slice(0, 4000);
             return { accion, resultado: "Crónica actualizada." };
@@ -840,7 +844,7 @@
   $("mapa").onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ampliarMapa(); } };
   $("cerrar-mapa").onclick = () => { $("velo-mapa").hidden = true; };
   $("velo-mapa").onclick = (ev) => { if (ev.target === $("velo-mapa")) $("velo-mapa").hidden = true; };
-  $("nivel").value = leer("velmora-nivel") || "default";
+  $("nivel").value = leer("velmora-nivel") || "quick";
   $("nivel").onchange = () => anotar("velmora-nivel", $("nivel").value);
 
   // ------------------------------------------------------------ reiniciar
