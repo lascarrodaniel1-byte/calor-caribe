@@ -123,6 +123,7 @@ La Mesa de Velmora también existe como página publicada en claude.ai: https://
 - La partida se guarda en la base de datos de la página: todos ven lo mismo en vivo, aunque cierren y vuelvan.
 - Usa el mismo motor que la terminal (heridas, zonas vitales, viales, botín, jefes, behelits), empaquetado dentro de la página.
 - Para invitar a alguien: menú **Compartir** de la página, con permiso para usarla (Contributor) o editarla (Editor si es de fuera de tu organización). Cada jugador necesita una cuenta de Claude.
+- Memoria del DM: un **diario de la aventura** que se compacta solo. Cuando hay más de 8 turnos sin resumir, la página pide a Claude (modo rápido, poco texto) que integre los más antiguos en el diario; el DM recibe siempre el diario y los turnos recientes enteros, y los jugadores pueden leerlo en el lateral. La crónica queda para las notas privadas del DM.
 - Para regenerar la página tras cambiar el motor: `npm run artifact` (genera `dist/mesa-de-velmora.html`) y publícala de nuevo en la misma dirección.
 
 ### Multijugador por el navegador

@@ -181,6 +181,18 @@
   }
   .fichas .nota { color: var(--apagado); }
   .cerrar-lateral { display: none; }
+  .diario-seccion { margin-bottom: 22px; }
+  .diario-seccion summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .diario-seccion summary::-webkit-details-marker { display: none; }
+  .diario-seccion summary::after { content: "▸"; color: var(--lumbre); font-size: 18px; }
+  .diario-seccion[open] summary::after { content: "▾"; }
+  .diario-seccion summary h2 { margin: 0; }
+  .diario {
+    margin-top: 12px; padding: 16px 18px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--tinta);
+    font: 16px/1.55 var(--f-narracion); background: linear-gradient(170deg, #eadbb8, #d4bd8e);
+    box-shadow: inset 0 0 18px #8a6a3a55, 0 4px 10px #000a; max-height: 60vh; overflow-y: auto;
+  }
+  .diario.vacio-diario { font-style: italic; color: #6b5233; }
 
   /* Mapa antiguo */
   .mapa { margin-bottom: 22px; }
@@ -309,6 +321,10 @@
         <div class="donde" id="mapa-donde">Aún no sabemos dónde estáis.<small>El DM os situará al empezar.</small></div>
         <div class="lienzo ampliable" id="mapa" role="button" tabindex="0" title="Ver el mapa en grande"></div>
       </section>
+      <details class="diario-seccion" id="seccion-diario">
+        <summary><h2>Diario de la aventura</h2></summary>
+        <div class="diario" id="diario">Aún no hay nada escrito.</div>
+      </details>
       <h2 id="titulo-fichas">Fichas</h2>
       <div id="lista-fichas"><p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p></div>
       <button class="boton sobrio cerrar-lateral" id="cerrar-fichas" type="button">Cerrar</button>
@@ -361,7 +377,7 @@
       <li><strong>Pulsa «Que empiece la historia».</strong> La primera vez, Claude te pedirá permiso para narrar desde tu cuenta: acéptalo. No cuesta nada aparte de tu plan.</li>
       <li><strong>Crea tu personaje con el DM.</strong> Te preguntará raza, clase y trasfondo. Para los atributos puedes usar la serie estándar o tirar el botón <em>4d6kh3</em> seis veces (4 dados de 6, te quedas con los 3 mejores).</li>
       <li><strong>Escribe lo que hace tu personaje</strong> y pulsa Enter. Por ejemplo: <span class="ejemplo">«Me acerco a la barra, pido una cerveza negra y pregunto por el hombre sin ojos.»</span> Cuanto más concreto, mejor responde el DM.</li>
-      <li><strong>Lee la respuesta.</strong> La narración aparece en el pergamino; las tiradas, heridas y botín, en las placas de madera. Tu vida, heridas e inventario están en <em>Fichas</em>, y dónde estáis, en el <em>mapa</em>, que el DM mueve cuando viajáis.</li>
+      <li><strong>Lee la respuesta.</strong> La narración aparece en el pergamino; las tiradas, heridas y botín, en las placas de madera. Tu vida, heridas e inventario están en <em>Fichas</em>, y dónde estáis, en el <em>mapa</em>, que el DM mueve cuando viajáis. En el <em>Diario de la aventura</em> queda el resumen de todo lo vivido.</li>
     </ol>
     <h3>Bueno saberlo</h3>
     <ul>
@@ -403,6 +419,8 @@
   let nombre = leer("velmora-nombre");
   let partida = V.nuevaPartida();
   let cronicaDM = "";
+  let diario = "";          // diario de la aventura: lo ya ocurrido, compactado
+  let compactadoHasta = 0;  // ts del último turno ya incluido en el diario
   let turnos = [];          // turnos ya narrados (más recientes al final)
   let pendientes = [];      // acciones en cola
   let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
@@ -621,7 +639,7 @@
 ## Cómo funciona esta mesa
 - No recuerdas nada entre turnos. Cada turno recibes tu crónica, el estado del juego (fichas, mapa, criaturas, secretos), los últimos turnos resumidos y las acciones nuevas.
 - Usa el motor con la herramienta "motor": una lista de acciones {accion, datos} que se ejecutan en orden. Cada ronda cuesta: mete en una sola llamada todo lo que no dependa de un resultado anterior (todas las iniciativas, todos los ataques enemigos…) y no consultes reglas que ya conoces.
-- actualizar_cronica cuando pase algo que debas recordar: escríbela completa (no solo lo nuevo), en menos de 2000 caracteres: dónde están, qué buscan, PNJ y deudas, amenazas, hilos abiertos y tus secretos.
+- El diario de la aventura se escribe solo con lo que ocurre a la vista. Tu crónica (actualizar_cronica) es para tus notas privadas de DM: secretos, planes de los villanos, lo que aún no saben los jugadores. Escríbela completa cada vez, en menos de 1500 caracteres.
 - Los resultados del motor se muestran solos a los jugadores: no copies tiradas ni hables de herramientas ni de JSON.
 
 `;
@@ -632,19 +650,19 @@
 
   function construirEntrada(acciones) {
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
-    // Últimos turnos como conversación; los más viejos se descartan si no caben.
-    // Para gastar menos: solo los últimos 8 turnos; los 3 más recientes enteros, los demás recortados y sin resultados.
-    const recientes = turnos.filter((t) => t.texto || (t.acciones && t.acciones.length)).slice(-8);
+    // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
+    const recientes = turnos.filter((t) => (t.ts || 0) > compactadoHasta && (t.texto || t.acciones?.length || t.avisos?.length)).slice(-12);
     const recorta = (txt, n) => (txt.length > n ? txt.slice(0, n) + " […]" : txt);
     recientes.forEach((t, i) => {
-      const reciente = i >= recientes.length - 3;
-      const res = reciente ? (t.avisos || []).map((a) => recorta(a.texto, 400)).join("\n") : "";
+      const reciente = i >= recientes.length - 4;
+      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 400 : 160)).join("\n");
       if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
       if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, 700)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
       else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
     });
     const final =
-      `# CRÓNICA (tu memoria)\n${cronicaDM || "(vacía: aún no ha pasado nada)"}\n\n` +
+      `# DIARIO DE LA AVENTURA (todo lo que ya ocurrió antes de los turnos recientes; es canon, respétalo)\n${diario || "(aún vacío: la aventura acaba de empezar)"}\n\n` +
+      `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
       `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida)}\n\n` +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
     turnosEntrada.push({ role: "user", content: final });
@@ -669,6 +687,53 @@
     tools_unavailable: "Esta vista no puede usar el motor del juego. Abre la página desde claude.ai en el navegador o en la app.",
   };
 
+  // ------------------------------------------------------------ diario
+  // Cada pocos turnos, los turnos antiguos se resumen en el diario con una llamada
+  // rápida y pequeña. Así el DM recuerda toda la aventura sin leerla entera.
+  const TURNOS_SIN_COMPACTAR = 8;   // a partir de aquí se compacta
+  const TURNOS_QUE_QUEDAN = 4;      // los más recientes siguen enteros
+
+  function textoTurno(t) {
+    const partes = [];
+    if (t.acciones?.length) partes.push(textoAcciones(t.acciones));
+    if (t.texto) partes.push("DM: " + t.texto);
+    const res = (t.avisos || []).map((a) => a.texto.split("\n")[0]).join(" | ");
+    if (res) partes.push("Resultados: " + res);
+    return partes.join("\n");
+  }
+
+  async function compactarDiario() {
+    try {
+      const snap = await db.collection("turnos").where("ts", ">", compactadoHasta).orderBy("ts").get();
+      const pendientes = snap.docs.map((d) => d.data());
+      if (pendientes.length <= TURNOS_SIN_COMPACTAR) return;
+      const lote = pendientes.slice(0, pendientes.length - TURNOS_QUE_QUEDAN);
+      const prompt =
+        `Eres el cronista de una partida de rol de dark fantasy. Actualiza el DIARIO DE LA AVENTURA integrando los nuevos acontecimientos.\n` +
+        `- Conserva todo lo importante del diario anterior y añade lo nuevo; quita lo trivial.\n` +
+        `- Nombres propios exactos. No inventes nada que no esté en los textos.\n` +
+        `- Texto plano en español, como mucho 3000 caracteres, con estos apartados:\n` +
+        `DÓNDE ESTAMOS:\nMISIÓN Y OBJETIVOS:\nPERSONAJES Y PNJ (nombre: quién es, relación con el grupo, estado):\nHECHOS IMPORTANTES (en orden, uno por línea):\nPROMESAS, DEUDAS Y ENEMIGOS:\nOBJETOS Y RECURSOS CLAVE:\nHILOS ABIERTOS:\n\n` +
+        `## DIARIO ANTERIOR\n${diario || "(vacío)"}\n\n## NUEVOS ACONTECIMIENTOS\n${lote.map(textoTurno).join("\n\n")}\n\n` +
+        `Responde solo con el diario actualizado.`;
+      const res = await sample(prompt, { modelTier: "quick", cache: false });
+      const nuevo = String(res.text || "").trim();
+      if (!nuevo) return;
+      diario = nuevo.slice(0, 3600);
+      compactadoHasta = lote[lote.length - 1].ts;
+      await db.doc("mesa/estado").update({ diario, compactado_hasta: compactadoHasta }).catch(() => {});
+      pintarDiario();
+    } catch {
+      // Si falla, se intenta de nuevo tras el próximo turno; no se pierde nada.
+    }
+  }
+
+  function pintarDiario() {
+    const cont = $("diario");
+    cont.textContent = diario || "Aún no hay nada escrito. Tras unos cuantos turnos, aquí quedará el resumen de lo que habéis vivido.";
+    cont.classList.toggle("vacio-diario", !diario);
+  }
+
   async function narrarCola() {
     if (!db || narrandoYo) return;
     if (!sample) { privados.push("Esta vista no puede usar Claude. Abre la página en claude.ai (navegador o app)."); pintar(); return; }
@@ -690,6 +755,7 @@
         const ok = await narrar(ref, cola);
         if (!ok) break;
       }
+      await compactarDiario();
     } finally {
       clearInterval(renovar);
       narrandoYo = false;
@@ -776,7 +842,7 @@
       const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
       await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
       const { historial, ...sinHistorial } = copia;
-      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: Date.now() });
+      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, compactado_hasta: compactadoHasta, actualizado: Date.now() });
       for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});
       partida = copia;
       cronicaDM = cronicaNueva;
@@ -892,6 +958,8 @@
       await db.doc("mesa/turno").delete();
       partida = V.nuevaPartida();
       cronicaDM = "";
+      diario = "";
+      compactadoHasta = 0;
       turnos = [];
       pendientes = [];
       privados.length = 0;
@@ -931,8 +999,11 @@
       if (!narrandoYo) {
         partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
         cronicaDM = String(d?.cronica || "");
+        diario = String(d?.diario || "");
+        compactadoHasta = Number(d?.compactado_hasta || 0);
       }
       pintarFichas();
+      pintarDiario();
     });
     db.collection("turnos").orderBy("ts", "desc").limit(60).onSnapshot((s) => {
       turnos = s.docs.map((d) => d.data()).reverse();
