@@ -192,6 +192,19 @@ export const CLASES: Clase[] = [
     equipo: "Armadura de cuero, guadaña (como alabarda), foco (un hueso del dios), 2 dagas, 5 po",
   },
   {
+    nombre: "Hechicero",
+    base: "Mago",
+    dadoGolpe: 6,
+    principal: "INT",
+    salvaciones: "INT, SAB",
+    rasgos: [
+      "Adepto en dos escuelas de magia a elegir (lanza hasta círculo 2 y suma su competencia a la tirada)",
+      "Grimorio: conoce todos los hechizos de círculo 0 y 1 de sus escuelas; aprende más con maestros y grimorios",
+      "Marcado: la Inquisición exige licencia a los magos; sin ella, es un hereje",
+    ],
+    equipo: "Daga, bastón, grimorio, 1 Piedra de brasa, ropa de viaje, 10 po",
+  },
+  {
     nombre: "Barbero-Cirujano",
     base: "Guerrero (variante sanadora)",
     dadoGolpe: 8,
@@ -257,5 +270,5 @@ export function textoRazasYClases(): string {
     (c) =>
       `- **${c.nombre}** (base: ${c.base}; d${c.dadoGolpe}; principal: ${c.principal}; salvaciones: ${c.salvaciones}).\n  Rasgos de nivel 1: ${c.rasgos.join("; ")}.\n  Equipo inicial: ${c.equipo}.`,
   ).join("\n");
-  return `## Razas jugables\n${razas}\n\n## Clases (todas son combatientes)\n${clases}`;
+  return `## Razas jugables\n${razas}\n\n## Clases (el Hechicero es el único mago de verdad; el resto son combatientes con algo de magia de iniciado)\n${clases}`;
 }

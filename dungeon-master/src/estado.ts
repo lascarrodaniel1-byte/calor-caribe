@@ -4,6 +4,7 @@ import type { EstadoJefe } from "./bestiario.js";
 import type { EstadoBehelit } from "./behelit.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
+import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
 import { mapaVacio, type EstadoMapa } from "./mapa.js";
 import { valor } from "./reglas.js";
 
@@ -34,6 +35,8 @@ export interface Personaje {
   anemia_progreso: number;
   /** Puntos de atributo robados por criaturas (vuelven cuando muere el ladrón). */
   robado: Partial<Record<"fue" | "des" | "con" | "int" | "sab" | "car", number>>;
+  /** Magia: maestría, escuelas, hechizos y tributos acumulados. */
+  magia: MagiaPersonaje;
   /** Viales tomados en las últimas 24 h (se reinician con pasar_tiempo). */
   dosis: { curacion: number; sueno: number };
 }
@@ -65,6 +68,8 @@ export function normalizar(p: Personaje): Personaje {
   p.anemia_progreso ??= 0;
   p.dosis ??= { curacion: 0, sueno: 0 };
   p.robado ??= {};
+  p.magia ??= magiaInicial(p.clase);
+  p.magia.tramos_vejez ??= 0;
   return p;
 }
 
@@ -118,6 +123,7 @@ export function fichaTexto(p: Personaje): string {
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",
     p.ceniza ? `  Ceniza: ${p.ceniza}` : "",
+    textoMagia(p.magia),
     p.notas ? `  Notas: ${p.notas}` : "",
   ]
     .filter(Boolean)

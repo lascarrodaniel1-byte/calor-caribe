@@ -3,6 +3,7 @@
 import { tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
 import { APARIENCIA } from "./behelit.js";
+import { CATALIZADORES } from "./magia.js";
 import { VIALES, type NombreVial } from "./viales.js";
 
 export const CALIDADES_OBJETO = ["defectuoso", "normal", "de calidad", "encantado", "maldito", "reliquia", "legendario"] as const;
@@ -254,6 +255,17 @@ export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; 
     });
     dm.push(`- ${o.nombre}: ${o.verdad} (¡rarísimo! Que su hallazgo pese en la historia.)`);
     jug.push(`- ${o.nombre}: ${o.apariencia}`);
+  }
+  // Catalizadores de magia: escasos; los de hueso de dios, solo en hallazgos y jefes.
+  const PROB_CATALIZADOR: Record<Origen, number> = { compra: 30, saqueo: 5, hallazgo: 15, jefe: 35 };
+  if (tirar("1d100").total <= PROB_CATALIZADOR[b.origen]) {
+    const posibles = CATALIZADORES.filter((c) => (b.origen === "compra" || b.origen === "saqueo" ? c.precio !== null : true));
+    const c = posibles[tirar(`1d${posibles.length}`).total - 1];
+    const raro = c.precio === null && tirar("1d100").total > 25;
+    const elegido = raro ? posibles.filter((x) => x.precio !== null)[0] : c;
+    const linea = `- Catalizador: ${elegido.nombre}${b.origen === "compra" && elegido.precio ? ` — ${elegido.precio} po` : ""} (${elegido.descripcion})`;
+    dm.push(linea);
+    jug.push(linea);
   }
   if (b.incluir_viales !== false) {
     const v = VIALES_ORIGEN[b.origen];

@@ -31,6 +31,7 @@ import {
   tratar,
   UBICACIONES,
 } from "./heridas.js";
+import { descansar, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
 import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { ATRIBUTOS } from "./reglas.js";
@@ -102,6 +103,7 @@ const esquemas = {
     inventario: z.array(z.string()).optional(),
     oro: z.number().int().min(0).optional(),
     notas: z.string().optional().describe("Trasfondo, rasgos, conjuros, competencias…"),
+    escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Solo Hechicero: sus dos escuelas"),
   }),
   modificar_personaje: z.object({
     nombre: z.string(),
@@ -116,6 +118,9 @@ const esquemas = {
     agregar_secuelas: z.array(z.string()).optional().describe("Secuelas narrativas fuera del sistema de heridas"),
     quitar_secuelas: z.array(z.string()).optional().describe("Solo con magia o ritos extraordinarios"),
     ceniza_cambio: z.number().int().optional().describe("Ceniza ganada o purgada por medios narrativos"),
+    maestria: z.enum(MAESTRIAS).optional().describe("Nueva maestría mágica (tras entrenar con un maestro, un grimorio o un pacto)"),
+    agregar_escuelas: z.array(z.enum(ESCUELAS)).optional(),
+    agregar_hechizos: z.array(z.string()).optional(),
     notas: z.string().optional().describe("Reemplaza las notas de la ficha"),
   }),
   infligir_herida: z.object({
@@ -229,6 +234,27 @@ const esquemas = {
       .describe("aceptar: lo que se sacrifica (para un jugador, sus compañeros)"),
     destinado: z.string().optional().describe("crear_carmesi: fija el destinado (si no, lo decide el azar en secreto)"),
   }),
+  lanzar_hechizo: z.object({
+    lanzador: z.string().describe("Personaje jugador que lanza"),
+    hechizo: z.string().optional().describe("Hechizo de la lista de referencia que conoce"),
+    hechizo_nuevo: z
+      .object({
+        nombre: z.string(),
+        escuela: z.enum(ESCUELAS),
+        circulo: z.number().int().min(0).max(5),
+        tributo: z.enum(TRIBUTOS).optional(),
+        efecto: z.string(),
+        dados: z.string().optional(),
+        salvacion: z.string().optional(),
+      })
+      .optional()
+      .describe("Hechizo improvisado (−2 a lanzarlo si no lo conoce)"),
+    circulo: z.number().int().min(0).max(5).optional().describe("Lanzarlo en un círculo más alto: más efecto, más precio"),
+    catalizador: z.string().optional().describe("Catalizador del inventario que absorbe el precio"),
+    forzar: z.boolean().optional().describe("Lanzar un círculo por encima de su maestría (CD +5, precio doble)"),
+    objetivo: z.string().optional().describe("Personaje jugador al que cura o cierra heridas"),
+    herida: z.string().optional().describe("Herida concreta del objetivo, p. ej. H2"),
+  }),
   ubicacion: z.object({
     lugar: z.string().describe("Dónde está el grupo ahora (o de dónde parte si viaja). Reutiliza el mismo nombre para el mismo sitio"),
     region: z.enum(NOMBRES_REGIONES).optional().describe("Región, si el lugar es nuevo"),
@@ -280,6 +306,8 @@ const descripciones: Record<Nombre, string> = {
     "Para criaturas que ven el futuro: consulta sus presagios, impón uno en lugar de una tirada (de un jugador o suya) o renueva uno al inicio de su ronda.",
   behelit:
     "Behelits: crear el Behelit Carmesí (único), intentar despertarlos en la desesperación y resolver la oferta del Coro (aceptar o rechazar).",
+  lanzar_hechizo:
+    "Lanza un hechizo de un personaje jugador: tirada de lanzamiento, efecto y el precio que paga (calor, aliento, sangre, cordura o años), con catalizadores.",
   ubicacion:
     "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos.",
   anotar_mundo:
@@ -360,6 +388,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
           dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
           robado: partida.personajes[e.nombre]?.robado ?? {},
+          magia: partida.personajes[e.nombre]?.magia ?? magiaInicial(e.clase, e.escuelas_magia),
         });
         partida.personajes[p.nombre] = p;
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}` };
@@ -400,6 +429,15 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           p.ceniza = Math.max(0, p.ceniza + e.ceniza_cambio);
           cambios.push(`Ceniza ${p.ceniza}`);
         }
+        if (e.maestria) {
+          p.magia.maestria = e.maestria;
+          cambios.push(`maestría ${e.maestria}`);
+        }
+        for (const x of e.agregar_escuelas ?? []) if (!p.magia.escuelas.includes(x)) p.magia.escuelas.push(x);
+        for (const x of e.agregar_hechizos ?? []) if (!p.magia.hechizos.includes(x)) {
+          p.magia.hechizos.push(x);
+          cambios.push(`aprende ${x}`);
+        }
         if (e.notas !== undefined) p.notas = e.notas;
         if (p.pv === 0) cambios.push("¡a 0 PV! (inconsciente)");
         return {
@@ -427,6 +465,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       case "pasar_tiempo": {
         const e = validado.data as z.infer<typeof esquemas.pasar_tiempo>;
         const ps = e.personajes?.length ? e.personajes.map((n) => buscar(partida, n)) : Object.values(partida.personajes);
+        for (const p of ps) descansar(p, e.dias, e.calidad);
         const texto = ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`).join("\n\n");
         return { contenido: texto, aviso: `⏳ ${e.dias} día(s), ${e.calidad}\n${texto}` };
       }
@@ -435,6 +474,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const ps = e.personajes?.length
           ? e.personajes.map((n) => buscar(partida, n))
           : Object.values(partida.personajes).filter((p) => p.heridas.some((h) => h.sangrando || /costillas/.test(h.estructura ?? "")));
+        for (const p of Object.values(partida.personajes)) enfriar(p, e.asaltos);
         if (!ps.length) return { contenido: "Nadie está sangrando.", aviso: null };
         const texto = ps.map((p) => avanzarAsaltos(p, e.asaltos, e.esfuerzo ?? true)).join("\n");
         return { contenido: texto, aviso: `🩸 ${texto}` };
@@ -533,6 +573,13 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         }
         const texto = rechazar(partida, portador);
         return { contenido: texto, aviso: `👁  ${texto}` };
+      }
+      case "lanzar_hechizo": {
+        const e = validado.data as z.infer<typeof esquemas.lanzar_hechizo>;
+        const p = buscar(partida, e.lanzador);
+        const objetivo = e.objetivo ? buscar(partida, e.objetivo) : undefined;
+        const texto = lanzar(p, { ...e, objetivo });
+        return { contenido: `${texto}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
       }
       case "ubicacion": {
         const e = validado.data as z.infer<typeof esquemas.ubicacion>;

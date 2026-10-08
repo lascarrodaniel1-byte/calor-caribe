@@ -7,7 +7,7 @@ La campaña está ambientada en **Velmora, el Reino del Sol Herido**: un mundo d
 ## El mundo
 
 - **Razas**: Humano del Faro, Enano de Karak-Dûm, Elfo Marchito, Mediano de Hollín, Varg (maldición del lobo), Nacido Pálido (sangre vampírica) y Cenizo (nacido durante el Eclipse).
-- **Clases (todas combatientes)**: Mercenario del Cuervo, Berserker de Ceniza, Caballero Juramentado, Cazador de Brujas, Degollador, Flagelante, Segador y Barbero-Cirujano. Cada una se basa en una clase de 5e (guerrero, bárbaro, paladín, explorador, pícaro, monje, brujo) con rasgos propios del mundo.
+- **Clases**: Mercenario del Cuervo, Berserker de Ceniza, Caballero Juramentado, Cazador de Brujas, Degollador, Flagelante, Segador, Barbero-Cirujano y Hechicero (el único mago de verdad). Cada una se basa en una clase de 5e (guerrero, bárbaro, paladín, explorador, pícaro, monje, brujo) con rasgos propios del mundo.
 - **Regiones y facciones**: la Ciudad-Faro de Aldenmar, las Ciénagas de Hollín, la Fortaleza Silente, el Bosque de Velo Rojo, la Marca Hueca; la Inquisición de la Llama Gris, las Hermanas de la Sutura, la Corte Pálida…
 
 Todo se define en `src/mundo.ts`; cámbialo para crear tu propio mundo.
@@ -75,6 +75,23 @@ Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas,
 ## Mapa
 
 Los jugadores ven en todo momento un mapa antiguo de Velmora con sus seis regiones, los lugares que vayan descubriendo, el rastro del camino recorrido y un sello de lacre donde está el grupo; durante un viaje, la ruta y lo que llevan recorrido. El DM lo mueve con la acción `ubicacion` cada vez que llegan a otro sitio o viajan (en la página de claude.ai, en el lateral o en «Ver mapa» en el móvil; se amplía al tocarlo).
+
+## Magia
+
+Rara, temida y cara: cada hechizo se cobra un **tributo** en quien lo lanza, mayor cuanto más alto su círculo (0 = truco gratis, 5 = prohibido).
+
+| Escuela | Precio | Si se acumula |
+|---|---|---|
+| Elemental (fuego, rayo) | Calor | Sobrecalentado → fiebre y quemaduras internas → a 10, combustión |
+| Elemental de aire y Protección | Aliento | Jadeo → sin voz para lanzar → asfixia |
+| Curación | Sangre | PV y anemia |
+| Mente, Sombra, Adivinación | Cordura | Voces → pesadillas → delirio → locura |
+| Necromancia (y todo hechizo de círculo 4 o 5) | Años de vida | Canas, −1 FUE y −1 DES cada 10 años; con 50, el corazón puede pararse |
+
+- **Maestría**: profano, iniciado (círculo 1), adepto (2), maestro (3), archimago (4); forzar un círculo más cuesta el doble.
+- **Clases**: el nuevo **Hechicero** es el único mago de verdad (adepto, dos escuelas, suma su competencia). Los guerreros saben uno o dos hechizos de iniciado de su estilo: *Piel de hierro* (Mercenario), *Sangre hirviente* (Berserker), *Cerrar la carne* (Caballero y Barbero-Cirujano), *Ojo de bruja* (Cazador de Brujas), *Paso de sombra* (Degollador), *Susurro* (Flagelante); el Segador es adepto en necromancia.
+- **Razas**: el Elfo Marchito y el Nacido Pálido (necromancia, envejece la mitad) tienen facilidad; el Cenizo, para lo elemental; el Enano y el Varg lo tienen difícil.
+- **Catalizadores** que absorben el precio: Piedra de brasa, Ámbar de tormenta, Corazón de cuervo, Incienso de amapola gris, Reloj de arena de hueso, Diente de dios y el Báculo de roble petrificado. Aparecen poco en el botín.
 
 ## Behelits
 
@@ -177,6 +194,7 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/equipo.ts` | Tablas de botín, encantamientos, maldiciones y reliquias |
 | `src/bestiario.ts` | Criaturas, jefes y el motor de habilidades especiales |
 | `src/mapa.ts` | Mapa: regiones, lugares, posición del grupo y viajes |
+| `src/magia.ts` | Magia: escuelas, hechizos, tributos, catalizadores, maestría y afinidades |
 | `src/behelit.ts` | Behelits, el Behelit Carmesí y el Eclipse |
 | `src/reglas.ts` | Salvaciones (con competencia según la clase) y utilidades |
 | `src/herramientas.ts` | Herramientas del DM: dados, fichas, heridas, tiempo, hemorragias, viales, botín, objetos y criaturas |
