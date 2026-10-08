@@ -55,10 +55,17 @@ El botín se genera con tablas según el origen: **compra**, **saqueo**, **halla
 
 Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas, y el programa lleva sus PV y resuelve sus habilidades con tiradas reales.
 
-- **Bestias y monstruos**: Hambrientos, Lobos de Ceniza, Ghules, Ogros, Trolls de ciénaga, Wyvernos, Basiliscos, Mantícoras, Banshees, Gigantes de hueso y Dragones jóvenes de ceniza.
+- **Bestias y monstruos**: Hambrientos, Lobos de Ceniza, Ghules, Ogros, Trolls de ciénaga, Wyvernos, Basiliscos, Mantícoras, Banshees, Gigantes de hueso, Dragones jóvenes de ceniza y Apóstoles (los que aceptaron la oferta de un behelit).
 - **Jefes**: Vaskar el Lobo del Eclipse, el Juez Sin Ojos, Ysolde la Reina Pálida, la Madre de los Hambrientos, El Que Golpea Bajo la Piedra, Kharoth (Dragón Antiguo del Sol Herido) y:
   - **Ilvara, la Tejedora de Mañanas**, que **ve el futuro**: tira sus *presagios* (d20) por adelantado y puede imponerlos en lugar de las tiradas de los jugadores; condena con profecías de muerte que solo se rompen haciendo algo que ella no haya visto.
   - **Vaerth, el Sin Rostro**, un **cambiaformas** que **roba atributos** (del mejor atributo de la víctima) y se queda con los **rasgos de su raza y su clase** y con su forma. Si a alguien le roba todo un atributo, muere vacío. Al matarlo, todo lo robado vuelve a sus dueños. Son extremadamente difíciles; varias de sus habilidades provocan **muerte instantánea** si fallas la salvación (algunas con cualquier fallo, otras si fallas por mucho).
+
+## Behelits
+
+Huevos de piedra con un rostro desordenado, que pertenecen al **Coro de los Cinco**. Son lo más difícil de encontrar del mundo: nunca se venden y solo aparecen por azar extremo (0,1 % por objeto en saqueos, 0,3 % en hallazgos y 2 % en botín de jefe) o cuando el DM lo decide.
+
+- **Behelit común**: despierta solo en la desesperación más profunda (al menos 2 motivos reales: estar al borde de la muerte, perder a un ser querido, una traición, perderlo todo, un sueño roto; cuantos más, más probable). Ofrece poder a cambio de sacrificar a quien más amas. Aceptar convierte al portador en **Apóstol** (+4 FUE y +4 CON, +5 de Ceniza, forma demoníaca), pero pierde su humanidad, y los sacrificados quedan marcados para siempre. Rechazar exige una salvación de SAB CD 18; si se falla, la mente queda rota (−2 SAB).
+- **Behelit Carmesí**: **único** en toda la campaña. Solo aparece si el DM lo crea como centro de un gran arco. Al crearse, el programa decide en secreto quién está destinado (5 % por personaje, más si acumula Ceniza; puede no serlo nadie del grupo). **En manos de cualquier otro nunca despierta.** El destinado necesita al menos 3 motivos de desesperación y una ambición declarada; entonces llega el Eclipse, y puede ascender como el Quinto del Coro sacrificando a todos sus compañeros (rechazarlo exige SAB CD 22).
 
 ## Requisitos
 
@@ -106,6 +113,7 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/viales.ts` | Viales y sus riesgos |
 | `src/equipo.ts` | Tablas de botín, encantamientos, maldiciones y reliquias |
 | `src/bestiario.ts` | Criaturas, jefes y el motor de habilidades especiales |
+| `src/behelit.ts` | Behelits, el Behelit Carmesí y el Eclipse |
 | `src/reglas.ts` | Salvaciones (con competencia según la clase) y utilidades |
 | `src/herramientas.ts` | Herramientas del DM: dados, fichas, heridas, tiempo, hemorragias, viales, botín, objetos y criaturas |
 | `src/dados.ts` | Motor de dados |

@@ -14,6 +14,7 @@ import {
   type Criatura,
   type EstadoJefe,
 } from "./bestiario.js";
+import { aceptar, crearCarmesi, despertar, RAZONES, rechazar } from "./behelit.js";
 import { CALIDADES_OBJETO, crearObjeto, generarBotin, ORIGENES } from "./equipo.js";
 import { fichaTexto, normalizar, type Partida, type Personaje } from "./estado.js";
 import {
@@ -197,6 +198,16 @@ const esquemas = {
     accion: z.enum(["ver", "usar", "renovar"]).describe("usar: sustituye una tirada por un presagio; renovar: al inicio de su ronda"),
     valor: z.number().int().min(1).max(20).optional().describe("Con usar: el presagio que impone"),
   }),
+  behelit: z.object({
+    accion: z.enum(["despertar", "aceptar", "rechazar", "crear_carmesi"]),
+    portador: z.string().optional().describe("Personaje que tiene el behelit (despertar, aceptar, rechazar)"),
+    carmesi: z.boolean().optional().describe("despertar: true si es el Behelit Carmesí"),
+    razones: z.array(z.enum(RAZONES)).optional().describe("despertar: motivos de desesperación reales en la ficción"),
+    ambicion: z.string().optional().describe("despertar del carmesí: la ambición del portador"),
+    sacrificados: z.array(z.string()).optional().describe("aceptar: personajes jugadores sacrificados"),
+    sacrificados_pnj: z.array(z.string()).optional().describe("aceptar: PNJ sacrificados"),
+    destinado: z.string().optional().describe("crear_carmesi: fija el destinado (si no, lo decide el azar en secreto)"),
+  }),
   anotar_mundo: z.object({
     nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
   }),
@@ -234,6 +245,8 @@ const descripciones: Record<Nombre, string> = {
     "Resuelve una habilidad especial de una criatura (registrada o improvisada): salvaciones reales, daño, condiciones, heridas, anemia y muerte instantánea.",
   presagio_criatura:
     "Para criaturas que ven el futuro: consulta sus presagios, impón uno en lugar de una tirada (de un jugador o suya) o renueva uno al inicio de su ronda.",
+  behelit:
+    "Behelits: crear el Behelit Carmesí (único), intentar despertarlos en la desesperación y resolver la oferta del Coro (aceptar o rechazar).",
   anotar_mundo:
     "Guarda un hecho importante de la campaña para no olvidarlo en sesiones futuras.",
 };
@@ -463,6 +476,26 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         if (!j.definicion.presagios) throw new Error(`${j.nombre} no ve el futuro.`);
         const texto = presagio(j, e.accion, e.valor);
         return { contenido: texto, aviso: e.accion === "usar" && !texto.startsWith("No") ? `👁  ${texto}` : null };
+      }
+      case "behelit": {
+        const e = validado.data as z.infer<typeof esquemas.behelit>;
+        if (e.accion === "crear_carmesi") {
+          // Los jugadores no se enteran: el DM lo introduce en la historia cuando toque.
+          const r = crearCarmesi(partida, e.destinado);
+          return { contenido: `${r.dm}\nDescripción para cuando lo encuentren: ${r.jugadores}`, aviso: null };
+        }
+        if (!e.portador) throw new Error("Falta el portador.");
+        const p = buscar(partida, e.portador);
+        if (e.accion === "despertar") {
+          const r = despertar(partida, p, e.carmesi ?? false, e.razones ?? [], e.ambicion);
+          return { contenido: r.dm, aviso: `👁  ${r.jugadores}` };
+        }
+        if (e.accion === "aceptar") {
+          const texto = aceptar(partida, p, (e.sacrificados ?? []).map((n) => buscar(partida, n)), e.sacrificados_pnj ?? []);
+          return { contenido: texto, aviso: `🌑 ${texto}` };
+        }
+        const texto = rechazar(partida, p);
+        return { contenido: texto, aviso: `👁  ${texto}` };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;

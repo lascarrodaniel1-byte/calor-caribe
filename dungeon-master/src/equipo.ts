@@ -2,6 +2,7 @@
 // desde lo defectuoso hasta las reliquias. Lo maldito se oculta a los jugadores.
 import { tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
+import { APARIENCIA } from "./behelit.js";
 import { VIALES, type NombreVial } from "./viales.js";
 
 export const CALIDADES_OBJETO = ["defectuoso", "normal", "de calidad", "encantado", "maldito", "reliquia"] as const;
@@ -200,6 +201,19 @@ export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; 
     const o = generarUno(partida, b.origen, b.clase, b.calidad);
     dm.push(`- ${o.nombre} (${o.calidad}, ${o.precio} po): ${o.verdad}`);
     jug.push(`- ${o.nombre}${b.origen === "compra" ? ` — ${o.precio} po` : ""}: ${o.apariencia}`);
+  }
+  // Behelit: probabilidad por cada mil, por objeto. Nunca en tiendas.
+  const BEHELIT: Record<Origen, number> = { compra: 0, saqueo: 1, hallazgo: 3, jefe: 20 };
+  for (let i = 0; i < b.cantidad; i++) {
+    if (tirar("1d1000").total > BEHELIT[b.origen]) continue;
+    const o = crearObjeto(partida, {
+      nombre: "Huevo de piedra con rostro",
+      calidad: "reliquia",
+      apariencia: APARIENCIA,
+      verdad: "BEHELIT común. Despierta solo en la desesperación (herramienta behelit). Si se pierde, tiende a volver a su dueño.",
+    });
+    dm.push(`- ${o.nombre}: ${o.verdad} (¡rarísimo! Que su hallazgo pese en la historia.)`);
+    jug.push(`- ${o.nombre}: ${o.apariencia}`);
   }
   if (b.incluir_viales !== false) {
     const v = VIALES_ORIGEN[b.origen];

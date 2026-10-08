@@ -250,6 +250,24 @@ export const BESTIARIO: Criatura[] = [
     ],
     botin: "Tesoro de dragón: monedas antiguas, reliquias, armas de los que intentaron matarlo",
   },
+  {
+    nombre: "Apóstol",
+    categoria: "monstruo",
+    peligro: 4,
+    region: "Cualquiera: vive entre los humanos con su antigua forma",
+    descripcion:
+      "Alguien que despertó un behelit y sacrificó lo que amaba. De día parece un noble, un monje o un mercader; de noche, su forma verdadera es una pesadilla de carne del tamaño de una casa. Plantilla: adáptala a quien era.",
+    ca: 16,
+    pv: "18d12+90",
+    velocidad: "12 m",
+    atributos: "FUE 24 DES 14 CON 22 INT 12 SAB 12 CAR 16",
+    ataques: ["Forma demoníaca (x3): +11, 3d10+7 del tipo que encaje con su forma", "Mordisco: +11, 4d8+7 perforante"],
+    rasgos: ["Regeneración 10 salvo fuego o armas de plata", "Forma humana: puede volver a ella a voluntad", "Inmune a miedo y veneno", "La marca del sacrificio de los marcados sangra en su presencia"],
+    habilidades: [
+      { nombre: "Devorar", descripcion: "Contra un objetivo apresado o derribado.", salvacion: "con", cd: 18, dano: "6d10", tipo_dano: "perforante", herida: "critico", muerte_si_falla_por: 10 },
+      { nombre: "Horror verdadero", descripcion: "Muestra su forma verdadera por primera vez.", salvacion: "sab", cd: 16, condicion: "asustado 1 minuto" },
+    ],
+  },
   // ------------------------------------------------------------ jefes
   {
     nombre: "Vaskar, el Lobo del Eclipse",

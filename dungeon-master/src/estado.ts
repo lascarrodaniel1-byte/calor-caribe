@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoJefe } from "./bestiario.js";
+import type { EstadoBehelit } from "./behelit.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { valor } from "./reglas.js";
@@ -46,10 +47,11 @@ export interface Partida {
   objetos: Record<string, Objeto>;
   /** Jefes que han aparecido, con su estado. */
   jefes: Record<string, EstadoJefe>;
+  behelit: EstadoBehelit;
 }
 
 export function nuevaPartida(): Partida {
-  return { creada: new Date().toISOString(), historial: [], personajes: {}, notas_mundo: [], objetos: {}, jefes: {} };
+  return { creada: new Date().toISOString(), historial: [], personajes: {}, notas_mundo: [], objetos: {}, jefes: {}, behelit: { carmesi_creado: false, destinados: [] } };
 }
 
 /** Rellena los campos que faltan en fichas y partidas guardadas con versiones anteriores. */
@@ -70,6 +72,7 @@ export function cargar(ruta: string): Partida | null {
   const partida = JSON.parse(readFileSync(ruta, "utf8")) as Partida;
   partida.objetos ??= {};
   partida.jefes ??= {};
+  partida.behelit ??= { carmesi_creado: false, destinados: [] };
   for (const j of Object.values(partida.jefes)) {
     j.presagios ??= [];
     j.robos ??= [];

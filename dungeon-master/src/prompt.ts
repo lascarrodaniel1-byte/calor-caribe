@@ -1,3 +1,4 @@
+import { REGLAS_BEHELIT } from "./behelit.js";
 import { textoBestiario } from "./bestiario.js";
 import { REGLAS_EQUIPO } from "./equipo.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
@@ -42,5 +43,7 @@ ${REGLAS_HERIDAS}
 ${REGLAS_VIALES}
 
 ${REGLAS_EQUIPO}
+
+${REGLAS_BEHELIT}
 
 ${textoBestiario()}`;
