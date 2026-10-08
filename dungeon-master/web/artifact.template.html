@@ -33,7 +33,7 @@
   html, body { height: 100%; }
   body {
     color: var(--texto);
-    font: 16px/1.5 var(--f-ui);
+    font: 18px/1.6 var(--f-ui);
     background-color: var(--roble);
     background-image:
       radial-gradient(ellipse 60% 45% at 12% 8%, #f0b45a22, transparent 70%),        /* resplandor de la chimenea */
@@ -63,7 +63,7 @@
     font: 400 26px/1 var(--f-letrero); margin: 0; color: var(--lumbre);
     text-shadow: 0 0 12px #f0b45a66, 0 2px 0 #000;
   }
-  .estado { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--apagado); flex: 1; min-width: 0; }
+  .estado { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; color: var(--apagado); flex: 1; min-width: 0; }
   .estado span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vela { /* una vela encendida */
     position: relative; width: 8px; height: 16px; flex: none; margin-top: 8px;
@@ -79,12 +79,12 @@
   .estado.narrando .vela::before { animation: llama 1.4s ease-in-out infinite; }
   @keyframes llama { 0%,100% { transform: translateX(-50%) scale(1); } 30% { transform: translateX(-55%) scale(1.08, .95); } 60% { transform: translateX(-46%) scale(.94, 1.06); } }
   @media (prefers-reduced-motion: reduce) { .estado.narrando .vela::before { animation: none; } }
-  .control { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--apagado); }
+  .control { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--apagado); }
   select { background: #1c120b; border: 1px solid var(--roble-claro); border-radius: 4px; padding: 4px 8px; }
 
   .boton { /* placa de latón */
     background: linear-gradient(180deg, #d8a956, var(--laton) 55%, #8a6226);
-    color: #241508; border: 1px solid #6b4a1c; border-radius: 4px; padding: 9px 16px;
+    color: #241508; border: 1px solid #6b4a1c; border-radius: 4px; padding: 10px 18px;
     font-weight: 700; cursor: pointer; box-shadow: inset 0 1px 0 #ffe8b066, 0 2px 4px #0008;
     text-shadow: 0 1px 0 #f3d08a66;
   }
@@ -96,14 +96,14 @@
   }
 
   .cuerpo { flex: 1; display: flex; min-height: 0; }
-  .cronica { flex: 1; overflow-y: auto; padding-block: 24px 16px; padding-inline: 16px; min-width: 0; }
-  .columna { max-width: 740px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-  .turno { display: flex; flex-direction: column; gap: 12px; }
+  .cronica { flex: 1; overflow-y: auto; padding-block: 28px 20px; padding-inline: 16px; min-width: 0; }
+  .columna { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+  .turno { display: flex; flex-direction: column; gap: 18px; }
 
   /* La narración: pergamino húmedo con el cerco de una jarra */
   .narracion {
-    position: relative; color: var(--tinta); font: 19px/1.6 var(--f-narracion);
-    padding: 18px 22px; overflow-wrap: anywhere; border-radius: 3px;
+    position: relative; color: var(--tinta); font: 21px/1.7 var(--f-narracion);
+    padding: 26px 32px; overflow-wrap: anywhere; border-radius: 3px;
     background:
       radial-gradient(circle at 92% 14%, transparent 22px, #8a5a1c30 23px, #8a5a1c18 26px, transparent 28px), /* cerco de cerveza */
       radial-gradient(ellipse at 6% 96%, #6b5a2a30, transparent 35%),     /* mancha de humedad */
@@ -111,44 +111,44 @@
       linear-gradient(175deg, #efe0bd, var(--pergamino) 45%, #d6bf92);
     box-shadow: inset 0 0 28px #8a6a3a66, inset 0 0 3px #6b4a2a, 0 6px 18px #000a, 0 0 30px #f0b45a14;
   }
-  .narracion p { margin: 0 0 .7em; }
+  .narracion p { margin: 0 0 .9em; }
   .narracion p:last-child { margin-bottom: 0; }
   .narracion strong { color: #5a1d12; }
 
   /* Lo que dicen los jugadores: tiza en una pizarra */
   .accion {
     align-self: flex-start; max-width: 100%; overflow-wrap: anywhere;
-    font: 500 21px/1.35 var(--f-tiza); color: var(--tiza);
+    font: 500 25px/1.4 var(--f-tiza); color: var(--tiza);
     background: radial-gradient(ellipse at 30% 30%, #343839, var(--pizarra));
-    border: 5px solid #4a3020; border-radius: 3px; padding: 6px 14px;
+    border: 5px solid #4a3020; border-radius: 3px; padding: 10px 18px;
     box-shadow: 0 3px 8px #0009, inset 0 0 10px #0006; transform: rotate(-.4deg);
   }
   .accion b { font-weight: 700; }
 
   /* Resultados del motor: fichas de madera con remaches de latón */
   .resultado {
-    font: 13px/1.55 var(--f-dados); white-space: pre-wrap; overflow-wrap: anywhere; color: #f1e3c6;
+    font: 15px/1.65 var(--f-dados); white-space: pre-wrap; overflow-wrap: anywhere; color: #f4e8d0;
     background: linear-gradient(180deg, #3f2a19, #2e1e12); border: 1px solid #1d120a;
-    border-left: 4px solid var(--laton); padding: 9px 12px 9px 14px; border-radius: 3px;
+    border-left: 4px solid var(--laton); padding: 14px 18px 14px 20px; border-radius: 3px;
     box-shadow: 0 3px 8px #0008, inset 0 1px 0 #ffffff12;
   }
   .resultado.letal { border-left-color: var(--sangre); background: linear-gradient(180deg, #4a1d17, #2e1410); }
-  .nota { color: var(--apagado); font-style: italic; font-size: 14px; text-align: center; }
+  .nota { color: var(--apagado); font-style: italic; font-size: 17px; text-align: center; }
   .privado {
-    font: 13px/1.5 var(--f-dados); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--apagado);
-    border: 1px dashed #6b4a2a; padding: 10px 12px; background: #1a100a99;
+    font: 15px/1.65 var(--f-dados); white-space: pre-wrap; overflow-wrap: anywhere; color: #d2bfa0;
+    border: 1px dashed #6b4a2a; padding: 16px 18px; background: #1a100a99;
   }
-  .privado::before { content: "Al oído, solo para ti"; display: block; font: 700 11px var(--f-ui); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; color: var(--lumbre); }
+  .privado::before { content: "Al oído, solo para ti"; display: block; font: 700 13px var(--f-ui); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; color: var(--lumbre); }
   .separador { border: 0; height: 12px; margin: 4px 0; background: radial-gradient(circle, #f0b45a55 1.5px, transparent 2px) center / 18px 12px repeat-x; }
 
   /* Portada: el letrero de la posada y el menú del día */
   .vacio { padding-block: 32px; display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center; }
   .vacio h2 { font: 400 40px/1.1 var(--f-letrero); margin: 0; color: var(--lumbre); text-wrap: balance; text-shadow: 0 0 18px #f0b45a55, 0 2px 0 #000; }
-  .vacio > p { color: var(--texto); max-width: 52ch; margin: 0; font: italic 19px/1.5 var(--f-narracion); }
+  .vacio > p { color: var(--texto); max-width: 52ch; margin: 0; font: italic 21px/1.6 var(--f-narracion); }
   .menu {
-    width: 100%; max-width: 360px; text-align: left; color: var(--tiza); font: 500 20px/1.4 var(--f-tiza);
+    width: 100%; max-width: 400px; text-align: left; color: var(--tiza); font: 500 23px/1.45 var(--f-tiza);
     background: radial-gradient(ellipse at 30% 25%, #353a3b, var(--pizarra)); border: 8px solid #4a3020; border-radius: 4px;
-    padding: 14px 18px; box-shadow: 0 8px 22px #000b, inset 0 0 14px #000a; transform: rotate(.6deg);
+    padding: 18px 24px; box-shadow: 0 8px 22px #000b, inset 0 0 14px #000a; transform: rotate(.6deg);
   }
   .menu h3 { font: 700 24px var(--f-tiza); margin: 0 0 6px; text-align: center; }
   .menu ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -157,20 +157,20 @@
 
   .cola {
     background: linear-gradient(180deg, #3a2516, #2a1b11); border: 1px solid #1d120a; border-top: 3px solid var(--laton);
-    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; box-shadow: 0 4px 12px #0009;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; font-size: 17px; box-shadow: 0 4px 12px #0009;
   }
-  .cola strong { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--lumbre); }
+  .cola strong { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--lumbre); }
 
   /* Fichas clavadas en el poste */
   .fichas {
-    width: 340px; flex: none; overflow-y: auto; padding: 16px;
+    width: 380px; flex: none; overflow-y: auto; padding: 20px;
     background: linear-gradient(90deg, #1d120a, #2a1b11 12px, #2a1b11);
     border-left: 3px solid var(--nogal);
   }
   .fichas h2 { font: 400 24px var(--f-letrero); margin: 0 0 14px; color: var(--lumbre); text-shadow: 0 0 10px #f0b45a44; }
   .ficha {
-    position: relative; font: 12px/1.5 var(--f-dados); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--tinta);
-    background: linear-gradient(170deg, #eadbb8, #d4bd8e); padding: 18px 12px 12px; margin-bottom: 16px;
+    position: relative; font: 14px/1.6 var(--f-dados); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--tinta);
+    background: linear-gradient(170deg, #eadbb8, #d4bd8e); padding: 24px 18px 18px; margin-bottom: 20px;
     box-shadow: inset 0 0 18px #8a6a3a55, 0 4px 10px #000a; transform: rotate(-.5deg);
   }
   .ficha:nth-child(even) { transform: rotate(.5deg); }
@@ -188,15 +188,15 @@
   }
   .redaccion .columna { gap: 8px; }
   .atajos { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .atajos .boton { font-size: 13px; padding: 5px 10px; }
-  .quien { margin-left: auto; font-size: 13px; color: var(--lumbre); background: none; border: 0; cursor: pointer; text-decoration: underline dotted; }
+  .atajos .boton { font-size: 15px; padding: 7px 13px; }
+  .quien { margin-left: auto; font-size: 15px; color: var(--lumbre); background: none; border: 0; cursor: pointer; text-decoration: underline dotted; }
   .escribir { display: flex; gap: 8px; align-items: flex-end; }
   textarea, input[type=text] {
     width: 100%; color: var(--tinta); background: linear-gradient(175deg, #efe2c4, #ddc89f);
-    border: 1px solid #6b4a2a; border-radius: 3px; padding: 10px 12px; box-shadow: inset 0 1px 6px #8a6a3a66;
+    border: 1px solid #6b4a2a; border-radius: 3px; padding: 12px 16px; box-shadow: inset 0 1px 6px #8a6a3a66;
   }
   textarea::placeholder, input::placeholder { color: #7a6448; }
-  textarea { resize: none; min-height: 46px; max-height: 160px; font-family: var(--f-narracion); font-size: 17px; }
+  textarea { resize: none; min-height: 52px; max-height: 180px; font-family: var(--f-narracion); font-size: 20px; }
 
   .velo { position: fixed; inset: 0; background: #0a0604e6; display: grid; place-items: center; padding: 16px; z-index: 30; }
   .velo form {
@@ -209,7 +209,9 @@
 
   @media (max-width: 800px) {
     .fichas { position: fixed; inset: 0; width: auto; z-index: 25; border-left: 0; padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
-    .narracion { font-size: 18px; padding: 14px 16px; }
+    .narracion { font-size: 19px; padding: 20px 20px; }
+    .accion { font-size: 22px; }
+    .resultado, .privado { font-size: 14px; padding: 12px 14px; }
     .barra h1 { font-size: 21px; }
     .vacio h2 { font-size: 32px; }
   }
@@ -631,7 +633,7 @@
   $("empezar").onclick = () => enviar("Hola, queremos jugar una partida nueva de D&D. ¡Empecemos!");
 
   const caja = $("accion");
-  const ajustar = () => { caja.style.height = "auto"; caja.style.height = Math.min(caja.scrollHeight, 160) + "px"; };
+  const ajustar = () => { caja.style.height = "auto"; caja.style.height = Math.min(caja.scrollHeight, 180) + "px"; };
   caja.addEventListener("input", ajustar);
   caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
   $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
