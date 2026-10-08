@@ -123,6 +123,10 @@ const esquemas = {
     tipo: z.enum(TIPOS),
     gravedad: z.enum(GRAVEDADES).optional().describe("Omítela para que se tire según la causa"),
     ubicacion: z.enum(UBICACIONES).optional().describe("Omítela para que se tire al azar"),
+    estructura: z
+      .string()
+      .optional()
+      .describe('Estructura concreta solo si la ficción lo exige (p. ej. "arteria femoral", "nervio ciático"); si no, se tira según la gravedad'),
     de_no_muerto: z.boolean().optional().describe("true si la causa un no-muerto: transmite la Podre"),
     descripcion: z.string().optional().describe('Breve, p. ej. "tajo de hacha oxidada en el antebrazo"'),
   }),
@@ -146,7 +150,8 @@ const esquemas = {
   }),
   avanzar_asaltos: z.object({
     asaltos: z.number().int().min(1).max(600).describe("Asaltos de 6 s; 10 = 1 minuto"),
-    personajes: z.array(z.string()).optional().describe("Por defecto, todos los que sangran"),
+    personajes: z.array(z.string()).optional().describe("Por defecto, todos los que sangran o tienen costillas rotas"),
+    esfuerzo: z.boolean().optional().describe("false si el herido está quieto (no combate ni corre): las costillas no perforan el pulmón"),
   }),
   usar_vial: z.object({
     vial: z.enum(NOMBRES_VIALES),
@@ -414,9 +419,9 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.avanzar_asaltos>;
         const ps = e.personajes?.length
           ? e.personajes.map((n) => buscar(partida, n))
-          : Object.values(partida.personajes).filter((p) => p.heridas.some((h) => h.sangrando));
+          : Object.values(partida.personajes).filter((p) => p.heridas.some((h) => h.sangrando || /costillas/.test(h.estructura ?? "")));
         if (!ps.length) return { contenido: "Nadie está sangrando.", aviso: null };
-        const texto = ps.map((p) => avanzarAsaltos(p, e.asaltos)).join("\n");
+        const texto = ps.map((p) => avanzarAsaltos(p, e.asaltos, e.esfuerzo ?? true)).join("\n");
         return { contenido: texto, aviso: `🩸 ${texto}` };
       }
       case "usar_vial": {

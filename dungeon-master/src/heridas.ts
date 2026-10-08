@@ -2,12 +2,13 @@
 // Toda la aleatoriedad pasa por dados.ts; el DM solo narra lo que sale aquí.
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
+import { buscarEstructura, elegirEstructura, RELOJ_MAX, tirarValor, type Estructura, type Region, type ZonaVital } from "./anatomia.js";
 import { raza, type RasgosCuracion } from "./mundo.js";
 import { marcarMuerto, salvacion, valor } from "./reglas.js";
 
 export const GRAVEDADES = ["leve", "moderada", "grave", "critica"] as const;
 export const TIPOS = ["corte", "perforacion", "contusion", "quemadura", "mordedura", "necrotica"] as const;
-export const UBICACIONES = ["cabeza", "torso", "brazo izquierdo", "brazo derecho", "pierna izquierda", "pierna derecha"] as const;
+export const UBICACIONES = ["cabeza", "cuello", "torso", "abdomen", "brazo izquierdo", "brazo derecho", "pierna izquierda", "pierna derecha"] as const;
 export const CAUSAS = ["critico", "cero_pv", "golpe_masivo", "menor"] as const;
 export const METODOS = ["medicina", "detener hemorragia", "cauterizar", "magia divina", "remedio raro"] as const;
 export const RECURSOS = ["kit de sanador", "herramientas de cirujano", "alcohol", "hierbas", "hierro candente", "paciente sedado"] as const;
@@ -43,6 +44,18 @@ export interface Herida {
   /** Infección: el cuerpo la vence con 3 salvaciones superadas; 2 fallos agravan la herida. */
   infeccion_exitos: number;
   infeccion_fallos: number;
+  /** Zona vital: verde (superficial), ámbar (se sobrevive con secuelas) o roja (un minuto de vida). */
+  zona_vital: ZonaVital;
+  /** Estructura anatómica afectada (arteria femoral, bazo, plexo braquial…). */
+  estructura: string;
+  /** Roja sangrando: asaltos que le quedan antes de morir. */
+  reloj?: number;
+  /** Ámbar sangrando: asaltos hasta que se vuelve roja si nadie la comprime. */
+  escalada?: number;
+  /** Ámbar visceral sin cirugía: días que ha empeorado. */
+  fallos_viscerales: number;
+  /** Agonizando por una herida visceral: muere al final del día siguiente sin cirugía. */
+  agonia: boolean;
   /** Si estaba tratada antes de infectarse (a eso vuelve si el cuerpo vence la infección). */
   tratada_antes: boolean;
 }
@@ -65,7 +78,7 @@ export const REGLAS: Record<Gravedad, Regla> = {
   critica: { cdTratar: 19, dias: "3d10+15", penalPV: 10, cdInfeccion: 15, cdRecuperacion: 17, material: "herramientas de cirujano", danoComplicacion: "3d6" },
 };
 
-type Zona = "cabeza" | "torso" | "brazo" | "pierna";
+type Zona = Region;
 const zona = (u: Ubicacion): Zona => u.split(" ")[0] as Zona;
 
 const EFECTOS: Record<Zona, Record<Exclude<Gravedad, "leve">, string>> = {
@@ -78,6 +91,16 @@ const EFECTOS: Record<Zona, Record<Exclude<Gravedad, "leve">, string>> = {
     moderada: "desventaja en pruebas de CON y de Atletismo",
     grave: "velocidad a la mitad y desventaja en salvaciones de CON",
     critica: "hemorragia interna: sin cirugía, salvación contra muerte cada hora",
+  },
+  cuello: {
+    moderada: "dolor al tragar y girar la cabeza",
+    grave: "le cuesta respirar y hablar",
+    critica: "se ahoga en su propia sangre",
+  },
+  abdomen: {
+    moderada: "dolor al moverse: desventaja en Atletismo y Acrobacias",
+    grave: "no puede erguirse del todo: velocidad a la mitad",
+    critica: "las entrañas al aire",
   },
   brazo: {
     moderada: "desventaja en ataques con ese brazo",
@@ -115,6 +138,14 @@ const SECUELAS: Record<Zona, { menor: string[]; permanente: string[] }> = {
       "dolor crónico: −1 a futuras tiradas de recuperación",
       "entrañas débiles: desventaja en salvaciones contra veneno y enfermedad",
     ],
+  },
+  cuello: {
+    menor: ["cicatriz que cruza la garganta", "rigidez de cuello: desventaja en Percepción para mirar atrás"],
+    permanente: ["voz rota para siempre", "no puede girar la cabeza: siempre puede ser flanqueado"],
+  },
+  abdomen: {
+    menor: ["cicatriz que cruza el vientre", "digestión débil: necesita el doble de raciones"],
+    permanente: ["hernia: desventaja en Atletismo", "entrañas dañadas: −1 CON"],
   },
   brazo: {
     menor: [
@@ -155,7 +186,31 @@ export function infligirSecuela(p: Personaje, texto: string) {
 }
 
 export function efecto(h: Herida): string {
+  const e = h.estructura ? buscarEstructura(h.estructura) : undefined;
+  if (e) return e.efecto;
   return h.gravedad === "leve" ? "dolor, sin penalización" : EFECTOS[zona(h.ubicacion)][h.gravedad];
+}
+
+const ZONA_TXT: Record<ZonaVital, string> = { verde: "VERDE", ambar: "ÁMBAR", roja: "ROJA" };
+
+/** Convierte una herida en roja (una hemorragia que ya no se contiene, un pulmón perforado…). */
+export function volverRoja(h: Herida, motivo: string, nuevaEstructura?: string) {
+  h.zona_vital = "roja";
+  h.gravedad = "critica";
+  h.sangrando = true;
+  h.escalada = undefined;
+  h.reloj = RELOJ_MAX;
+  if (nuevaEstructura) h.estructura = nuevaEstructura;
+  h.descripcion = `${h.descripcion ? `${h.descripcion}; ` : ""}${motivo}`;
+}
+
+/** Baja una herida de zona (magia, Sangre de Santo): para el reloj y la escalada. */
+export function bajarZona(h: Herida) {
+  if (h.zona_vital === "roja") h.zona_vital = "ambar";
+  else if (h.zona_vital === "ambar" && h.gravedad === "leve") h.zona_vital = "verde";
+  h.reloj = undefined;
+  h.escalada = undefined;
+  h.agonia = false;
 }
 
 export function pvMaxEfectivo(p: Personaje): number {
@@ -171,9 +226,14 @@ export function resumenHerida(h: Herida): string {
   const extra = [
     h.estado === "tratada" ? `tratada, ${Math.ceil(h.dias_restantes)} días de convalecencia` : h.estado,
     h.sangrando ? "SANGRANDO" : "",
+    h.reloj !== undefined && h.sangrando ? `¡${Math.max(0, h.reloj)} asalto(s) de vida!` : "",
+    h.escalada !== undefined && h.sangrando ? `se vuelve roja en ${h.escalada} asalto(s)` : "",
+    h.agonia ? "AGONIZANDO" : "",
     h.podre ? "con PODRE" : "",
   ].filter(Boolean);
-  return `[${h.id}] ${h.gravedad} · ${h.tipo} · ${h.ubicacion} · ${extra.join(" · ")} — ${efecto(h)}${h.descripcion ? ` (${h.descripcion})` : ""}`;
+  const zonaTxt = h.zona_vital ? `ZONA ${ZONA_TXT[h.zona_vital]} · ` : "";
+  const estr = h.estructura ? ` (${h.estructura})` : "";
+  return `[${h.id}] ${zonaTxt}${h.gravedad} · ${h.tipo} · ${h.ubicacion}${estr} · ${extra.join(" · ")} — ${efecto(h)}${h.descripcion ? ` (${h.descripcion})` : ""}`;
 }
 
 function salvacionCON(p: Personaje, cd: number, extra = 0) {
@@ -192,8 +252,11 @@ const TABLAS_CAUSA: Record<Causa, [number, Gravedad][]> = {
 };
 
 const TABLA_UBICACION: [number, Ubicacion][] = [
-  [2, "cabeza"], [9, "torso"], [12, "brazo izquierdo"], [15, "brazo derecho"], [17, "pierna izquierda"], [20, "pierna derecha"],
+  [1, "cabeza"], [2, "cuello"], [6, "torso"], [9, "abdomen"], [11, "brazo izquierdo"], [13, "brazo derecho"], [16, "pierna izquierda"], [20, "pierna derecha"],
 ];
+
+const ORDEN_GRAV: Gravedad[] = ["leve", "moderada", "grave", "critica"];
+const maxGrav = (a: Gravedad, b: Gravedad) => (ORDEN_GRAV.indexOf(a) >= ORDEN_GRAV.indexOf(b) ? a : b);
 
 const deTabla = <T>(tabla: [number, T][], d: number) => tabla.find(([max]) => d <= max)![1];
 
@@ -202,6 +265,8 @@ export interface DatosHerida {
   gravedad?: Gravedad;
   tipo: Tipo;
   ubicacion?: Ubicacion;
+  /** Estructura concreta (si la ficción lo exige); si no, se tira. */
+  estructura?: string;
   descripcion?: string;
   de_no_muerto?: boolean;
 }
@@ -214,14 +279,32 @@ export function infligir(p: Personaje, d: DatosHerida): string {
     gravedad = deTabla(TABLAS_CAUSA[d.causa], t.total);
     log.push(`Gravedad (${d.causa}): d20 = ${t.total} → ${gravedad}`);
   }
+  // Estructura anatómica y zona vital.
+  let estr: Estructura | undefined = d.estructura ? buscarEstructura(d.estructura) : undefined;
+  if (d.estructura && !estr) throw new Error(`No conozco la estructura "${d.estructura}".`);
   let ubicacion = d.ubicacion;
+  if (!ubicacion && estr) {
+    const opciones = UBICACIONES.filter((u) => u.startsWith(estr!.region));
+    ubicacion = opciones.length > 1 ? opciones[tirar("1d2").total - 1] : opciones[0];
+  }
   if (!ubicacion) {
     const t = tirar("1d20");
     ubicacion = deTabla(TABLA_UBICACION, t.total);
     log.push(`Ubicación: d20 = ${t.total} → ${ubicacion}`);
   }
+  if (!estr) {
+    const el = elegirEstructura(zona(ubicacion), gravedad);
+    estr = el.estructura;
+    if (el.tirada !== undefined) log.push(`Zona: d100 = ${el.tirada} → ${ZONA_TXT[estr.zona]} (${estr.nombre})`);
+  }
+  if (estr.zona === "ambar") gravedad = maxGrav(gravedad, "moderada");
+  if (estr.zona === "roja") gravedad = "critica";
+
   const r = rasgos(p);
-  const sangra = gravedad === "critica" || (gravedad === "grave" && ["corte", "perforacion", "mordedura"].includes(d.tipo));
+  const sangra =
+    estr.zona === "roja" ||
+    Boolean(estr.escalada) ||
+    (estr.zona === "verde" && gravedad !== "leve" && gravedad !== "moderada" && ["corte", "perforacion", "mordedura"].includes(d.tipo));
   const n = Math.max(0, ...p.heridas.map((h) => Number(h.id.slice(1)) || 0)) + 1;
   const h: Herida = {
     id: `H${n}`,
@@ -241,17 +324,33 @@ export function infligir(p: Personaje, d: DatosHerida): string {
     infeccion_exitos: 0,
     infeccion_fallos: 0,
     tratada_antes: false,
+    zona_vital: estr.zona,
+    estructura: estr.nombre,
+    reloj: estr.reloj ? Math.min(RELOJ_MAX, tirarValor(estr.reloj)) : undefined,
+    escalada: estr.escalada ? tirarValor(estr.escalada) : undefined,
+    fallos_viscerales: 0,
+    agonia: false,
   };
+  if (estr.inconsciente && !p.condiciones.includes("inconsciente")) p.condiciones.push("inconsciente");
   if (d.de_no_muerto && r.inmunePodre) log.push(`${p.raza}: inmune a la Podre.`);
   p.heridas.push(h);
   ajustarPV(p);
   log.push(`${p.nombre} sufre una herida: ${resumenHerida(h)}`);
-  if (h.sangrando) {
+  if (h.zona_vital === "roja") {
     log.push(
-      gravedad === "critica"
-        ? "Hemorragia arterial: pierde 1d4 PV por asalto y sangre a chorros (riesgo alto de anemia) hasta detenerla."
-        : "Hemorragia: pierde 1 PV por asalto y sangre (riesgo de anemia) hasta detenerla.",
+      `☠ ZONA ROJA: le quedan ${h.reloj} asalto(s) de vida (como mucho un minuto). ` +
+        (estr.compresion
+          ? `Se puede intentar ${estr.compresion.como} (detener hemorragia CD ${estr.compresion.cd}).`
+          : "No hay dónde apretar: solo la salvan una cirugía desesperada (CD 22), la Sangre de Santo o la magia divina.") +
+        (estr.inconsciente ? " Cae inconsciente." : ""),
     );
+  } else if (h.zona_vital === "ambar") {
+    if (h.escalada !== undefined) log.push(`ZONA ÁMBAR sangrante: si nadie hace ${estr.compresion?.como} (CD ${estr.compresion?.cd}) en ${h.escalada} asalto(s), se vuelve ROJA.`);
+    if (estr.visceral) log.push("ZONA ÁMBAR visceral: sin cirugía empeorará día a día hasta volverse roja (pasar_tiempo).");
+    if (estr.costilla) log.push("ZONA ÁMBAR: cada asalto de esfuerzo, una costilla puede perforar el pulmón (avanzar_asaltos).");
+    log.push("Las heridas ámbar dejan secuelas casi siempre.");
+  } else if (h.sangrando) {
+    log.push("Hemorragia: pierde 1 PV por asalto y sangre (riesgo de anemia) hasta detenerla.");
   }
   if (h.podre) log.push("La herida está infectada de Podre: la medicina común no la limpia.");
   return log.join("\n");
@@ -280,6 +379,7 @@ function cerrarConMagia(p: Personaje, h: Herida, log: string[]) {
   h.estado = "tratada";
   h.sangrando = false;
   h.magia_usada = true;
+  bajarZona(h);
   h.dias_restantes = tirar(REGLAS[nueva].dias).total;
   log.push(`La herida ${h.id} baja a ${nueva}: ${resumenHerida(h)}`);
 }
@@ -300,6 +400,8 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       if (h.podre) {
         h.sangrando = false;
         h.magia_usada = true;
+        h.reloj = undefined;
+        h.escalada = undefined;
         log.push("La Podre resiste a los dioses muertos: la hemorragia se detiene, pero la herida sigue igual.");
       } else {
         if (h.estado === "infectada") log.push("La infección se consume.");
@@ -313,7 +415,11 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       const conMano = d.sanador?.raza === "Cenizo";
       if (!conMano && !d.recursos.includes("hierro candente")) return "Para cauterizar hace falta hierro candente (o un Cenizo con su Brasa interior).";
       if (!["corte", "perforacion", "mordedura"].includes(h.tipo)) return `No se puede cauterizar una herida de tipo ${h.tipo}.`;
+      const ec = buscarEstructura(h.estructura ?? "");
+      if (h.zona_vital === "roja" && !ec?.compresion) return `No se puede cauterizar ${h.estructura}: la hemorragia está dentro de una cavidad.`;
       h.sangrando = false;
+      h.reloj = undefined;
+      h.escalada = undefined;
       h.cauterizada = true;
       h.mod_recuperacion -= 2;
       if (h.podre) log.push("El fuego quema la Podre.");
@@ -346,6 +452,10 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
     case "medicina": {
       const hemorragia = d.metodo === "detener hemorragia";
       if (hemorragia && !h.sangrando) return `La herida ${h.id} no sangra.`;
+      const estr = buscarEstructura(h.estructura ?? "");
+      if (hemorragia && h.zona_vital === "roja" && !estr?.compresion) {
+        return `${h.estructura}: no hay dónde apretar. Solo una cirugía desesperada (método medicina), la Sangre de Santo o la magia divina pueden detener esto. Quedan ${h.reloj} asalto(s).`;
+      }
       if (!hemorragia && h.podre) return `La herida ${h.id} tiene Podre: antes hay que cauterizarla, cortar la carne podrida o aplicar un remedio raro.`;
 
       const mods: string[] = [];
@@ -358,7 +468,12 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
         bono += 2;
         mods.push("Barbero-Cirujano +2");
       }
-      let cd = hemorragia ? (h.gravedad === "critica" ? 15 : 10) : regla.cdTratar;
+      let cd = hemorragia ? (estr?.compresion?.cd ?? (h.gravedad === "critica" ? 15 : 10)) : regla.cdTratar;
+      if (hemorragia && estr?.compresion) mods.push(estr.compresion.como);
+      if (!hemorragia && h.reloj !== undefined && h.sangrando) {
+        cd = Math.max(cd, 22);
+        mods.push("cirugía desesperada con el reloj corriendo: CD 22");
+      }
       if (!hemorragia) {
         if (h.estado === "infectada") {
           cd += 2;
@@ -397,8 +512,18 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
 
       if (t.total >= cd || natural === 20) {
         h.sangrando = false;
+        h.reloj = undefined;
+        h.escalada = undefined;
+        if (!hemorragia) {
+          h.agonia = false;
+          h.fallos_viscerales = 0;
+        }
         if (hemorragia) {
-          log.push("Hemorragia detenida. La herida sigue sin tratar.");
+          log.push(
+            h.zona_vital === "roja"
+              ? `Hemorragia contenida (${estr?.compresion?.como ?? "presión"}). Sigue siendo ROJA: necesita cirugía cuanto antes, y si es un torniquete, el miembro se pierde si pasan más de 2 horas.`
+              : "Hemorragia detenida. La herida sigue sin tratar.",
+          );
           return log.join("\n");
         }
         h.estado = "tratada";
@@ -454,11 +579,32 @@ export function perderSangre(p: Personaje, puntos: number, log: string[]) {
   }
 }
 
-/** Avanza la hemorragia asalto a asalto (10 asaltos = 1 minuto). */
-export function avanzarAsaltos(p: Personaje, asaltos: number): string {
+/**
+ * Avanza la hemorragia asalto a asalto (10 asaltos = 1 minuto): PV, sangre perdida,
+ * relojes de las heridas rojas, heridas ámbar que se vuelven rojas y costillas
+ * que perforan el pulmón si el herido se esfuerza.
+ */
+export function avanzarAsaltos(p: Personaje, asaltos: number, esfuerzo = true): string {
   const log: string[] = [];
+  if (p.condiciones.includes("muerto")) return `${p.nombre} ya está muerto.`;
+
+  // Costillas rotas: cada asalto de esfuerzo, 1 entre 20 de perforar el pulmón.
+  if (esfuerzo) {
+    for (const h of p.heridas.filter((x) => buscarEstructura(x.estructura ?? "")?.costilla && x.zona_vital === "ambar")) {
+      for (let i = 0; i < asaltos; i++) {
+        if (tirar("1d20").total === 1) {
+          volverRoja(h, "una costilla rota perforó el pulmón por el esfuerzo", "pulmón perforado");
+          // Más abajo se le restan todos los asaltos; solo deben contar los que quedan tras perforarse.
+          h.reloj = RELOJ_MAX + i + 1;
+          log.push(`☠ ${h.id}: ¡la costilla rota de ${p.nombre} le perfora el pulmón! ZONA ROJA.`);
+          break;
+        }
+      }
+    }
+  }
+
   const sangran = p.heridas.filter((h) => h.sangrando && h.gravedad !== "leve");
-  if (!sangran.length) return `${p.nombre} no tiene hemorragias activas.`;
+  if (!sangran.length) return log.join("\n") || `${p.nombre} no tiene hemorragias activas.`;
   let pv = 0;
   let sangre = 0;
   for (let i = 0; i < asaltos; i++) {
@@ -474,7 +620,27 @@ export function avanzarAsaltos(p: Personaje, asaltos: number): string {
   }
   p.pv = Math.max(0, p.pv - pv);
   log.push(`${p.nombre} sangra ${asaltos} asalto(s) por ${sangran.map((h) => h.id).join(", ")}: −${pv} PV (PV ${p.pv}).`);
-  if (p.pv === 0 && !p.condiciones.includes("muerto")) log.push("¡A 0 PV y desangrándose: salvaciones contra muerte cada asalto!");
+
+  for (const h of sangran) {
+    if (h.escalada !== undefined) {
+      h.escalada -= asaltos;
+      if (h.escalada <= 0) {
+        const sobra = -h.escalada;
+        volverRoja(h, "nadie contuvo la hemorragia a tiempo");
+        h.reloj = RELOJ_MAX - sobra;
+        log.push(`☠ ${h.id} (${h.estructura}): la hemorragia ya no se contiene. ¡ZONA ROJA! Quedan ${Math.max(0, h.reloj)} asalto(s).`);
+      } else log.push(`${h.id} (${h.estructura}): se vuelve roja en ${h.escalada} asalto(s) si nadie la comprime.`);
+    } else if (h.reloj !== undefined) {
+      h.reloj -= asaltos;
+      if (h.reloj > 0) log.push(`☠ ${h.id} (${h.estructura}): quedan ${h.reloj} asalto(s) de vida.`);
+    }
+    if (h.reloj !== undefined && h.reloj <= 0) {
+      marcarMuerto(p);
+      log.push(`☠ ${p.nombre} muere: ${h.estructura}. No hubo tiempo.`);
+      return log.join("\n");
+    }
+  }
+  if (p.pv === 0) log.push("¡A 0 PV y desangrándose: salvaciones contra muerte cada asalto!");
   perderSangre(p, sangre, log);
   return log.join("\n");
 }
@@ -503,11 +669,16 @@ function cerrar(p: Personaje, h: Herida, log: string[]) {
     if (h.gravedad === "moderada") tipo = s.exito ? null : "menor";
     else if (h.gravedad === "grave") tipo = s.exito ? null : s.total <= regla.cdRecuperacion - 5 ? "permanente" : "menor";
     else tipo = s.exito ? "menor" : "permanente";
+    // Ámbar: casi siempre deja secuela. Roja superada: siempre irreversible.
+    if (h.zona_vital === "ambar" && tipo === null) tipo = s.total >= regla.cdRecuperacion + 5 ? null : "menor";
+    if (h.zona_vital === "ambar" && !s.exito) tipo = "permanente";
+    if (h.zona_vital === "roja") tipo = "permanente";
     log.push(`Tirada de recuperación de ${h.id} (${h.gravedad}, ${h.ubicacion}): ${s.texto}${bono ? ` [incluye ${signo(bono)} por raza y cuidados]` : ""}`);
     if (tipo) {
+      const propia = buscarEstructura(h.estructura ?? "")?.secuelas?.[tipo];
       const lista = SECUELAS[zona(h.ubicacion)][tipo];
-      const elegida = lista[tirar(`1d${lista.length}`).total - 1];
-      nuevas.push(`${elegida} (${h.ubicacion})`);
+      const elegida = propia ?? lista[tirar(`1d${lista.length}`).total - 1];
+      nuevas.push(`${elegida} (${h.ubicacion}${h.estructura ? `, ${h.estructura}` : ""})`);
     }
   }
   if (h.cauterizada) nuevas.push(`cicatriz de quemadura (${h.ubicacion})`);
@@ -536,6 +707,38 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
       const regla = REGLAS[h.gravedad];
       const cdInf = regla.cdInfeccion + (h.podre ? 2 : 0) - (calidad === "enfermeria" ? 3 : 0);
 
+      if (h.reloj !== undefined && h.sangrando) {
+        marcarMuerto(p);
+        log.push(`☠ ${p.nombre} muere: nadie detuvo la hemorragia de ${h.estructura} (zona roja).`);
+        break;
+      }
+      if (h.escalada !== undefined && h.sangrando) {
+        volverRoja(h, "nadie contuvo la hemorragia");
+        marcarMuerto(p);
+        log.push(`☠ ${p.nombre} muere desangrado: ${h.estructura} nunca se comprimió.`);
+        break;
+      }
+
+      // Ámbar visceral o craneal sin cirugía: empeora cada día hasta volverse roja.
+      const ev = buscarEstructura(h.estructura ?? "");
+      if (ev?.visceral && h.estado !== "tratada") {
+        if (h.agonia) {
+          marcarMuerto(p);
+          log.push(`☠ ${p.nombre} muere: ${h.estructura} sin cirugía (shock, peritonitis o sangre en el cráneo).`);
+          break;
+        }
+        const s = salvacionCON(p, 13 + 2 * h.fallos_viscerales, r.infeccion);
+        if (!s.exito) {
+          h.fallos_viscerales++;
+          if (h.fallos_viscerales >= 3) {
+            h.zona_vital = "roja";
+            h.gravedad = "critica";
+            h.agonia = true;
+            log.push(`☠ ${h.id} (${h.estructura}): ${s.texto} → ZONA ROJA. Agoniza: morirá al final de mañana si nadie le opera (Medicina CD 19) o le cura con magia.`);
+          } else log.push(`${h.id} (${h.estructura}) empeora sin cirugía: ${s.texto} (${h.fallos_viscerales}/3).`);
+        }
+      }
+
       if (h.sangrando && h.gravedad !== "leve") {
         const t = tirar(h.gravedad === "critica" ? "4d6" : "2d6");
         p.pv = Math.max(0, p.pv - t.total);
@@ -559,6 +762,13 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
             h.gravedad = sube(h.gravedad);
             h.dias_restantes = Math.max(h.dias_restantes, tirar(REGLAS[h.gravedad].dias).total);
             log.push(`${h.id} infectada: ${s.texto} → la infección avanza y la herida se agrava a ${h.gravedad}.`);
+            if (h.zona_vital === "verde" && h.gravedad !== "moderada") {
+              h.zona_vital = "ambar";
+              log.push(`${h.id} pasa a ZONA ÁMBAR: gangrena; dejará secuelas.`);
+            } else if (h.zona_vital === "ambar" && h.gravedad === "critica") {
+              h.zona_vital = "roja";
+              log.push(`${h.id} pasa a ZONA ROJA: septicemia.`);
+            }
           }
         } else if (!s.exito) log.push(`${h.id} infectada: ${s.texto} → fiebre alta.`);
         continue; // una herida infectada no sana hasta que el cuerpo la venza o se vuelva a tratar
@@ -638,6 +848,18 @@ Deja que el programa tire gravedad y ubicación (no las fijes salvo que la ficci
 - moderada (corte profundo, esguince, costilla fisurada): −3 PV máx., penalización según la zona; tratar CD 13 con kit de sanador; 1d4+3 días de convalecencia; puede dejar secuela menor.
 - grave (fractura, perforación, quemadura extensa): −6 PV máx.; puede sangrar; cirugía CD 16 con herramientas de cirujano; 2d6+7 días; secuela menor o permanente si la recuperación sale mal.
 - crítica (miembro destrozado, órgano perforado, ojo reventado): −10 PV máx.; sangra siempre; cirugía CD 19; 3d10+15 días; SIEMPRE deja secuela.
+
+### Zonas vitales: verde, ámbar y roja
+Cada herida cae sobre una estructura anatómica concreta (el programa la tira según la gravedad y la región: cabeza, cuello, torso, abdomen, brazos, piernas). La estructura decide la zona:
+- **ROJA** (encéfalo, cerebelo, tallo cerebral, corazón, aorta, vena cava, arteria y vena pulmonar, pulmón perforado, subclavia, axilar, femoral, isquiotibiales con la femoral profunda, hemorragia visceral masiva): sangrado masivo o daño vital donde una mano no llega. **No da minutos: da un minuto como mucho** (10 asaltos o menos; el tallo cerebral, 1d4). Si la estructura se puede comprimir (femoral, axilar, subclavia) se puede intentar detener la hemorragia con una CD alta; si está dentro de una cavidad, no hay dónde apretar: solo la salvan una cirugía desesperada (CD 22), la Sangre de Santo o la magia divina. Contenida, sigue siendo roja hasta que se opere. Si se supera, deja siempre secuela irreversible.
+- **ÁMBAR**: se sobrevive, pero cuesta, con recuperación larga y secuelas casi siempre irreversibles. Si no se tratan, pasan a roja:
+  - Cuello (carótida, yugulares): sangran; si nadie las comprime en pocos asaltos, se vuelven rojas. Un degüello NO siempre las alcanza (puede quedarse en la piel).
+  - Nervios y tendones (plexo braquial, nervio ciático, tendones de mano, antebrazo y pierna): además incapacitan; brazos que no responden, piernas que no caminan, espadachines que no pueden empuñar.
+  - Abdomen (intestino, hígado, bazo, páncreas) y cráneo fracturado: potencialmente letales sin cirugía, pero en días: cada día sin operar empeora, y tras 3 malos días se vuelven rojas y el herido agoniza (muere al día siguiente sin cirugía).
+  - Costillas rotas: dolor e incapacidad; cada asalto de esfuerzo pueden perforar el pulmón, y entonces es roja.
+  - Arterias de las extremidades (braquial, poplítea): torniquete o se vuelven rojas.
+- **VERDE**: casi ninguna; piel y músculo grueso. Sin cuidados se infectan y pueden pasar a ámbar (gangrena) o roja (septicemia).
+Narra la zona con crudeza: una herida roja es una cuenta atrás que todos en la mesa deben sentir.
 
 ### Hemorragia y anemia (usa avanzar_asaltos)
 Mientras una herida sangra, llama a avanzar_asaltos al final de cada asalto en combate (o con 10 asaltos por cada minuto fuera de combate). Grave: −1 PV por asalto; crítica: −1d4. Además se acumula sangre perdida y, cada poco, el personaje hace una salvación de CON cuya CD crece cuanto más dura la hemorragia: si falla, pierde 1 de FUE por falta de hierro (anemia). Con FUE efectiva 3 o menos cae inconsciente; con 0 muere desangrado. La anemia se recupera con días de descanso (más rápido en enfermería; nada mientras se esfuerza) y con Sangre de Santo. Descríbela: palidez, frío, manos que tiemblan, el arma que pesa el doble.

@@ -78,6 +78,15 @@ export function cargar(ruta: string): Partida | null {
     j.robos ??= [];
   }
   Object.values(partida.personajes).forEach(normalizar);
+  // Heridas guardadas antes de existir las zonas vitales.
+  for (const p of Object.values(partida.personajes)) {
+    for (const h of p.heridas) {
+      h.zona_vital ??= h.gravedad === "critica" ? "roja" : h.gravedad === "grave" ? "ambar" : "verde";
+      h.estructura ??= "";
+      h.fallos_viscerales ??= 0;
+      h.agonia ??= false;
+    }
+  }
   return partida;
 }
 

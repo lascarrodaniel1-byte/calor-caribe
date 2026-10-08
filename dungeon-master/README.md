@@ -34,6 +34,18 @@ Los PV son aguante; las **heridas** son daño real en el cuerpo y las gestiona e
 - **Fichas de personaje**: el DM guía la creación de personaje y lleva PV, CA, atributos, inventario, oro y condiciones.
 - **Partida guardada** en `partida.json` después de cada turno; al volver, el DM resume "lo que pasó la última vez".
 
+## Zonas vitales: verde, ámbar y roja
+
+Cada herida cae sobre una **estructura anatómica concreta**, que el programa tira según la gravedad y la región (cabeza, cuello, torso, abdomen, brazos, piernas). Esa estructura decide su zona:
+
+| Zona | Estructuras | Qué pasa |
+|---|---|---|
+| **Roja** | Encéfalo, cerebelo, tallo cerebral, corazón, aorta, vena cava, arteria y vena pulmonar, pulmón perforado, subclavia, axilar, femoral, isquiotibiales con la femoral profunda, hemorragia visceral masiva | **Un minuto de vida como mucho** (10 asaltos o menos; tallo cerebral, 1d4). Si se puede comprimir (femoral, axilar, subclavia), se intenta un torniquete con CD alta; si está dentro de una cavidad, no hay dónde apretar: solo la salvan una cirugía desesperada (CD 22), la Sangre de Santo o la magia divina. Si se sobrevive, la secuela es irreversible |
+| **Ámbar** | Carótida, yugulares, tráquea; plexo braquial, nervio ciático, tendones; intestino, hígado, bazo, páncreas; costillas; cráneo fracturado; arterias braquial y poplítea; ojo | Se sobrevive, pero cuesta: recuperación larga y secuelas casi siempre irreversibles. Las del cuello y las arterias de las extremidades se vuelven **rojas en pocos asaltos** si nadie las comprime (y un degüello no siempre las alcanza). Las vísceras y el cráneo empeoran **día a día** sin cirugía hasta volverse rojas. Las costillas rotas pueden **perforar el pulmón** con el esfuerzo. Nervios y tendones **incapacitan**: brazos que no responden, piernas que no caminan, manos que no empuñan |
+| **Verde** | Piel, cuero cabelludo, músculo grueso | Casi nada es verde. Sin cuidados se infecta y puede pasar a ámbar (gangrena) o roja (septicemia) |
+
+La probabilidad de cada zona depende de la gravedad: una herida leve siempre es verde; una crítica es roja el 60 % de las veces.
+
 ## Hemorragias y anemia
 
 Una herida que sangra quita PV cada asalto (1 si es grave, 1d4 si es crítica) y acumula sangre perdida. Cada poco, el personaje hace una salvación de CON con una CD que **sube cuanto más dura la hemorragia**; si falla, pierde 1 de FUE por falta de hierro. Con FUE 3 o menos se desmaya; con 0 muere desangrado. La anemia se recupera con días de descanso (más rápido en enfermería) o con Sangre de Santo.
@@ -126,6 +138,7 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 |---|---|
 | `src/prompt.ts` | Instrucciones del DM (estilo, reglas, creación de personaje) — edítalo para cambiar su personalidad o ambientación |
 | `src/mundo.ts` | Ambientación, razas y clases |
+| `src/anatomia.ts` | Estructuras anatómicas y zonas vitales (verde, ámbar, roja) |
 | `src/heridas.ts` | Motor de heridas: gravedad, hemorragia, infección, tratamiento, convalecencia y secuelas |
 | `src/viales.ts` | Viales y sus riesgos |
 | `src/equipo.ts` | Tablas de botín, encantamientos, maldiciones y reliquias |

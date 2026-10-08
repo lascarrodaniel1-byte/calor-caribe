@@ -1,7 +1,7 @@
 // Viales: curación, resurrección, veneno y sueño, cada uno con su riesgo.
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
-import { infligirSecuela, pvMaxEfectivo, REGLAS, resumenHerida, type Herida } from "./heridas.js";
+import { bajarZona, infligirSecuela, pvMaxEfectivo, REGLAS, resumenHerida, type Herida } from "./heridas.js";
 import { raza } from "./mundo.js";
 import { marcarMuerto, salvacion, signo } from "./reglas.js";
 
@@ -46,11 +46,20 @@ function sangreDeSanto(p: Personaje, heridaId: string | undefined, log: string[]
   p.condiciones = p.condiciones.filter((c) => c !== "inconsciente (anemia)");
   log.push(`${p.nombre} bebe Sangre de Santo: recupera ${pv.total} PV (${describir(pv)}).`);
 
-  for (const h of p.heridas) h.sangrando = false;
+  for (const h of p.heridas) {
+    h.sangrando = false;
+    h.escalada = undefined;
+    h.reloj = undefined;
+  }
+  const ZONAS = ["roja", "ambar", "verde"];
   const h: Herida | undefined = heridaId
     ? p.heridas.find((x) => x.id.toLowerCase() === heridaId.toLowerCase())
-    : [...p.heridas].sort((a, b) => ORDEN.indexOf(a.gravedad) - ORDEN.indexOf(b.gravedad))[0];
+    : [...p.heridas].sort(
+        (a, b) => ZONAS.indexOf(a.zona_vital) - ZONAS.indexOf(b.zona_vital) || ORDEN.indexOf(a.gravedad) - ORDEN.indexOf(b.gravedad),
+      )[0];
   if (h) {
+    if (h.zona_vital === "roja") log.push(`La Sangre de Santo sella por dentro ${h.estructura || "la herida"}: deja de ser roja.`);
+    bajarZona(h);
     if (h.gravedad === "leve") {
       p.heridas = p.heridas.filter((x) => x !== h);
       log.push(`La herida ${h.id} se cierra sola.`);
