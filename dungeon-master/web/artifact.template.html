@@ -29,6 +29,7 @@
     --f-tiza: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
     --f-dados: "JetBrains Mono", ui-monospace, Menlo, monospace;
   }
+  *, *::before, *::after { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
   body {
@@ -198,21 +199,34 @@
   textarea::placeholder, input::placeholder { color: #7a6448; }
   textarea { resize: none; min-height: 52px; max-height: 180px; font-family: var(--f-narracion); font-size: 20px; }
 
-  .velo { position: fixed; inset: 0; background: #0a0604e6; display: grid; place-items: center; padding: 16px; z-index: 30; }
+  .velo { position: fixed; inset: 0; background: #0a0604e6; display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
   .velo form {
     width: 100%; max-width: 420px; padding: 26px; display: flex; flex-direction: column; gap: 12px; color: var(--tinta);
     background: linear-gradient(170deg, #eddcb6, #d2ba8a); box-shadow: inset 0 0 30px #8a6a3a77, 0 10px 40px #000, 0 0 60px #f0b45a22;
   }
   .velo h2 { font: 400 30px/1.1 var(--f-letrero); margin: 0; color: #5a1d12; }
   .velo p { margin: 0; }
-  .aviso-error { color: var(--sangre); font-size: 14px; }
+  .aviso-error { color: var(--sangre); font-size: 16px; font-weight: 700; margin: 0; }
+  .botonera { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .botonera.centrada { justify-content: center; }
+  .velo form.tutorial { max-width: 640px; max-height: 100%; overflow-y: auto; gap: 14px; font: 18px/1.55 var(--f-narracion); }
+  .tutorial h3 { font: 400 22px/1.2 var(--f-letrero); margin: 6px 0 0; color: #5a1d12; }
+  .tutorial ol, .tutorial ul { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 10px; }
+  .tutorial li::marker { color: #7a3a1a; font-weight: 700; }
+  .tutorial .ejemplo { font-style: italic; color: #4a2a14; }
+  .boton.peligro { background: linear-gradient(180deg, #b8463c, var(--sangre) 55%, #6e1c17); color: #fbe9e2; border-color: #4a120e; text-shadow: none; box-shadow: inset 0 1px 0 #ffffff33, 0 2px 4px #0008; }
 
   @media (max-width: 800px) {
     .fichas { position: fixed; inset: 0; width: auto; z-index: 25; border-left: 0; padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
     .narracion { font-size: 19px; padding: 20px 20px; }
     .accion { font-size: 22px; }
     .resultado, .privado { font-size: 14px; padding: 12px 14px; }
+    .barra { gap: 8px; padding: 8px 12px; }
     .barra h1 { font-size: 21px; }
+    .barra .estado { order: 10; flex-basis: 100%; font-size: 14px; }
+    .barra .boton { font-size: 14px; padding: 6px 10px; }
+    .barra .control { font-size: 0; gap: 0; }
+    .barra select { font-size: 14px; padding: 4px 6px; }
     .vacio h2 { font-size: 32px; }
   }
 </style>
@@ -228,7 +242,9 @@
         <option value="complex">Profundo (más lento)</option>
       </select>
     </label>
+    <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
     <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
+    <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
   </header>
 
   <div class="cuerpo">
@@ -247,7 +263,10 @@
               <li><span>Cama con pulgas</span><span>5 pc</span></li>
             </ul>
           </div>
-          <button class="boton" id="empezar" type="button">Que empiece la historia</button>
+          <div class="botonera centrada">
+            <button class="boton sobrio" id="tutorial-portada" type="button">¿Primera vez? Cómo se juega</button>
+            <button class="boton" id="empezar" type="button">Que empiece la historia</button>
+          </div>
         </div>
       </div>
     </main>
@@ -284,6 +303,44 @@
     <label for="nombre" hidden>Nombre</label>
     <input type="text" id="nombre" maxlength="30" autocomplete="nickname" required>
     <button class="boton" type="submit">Sentarse a la mesa</button>
+  </form>
+</div>
+
+<div class="velo" id="velo-tutorial" hidden>
+  <form id="form-tutorial" class="tutorial">
+    <h2>Cómo se juega</h2>
+    <p>El Dungeon Master es Claude: narra, interpreta a todos los personajes del mundo y aplica las reglas. Vosotros decidís qué hacen vuestros personajes.</p>
+    <ol>
+      <li><strong>Invita a tus amigos.</strong> En el menú <em>Compartir</em> de esta página, dales permiso para usarla (no solo para verla). Cada uno necesita su propia cuenta de Claude.</li>
+      <li><strong>Pon tu nombre.</strong> El tuyo de jugador, no el del personaje. Puedes cambiarlo abajo, en «Juegas como…».</li>
+      <li><strong>Pulsa «Que empiece la historia».</strong> La primera vez, Claude te pedirá permiso para narrar desde tu cuenta: acéptalo. No cuesta nada aparte de tu plan.</li>
+      <li><strong>Crea tu personaje con el DM.</strong> Te preguntará raza, clase y trasfondo. Para los atributos puedes usar la serie estándar o tirar el botón <em>4d6kh3</em> seis veces (4 dados de 6, te quedas con los 3 mejores).</li>
+      <li><strong>Escribe lo que hace tu personaje</strong> y pulsa Enter. Por ejemplo: <span class="ejemplo">«Me acerco a la barra, pido una cerveza negra y pregunto por el hombre sin ojos.»</span> Cuanto más concreto, mejor responde el DM.</li>
+      <li><strong>Lee la respuesta.</strong> La narración aparece en el pergamino; las tiradas, heridas y botín, en las placas de madera. Tu vida, heridas e inventario están en <em>Fichas</em>.</li>
+    </ol>
+    <h3>Bueno saberlo</h3>
+    <ul>
+      <li>Si varios escribís a la vez, las acciones esperan en cola y el DM las resuelve juntas en el siguiente turno.</li>
+      <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
+      <li>Arriba eliges el DM: <em>Rápido</em>, <em>Equilibrado</em> o <em>Profundo</em> (narra mejor, pero puede tardar un par de minutos).</li>
+      <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
+      <li>«Tirar d20» y «/tirar» los ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
+    </ul>
+    <div class="botonera">
+      <button class="boton" type="submit">Entendido, a la mesa</button>
+    </div>
+  </form>
+</div>
+
+<div class="velo" id="velo-reinicio" hidden>
+  <form id="form-reinicio">
+    <h2>¿Empezar de cero?</h2>
+    <p>Se borrará <strong>toda la partida</strong> para todos los jugadores: la historia, las fichas, las heridas, los objetos, las criaturas y la crónica del DM. No se puede deshacer.</p>
+    <p class="aviso-error" id="error-reinicio" hidden></p>
+    <div class="botonera">
+      <button class="boton sobrio" id="cancelar-reinicio" type="button">Cancelar</button>
+      <button class="boton peligro" id="confirmar-reinicio" type="submit">Sí, borrar todo</button>
+    </div>
   </form>
 </div>
 
@@ -643,9 +700,70 @@
   $("nivel").value = leer("velmora-nivel") || "default";
   $("nivel").onchange = () => anotar("velmora-nivel", $("nivel").value);
 
+  // ------------------------------------------------------------ reiniciar
+  async function borrarColeccion(nombreCol) {
+    for (;;) {
+      const snap = await db.collection(nombreCol).limit(200).get();
+      if (snap.empty) return;
+      for (const d of snap.docs) await db.doc(nombreCol + "/" + d.id).delete();
+    }
+  }
+
+  // ------------------------------------------------------------ tutorial
+  const abrirTutorial = () => { $("velo-tutorial").hidden = false; $("form-tutorial").scrollTop = 0; };
+  $("ver-tutorial").onclick = abrirTutorial;
+  $("tutorial-portada").onclick = abrirTutorial;
+  $("form-tutorial").onsubmit = (ev) => {
+    ev.preventDefault();
+    $("velo-tutorial").hidden = true;
+    anotar("velmora-tutorial-visto", "1");
+    if (!nombre) pedirNombre(); else $("accion").focus();
+  };
+
+  $("reiniciar").onclick = () => {
+    $("error-reinicio").hidden = true;
+    $("velo-reinicio").hidden = false;
+    $("cancelar-reinicio").focus();
+  };
+  $("cancelar-reinicio").onclick = () => { $("velo-reinicio").hidden = true; };
+  $("form-reinicio").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const err = $("error-reinicio");
+    if (!db) return;
+    if (turnoVivo || narrandoYo) {
+      err.textContent = "El DM está narrando ahora mismo. Espera a que termine el turno y vuelve a intentarlo.";
+      err.hidden = false;
+      return;
+    }
+    const boton = $("confirmar-reinicio");
+    boton.disabled = true;
+    boton.textContent = "Borrando…";
+    try {
+      await borrarColeccion("acciones");
+      await borrarColeccion("turnos");
+      await db.doc("mesa/estado").delete();
+      await db.doc("mesa/turno").delete();
+      partida = V.nuevaPartida();
+      cronicaDM = "";
+      turnos = [];
+      pendientes = [];
+      privados.length = 0;
+      $("velo-reinicio").hidden = true;
+      pintarFichas();
+      pintar();
+    } catch (e) {
+      err.textContent = "No se pudo borrar todo (" + (e?.code || "error") + "). Comprueba que tienes permiso para editar la página y vuelve a intentarlo.";
+      err.hidden = false;
+    } finally {
+      boton.disabled = false;
+      boton.textContent = "Sí, borrar todo";
+    }
+  };
+
   // ------------------------------------------------------------ arranque
   pintarEstado();
-  if (!nombre) pedirNombre();
+  if (!leer("velmora-tutorial-visto")) abrirTutorial();
+  else if (!nombre) pedirNombre();
 
   (async () => {
     const usar = (n) => (window.claude?.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null));
@@ -653,6 +771,9 @@
     db = dbNs;
     sample = sampleNs;
     uid = (await userNs?.id?.().catch?.(() => "")) || "";
+    // Solo quien puede editar la página (dueño o editores) ve el botón de reiniciar.
+    const puedeReiniciar = !!(userNs?.isOwner?.() || userNs?.canEdit?.());
+    $("reiniciar").hidden = !(dbNs && puedeReiniciar);
     if (!db) {
       $("estado-texto").textContent = "Abre esta página en claude.ai para jugar: aquí no se puede guardar la partida.";
       $("empezar").disabled = true;
