@@ -64,8 +64,25 @@ Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas,
 
 Huevos de piedra con un rostro desordenado, que pertenecen al **Coro de los Cinco**. Son lo más difícil de encontrar del mundo: nunca se venden y solo aparecen por azar extremo (0,1 % por objeto en saqueos, 0,3 % en hallazgos y 2 % en botín de jefe) o cuando el DM lo decide.
 
-- **Behelit común**: despierta solo en la desesperación más profunda (al menos 2 motivos reales: estar al borde de la muerte, perder a un ser querido, una traición, perderlo todo, un sueño roto; cuantos más, más probable). Ofrece poder a cambio de sacrificar a quien más amas. Aceptar convierte al portador en **Apóstol** (+4 FUE y +4 CON, +5 de Ceniza, forma demoníaca), pero pierde su humanidad, y los sacrificados quedan marcados para siempre. Rechazar exige una salvación de SAB CD 18; si se falla, la mente queda rota (−2 SAB).
-- **Behelit Carmesí**: **único** en toda la campaña. Solo aparece si el DM lo crea como centro de un gran arco. Al crearse, el programa decide en secreto quién está destinado (5 % por personaje, más si acumula Ceniza; puede no serlo nadie del grupo). **En manos de cualquier otro nunca despierta.** El destinado necesita al menos 3 motivos de desesperación y una ambición declarada; entonces llega el Eclipse, y puede ascender como el Quinto del Coro sacrificando a todos sus compañeros (rechazarlo exige SAB CD 22).
+- **Jugadores y PNJ**: cualquiera puede tener un behelit. Un PNJ puede despertarlo, estar destinado al carmesí y sacrificar al propio grupo; los PNJ que se convierten en apóstoles entran en escena como criaturas.
+- **Behelit común**: despierta solo en la desesperación más profunda (al menos 2 motivos reales: estar al borde de la muerte, perder a un ser querido, una traición, perderlo todo, un sueño roto; cuantos más, más probable). El precio es **lo que más se ama o se valora**: para un jugador, **sus compañeros** (debe sacrificar al menos a uno; solo si no tiene compañeros vale la persona que más quiere). Aceptar convierte al portador en **Apóstol** (+4 FUE y +4 CON, +5 de Ceniza, forma demoníaca), pero pierde su humanidad. Rechazar exige una salvación de SAB CD 18; si se falla, la mente queda rota (−2 SAB).
+- **Behelit Carmesí**: **único** en toda la campaña. Solo aparece si el DM lo crea como centro de un gran arco. Al crearse, el programa decide en secreto quién está destinado (5 % por personaje, más si acumula Ceniza; puede no serlo nadie del grupo). **En manos de cualquier otro nunca despierta.** El destinado necesita al menos 3 motivos de desesperación y una ambición declarada; entonces llega el Eclipse, y puede ascender como el Quinto del Coro sacrificando a **todos** sus compañeros (rechazarlo exige SAB CD 22).
+- **Salvarse del sacrificio**: cada sacrificado hace tres salvaciones (CON para resistir la embestida, DES para abrirse paso, SAB para no rendirse) contra CD 17, o 20 en el Eclipse. Con 2 éxitos escapa, marcado para siempre; con 1 queda atrapado y se juega la escena; en el Eclipse, con 0 es devorado. Lo que hagan importa:
+
+  | Circunstancia | Efecto |
+  |---|---|
+  | Fuera del horizonte del ritual | A salvo y sin marca (puede entrar a rescatar a los demás) |
+  | Ayuda externa | +5 |
+  | Un aliado lo cubre | +3 |
+  | Conoce el ritual y se preparó | +3 |
+  | No cede a la desesperación | +2 |
+  | Lleva un arma legendaria | +5 y ventaja (automático) |
+  | Lleva una reliquia | +3 (automático) |
+  | Lleva un arma encantada de plata y sal o de llama gris | +2 (automático) |
+
+## Armas legendarias
+
+Únicas en toda la campaña (solo existe una de cada) y casi imposibles de conseguir: salen solo del botín de jefes (2 %) o cuando el DM las pone en la historia. Todas protegen frente al Eclipse. **Colmillo de Hierro** (espadón descomunal, letal contra demonios y apóstoles), **Lanza de la Primera Llama**, **Escudo de Aldren el Fiel**, **Daga del Último Rito** (corta profecías y presagios) y **Martillo del Herrero Ciego** (obliga a los cambiaformas a mostrarse). El DM puede inventar más.
 
 ## Requisitos
 

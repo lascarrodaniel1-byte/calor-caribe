@@ -14,7 +14,7 @@ import {
   type Criatura,
   type EstadoJefe,
 } from "./bestiario.js";
-import { aceptar, crearCarmesi, despertar, RAZONES, rechazar } from "./behelit.js";
+import { aceptar, CIRCUNSTANCIAS, crearCarmesi, despertar, RAZONES, rechazar, type Circunstancia } from "./behelit.js";
 import { CALIDADES_OBJETO, crearObjeto, generarBotin, ORIGENES } from "./equipo.js";
 import { fichaTexto, normalizar, type Partida, type Personaje } from "./estado.js";
 import {
@@ -200,12 +200,27 @@ const esquemas = {
   }),
   behelit: z.object({
     accion: z.enum(["despertar", "aceptar", "rechazar", "crear_carmesi"]),
-    portador: z.string().optional().describe("Personaje que tiene el behelit (despertar, aceptar, rechazar)"),
+    portador: z.string().optional().describe("Personaje jugador que tiene el behelit"),
+    portador_pnj: z
+      .object({ nombre: z.string(), bono: z.number().int().optional().describe("Bonificador de SAB para rechazar") })
+      .optional()
+      .describe("Si el behelit lo tiene un PNJ"),
     carmesi: z.boolean().optional().describe("despertar: true si es el Behelit Carmesí"),
     razones: z.array(z.enum(RAZONES)).optional().describe("despertar: motivos de desesperación reales en la ficción"),
     ambicion: z.string().optional().describe("despertar del carmesí: la ambición del portador"),
-    sacrificados: z.array(z.string()).optional().describe("aceptar: personajes jugadores sacrificados"),
-    sacrificados_pnj: z.array(z.string()).optional().describe("aceptar: PNJ sacrificados"),
+    sacrificados: z
+      .array(
+        z.object({
+          nombre: z.string().describe("Personaje jugador o PNJ"),
+          circunstancias: z
+            .array(z.enum(Object.keys(CIRCUNSTANCIAS) as [Circunstancia, ...Circunstancia[]]))
+            .optional()
+            .describe("Lo que hizo o tuvo a su favor durante el ritual"),
+          bono_pnj: z.number().int().optional().describe("Solo PNJ: bonificador para sobrevivir"),
+        }),
+      )
+      .optional()
+      .describe("aceptar: lo que se sacrifica (para un jugador, sus compañeros)"),
     destinado: z.string().optional().describe("crear_carmesi: fija el destinado (si no, lo decide el azar en secreto)"),
   }),
   anotar_mundo: z.object({
@@ -484,17 +499,19 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           const r = crearCarmesi(partida, e.destinado);
           return { contenido: `${r.dm}\nDescripción para cuando lo encuentren: ${r.jugadores}`, aviso: null };
         }
-        if (!e.portador) throw new Error("Falta el portador.");
-        const p = buscar(partida, e.portador);
+        if (!e.portador && !e.portador_pnj) throw new Error("Falta el portador (portador o portador_pnj).");
+        const portador = e.portador
+          ? { nombre: buscar(partida, e.portador).nombre, pc: buscar(partida, e.portador) }
+          : { nombre: e.portador_pnj!.nombre, bono: e.portador_pnj!.bono };
         if (e.accion === "despertar") {
-          const r = despertar(partida, p, e.carmesi ?? false, e.razones ?? [], e.ambicion);
+          const r = despertar(partida, portador, e.carmesi ?? false, e.razones ?? [], e.ambicion);
           return { contenido: r.dm, aviso: `👁  ${r.jugadores}` };
         }
         if (e.accion === "aceptar") {
-          const texto = aceptar(partida, p, (e.sacrificados ?? []).map((n) => buscar(partida, n)), e.sacrificados_pnj ?? []);
+          const texto = aceptar(partida, portador, e.sacrificados ?? []);
           return { contenido: texto, aviso: `🌑 ${texto}` };
         }
-        const texto = rechazar(partida, p);
+        const texto = rechazar(partida, portador);
         return { contenido: texto, aviso: `👁  ${texto}` };
       }
       case "anotar_mundo": {

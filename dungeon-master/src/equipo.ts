@@ -5,7 +5,7 @@ import type { Partida } from "./estado.js";
 import { APARIENCIA } from "./behelit.js";
 import { VIALES, type NombreVial } from "./viales.js";
 
-export const CALIDADES_OBJETO = ["defectuoso", "normal", "de calidad", "encantado", "maldito", "reliquia"] as const;
+export const CALIDADES_OBJETO = ["defectuoso", "normal", "de calidad", "encantado", "maldito", "reliquia", "legendario"] as const;
 export type CalidadObjeto = (typeof CALIDADES_OBJETO)[number];
 export const ORIGENES = ["compra", "saqueo", "hallazgo", "jefe"] as const;
 export type Origen = (typeof ORIGENES)[number];
@@ -113,11 +113,40 @@ const PODERES_RELIQUIA: string[] = [
   "Mirada del dios: una vez al día, conoce la debilidad principal de una criatura que vea",
 ];
 
+/** Armas legendarias: únicas en toda la campaña. Todas protegen frente al Eclipse (+5 y ventaja). */
+export const LEGENDARIAS: { nombre: string; descripcion: string }[] = [
+  {
+    nombre: "Colmillo de Hierro",
+    descripcion:
+      "Un espadón descomunal, más losa de hierro que espada (2d8 cortante, pesada, a dos manos, FUE 17 o desventaja). +2 a ataque y daño; +2d8 contra demonios, apóstoles y no-muertos. Forjado con el hierro de las cadenas que ataron a un dios: los apóstoles lo temen",
+  },
+  {
+    nombre: "Lanza de la Primera Llama",
+    descripcion:
+      "Lanza de asta negra cuya punta arde sin consumirse (1d10 perforante + 2d6 fuego, alcance). +3 a ataque y daño. Una vez al día, su llama hiere también a lo incorpóreo y a lo que no puede ser herido",
+  },
+  {
+    nombre: "Escudo de Aldren el Fiel",
+    descripcion:
+      "Escudo de roble y hierro con mil muescas. +3 a la CA; los aliados adyacentes ganan +2 a sus salvaciones. Una vez al día, su portador puede recibir en lugar de un aliado un ataque o una habilidad que lo habría matado",
+  },
+  {
+    nombre: "Daga del Último Rito",
+    descripcion:
+      "Daga de hueso blanco que usaban los sacerdotes para cerrar los ojos de los dioses (1d4 perforante, sutil). +3 a ataque y daño. Una vez al día, corta un hilo del destino: anula una profecía, un presagio o una condición mágica",
+  },
+  {
+    nombre: "Martillo del Herrero Ciego",
+    descripcion:
+      "Martillo de guerra cuyo golpe resuena como una campana (1d10 contundente + 1d10 trueno). +2 a ataque y daño. Su sonido rompe las ilusiones y obliga a los cambiaformas a mostrar su forma verdadera (CAR CD 17)",
+  },
+];
+
 const TABLAS: Record<Origen, [number, CalidadObjeto][]> = {
   compra: [[15, "defectuoso"], [80, "normal"], [95, "de calidad"], [99, "encantado"], [100, "maldito"]],
   saqueo: [[35, "defectuoso"], [80, "normal"], [90, "de calidad"], [96, "encantado"], [100, "maldito"]],
   hallazgo: [[15, "defectuoso"], [50, "normal"], [65, "de calidad"], [85, "encantado"], [97, "maldito"], [100, "reliquia"]],
-  jefe: [[10, "de calidad"], [60, "encantado"], [80, "maldito"], [100, "reliquia"]],
+  jefe: [[10, "de calidad"], [60, "encantado"], [80, "maldito"], [98, "reliquia"], [100, "legendario"]],
 };
 
 /** Probabilidad (%) de que el botín incluya un vial, y qué vial (d100). */
@@ -136,7 +165,18 @@ function nuevoId(partida: Partida) {
 }
 
 function generarUno(partida: Partida, origen: Origen, clase?: Clase, calidadFija?: CalidadObjeto): Objeto {
-  const calidad = calidadFija ?? deTabla(TABLAS[origen], tirar("1d100").total);
+  let calidad = calidadFija ?? deTabla(TABLAS[origen], tirar("1d100").total);
+  if (calidad === "legendario") {
+    const libres = LEGENDARIAS.filter((l) => !Object.values(partida.objetos).some((o) => o.nombre.startsWith(l.nombre)));
+    if (libres.length) {
+      const l = elegir(libres);
+      const id = nuevoId(partida);
+      const o: Objeto = { id, nombre: `${l.nombre} [${id}]`, calidad, apariencia: l.descripcion, verdad: `${l.descripcion}. LEGENDARIA: protege frente al Eclipse (+5 y ventaja).`, precio: 20000, identificado: true };
+      partida.objetos[id] = o;
+      return o;
+    }
+    calidad = "reliquia"; // ya se encontraron todas
+  }
   const candidatos = BASES.filter((b) => (clase ? b.clase === clase : calidad !== "normal" && calidad !== "defectuoso" && calidad !== "de calidad" ? true : b.clase !== "accesorio"));
   const base = elegir(candidatos);
   const id = nuevoId(partida);
@@ -252,7 +292,7 @@ export function crearObjeto(
 }
 
 export const REGLAS_EQUIPO = `## Equipamiento y botín (usa generar_botin, crear_objeto y examinar_objeto)
-- Calidades: defectuoso (oxidado, −1), normal, de calidad (+1 no mágico), encantado, maldito y reliquia (de un dios muerto: muy poderosa y rarísima).
+- Calidades: defectuoso (oxidado, −1), normal, de calidad (+1 no mágico), encantado, maldito, reliquia (de un dios muerto: muy poderosa y rarísima) y legendario (armas únicas con nombre: ${LEGENDARIAS.map((l) => l.nombre).join(", ")}; solo una de cada, y protegen frente al Eclipse). Puedes inventar más armas legendarias con crear_objeto (calidad legendario).
 - generar_botin tira con tablas según el origen: compra (tiendas: casi todo normal, algún vial a la venta), saqueo (cadáveres comunes: mucha chatarra), hallazgo (ruinas, tumbas, cámaras ocultas: aquí aparece lo encantado y lo maldito) y jefe (lo mejor, y lo más peligroso).
 - Lo maldito parece encantado: muestra a los jugadores solo la apariencia. Revela la maldición en la ficción cuando se manifieste por primera vez o cuando la descubran (Arcanos CD 15, un rito, un experto) y entonces llama a examinar_objeto con revelar=true.
 - No dependas solo de las tablas: crea con crear_objeto armas con nombre e historia, objetos únicos de la aventura, armas de jefes caídos, recompensas de misiones. Las tiendas de Aldenmar tienen casi de todo lo normal; lo encantado se encuentra, se gana o se compra en el mercado negro a precios abusivos.
