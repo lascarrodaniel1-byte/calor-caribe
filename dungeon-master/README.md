@@ -111,6 +111,24 @@ npm run jugar                            # continúa la partida guardada, o empi
 npm run jugar -- --nueva                 # empieza desde cero
 ```
 
+### Multijugador por el navegador
+
+Una persona arranca la mesa y el resto entra desde el navegador del móvil o del PC:
+
+```bash
+cd dungeon-master
+export ANTHROPIC_API_KEY=sk-ant-...
+export DM_CLAVE=una-clave       # opcional, pero recomendado: solo entra quien la tenga
+npm run servidor                # o: npm run servidor -- --nueva
+```
+
+Al arrancar, muestra las direcciones para entrar:
+
+- **Misma red Wi-Fi**: `http://IP-DEL-ORDENADOR:8080` (la imprime el servidor).
+- **Por internet**: en otra terminal, `cloudflared tunnel --url http://localhost:8080`, y comparte la URL `https://….trycloudflare.com` que te dé (añade `?clave=…` si usas clave).
+
+Cada jugador escribe su nombre y se sienta a la mesa. Todos ven la narración del DM en vivo, las tiradas y los avisos, y tienen un panel con las fichas. Si varios escriben mientras el DM está narrando, sus acciones se juntan y el DM las resuelve todas en el siguiente turno. Quien entra tarde ve todo lo que ha pasado. `/tirar` es público; `/fichas`, `/razas`, `/viales`… solo los ve quien los pide. La partida es la misma que la de la terminal (`partida.json`), así que puedes alternar entre ambas. Cambia el puerto con `PORT=3000`.
+
 Comandos dentro del juego:
 
 | Comando | Qué hace |
@@ -148,6 +166,9 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/herramientas.ts` | Herramientas del DM: dados, fichas, heridas, tiempo, hemorragias, viales, botín, objetos y criaturas |
 | `src/dados.ts` | Motor de dados |
 | `src/estado.ts` | Fichas y guardado de la partida |
-| `src/index.ts` | Bucle de juego en la terminal (streaming + bucle de herramientas) |
+| `src/motor.ts` | Un turno del DM (streaming + bucle de herramientas) y los comandos de mesa, compartidos por la terminal y la web |
+| `src/index.ts` | Juego en la terminal |
+| `src/servidor.ts` | Mesa multijugador: servidor web con eventos en vivo |
+| `web/index.html` | La página de la mesa |
 
 Detalles técnicos: usa la API de Mensajes con streaming, prompt caching (el historial se reutiliza de un turno a otro, lo que abarata partidas largas) y `fallbacks: "default"`, que reintenta en otro modelo si el principal rechaza una petición, para que una escena oscura no corte la partida.

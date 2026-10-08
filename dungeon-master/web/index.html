@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mesa de Velmora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fondo: #0f0d0c;
+    --panel: #1a1614;
+    --panel-2: #231e1b;
+    --borde: #3a302a;
+    --texto: #e8dfd4;
+    --tenue: #9a8d80;
+    --brasa: #d9732f;
+    --brasa-suave: #d9732f22;
+    --sangre: #b0302c;
+    --ok: #7fa36b;
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --sans: Inter, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--fondo); color: var(--texto); font-family: var(--sans); font-size: 15px; }
+  button, input, textarea { font: inherit; color: inherit; }
+
+  /* --- entrada --- */
+  #entrada { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+  .tarjeta { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 28px 24px; }
+  .tarjeta h1 { font-family: var(--serif); font-size: 34px; margin: 0 0 4px; font-weight: 700; }
+  .tarjeta p { color: var(--tenue); margin: 0 0 20px; font-family: var(--serif); font-size: 18px; font-style: italic; }
+  label { display: block; font-size: 13px; color: var(--tenue); margin: 12px 0 6px; }
+  input[type=text], input[type=password], textarea { width: 100%; background: var(--fondo); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; outline: none; }
+  input:focus, textarea:focus { border-color: var(--brasa); }
+  .boton { background: var(--brasa); color: #1a0f08; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+  .boton:disabled { opacity: .5; cursor: default; }
+  .boton.sec { background: var(--panel-2); color: var(--texto); border: 1px solid var(--borde); font-weight: 400; }
+  #entrada .boton { width: 100%; margin-top: 20px; padding: 12px; }
+  .error { color: var(--sangre); font-size: 13px; margin-top: 10px; min-height: 1em; }
+
+  /* --- mesa --- */
+  #mesa { display: none; height: 100%; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--borde); background: var(--panel); }
+  header h2 { font-family: var(--serif); font-size: 22px; margin: 0; font-weight: 700; white-space: nowrap; }
+  #estado { font-size: 13px; color: var(--tenue); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #estado .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: middle; }
+  #estado.ocupado .punto { background: var(--brasa); animation: latir 1s infinite; }
+  @keyframes latir { 50% { opacity: .3; } }
+  #cuerpo { flex: 1; display: flex; min-height: 0; }
+  #registro { flex: 1; overflow-y: auto; padding: 20px 16px 8px; }
+  .columna { max-width: 760px; margin: 0 auto; }
+  .ev { margin: 0 0 14px; line-height: 1.55; overflow-wrap: anywhere; }
+  .ev.dm { font-family: var(--serif); font-size: 20px; line-height: 1.5; }
+  .ev.dm p { margin: 0 0 10px; }
+  .ev.jugador { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 8px 12px; }
+  .ev.jugador b { font-weight: 600; }
+  .ev.aviso { font-family: var(--mono); font-size: 13px; white-space: pre-wrap; background: var(--brasa-suave); border-left: 3px solid var(--brasa); padding: 8px 12px; border-radius: 0 8px 8px 0; }
+  .ev.aviso.letal { border-left-color: var(--sangre); background: #b0302c22; }
+  .ev.info, .ev.sistema { color: var(--tenue); font-style: italic; font-size: 14px; text-align: center; }
+  .ev.privado { font-family: var(--mono); font-size: 13px; white-space: pre-wrap; border: 1px dashed var(--borde); padding: 8px 12px; border-radius: 8px; color: var(--tenue); }
+  .ev.privado::before { content: "Solo lo ves tú"; display: block; font-family: var(--sans); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+
+  #fichas { width: 340px; border-left: 1px solid var(--borde); background: var(--panel); overflow-y: auto; padding: 16px; display: none; }
+  #fichas.abierto { display: block; }
+  #fichas h3 { font-family: var(--serif); font-size: 22px; margin: 0 0 12px; }
+  .ficha { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; background: var(--fondo); border: 1px solid var(--borde); border-radius: 8px; padding: 10px; margin-bottom: 12px; overflow-wrap: anywhere; }
+
+  footer { border-top: 1px solid var(--borde); background: var(--panel); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .redactar { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+  .redactar textarea { resize: none; min-height: 44px; max-height: 160px; }
+  .atajos { max-width: 760px; margin: 0 auto 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .atajos button { font-size: 12px; padding: 5px 10px; }
+
+  @media (max-width: 760px) {
+    #fichas { position: fixed; inset: 52px 0 0 0; width: auto; z-index: 5; border-left: 0; }
+    header h2 { font-size: 18px; }
+    .ev.dm { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<section id="entrada">
+  <form class="tarjeta" id="form-entrada">
+    <h1>Mesa de Velmora</h1>
+    <p>El Reino del Sol Herido te espera.</p>
+    <label for="nombre">Tu nombre (el del jugador, no el del personaje)</label>
+    <input type="text" id="nombre" maxlength="30" autocomplete="nickname" required>
+    <div id="campo-clave">
+      <label for="clave">Clave de la mesa (si la hay)</label>
+      <input type="password" id="clave" autocomplete="off">
+    </div>
+    <button class="boton" type="submit">Sentarse a la mesa</button>
+    <div class="error" id="error-entrada"></div>
+  </form>
+</section>
+
+<section id="mesa">
+  <header>
+    <h2>Velmora</h2>
+    <div id="estado"><span class="punto"></span><span id="estado-texto">Conectando…</span></div>
+    <button class="boton sec" id="ver-fichas" type="button">Fichas</button>
+  </header>
+  <div id="cuerpo">
+    <main id="registro"><div class="columna" id="eventos"></div></main>
+    <aside id="fichas"><h3>Fichas</h3><div id="lista-fichas"></div></aside>
+  </div>
+  <footer>
+    <div class="atajos">
+      <button class="boton sec" type="button" data-cmd="/tirar 1d20">🎲 d20</button>
+      <button class="boton sec" type="button" data-cmd="/tirar 4d6kh3">4d6kh3</button>
+      <button class="boton sec" type="button" data-cmd="/razas">Razas y clases</button>
+      <button class="boton sec" type="button" data-cmd="/viales">Viales</button>
+      <button class="boton sec" type="button" data-cmd="/ayuda">Ayuda</button>
+    </div>
+    <form class="redactar" id="form-accion">
+      <textarea id="accion" rows="1" placeholder="¿Qué haces?" maxlength="2000"></textarea>
+      <button class="boton" type="submit">Enviar</button>
+    </form>
+  </footer>
+</section>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const guardado = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
+  const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+  let nombre = guardado("velmora-nombre");
+  let clave = params.get("clave") || guardado("velmora-clave");
+  let fuente = null;
+  let dmActual = null;
+
+  $("nombre").value = nombre;
+  $("clave").value = clave;
+  if (params.get("clave")) $("campo-clave").style.display = "none";
+
+  // --- utilidades de texto ---
+  const escapar = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function markdown(s) {
+    return escapar(s.trim())
+      .split(/\n{2,}/)
+      .map((p) => "<p>" + p
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>")
+        .replace(/\n/g, "<br>") + "</p>")
+      .join("");
+  }
+  function colorDe(n) {
+    let h = 0;
+    for (const c of n) h = (h * 31 + c.charCodeAt(0)) % 360;
+    return `hsl(${h} 60% 68%)`;
+  }
+
+  // --- registro ---
+  const lista = $("eventos");
+  const registro = $("registro");
+  const alFondo = () => registro.scrollHeight - registro.scrollTop - registro.clientHeight < 120;
+  function bajar(forzar) { if (forzar || alFondo()) registro.scrollTop = registro.scrollHeight; }
+
+  function pintar(e) {
+    const div = document.createElement("div");
+    div.className = "ev " + e.t;
+    if (e.t === "dm") { div.dataset.raw = e.texto; div.innerHTML = markdown(e.texto); }
+    else if (e.t === "jugador") {
+      const b = document.createElement("b");
+      b.style.color = colorDe(e.nombre);
+      b.textContent = e.nombre + ": ";
+      div.append(b, document.createTextNode(e.texto));
+    } else {
+      div.textContent = e.texto;
+      if (e.t === "aviso" && /☠|MUERTE|muere|ROJA/.test(e.texto)) div.classList.add("letal");
+    }
+    lista.append(div);
+    return div;
+  }
+
+  function evento(datos) {
+    const forzar = alFondo();
+    switch (datos.t) {
+      case "historia":
+        lista.innerHTML = "";
+        dmActual = null;
+        datos.eventos.forEach(pintar);
+        bajar(true);
+        cargarFichas();
+        return;
+      case "dm_inicio":
+        dmActual = pintar({ t: "dm", texto: "" });
+        break;
+      case "dm_delta":
+        if (!dmActual) dmActual = pintar({ t: "dm", texto: "" });
+        dmActual.dataset.raw += datos.d;
+        dmActual.innerHTML = markdown(dmActual.dataset.raw);
+        break;
+      case "estado": {
+        const quien = datos.jugadores.join(", ") || "nadie";
+        $("estado").classList.toggle("ocupado", datos.ocupado);
+        $("estado-texto").textContent = (datos.ocupado ? "El DM está narrando…" : "El DM espera vuestras acciones") +
+          (datos.esperando ? ` · ${datos.esperando} acción(es) en cola` : "") + ` · En la mesa: ${quien}`;
+        return;
+      }
+      case "fichas":
+        cargarFichas();
+        return;
+      default:
+        dmActual = null;
+        pintar(datos);
+    }
+    if (forzar) bajar(true);
+  }
+
+  // --- fichas ---
+  async function cargarFichas() {
+    try {
+      const r = await fetch("/fichas" + (clave ? "?clave=" + encodeURIComponent(clave) : ""));
+      if (!r.ok) return;
+      const { fichas } = await r.json();
+      const cont = $("lista-fichas");
+      cont.innerHTML = "";
+      if (!fichas.length) { cont.innerHTML = '<p style="color:var(--tenue)">Aún no hay personajes. El DM os guiará para crearlos.</p>'; return; }
+      for (const f of fichas) {
+        const d = document.createElement("div");
+        d.className = "ficha";
+        d.textContent = f.texto;
+        cont.append(d);
+      }
+    } catch {}
+  }
+  $("ver-fichas").onclick = () => $("fichas").classList.toggle("abierto");
+
+  // --- conexión ---
+  function conectar() {
+    if (fuente) fuente.close();
+    const q = new URLSearchParams({ nombre });
+    if (clave) q.set("clave", clave);
+    fuente = new EventSource("/eventos?" + q);
+    fuente.onmessage = (m) => evento(JSON.parse(m.data));
+    fuente.onerror = () => { $("estado-texto").textContent = "Reconectando…"; };
+  }
+
+  $("form-entrada").onsubmit = async (ev) => {
+    ev.preventDefault();
+    nombre = $("nombre").value.trim();
+    clave = $("clave").value.trim() || clave;
+    if (!nombre) return;
+    const prueba = await fetch("/fichas" + (clave ? "?clave=" + encodeURIComponent(clave) : ""));
+    if (prueba.status === 401) { $("error-entrada").textContent = "La clave no es correcta."; return; }
+    guardar("velmora-nombre", nombre);
+    if (clave) guardar("velmora-clave", clave);
+    $("entrada").style.display = "none";
+    $("mesa").style.display = "flex";
+    conectar();
+    $("accion").focus();
+  };
+
+  // --- acciones ---
+  async function enviar(texto) {
+    texto = texto.trim();
+    if (!texto) return;
+    const r = await fetch("/accion" + (clave ? "?clave=" + encodeURIComponent(clave) : ""), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, texto }),
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (datos.privado) { pintar({ t: "privado", texto: datos.privado }); bajar(true); }
+    if (datos.error) { pintar({ t: "info", texto: datos.error }); bajar(true); }
+  }
+
+  const caja = $("accion");
+  const ajustar = () => { caja.style.height = "auto"; caja.style.height = Math.min(caja.scrollHeight, 160) + "px"; };
+  caja.addEventListener("input", ajustar);
+  caja.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); }
+  });
+  $("form-accion").onsubmit = (ev) => {
+    ev.preventDefault();
+    const t = caja.value;
+    caja.value = "";
+    ajustar();
+    enviar(t);
+  };
+  document.querySelectorAll("[data-cmd]").forEach((b) => (b.onclick = () => enviar(b.dataset.cmd)));
+
+  // Entrar directamente si ya teníamos nombre guardado.
+  if (nombre && (!guardado("velmora-clave") || clave)) $("form-entrada").requestSubmit();
+})();
+</script>
+</body>
+</html>

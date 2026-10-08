@@ -6,6 +6,7 @@
   "description": "Dungeon Master de D&D 5e en la terminal, impulsado por Claude",
   "scripts": {
     "jugar": "tsx src/index.ts",
+    "servidor": "tsx src/servidor.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
