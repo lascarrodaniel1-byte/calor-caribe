@@ -31,7 +31,7 @@ import {
   tratar,
   UBICACIONES,
 } from "./heridas.js";
-import { descansar, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
+import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { ATRIBUTOS } from "./reglas.js";
@@ -104,6 +104,7 @@ const esquemas = {
     oro: z.number().int().min(0).optional(),
     notas: z.string().optional().describe("Trasfondo, rasgos, conjuros, competencias…"),
     escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Solo Hechicero: sus dos escuelas"),
+    don_arcano: z.boolean().optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza que tenga o no el don; si se omite, se tira en secreto"),
   }),
   modificar_personaje: z.object({
     nombre: z.string(),
@@ -373,6 +374,14 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "guardar_personaje": {
         const e = validado.data as z.infer<typeof esquemas.guardar_personaje>;
+        const previo = partida.personajes[e.nombre];
+        let don = e.don_arcano ?? false;
+        let tiradaDon = "";
+        if (!previo?.magia && e.clase !== "Hechicero" && e.don_arcano === undefined) {
+          const t = tirarDon(e.raza);
+          don = t.don;
+          tiradaDon = t.texto;
+        }
         const p: Personaje = normalizar({
           ...e,
           pv: e.pv ?? e.pv_max,
@@ -388,10 +397,11 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
           dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
           robado: partida.personajes[e.nombre]?.robado ?? {},
-          magia: partida.personajes[e.nombre]?.magia ?? magiaInicial(e.clase, e.escuelas_magia),
+          magia: previo?.magia ?? magiaInicial(e.clase, e.escuelas_magia, don),
         });
         partida.personajes[p.nombre] = p;
-        return { contenido: `Ficha guardada:\n${fichaTexto(p)}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}` };
+        const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." : ""}` : "";
+        return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
       }
       case "modificar_personaje": {
         const e = validado.data as z.infer<typeof esquemas.modificar_personaje>;
@@ -430,6 +440,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           cambios.push(`Ceniza ${p.ceniza}`);
         }
         if (e.maestria) {
+          if (p.magia.maestria === "profano" && e.maestria !== "profano") despertarMagia(p.clase, p.magia);
           p.magia.maestria = e.maestria;
           cambios.push(`maestría ${e.maestria}`);
         }

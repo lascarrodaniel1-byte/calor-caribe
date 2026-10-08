@@ -270,5 +270,5 @@ export function textoRazasYClases(): string {
     (c) =>
       `- **${c.nombre}** (base: ${c.base}; d${c.dadoGolpe}; principal: ${c.principal}; salvaciones: ${c.salvaciones}).\n  Rasgos de nivel 1: ${c.rasgos.join("; ")}.\n  Equipo inicial: ${c.equipo}.`,
   ).join("\n");
-  return `## Razas jugables\n${razas}\n\n## Clases (el Hechicero es el único mago de verdad; el resto son combatientes con algo de magia de iniciado)\n${clases}`;
+  return `## Razas jugables\n${razas}\n\n## Clases (el Hechicero es el único mago de verdad; el resto son combatientes, y solo los que nacen con el don o llegan a élite saben algo de magia)\n${clases}`;
 }

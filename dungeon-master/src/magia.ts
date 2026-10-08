@@ -146,14 +146,49 @@ export interface MagiaPersonaje {
   tramos_vejez: number;
 }
 
-export function magiaInicial(clase: string, escuelasElegidas?: Escuela[]): MagiaPersonaje {
-  const base = MAGIA_CLASE[clase] ?? { maestria: "profano" as Maestria, escuelas: [], hechizos: [], atributo: "int" as const };
-  const escuelas = clase === "Hechicero" ? (escuelasElegidas?.length ? escuelasElegidas.slice(0, 2) : ["elemental", "mente"] as Escuela[]) : base.escuelas;
-  const hechizos =
-    clase === "Hechicero"
-      ? HECHIZOS.filter((h) => escuelas.includes(h.escuela) && h.circulo <= 1).map((h) => h.nombre)
-      : base.hechizos;
-  return { maestria: base.maestria, escuelas, hechizos, atributo: base.atributo, calor: 0, aliento: 0, cordura: 0, anios_perdidos: 0, tramos_vejez: 0 };
+/**
+ * Probabilidad (%) de nacer con don arcano, según la raza. Fuera del Hechicero,
+ * casi nadie sabe magia: un guerrero que la usa tiene el don o es de élite y
+ * la aprendió con un maestro.
+ */
+export const DON_ARCANO: Record<string, number> = {
+  "Humano del Faro": 4,
+  "Enano de Karak-Dûm": 2,
+  "Elfo Marchito": 15,
+  "Mediano de Hollín": 4,
+  Varg: 1,
+  "Nacido Pálido": 12,
+  Cenizo: 10,
+};
+
+/** Tira el don arcano al crear un personaje. */
+export function tirarDon(raza: string): { don: boolean; texto: string } {
+  const prob = DON_ARCANO[raza] ?? 4;
+  const d = tirar("1d100").total;
+  const don = d <= prob;
+  return { don, texto: `Don arcano (${raza}, ${prob} %): d100 = ${d} → ${don ? "¡TIENE EL DON!" : "no"}` };
+}
+
+/** La magia con la que empieza un personaje. Los guerreros, solo si tienen el don. */
+export function magiaInicial(clase: string, escuelasElegidas?: Escuela[], don = false): MagiaPersonaje {
+  const vacia = { calor: 0, aliento: 0, cordura: 0, anios_perdidos: 0, tramos_vejez: 0 };
+  const base = MAGIA_CLASE[clase];
+  if (clase === "Hechicero") {
+    const escuelas = escuelasElegidas?.length ? escuelasElegidas.slice(0, 2) : (["elemental", "mente"] as Escuela[]);
+    const hechizos = HECHIZOS.filter((h) => escuelas.includes(h.escuela) && h.circulo <= 1).map((h) => h.nombre);
+    return { maestria: "adepto", escuelas, hechizos, atributo: "int", ...vacia };
+  }
+  if (base && don) return { maestria: base.maestria, escuelas: [...base.escuelas], hechizos: [...base.hechizos], atributo: base.atributo, ...vacia };
+  return { maestria: "profano", escuelas: [], hechizos: [], atributo: base?.atributo ?? "int", ...vacia };
+}
+
+/** Cuando un guerrero aprende magia en la historia, empieza por la de su estilo. */
+export function despertarMagia(clase: string, m: MagiaPersonaje) {
+  const base = MAGIA_CLASE[clase];
+  if (!base || m.escuelas.length) return;
+  m.escuelas = [...base.escuelas];
+  m.hechizos = [...base.hechizos];
+  m.atributo = base.atributo;
 }
 
 export function textoMagia(m: MagiaPersonaje | undefined): string {
@@ -445,7 +480,7 @@ La magia es rara y temida. La Inquisición persigue a los magos sin licencia y l
 - Maestría: profano (no lanza), iniciado (hasta círculo 1), adepto (2), maestro (3), archimago (4). Forzar un círculo por encima: CD +5 y precio doble. El círculo 5 solo lo intenta un archimago forzando.
 - Catalizadores (en el inventario; pásalo en catalizador): Piedra de brasa (calor), Ámbar de tormenta (aliento), Corazón de cuervo (sangre), Incienso de amapola gris (cordura), Reloj de arena de hueso (años; rarísimo), Diente de dios (todo; reliquia), Báculo de roble petrificado (permanente, −1 de calor). Son caros o raros: que cueste conseguirlos.
 - Afinidad de las razas: ${Object.entries(AFINIDAD).map(([r, a]) => `${r}: ${a.nota}`).join("; ")}.
-- Clases: el Hechicero es el único mago de verdad (adepto, dos escuelas a elegir, suma su competencia). Los guerreros saben uno o dos hechizos de iniciado acordes a su estilo: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}.
+- Quién sabe magia: casi nadie. El Hechicero es el único mago de verdad (adepto, dos escuelas a elegir, suma su competencia). Un guerrero solo la usa si nació con el don (el programa lo tira al crear el personaje; por raza: ${Object.entries(DON_ARCANO).map(([r, n]) => `${r} ${n} %`).join(", ")}) o si es de élite y la aprendió en la historia con un maestro, un grimorio o un pacto, tras mucho esfuerzo (modificar_personaje con maestria "iniciado": recibe la magia de su estilo). Estilo de cada clase: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}. Entre los PNJ, igual: los soldados, aldeanos y mercaderes no saben magia; solo algunos veteranos de élite (inquisidores de alto rango, cazadores de brujas curtidos, caballeros de órdenes antiguas) y unos pocos dotados.
 - Subir de maestría o aprender hechizos exige maestros, grimorios o pactos, y tiempo (modificar_personaje con maestria, agregar_escuelas o agregar_hechizos).
 - Hechizos de referencia: ${ESCUELAS.map((e) => `${e}: ${HECHIZOS.filter((h) => h.escuela === e).map((h) => `${h.nombre} (${h.circulo})`).join(", ")}`).join(" | ")}. Puedes improvisar otros con hechizo_nuevo, respetando escuela, círculo y precio.
 - Los PNJ magos pagan el mismo precio: que se note en la ficción (manos quemadas, labios azules, canas prematuras).`;

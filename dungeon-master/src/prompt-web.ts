@@ -32,7 +32,7 @@ Amenazas: los Hambrientos (no-muertos; su mordisco transmite la Podre), la Podre
 function razasYClasesCortas(): string {
   const razas = RAZAS.map((r) => `- ${r.nombre} (${r.atributos}). Curación: ${r.notaCuracion}`).join("\n");
   const clases = CLASES.map((c) => `- ${c.nombre} (${c.base}, d${c.dadoGolpe}, ${c.principal})`).join("\n");
-  return `## Razas (solo estas)\n${razas}\n## Clases (solo estas; el Hechicero es el único mago, el resto son combatientes con magia de iniciado)\n${clases}\nRasgos, salvaciones y equipo inicial: consultar_reglas {tema: "razas_clases"}.`;
+  return `## Razas (solo estas)\n${razas}\n## Clases (solo estas; el Hechicero es el único mago; los demás son combatientes y casi nunca saben magia)\n${clases}\nRasgos, salvaciones y equipo inicial: consultar_reglas {tema: "razas_clases"}.`;
 }
 
 const HERIDAS = `## Heridas (el programa las resuelve; tú las narras)
@@ -47,7 +47,7 @@ const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
 - Botín y objetos (normales, encantados, malditos ocultos, reliquias, legendarios) con generar_botin, crear_objeto y examinar_objeto: tema "equipo".
 - Criaturas y jefes con aparecer_criatura, danar_criatura, habilidad_criatura, presagio_criatura: tema "bestiario", o {tema: "criatura", nombre} para la ficha de una. Son una base: inventa las tuyas.
 - Behelits y el Eclipse con behelit: tema "behelits" (antes de usarlos, léelo siempre).
-- Magia con lanzar_hechizo: rara, temida y cara. Cada hechizo se cobra calor, aliento, sangre, cordura o años de vida según escuela y círculo; los catalizadores absorben el precio; las razas tienen afinidades; el Hechicero es el único mago de verdad. Antes del primer hechizo de la partida, lee tema "magia".
+- Magia con lanzar_hechizo: rara, temida y cara. Cada hechizo se cobra calor, aliento, sangre, cordura o años de vida según escuela y círculo; los catalizadores absorben el precio; las razas tienen afinidades; el Hechicero es el único mago de verdad; un guerrero solo la usa si nació con el don (raro) o si es de élite y la aprendió con un maestro. Casi ningún PNJ sabe magia. Antes del primer hechizo de la partida, lee tema "magia".
 - Mapa: los jugadores ven siempre dónde está el grupo. Llama a ubicacion al empezar, al llegar a otro sitio y durante los viajes (con viajando_hacia y progreso). Reutiliza los nombres de los lugares.
 - Ambientación completa: tema "ambientacion".`;
 
