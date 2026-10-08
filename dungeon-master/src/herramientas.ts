@@ -3,7 +3,17 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { describir, tirar } from "./dados.js";
-import { aparecer, buscarCriatura, danar, estadoTexto, usarHabilidad, type Criatura } from "./bestiario.js";
+import {
+  aparecer,
+  buscarCriatura,
+  danar,
+  devolverRobos,
+  estadoTexto,
+  presagio,
+  usarHabilidad,
+  type Criatura,
+  type EstadoJefe,
+} from "./bestiario.js";
 import { CALIDADES_OBJETO, crearObjeto, generarBotin, ORIGENES } from "./equipo.js";
 import { fichaTexto, normalizar, type Partida, type Personaje } from "./estado.js";
 import {
@@ -43,6 +53,10 @@ const habilidad = z.object({
   sangre: z.number().int().min(1).optional().describe("Sangre perdida al fallar (riesgo de anemia)"),
   ceniza: z.number().int().min(1).optional(),
   recarga: z.number().int().min(2).max(6).optional().describe("Recarga X-6 en 1d6"),
+  robo: z
+    .string()
+    .optional()
+    .describe('Robo de esencia: dados que roba del mejor atributo de quien falla, p. ej. "1d4"; la criatura gana sus rasgos de raza y clase'),
 });
 
 const criatura = z.object({
@@ -59,6 +73,7 @@ const criatura = z.object({
   rasgos: z.array(z.string()),
   habilidades: z.array(habilidad),
   botin: z.string().optional(),
+  presagios: z.number().int().min(1).max(5).optional().describe("Si ve el futuro: d20 que tira por adelantado"),
 });
 
 const atributo = z.number().int().min(1).max(30);
@@ -177,6 +192,11 @@ const esquemas = {
     habilidad_nueva: habilidad.optional().describe("Habilidad improvisada que no está en su ficha"),
     objetivos: z.array(z.string()).min(1).describe("Personajes jugadores afectados"),
   }),
+  presagio_criatura: z.object({
+    criatura: z.string(),
+    accion: z.enum(["ver", "usar", "renovar"]).describe("usar: sustituye una tirada por un presagio; renovar: al inicio de su ronda"),
+    valor: z.number().int().min(1).max(20).optional().describe("Con usar: el presagio que impone"),
+  }),
   anotar_mundo: z.object({
     nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
   }),
@@ -212,6 +232,8 @@ const descripciones: Record<Nombre, string> = {
   danar_criatura: "Aplica daño (o curación) a una criatura en escena.",
   habilidad_criatura:
     "Resuelve una habilidad especial de una criatura (registrada o improvisada): salvaciones reales, daño, condiciones, heridas, anemia y muerte instantánea.",
+  presagio_criatura:
+    "Para criaturas que ven el futuro: consulta sus presagios, impón uno en lugar de una tirada (de un jugador o suya) o renueva uno al inicio de su ronda.",
   anotar_mundo:
     "Guarda un hecho importante de la campaña para no olvidarlo en sesiones futuras.",
 };
@@ -244,6 +266,14 @@ function buscar(partida: Partida, nombre: string): Personaje {
     throw new Error(`No existe el personaje "${nombre}". Personajes: ${hay}`);
   }
   return p;
+}
+
+function enEscena(partida: Partida, nombre: string): EstadoJefe {
+  const n = nombre.toLowerCase();
+  const todos = Object.values(partida.jefes);
+  const j = partida.jefes[nombre] ?? todos.find((x) => x.nombre.toLowerCase() === n) ?? todos.find((x) => x.nombre.toLowerCase().includes(n));
+  if (!j) throw new Error(`${nombre} no está en escena. En escena: ${Object.keys(partida.jefes).join(", ") || "nadie"}`);
+  return j;
 }
 
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
@@ -281,6 +311,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           sangrado: partida.personajes[e.nombre]?.sangrado ?? 0,
           anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
           dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
+          robado: partida.personajes[e.nombre]?.robado ?? {},
         });
         partida.personajes[p.nombre] = p;
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}` };
@@ -399,15 +430,22 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "danar_criatura": {
         const e = validado.data as z.infer<typeof esquemas.danar_criatura>;
-        const j = partida.jefes[e.nombre] ?? Object.values(partida.jefes).find((x) => x.nombre.toLowerCase() === e.nombre.toLowerCase());
-        if (!j) throw new Error(`${e.nombre} no está en escena. En escena: ${Object.keys(partida.jefes).join(", ") || "nadie"}`);
-        const texto = danar(j, e.cantidad);
-        if (j.pv <= 0) delete partida.jefes[j.nombre];
-        return { contenido: texto, aviso: `⚔️  ${j.nombre}: ${estadoTexto(j)}` };
+        const j = enEscena(partida, e.nombre);
+        let texto = danar(j, e.cantidad);
+        let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}`;
+        if (j.pv <= 0) {
+          const devueltos = devolverRobos(partida, j);
+          if (devueltos.length) {
+            texto += `\nAl morir, lo robado vuelve a sus dueños:\n${devueltos.join("\n")}`;
+            aviso += `\n${devueltos.join("\n")}`;
+          }
+          delete partida.jefes[j.nombre];
+        }
+        return { contenido: texto, aviso };
       }
       case "habilidad_criatura": {
         const e = validado.data as z.infer<typeof esquemas.habilidad_criatura>;
-        const j = partida.jefes[e.criatura] ?? Object.values(partida.jefes).find((x) => x.nombre.toLowerCase() === e.criatura.toLowerCase());
+        const j = e.habilidad_nueva ? Object.values(partida.jefes).find((x) => x.nombre.toLowerCase().includes(e.criatura.toLowerCase())) : enEscena(partida, e.criatura);
         const h =
           e.habilidad_nueva ??
           j?.definicion.habilidades.find((x) => x.nombre.toLowerCase() === (e.habilidad ?? "").toLowerCase());
@@ -418,6 +456,13 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const objetivos = e.objetivos.map((n) => buscar(partida, n));
         const texto = usarHabilidad(j, h, objetivos);
         return { contenido: texto, aviso: `💀 ${texto}` };
+      }
+      case "presagio_criatura": {
+        const e = validado.data as z.infer<typeof esquemas.presagio_criatura>;
+        const j = enEscena(partida, e.criatura);
+        if (!j.definicion.presagios) throw new Error(`${j.nombre} no ve el futuro.`);
+        const texto = presagio(j, e.accion, e.valor);
+        return { contenido: texto, aviso: e.accion === "usar" && !texto.startsWith("No") ? `👁  ${texto}` : null };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;

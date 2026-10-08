@@ -4,6 +4,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoJefe } from "./bestiario.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
+import { valor } from "./reglas.js";
 
 export interface Personaje {
   nombre: string;
@@ -30,6 +31,8 @@ export interface Personaje {
   sangrado: number;
   /** Progreso hacia recuperar 1 punto de anemia. */
   anemia_progreso: number;
+  /** Puntos de atributo robados por criaturas (vuelven cuando muere el ladrón). */
+  robado: Partial<Record<"fue" | "des" | "con" | "int" | "sab" | "car", number>>;
   /** Viales tomados en las últimas 24 h (se reinician con pasar_tiempo). */
   dosis: { curacion: number; sueno: number };
 }
@@ -58,6 +61,7 @@ export function normalizar(p: Personaje): Personaje {
   p.sangrado ??= 0;
   p.anemia_progreso ??= 0;
   p.dosis ??= { curacion: 0, sueno: 0 };
+  p.robado ??= {};
   return p;
 }
 
@@ -66,6 +70,10 @@ export function cargar(ruta: string): Partida | null {
   const partida = JSON.parse(readFileSync(ruta, "utf8")) as Partida;
   partida.objetos ??= {};
   partida.jefes ??= {};
+  for (const j of Object.values(partida.jefes)) {
+    j.presagios ??= [];
+    j.robos ??= [];
+  }
   Object.values(partida.personajes).forEach(normalizar);
   return partida;
 }
@@ -75,7 +83,6 @@ export function guardar(ruta: string, partida: Partida): void {
 }
 
 export function fichaTexto(p: Personaje): string {
-  const a = p.atributos;
   const mod = (v: number) => {
     const m = Math.floor((v - 10) / 2);
     return m >= 0 ? `+${m}` : `${m}`;
@@ -84,8 +91,14 @@ export function fichaTexto(p: Personaje): string {
   return [
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
-    `  FUE ${a.fue - p.anemia}(${mod(a.fue - p.anemia)})${p.anemia ? ` [anemia −${p.anemia}]` : ""} DES ${a.des}(${mod(a.des)}) CON ${a.con}(${mod(a.con)}) ` +
-      `INT ${a.int}(${mod(a.int)}) SAB ${a.sab}(${mod(a.sab)}) CAR ${a.car}(${mod(a.car)})`,
+    "  " +
+      (["fue", "des", "con", "int", "sab", "car"] as const)
+        .map((k) => {
+          const v = valor(p, k);
+          const marcas = [k === "fue" && p.anemia ? `anemia −${p.anemia}` : "", p.robado[k] ? `robado −${p.robado[k]}` : ""].filter(Boolean);
+          return `${k.toUpperCase()} ${v}(${mod(v)})${marcas.length ? ` [${marcas.join(", ")}]` : ""}`;
+        })
+        .join(" "),
     `  Inventario: ${p.inventario.join(", ") || "—"}`,
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",

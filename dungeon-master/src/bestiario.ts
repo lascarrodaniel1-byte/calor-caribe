@@ -3,7 +3,8 @@
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { infligir, perderSangre, type Causa } from "./heridas.js";
-import { marcarMuerto, salvacion, type Atributo } from "./reglas.js";
+import { clase, raza } from "./mundo.js";
+import { ATRIBUTOS, marcarMuerto, salvacion, valor, type Atributo } from "./reglas.js";
 
 export interface Habilidad {
   nombre: string;
@@ -25,6 +26,12 @@ export interface Habilidad {
   ceniza?: number;
   /** Recarga: la habilidad vuelve con este número o más en 1d6 (p. ej. 5 = recarga 5-6). */
   recarga?: number;
+  /**
+   * Robo de esencia: dados de puntos que roba del atributo más alto de quien falla.
+   * La criatura gana además los rasgos de raza y clase de la víctima. Si un atributo
+   * llega a 0, la víctima muere. Todo vuelve a sus dueños cuando la criatura muere.
+   */
+  robo?: string;
 }
 
 export interface Criatura {
@@ -42,6 +49,16 @@ export interface Criatura {
   rasgos: string[];
   habilidades: Habilidad[];
   botin?: string;
+  /** Ve el futuro: número de presagios (d20 tirados de antemano) con que empieza el combate. */
+  presagios?: number;
+}
+
+export interface Robo {
+  personaje: string;
+  atributo: Atributo;
+  cantidad: number;
+  raza: string;
+  clase: string;
 }
 
 export interface EstadoJefe {
@@ -51,6 +68,9 @@ export interface EstadoJefe {
   /** Habilidades con recarga gastadas. */
   gastadas: string[];
   definicion: Criatura;
+  /** Resultados de d20 ya "vistos" que puede usar en lugar de cualquier tirada. */
+  presagios: number[];
+  robos: Robo[];
 }
 
 export const BESTIARIO: Criatura[] = [
@@ -320,6 +340,112 @@ export const BESTIARIO: Criatura[] = [
     ],
   },
   {
+    nombre: "Ilvara, la Tejedora de Mañanas",
+    categoria: "jefe",
+    peligro: 5,
+    region: "El monasterio más alto de las Agujas de Vahl",
+    descripcion:
+      "Una vidente sin ojos que teje en un telar de cabellos humanos todos los futuros posibles. Sabe lo que vas a hacer antes de que lo pienses, y ya ha visto cómo mueres.",
+    ca: 17,
+    pv: "190",
+    velocidad: "9 m, volar 9 m (levita)",
+    atributos: "FUE 10 DES 18 CON 16 INT 22 SAB 26 CAR 18",
+    ataques: ["Agujas del telar (x3): +10, 1d8+4 perforante + 2d8 psíquico", "Hilo estrangulador: +10, apresado (CD 18)"],
+    rasgos: [
+      "Presciencia: no puede ser sorprendida; ventaja en iniciativa y en salvaciones de DES",
+      "Presagios: empieza el combate con 3 resultados de d20 ya vistos y recupera 1 al inicio de cada ronda (máx. 3). Puede sustituir con uno cualquier tirada que vea: un ataque, una salvación, una prueba (usa presagio_criatura)",
+      "Ya lo vi (3/día, reacción): un ataque que la impactaría falla",
+      "Ceguera ante lo absurdo: solo ve futuros probables. Un plan disparatado, una acción que nadie dijo en voz alta o algo que contradiga la naturaleza del personaje le impone desventaja y no puede usar presagios contra ello (a juicio del DM)",
+      "Resistencia legendaria (3/día)",
+    ],
+    habilidades: [
+      {
+        nombre: "Profecía de muerte",
+        descripcion:
+          "Pronuncia el nombre de un personaje y cómo morirá. Si falla, queda condenado: al final del tercer asalto llega su Cumplimiento. El destino solo se rompe si alguien corta el hilo de su telar o hace algo que ella no haya visto.",
+        salvacion: "sab",
+        cd: 19,
+        condicion: "condenado por la profecía (Cumplimiento al final del 3.er asalto)",
+        recarga: 6,
+      },
+      {
+        nombre: "Cumplimiento",
+        descripcion: "Llega la muerte anunciada a un condenado cuyo destino no se ha roto.",
+        salvacion: "con",
+        cd: 20,
+        muerte_si_falla_por: 0,
+      },
+      {
+        nombre: "Mañana robado",
+        descripcion: "Ella ya vivió el próximo turno del objetivo; él no llega a vivirlo.",
+        salvacion: "sab",
+        cd: 17,
+        condicion: "pierde su próximo turno",
+        recarga: 5,
+      },
+      {
+        nombre: "Hilos cortantes",
+        descripcion: "Tensa los hilos del destino como cuchillas en un radio de 6 m.",
+        salvacion: "des",
+        cd: 18,
+        dano: "8d8",
+        tipo_dano: "cortante",
+        mitad_si_exito: true,
+        sangre: 6,
+        herida: "golpe_masivo",
+      },
+    ],
+    presagios: 3,
+    botin: "El telar de los mañanas (reliquia): una vez por semana, tira un presagio",
+  },
+  {
+    nombre: "Vaerth, el Sin Rostro",
+    categoria: "jefe",
+    peligro: 5,
+    region: "Los barrios bajos de Aldenmar; puede ser cualquiera",
+    descripcion:
+      "Un cambiaformas que no tiene cara propia. Vive llevando la de otros: les roba la fuerza, la astucia, la belleza… y cuando ya no les queda nada, se queda con su piel.",
+    ca: 16,
+    pv: "210",
+    velocidad: "12 m, trepar 12 m",
+    atributos: "FUE 18 DES 20 CON 18 INT 18 SAB 14 CAR 22 (más lo que robe)",
+    ataques: ["Garras cambiantes (x3): +11, 2d8+5 cortante", "Toque vacío: +11, 3d6 necrótico y Robar esencia como acción adicional"],
+    rasgos: [
+      "Cambiaformas: adopta la forma de cualquier criatura Mediana o Grande que haya visto, con su voz. Con la forma de una víctima a la que ha robado, también tiene sus recuerdos superficiales",
+      "Rasgos robados: tiene los rasgos de raza y de clase de cada víctima a la que ha robado (aparecen en su estado) y suma a sus ataques el bonificador del atributo robado",
+      "Mil caras: si cae a menos de la mitad de PV, se dispersa en una multitud y huye; solo muere de verdad si se le mata con su forma original (la de un niño sin rostro)",
+      "Al morir, todo lo robado vuelve a sus dueños",
+      "Resistencia legendaria (3/día)",
+    ],
+    habilidades: [
+      {
+        nombre: "Robar esencia",
+        descripcion: "Toca a un objetivo y le arranca parte de lo que es.",
+        salvacion: "car",
+        cd: 17,
+        robo: "1d4",
+      },
+      {
+        nombre: "Arrancar el rostro",
+        descripcion: "Contra un objetivo apresado o inconsciente: le quita la cara, y con ella la identidad.",
+        salvacion: "con",
+        cd: 18,
+        dano: "4d10",
+        tipo_dano: "necrótico",
+        robo: "2d4",
+        muerte_si_falla_por: 10,
+      },
+      {
+        nombre: "Voz prestada",
+        descripcion: "Habla con la voz de alguien amado por el objetivo.",
+        salvacion: "sab",
+        cd: 17,
+        condicion: "hechizado: cree que Vaerth es un aliado hasta recibir daño",
+      },
+    ],
+    botin: "Máscara de mil caras (maldita): permite cambiar de rostro, pero cada uso roba un recuerdo propio",
+  },
+  {
     nombre: "Kharoth, Dragón Antiguo del Sol Herido",
     categoria: "jefe",
     peligro: 5,
@@ -353,9 +479,10 @@ export function fichaCriatura(c: Criatura): string {
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
     c.habilidades.length
       ? `Habilidades especiales (resuélvelas con habilidad_criatura): ${c.habilidades
-          .map((h) => `${h.nombre}${h.recarga ? ` [recarga ${h.recarga}-6]` : ""}: ${h.descripcion}${h.salvacion ? ` ${h.salvacion.toUpperCase()} CD ${h.cd}` : ""}${h.muerte_si_falla_por !== undefined ? ` — MUERTE INSTANTÁNEA si falla${h.muerte_si_falla_por ? ` por ${h.muerte_si_falla_por}+` : ""}` : ""}`)
+          .map((h) => `${h.nombre}${h.recarga ? ` [recarga ${h.recarga === 6 ? "6" : `${h.recarga}-6`}]` : ""}: ${h.descripcion}${h.salvacion ? ` ${h.salvacion.toUpperCase()} CD ${h.cd}` : ""}${h.robo ? ` — ROBA ${h.robo} del mejor atributo` : ""}${h.muerte_si_falla_por !== undefined ? ` — MUERTE INSTANTÁNEA si falla${h.muerte_si_falla_por ? ` por ${h.muerte_si_falla_por}+` : ""}` : ""}`)
           .join(" | ")}`
       : "",
+    c.presagios ? `Ve el futuro: ${c.presagios} presagios (usa presagio_criatura para verlos, usarlos y renovarlos)` : "",
     c.botin ? `Botín: ${c.botin}` : "",
   ]
     .filter(Boolean)
@@ -374,8 +501,63 @@ export function estadoTexto(e: EstadoJefe): string {
 export function aparecer(partida: Partida, c: Criatura, alias?: string): string {
   const nombre = alias ?? c.nombre;
   const pv = /d/.test(c.pv) ? tirar(c.pv).total : Number(c.pv);
-  partida.jefes[nombre] = { nombre, pv, pv_max: pv, gastadas: [], definicion: c };
-  return `${nombre} entra en escena con ${pv} PV.\n${fichaCriatura(c)}`;
+  const presagios = Array.from({ length: c.presagios ?? 0 }, () => tirar("1d20").total);
+  partida.jefes[nombre] = { nombre, pv, pv_max: pv, gastadas: [], definicion: c, presagios, robos: [] };
+  return `${nombre} entra en escena con ${pv} PV.${presagios.length ? ` Presagios: [${presagios.join(", ")}].` : ""}\n${fichaCriatura(c)}`;
+}
+
+/** Ver, usar o renovar los presagios de una criatura que ve el futuro. */
+export function presagio(e: EstadoJefe, accion: "ver" | "usar" | "renovar", valor_?: number): string {
+  const max = e.definicion.presagios ?? 3;
+  if (accion === "renovar") {
+    if (e.presagios.length >= max) return `${e.nombre} ya tiene ${max} presagios: [${e.presagios.join(", ")}].`;
+    const t = tirar("1d20").total;
+    e.presagios.push(t);
+    return `${e.nombre} ve un nuevo futuro: ${t}. Presagios: [${e.presagios.join(", ")}].`;
+  }
+  if (accion === "usar") {
+    const i = valor_ === undefined ? -1 : e.presagios.indexOf(valor_);
+    if (i < 0) return `No tiene ese presagio. Presagios: [${e.presagios.join(", ") || "ninguno"}].`;
+    e.presagios.splice(i, 1);
+    return `${e.nombre} impone el futuro que ya vio: la tirada es un ${valor_} natural. Quedan [${e.presagios.join(", ") || "ninguno"}].`;
+  }
+  return `Presagios de ${e.nombre}: [${e.presagios.join(", ") || "ninguno"}].`;
+}
+
+/** Devuelve a sus dueños todo lo que robó una criatura (al morir). */
+export function devolverRobos(partida: Partida, e: EstadoJefe): string[] {
+  const log: string[] = [];
+  for (const r of e.robos) {
+    const p = partida.personajes[r.personaje];
+    if (!p) continue;
+    p.robado[r.atributo] = Math.max(0, (p.robado[r.atributo] ?? 0) - r.cantidad);
+    log.push(`${p.nombre} recupera ${r.cantidad} de ${r.atributo.toUpperCase()}.`);
+  }
+  e.robos = [];
+  return log;
+}
+
+function robarEsencia(e: EstadoJefe | undefined, p: Personaje, dados: string, log: string[]) {
+  const atributo = [...ATRIBUTOS].sort((a, b) => valor(p, b) - valor(p, a))[0];
+  const cantidad = Math.min(tirar(dados).total, valor(p, atributo));
+  p.robado[atributo] = (p.robado[atributo] ?? 0) + cantidad;
+  const quien = e?.nombre ?? "La criatura";
+  log.push(`  ${quien} roba ${cantidad} de ${atributo.toUpperCase()} a ${p.nombre} (ahora ${valor(p, atributo)}).`);
+  if (e) {
+    const yaTenia = e.robos.some((r) => r.personaje === p.nombre);
+    e.robos.push({ personaje: p.nombre, atributo, cantidad, raza: p.raza, clase: p.clase });
+    if (!yaTenia) {
+      const rz = raza(p.raza);
+      const cl = clase(p.clase);
+      log.push(
+        `  Gana los rasgos de ${p.nombre} (${p.raza}, ${p.clase}) y puede adoptar su forma: ${[...(rz?.rasgos ?? []), ...(cl?.rasgos ?? [])].join("; ")}.`,
+      );
+    }
+  }
+  if (valor(p, atributo) <= 0) {
+    marcarMuerto(p);
+    log.push(`  ☠ ${p.nombre} se queda vacío: no queda nada de quien era. Ha muerto, y ${quien} se queda con su forma.`);
+  }
 }
 
 export function danar(e: EstadoJefe, cantidad: number): string {
@@ -438,6 +620,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
         p.ceniza += h.ceniza;
         log.push(`  +${h.ceniza} de Ceniza (total ${p.ceniza}).`);
       }
+      if (h.robo && !p.condiciones.includes("muerto")) robarEsencia(e, p, h.robo, log);
     }
   }
   return log.join("\n");
@@ -459,6 +642,7 @@ export function textoBestiario(): string {
       .join("\n");
   return `## Bestiario de referencia
 Esto es una base, no un límite. Puedes y debes inventar criaturas nuevas cuando la aventura lo pida (harpías, gólems, hidras, krakens de ciénaga, nigromantes, caballeros caídos, demonios menores, enjambres, lo que sea), coherentes con Velmora. Para criaturas con habilidades peligrosas, regístralas con aparecer_criatura (con "definicion") para que el programa lleve sus PV y resuelva sus habilidades. Las criaturas sencillas puedes llevarlas tú con tirar_dados.
+Algunos jefes ven el futuro (presagios: sustituye con presagio_criatura las tiradas de los jugadores en los momentos clave y renueva uno al inicio de cada ronda; descríbelo: "ella ya sabía que ibas a hacer eso") o roban esencia (atributos, rasgos de raza y clase, formas): úsalo para que el jefe imite al personaje robado, use sus rasgos contra el grupo y se haga pasar por él.
 Los jefes son extremadamente difíciles: no es obligatorio vencerlos en combate directo. Siémbralos con rumores, rastros y víctimas antes de que aparezcan, y deja que los jugadores preparen, huyan, negocien o busquen sus debilidades. Anuncia el peligro de una habilidad letal antes de que se use por primera vez (una señal, un aviso, un cadáver).
 
 ### Bestias y monstruos

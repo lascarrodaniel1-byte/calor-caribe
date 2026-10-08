@@ -56,7 +56,9 @@ El botín se genera con tablas según el origen: **compra**, **saqueo**, **halla
 Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas, y el programa lleva sus PV y resuelve sus habilidades con tiradas reales.
 
 - **Bestias y monstruos**: Hambrientos, Lobos de Ceniza, Ghules, Ogros, Trolls de ciénaga, Wyvernos, Basiliscos, Mantícoras, Banshees, Gigantes de hueso y Dragones jóvenes de ceniza.
-- **Jefes**: Vaskar el Lobo del Eclipse, el Juez Sin Ojos, Ysolde la Reina Pálida, la Madre de los Hambrientos, El Que Golpea Bajo la Piedra y Kharoth, Dragón Antiguo del Sol Herido. Son extremadamente difíciles; varias de sus habilidades provocan **muerte instantánea** si fallas la salvación (algunas con cualquier fallo, otras si fallas por mucho).
+- **Jefes**: Vaskar el Lobo del Eclipse, el Juez Sin Ojos, Ysolde la Reina Pálida, la Madre de los Hambrientos, El Que Golpea Bajo la Piedra, Kharoth (Dragón Antiguo del Sol Herido) y:
+  - **Ilvara, la Tejedora de Mañanas**, que **ve el futuro**: tira sus *presagios* (d20) por adelantado y puede imponerlos en lugar de las tiradas de los jugadores; condena con profecías de muerte que solo se rompen haciendo algo que ella no haya visto.
+  - **Vaerth, el Sin Rostro**, un **cambiaformas** que **roba atributos** (del mejor atributo de la víctima) y se queda con los **rasgos de su raza y su clase** y con su forma. Si a alguien le roba todo un atributo, muere vacío. Al matarlo, todo lo robado vuelve a sus dueños. Son extremadamente difíciles; varias de sus habilidades provocan **muerte instantánea** si fallas la salvación (algunas con cualquier fallo, otras si fallas por mucho).
 
 ## Requisitos
 

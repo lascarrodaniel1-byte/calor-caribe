@@ -144,7 +144,7 @@ const SECUELAS: Record<Zona, { menor: string[]; permanente: string[] }> = {
 
 const NORMAL: RasgosCuracion = { infeccion: 0, recuperacion: 0, inmunePodre: false, magia: "normal", levesRapidas: false };
 const rasgos = (p: Personaje) => raza(p.raza)?.curacion ?? NORMAL;
-const modCON = (p: Personaje) => Math.floor((p.atributos.con - 10) / 2);
+const modCON = (p: Personaje) => Math.floor((valor(p, "con") - 10) / 2);
 const signo = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 const esBarbero = (p?: Personaje) => p?.clase === "Barbero-Cirujano";
 const sube = (g: Gravedad): Gravedad => GRAVEDADES[Math.min(3, GRAVEDADES.indexOf(g) + 1)];

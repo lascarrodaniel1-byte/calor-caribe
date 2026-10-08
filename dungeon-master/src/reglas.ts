@@ -9,9 +9,9 @@ export const ATRIBUTOS = ["fue", "des", "con", "int", "sab", "car"] as const;
 export const signo = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 export const mod = (v: number) => Math.floor((v - 10) / 2);
 
-/** Atributo efectivo: la anemia por pérdida de sangre resta Fuerza. */
+/** Atributo efectivo: la anemia resta Fuerza y algunas criaturas roban atributos. */
 export function valor(p: Personaje, a: Atributo): number {
-  return a === "fue" ? p.atributos.fue - (p.anemia ?? 0) : p.atributos[a];
+  return p.atributos[a] - (a === "fue" ? (p.anemia ?? 0) : 0) - (p.robado?.[a] ?? 0);
 }
 
 export const competencia = (p: Personaje) => 2 + Math.floor((p.nivel - 1) / 4);
