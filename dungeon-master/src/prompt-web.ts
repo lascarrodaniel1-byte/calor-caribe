@@ -27,7 +27,7 @@ const MUNDO = `## Velmora, el Reino del Sol Herido
 Hace 99 años mataron a los dioses (nadie sabe quién). El sol es un disco gris, los muertos sin rito de sal y fuego se levantan y los huesos de dioses se venden como reliquias. Tono: violencia con peso, recursos escasos, moral gris, humor negro.
 Regiones: Aldenmar (la Ciudad-Faro, último bastión), Ciénagas de Hollín (pantanos, medianos, contrabando), Karak-Dûm (fortaleza enana sellada), Bosque de Velo Rojo (elfos marchitos, voces de muertos), Marca Hueca (no-muertos, Corte Pálida), Agujas de Vahl (monasterios de flagelantes).
 Facciones: Inquisición de la Llama Gris, Hermanas de la Sutura (cirujanas), Compañía del Cuervo Negro (mercenarios), Corte Pálida (vampiros), Devotos del Dios Hambriento.
-Amenazas: los Hambrientos (no-muertos; su mordisco transmite la Podre), la Podre (no se cura con medicina común ni magia), la Ceniza (la magia divina la deja; con 3 marcas visibles, con 6 los no-muertos te sienten suyo, con 10 algo te habla).`;
+Amenazas: los Hambrientos (no-muertos; su mordisco transmite la Podre), la Podre (no siempre se contagia; se quita cortando la carne podrida, cauterizando o con remedios raros, nunca con magia divina), la Ceniza (la magia divina la deja; con 3 marcas visibles, con 6 los no-muertos te sienten suyo, con 10 algo te habla).`;
 
 function razasYClasesCortas(): string {
   const razas = RAZAS.map((r) => `- ${r.nombre} (${r.atributos}). Curación: ${r.notaCuracion}`).join("\n");
@@ -36,7 +36,7 @@ function razasYClasesCortas(): string {
 }
 
 const HERIDAS = `## Heridas (el programa las resuelve; tú las narras)
-- infligir_herida al recibir un crítico, un golpe de la mitad de los PV máx. o más, al caer a 0 PV, o en accidentes. El programa tira gravedad, región y estructura anatómica.
+- infligir_herida al recibir un crítico, un golpe de la mitad de los PV máx. o más, al caer a 0 PV, o en accidentes. El programa tira gravedad, región y estructura anatómica. Si la causa un no-muerto, de_no_muerto=true y cd_podre (11 Hambriento, 13 ghul, 15-17 no-muertos poderosos): los rasguños no contagian y el resto se resiste con CON.
 - Zonas: ROJA (aorta, corazón, femoral, encéfalo…): un minuto de vida como mucho; solo comprimible en algunas arterias; si no, cirugía desesperada CD 22, Sangre de Santo o magia divina. ÁMBAR: secuelas casi seguras; cuello y arterias de miembros se vuelven rojas en pocos asaltos sin compresión; vísceras y cráneo empeoran día a día sin cirugía; costillas pueden perforar el pulmón; nervios y tendones incapacitan. VERDE: superficial, pero se infecta.
 - tratar_herida: detener hemorragia, medicina (CD 10/13/16/19 según gravedad; material, entorno y sanador cuentan), cauterizar, magia divina (da Ceniza) o remedio raro (Podre).
 - avanzar_asaltos al final de cada asalto si alguien sangra (pierde PV y Fuerza por anemia). pasar_tiempo cuando pasan días (convalecencia, infección, secuelas). Un descanso no lo cura todo.

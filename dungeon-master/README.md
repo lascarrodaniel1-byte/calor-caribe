@@ -24,7 +24,7 @@ Los PV son aguante; las **heridas** son daño real en el cuerpo y las gestiona e
 | Crítica | −10 | CD 19, herramientas de cirujano | 3d10+15 días | Siempre |
 
 - Se producen al recibir un crítico, un golpe masivo o caer a 0 PV; gravedad y ubicación (cabeza, torso, brazos, piernas) se tiran al azar, y cada combinación tiene su penalización (desventajas, brazo inútil, velocidad reducida…).
-- **Hemorragias** que hay que detener, **infecciones** si no se tratan o si el herido se esfuerza, y la **Podre** de los no-muertos, que solo se quema con fuego o se cura con remedios raros.
+- **Hemorragias** que hay que detener, **infecciones** si no se tratan o si el herido se esfuerza, y la **Podre** de los no-muertos: no toda mordida contagia (las heridas leves nunca, y el resto pide una salvación de CON cuya CD depende de quién muerde), pero una vez dentro el cuerpo no la vence solo: hay que quemarla, extirparla con Medicina (CD +4) o usar remedios raros.
 - **Tratamiento**: medicina/cirugía (influyen el entorno, el material, el alcohol, las hierbas y la pericia del sanador), cauterizar o magia divina (baja un nivel la herida, pero da Ceniza).
 - **El tiempo cura… o mata**: la calidad del descanso (esfuerzo, precario, reposo, enfermería) decide si la herida avanza, se infecta o se agrava, y al cerrarse una tirada de recuperación decide si quedan secuelas: cicatrices, cojeras, un ojo perdido, una mano menos.
 - Cada raza sana distinto: los enanos resisten la infección, los elfos marchitos son inmunes a la Podre pero sanan lento, los varg cierran rápido las heridas leves, y a los nacidos pálidos la magia divina no les hace nada.

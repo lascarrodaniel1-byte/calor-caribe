@@ -255,7 +255,7 @@ Dark fantasy: violencia con peso, recursos escasos, moral gris, esperanza difíc
 
 ## Amenazas
 - **Los Hambrientos**: muertos alzados, lentos de uno en uno y terribles en manada. Su mordisco transmite la Podre.
-- **La Podre**: una plaga que pudre la carne y luego la voluntad. Una herida con Podre no se limpia con medicina común ni con magia divina: hay que cortar, cauterizar o encontrar remedios raros.
+- **La Podre**: una plaga que pudre la carne y luego la voluntad. No toda mordedura la contagia (los fuertes la resisten), pero una herida con Podre no se cura sola ni con magia divina: hay que cortar la carne podrida, cauterizar o encontrar remedios raros.
 - **La Ceniza**: la magia divina se alimenta de los restos de los dioses muertos. Cura, pero deja en quien la recibe una marca de Ceniza: vetas grises en la piel, frío en los huesos, sueños con dioses muertos. Con 3 de Ceniza aparecen marcas visibles; con 6, los no-muertos sienten al personaje como uno de los suyos y los animales le rehúyen; con 10, algo empieza a hablarle por las noches. La Ceniza solo se borra con ritos raros y peligrosos.
 
 ## Moneda y economía

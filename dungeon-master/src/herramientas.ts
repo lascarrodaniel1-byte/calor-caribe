@@ -134,7 +134,8 @@ const esquemas = {
       .string()
       .optional()
       .describe('Estructura concreta solo si la ficción lo exige (p. ej. "arteria femoral", "nervio ciático"); si no, se tira según la gravedad'),
-    de_no_muerto: z.boolean().optional().describe("true si la causa un no-muerto: transmite la Podre"),
+    de_no_muerto: z.boolean().optional().describe("true si la causa un no-muerto: puede transmitir la Podre"),
+    cd_podre: z.number().int().min(5).max(25).optional().describe("CD para resistir la Podre: 11 Hambriento, 12 por defecto, 13 ghul, 15-17 no-muertos poderosos"),
     descripcion: z.string().optional().describe('Breve, p. ej. "tajo de hacha oxidada en el antebrazo"'),
   }),
   tratar_herida: z.object({

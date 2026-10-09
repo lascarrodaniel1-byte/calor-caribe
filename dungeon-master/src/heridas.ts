@@ -269,6 +269,8 @@ export interface DatosHerida {
   estructura?: string;
   descripcion?: string;
   de_no_muerto?: boolean;
+  /** CD de CON para resistir la Podre (por defecto 12; más alta en no-muertos poderosos). */
+  cd_podre?: number;
 }
 
 export function infligir(p: Personaje, d: DatosHerida): string {
@@ -314,7 +316,7 @@ export function infligir(p: Personaje, d: DatosHerida): string {
     descripcion: d.descripcion ?? "",
     estado: "sin tratar",
     sangrando: sangra,
-    podre: Boolean(d.de_no_muerto) && !r.inmunePodre,
+    podre: false,
     dias_restantes: gravedad === "leve" && r.levesRapidas ? 1 : tirar(REGLAS[gravedad].dias).total,
     dias_abierta: 0,
     mod_recuperacion: 0,
@@ -332,7 +334,16 @@ export function infligir(p: Personaje, d: DatosHerida): string {
     agonia: false,
   };
   if (estr.inconsciente && !p.condiciones.includes("inconsciente")) p.condiciones.push("inconsciente");
-  if (d.de_no_muerto && r.inmunePodre) log.push(`${p.raza}: inmune a la Podre.`);
+  // La Podre solo entra por heridas de verdad (no por rasguños) y el cuerpo puede resistirla.
+  if (d.de_no_muerto) {
+    if (r.inmunePodre) log.push(`${p.raza}: inmune a la Podre.`);
+    else if (gravedad === "leve") log.push("Herida superficial: la Podre no llega a entrar.");
+    else {
+      const s = salvacion(p, "con", d.cd_podre ?? 12, { extra: r.infeccion });
+      h.podre = !s.exito;
+      log.push(`Contagio de la Podre: ${s.texto}${h.podre ? " → ¡la Podre entra en la herida!" : " → la resiste."}`);
+    }
+  }
   p.heridas.push(h);
   ajustarPV(p);
   log.push(`${p.nombre} sufre una herida: ${resumenHerida(h)}`);
@@ -352,7 +363,7 @@ export function infligir(p: Personaje, d: DatosHerida): string {
   } else if (h.sangrando) {
     log.push("Hemorragia: pierde 1 PV por asalto y sangre (riesgo de anemia) hasta detenerla.");
   }
-  if (h.podre) log.push("La herida está infectada de Podre: la medicina común no la limpia.");
+  if (h.podre) log.push("La herida tiene Podre: hay que cortar la carne podrida (medicina, CD +4), cauterizarla o usar un remedio raro.");
   return log.join("\n");
 }
 
@@ -456,7 +467,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       if (hemorragia && h.zona_vital === "roja" && !estr?.compresion) {
         return `${h.estructura}: no hay dónde apretar. Solo una cirugía desesperada (método medicina), la Sangre de Santo o la magia divina pueden detener esto. Quedan ${h.reloj} asalto(s).`;
       }
-      if (!hemorragia && h.podre) return `La herida ${h.id} tiene Podre: antes hay que cauterizarla, cortar la carne podrida o aplicar un remedio raro.`;
+
 
       const mods: string[] = [];
       let bono = d.bono_medicina;
@@ -478,6 +489,10 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
         if (h.estado === "infectada") {
           cd += 2;
           mods.push("infectada: CD +2");
+        }
+        if (h.podre) {
+          cd += 4;
+          mods.push("Podre: hay que cortar la carne podrida, CD +4");
         }
         for (const extra of ["alcohol", "hierbas"] as const) {
           if (d.recursos.includes(extra)) {
@@ -526,6 +541,8 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
           );
           return log.join("\n");
         }
+        if (h.podre) log.push("La carne podrida sale entera: la Podre queda fuera de la herida.");
+        h.podre = false;
         h.estado = "tratada";
         h.desinfectada = d.recursos.includes("alcohol");
         if (natural === 20 || t.total >= cd + 5) {
@@ -779,11 +796,7 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
           const s = salvacionCON(p, cdInf, r.infeccion);
           if (!s.exito) {
             infectar(h);
-            log.push(`${h.id} sin tratar: ${s.texto} → se infecta.`);
-            if (h.podre && h.gravedad !== "critica") {
-              h.gravedad = sube(h.gravedad);
-              log.push(`La Podre se extiende: ${h.id} pasa a ${h.gravedad}.`);
-            }
+            log.push(`${h.id} sin tratar: ${s.texto} → se infecta${h.podre ? " (la Podre: el cuerpo no puede vencerla solo)" : ""}.`);
           }
         }
         continue; // sin tratamiento no hay convalecencia
@@ -841,7 +854,7 @@ Los PV representan aguante, reflejos y suerte; las heridas son daño real en el 
 - causa "golpe_masivo": recibe en un solo golpe daño igual o mayor a la mitad de sus PV máximos.
 - causa "cero_pv": cae a 0 PV.
 - causa "menor": caídas, trampas, peleas a puñetazos, torturas leves… cuando la ficción lo pida.
-Deja que el programa tire gravedad y ubicación (no las fijes salvo que la ficción lo exija: una guillotina, una flecha al ojo apuntada). Marca de_no_muerto=true si la causa un Hambriento u otro no-muerto: transmite la Podre.
+Deja que el programa tire gravedad y ubicación (no las fijes salvo que la ficción lo exija: una guillotina, una flecha al ojo apuntada). Marca de_no_muerto=true si la causa un Hambriento u otro no-muerto: puede transmitir la Podre. Los rasguños (heridas leves) no la transmiten; en el resto, el herido hace una salvación de CON (cd_podre: 11 un Hambriento, 12 por defecto, 13 un ghul, 15-17 la Madre de los Hambrientos u otros no-muertos poderosos).
 
 ### Gravedades
 - leve (cortes, moratones): sin penalización; sana sola en 1d3 días. Tratar: CD 10.
@@ -870,6 +883,7 @@ Mientras una herida sangra, llama a avanzar_asaltos al final de cada asalto en c
 - "cauterizar": detiene la sangre y quema la Podre sin tirada, pero hace 1d6 de daño, −2 a la recuperación y deja cicatriz de quemadura. Necesita hierro candente (o un Cenizo).
 - "magia divina" (conjuros de curación, imposición de manos sobre una herida, reliquias): baja la herida un nivel de gravedad (una leve se cierra), una sola vez por herida, y da Ceniza al paciente. No cura la Podre. No funciona con Nacidos Pálidos; a los Varg les da doble Ceniza.
 - "remedio raro": solo contra la Podre; exige un ingrediente difícil de conseguir que debe ganarse en la ficción.
+- La Podre: la medicina puede quitarla cortando la carne podrida (CD +4); el cuerpo no la vence solo, pero ya no agrava la herida de golpe: avanza como una infección.
 Los conjuros y pociones de curación restauran PV como siempre (sin Ceniza), pero no cierran heridas: para eso hay que usar el método "magia divina".
 Antes de tratar, comprueba en la ficha que el sanador tiene el material que dice usar, y descuenta lo gastado con modificar_personaje.
 

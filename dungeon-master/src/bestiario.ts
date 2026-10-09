@@ -85,7 +85,7 @@ export const BESTIARIO: Criatura[] = [
     pv: "4d8+8",
     velocidad: "6 m",
     atributos: "FUE 13 DES 6 CON 16 INT 3 SAB 6 CAR 5",
-    ataques: ["Mordisco: +3, 1d6+1 perforante; transmite la Podre (de_no_muerto)", "Agarrón: +3, apresado (CD 11)"],
+    ataques: ["Mordisco: +3, 1d6+1 perforante; puede transmitir la Podre (de_no_muerto, cd_podre 11)", "Agarrón: +3, apresado (CD 11)"],
     rasgos: ["Tenacidad de los muertos: al caer a 0 PV, salvación de CON CD 5 + daño o se queda con 1 PV (no con fuego ni críticos)", "Manada: ventaja si hay otro Hambriento adyacente al objetivo"],
     habilidades: [],
     botin: "Lo que llevaba en vida: monedas, un anillo, una carta sin enviar",
@@ -114,7 +114,7 @@ export const BESTIARIO: Criatura[] = [
     pv: "5d8",
     velocidad: "9 m",
     atributos: "FUE 13 DES 15 CON 10 INT 7 SAB 10 CAR 6",
-    ataques: ["Mordisco: +2, 2d6+2 perforante (Podre)", "Garras: +4, 2d4+2 cortante"],
+    ataques: ["Mordisco: +2, 2d6+2 perforante (Podre, cd_podre 13)", "Garras: +4, 2d4+2 cortante"],
     rasgos: ["Visión en la oscuridad"],
     habilidades: [
       { nombre: "Toque paralizante", descripcion: "Al acertar con las garras.", salvacion: "con", cd: 10, condicion: "paralizado 1 minuto (repite al final de cada turno)" },
@@ -333,7 +333,7 @@ export const BESTIARIO: Criatura[] = [
     pv: "260",
     velocidad: "6 m",
     atributos: "FUE 22 DES 6 CON 24 INT 8 SAB 14 CAR 3",
-    ataques: ["Brazos de la fosa (x3): +10, 2d10+6 contundente; apresado (CD 17); Podre"],
+    ataques: ["Brazos de la fosa (x3): +10, 2d10+6 contundente; apresado (CD 17); Podre (cd_podre 16)"],
     rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "Inmune a veneno, necrótico, miedo"],
     habilidades: [
       { nombre: "Abrazo de la fosa", descripcion: "Contra un objetivo apresado al inicio de su turno: lo hunde en la masa. Quien muere así es absorbido: su cuerpo pasa a formar parte de la Madre.", salvacion: "fue", cd: 17, dano: "4d10", tipo_dano: "contundente", muerte_si_falla_por: 5 },
