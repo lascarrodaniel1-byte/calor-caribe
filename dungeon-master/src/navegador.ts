@@ -8,6 +8,8 @@ import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
 
+export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
+
 /** Catálogo compacto de las acciones del motor, para el prompt del DM. */
 export function catalogoAcciones(): string {
   return herramientas
@@ -21,6 +23,13 @@ export function estadoParaDM(p: Partida): string {
   partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
   const pjs = Object.values(p.personajes);
   partes.push(`## Personajes jugadores\n${pjs.length ? pjs.map(fichaTexto).join("\n\n") : "Aún no hay personajes: hay que crearlos."}`);
+  if (p.combate) {
+    const pnj = Object.values(p.combate.pnj);
+    partes.push(
+      `## Combate en curso\nOrden de iniciativa: ${p.combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}` +
+        (pnj.length ? `\nPNJ: ${pnj.map((n) => `${n.nombre} (ataque ${n.bono_ataque >= 0 ? "+" : ""}${n.bono_ataque}, CA ${n.ca}, ${n.veterania ?? "curtido"}${n.temple ? `, ${n.temple}` : ""})`).join("; ")}` : ""),
+    );
+  }
   if (p.notas_mundo.length) partes.push(`## Notas de campaña\n${p.notas_mundo.map((n) => `- ${n}`).join("\n")}`);
   const jefes = Object.values(p.jefes);
   if (jefes.length) {

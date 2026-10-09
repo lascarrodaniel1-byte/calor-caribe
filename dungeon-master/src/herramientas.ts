@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
+import { atacar, NOMBRES_TEMPLES, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
@@ -77,6 +78,7 @@ const criatura = z.object({
   habilidades: z.array(habilidad),
   botin: z.string().optional(),
   presagios: z.number().int().min(1).max(5).optional().describe("Si ve el futuro: d20 que tira por adelantado"),
+  temple: z.enum(NOMBRES_TEMPLES).optional().describe("Carácter en combate: no-muerto torpe (zombis, esqueletos), no-muerto, vampiro, espectro, bestia…"),
 });
 
 const atributo = z.number().int().min(1).max(30);
@@ -94,6 +96,7 @@ const esquemas = {
     raza: z.enum(NOMBRES_RAZAS),
     clase: z.enum(NOMBRES_CLASES),
     nivel: z.number().int().min(1).max(20),
+    veterania: z.enum(VETERANIAS).optional().describe("Años de oficio según el trasfondo: recluta (pocas peleas), curtido, veterano (muchos años), leyenda. Un mercenario con años de servicio es veterano aunque sea nivel 1. Si se omite, sale del nivel"),
     pv_max: z.number().int().min(1),
     pv: z.number().int().optional().describe("PV actuales; por defecto, igual a pv_max"),
     ca: z.number().int().min(1),
@@ -115,6 +118,7 @@ const esquemas = {
     agregar_condiciones: z.array(z.string()).optional().describe('p. ej. "envenenado", "derribado"'),
     quitar_condiciones: z.array(z.string()).optional(),
     nivel: z.number().int().min(1).max(20).optional(),
+    veterania: z.enum(VETERANIAS).optional().describe("Sube cuando el personaje ha sobrevivido a muchas batallas"),
     pv_max: z.number().int().min(1).optional(),
     agregar_secuelas: z.array(z.string()).optional().describe("Secuelas narrativas fuera del sistema de heridas"),
     quitar_secuelas: z.array(z.string()).optional().describe("Solo con magia o ritos extraordinarios"),
@@ -269,6 +273,36 @@ const esquemas = {
     destino_tipo: z.enum(TIPOS_LUGAR).optional(),
     progreso: z.number().min(0).max(1).optional().describe("Parte del viaje recorrida, de 0 a 1"),
   }),
+  iniciativa: z.object({
+    participantes: z.array(z.string()).describe("Nombres de los PJ y de las criaturas en escena que luchan"),
+    pnj: z
+      .array(
+        z.object({
+          nombre: z.string(),
+          bono_ataque: z.number().int().describe("Bonificador de ataque base (sin veteranía)"),
+          ca: z.number().int(),
+          des: z.number().int().optional().describe("Destreza (10 por defecto)"),
+          veterania: z.enum(VETERANIAS).optional().describe("Por defecto curtido"),
+          temple: z.enum(NOMBRES_TEMPLES).optional().describe("Su raza o naturaleza"),
+        }),
+      )
+      .optional()
+      .describe("PNJ sin ficha que luchan (aliados o enemigos): un capitán, unos bandidos…"),
+  }),
+  atacar: z.object({
+    atacante: z.string().describe("PJ, criatura en escena o PNJ registrado en la iniciativa"),
+    objetivo: z.string(),
+    arma: z.string().optional().describe("Arma o ataque usado (en criaturas, el nombre del ataque de su ficha)"),
+    dano: z.string().optional().describe('Daño con el modificador ya sumado, p. ej. "1d8+3" o "2d6+4+1d6"; si lo pasas, se aplica solo'),
+    a_distancia: z.boolean().optional(),
+    atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
+    bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
+    bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
+    ventaja: z.boolean().optional(),
+    desventaja: z.boolean().optional(),
+    ca: z.number().int().optional().describe("Sustituye la CA del objetivo (cobertura, escudo alzado…)"),
+  }),
+  terminar_combate: z.object({}),
   anotar_mundo: z.object({
     nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
   }),
@@ -277,6 +311,11 @@ const esquemas = {
 type Nombre = keyof typeof esquemas;
 
 const descripciones: Record<Nombre, string> = {
+  iniciativa:
+    "Empieza un combate: tira la iniciativa de PJ, criaturas y PNJ con su destreza, veteranía, raza y clase, y guarda el orden. Actuar antes que el rival evita que los novatos se enreden.",
+  atacar:
+    "Resuelve un ataque con armas de cualquiera (PJ, criatura o PNJ): bonificador por atributo, competencia, veteranía, raza y clase; torpezas, roces de los veteranos y críticos; tira y aplica el daño.",
+  terminar_combate: "Cierra el combate en curso (borra el orden de iniciativa y los PNJ sin ficha).",
   tirar_dados:
     "Tira dados de verdad. Úsala SIEMPRE que haya que tirar (ataques, daño, salvaciones, pruebas, iniciativa, " +
     "tablas aleatorias). Nunca inventes un resultado de dados.",
@@ -412,6 +451,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         if (e.nivel !== undefined) {
           p.nivel = e.nivel;
           cambios.push(`nivel ${p.nivel}`);
+        }
+        if (e.veterania !== undefined) {
+          p.veterania = e.veterania;
+          cambios.push(`veteranía: ${p.veterania}`);
         }
         if (e.pv_cambio) {
           p.pv = Math.max(0, Math.min(p.pv_max, p.pv + e.pv_cambio));
@@ -597,6 +640,29 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.ubicacion>;
         const texto = moverGrupo(partida.mapa, { ...e, nombre: e.lugar });
         return { contenido: texto, aviso: texto };
+      }
+      case "iniciativa": {
+        const e = validado.data as z.infer<typeof esquemas.iniciativa>;
+        const texto = tirarIniciativa(partida, e.participantes, e.pnj ?? []);
+        return { contenido: texto, aviso: `⏳ ${texto}` };
+      }
+      case "atacar": {
+        const e = validado.data as z.infer<typeof esquemas.atacar>;
+        const r = atacar(partida, e);
+        if (r.muerto) {
+          const j = enEscena(partida, r.muerto);
+          const devueltos = devolverRobos(partida, j);
+          delete partida.jefes[j.nombre];
+          if (devueltos.length) {
+            r.texto += `\nAl morir, lo robado vuelve a sus dueños:\n${devueltos.join("\n")}`;
+            r.aviso += `\n${devueltos.join("\n")}`;
+          }
+        }
+        return { contenido: r.texto, aviso: r.aviso };
+      }
+      case "terminar_combate": {
+        delete partida.combate;
+        return { contenido: "Combate cerrado.", aviso: null };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;

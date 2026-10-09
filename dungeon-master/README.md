@@ -12,6 +12,17 @@ La campaña está ambientada en **Velmora, el Reino del Sol Herido**: un mundo d
 
 Todo se define en `src/mundo.ts`; cámbialo para crear tu propio mundo.
 
+## Combate
+
+La iniciativa y los ataques los resuelve el programa (`iniciativa`, `atacar`, `terminar_combate`), no el DM a ojo. Lo que más pesa no es el nivel, sino la **veteranía**, que el DM fija según el trasfondo (un mercenario con años en la Compañía es veterano aunque sea nivel 1):
+
+- **Recluta**: ataca con −2 por nervios y se enreda con 1-2 natural (torpeza: falla y queda expuesto), salvo si actúa antes que su rival.
+- **Curtido**: +1 a atacar e iniciativa; −1 por nervios si no actúa antes; si falla por 1, aún roza.
+- **Veterano**: +2 a atacar e iniciativa; solo falla seguro con un 1; si falla por 2 o menos, roza (mitad de daño, sin herida).
+- **Leyenda**: +3, repite el 1 natural, roza si falla por 3 o menos y hace crítico con 19-20.
+
+Cada raza tiene su temple (los elfos marchitos y los nacidos pálidos golpean primero, los enanos arrancan tarde pero pegan más fuerte, los medianos repiten los 1) y cada clase su estilo (el degollador actúa antes, el berserker pega más fuerte pero se enreda más, el hechicero no es un guerrero). Los no-muertos sin mente, como los Hambrientos, son lentos y torpes. Los PNJ sin ficha, como un capitán, entran en el combate con su propia veteranía. Con dano, el ataque tira y aplica el daño y avisa cuando toca una herida.
+
 ## Sistema de heridas
 
 Los PV son aguante; las **heridas** son daño real en el cuerpo y las gestiona el programa con tiradas reales (el DM no puede saltárselas):

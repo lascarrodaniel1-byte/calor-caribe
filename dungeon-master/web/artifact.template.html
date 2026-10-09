@@ -688,9 +688,8 @@
     return turnosEntrada;
   }
 
-  const NOMBRES_ACCIONES = ["tirar_dados", "guardar_personaje", "modificar_personaje", "infligir_herida", "tratar_herida", "pasar_tiempo",
-    "avanzar_asaltos", "usar_vial", "generar_botin", "crear_objeto", "examinar_objeto", "aparecer_criatura", "danar_criatura",
-    "habilidad_criatura", "presagio_criatura", "behelit", "ubicacion", "anotar_mundo", "actualizar_cronica", "consultar_reglas"];
+  // Salen del motor, para que ninguna acción nueva se quede fuera.
+  const NOMBRES_ACCIONES = [...V.NOMBRES_ACCIONES, "actualizar_cronica", "consultar_reglas"];
 
   const MENSAJES_ERROR = {
     not_granted: "No se dio permiso a esta página para usar Claude. Ábrela de nuevo y acepta el permiso para que el DM pueda narrar.",

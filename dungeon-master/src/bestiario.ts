@@ -51,6 +51,8 @@ export interface Criatura {
   botin?: string;
   /** Ve el futuro: número de presagios (d20 tirados de antemano) con que empieza el combate. */
   presagios?: number;
+  /** Carácter en combate (ver TEMPLES en combate.ts): no-muerto torpe, no-muerto, vampiro, espectro, bestia… */
+  temple?: string;
 }
 
 export interface Robo {
@@ -77,6 +79,7 @@ export const BESTIARIO: Criatura[] = [
   // ------------------------------------------------------------ comunes
   {
     nombre: "Hambriento",
+    temple: "no-muerto torpe",
     categoria: "monstruo",
     peligro: 1,
     region: "Cualquiera; en manadas en la Marca Hueca",
@@ -92,6 +95,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Lobo de Ceniza",
+    temple: "bestia",
     categoria: "bestia",
     peligro: 1,
     region: "Bosque de Velo Rojo, caminos de la Marca",
@@ -106,6 +110,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ghul de las fosas",
+    temple: "no-muerto",
     categoria: "monstruo",
     peligro: 2,
     region: "Fosas comunes de Aldenmar, cementerios",
@@ -138,6 +143,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Troll de ciénaga",
+    temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
     region: "Ciénagas de Hollín",
@@ -154,6 +160,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Wyverno",
+    temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
     region: "Riscos de las Agujas de Vahl, cielos de la Marca",
@@ -171,6 +178,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Basilisco",
+    temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
     region: "Cuevas bajo Karak-Dûm, ruinas antiguas",
@@ -187,6 +195,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Mantícora",
+    temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
     region: "Páramos de la Marca Hueca",
@@ -203,6 +212,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Banshee del Velo",
+    temple: "espectro",
     categoria: "monstruo",
     peligro: 3,
     region: "Bosque de Velo Rojo",
@@ -219,6 +229,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Gigante de hueso",
+    temple: "no-muerto torpe",
     categoria: "monstruo",
     peligro: 4,
     region: "Campos de batalla de la Marca Hueca",
@@ -235,6 +246,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Dragón joven de ceniza",
+    temple: "bestia",
     categoria: "monstruo",
     peligro: 4,
     region: "Cumbres y ruinas; anidan en templos de dioses muertos",
@@ -271,6 +283,7 @@ export const BESTIARIO: Criatura[] = [
   // ------------------------------------------------------------ jefes
   {
     nombre: "Vaskar, el Lobo del Eclipse",
+    temple: "bestia",
     categoria: "jefe",
     peligro: 5,
     region: "Corazón del Bosque de Velo Rojo",
@@ -307,6 +320,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ysolde, la Reina Pálida",
+    temple: "vampiro",
     categoria: "jefe",
     peligro: 5,
     region: "Castillo de Vel Morhal, en la Marca Hueca",
@@ -325,6 +339,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "La Madre de los Hambrientos",
+    temple: "no-muerto",
     categoria: "jefe",
     peligro: 5,
     region: "Una fosa común sin fondo en las Ciénagas de Hollín",
@@ -492,7 +507,7 @@ export function fichaCriatura(c: Criatura): string {
   return [
     `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5 (${c.region})`,
     c.descripcion,
-    `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}`,
+    `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
     c.habilidades.length

@@ -2,6 +2,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoJefe } from "./bestiario.js";
 import type { EstadoBehelit } from "./behelit.js";
+import { veteraniaDe, type EstadoCombate, type Veterania } from "./combate.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
@@ -14,6 +15,8 @@ export interface Personaje {
   raza: string;
   clase: string;
   nivel: number;
+  /** Años de oficio en combate; si falta, se deduce del nivel. */
+  veterania?: Veterania;
   pv: number;
   pv_max: number;
   ca: number;
@@ -52,6 +55,8 @@ export interface Partida {
   jefes: Record<string, EstadoJefe>;
   behelit: EstadoBehelit;
   mapa: EstadoMapa;
+  /** Combate en curso: orden de iniciativa y PNJ sin ficha. */
+  combate?: EstadoCombate;
 }
 
 export function nuevaPartida(): Partida {
@@ -108,7 +113,7 @@ export function fichaTexto(p: Personaje): string {
   };
   const maxEf = pvMaxEfectivo(p);
   return [
-    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}`,
+    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
     "  " +
       (["fue", "des", "con", "int", "sab", "car"] as const)

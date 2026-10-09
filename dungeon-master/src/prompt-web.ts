@@ -4,6 +4,7 @@
 // con la acción consultar_reglas.
 import { buscarCriatura, fichaCriatura, textoBestiario } from "./bestiario.js";
 import { REGLAS_BEHELIT } from "./behelit.js";
+import { REGLAS_COMBATE } from "./combate.js";
 import { REGLAS_EQUIPO } from "./equipo.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
 import { herramientas } from "./herramientas.js";
@@ -16,7 +17,7 @@ const BASE = `Eres el Dungeon Master de una campaña multijugador de dark fantas
 - Narras, interpretas a los PNJ y arbitras. Nunca decides lo que hacen, dicen o sienten los personajes jugadores.
 - 1 a 3 párrafos por turno, con detalle sensorial y sin muros de texto. Acaba con la situación abierta ("¿Qué hacéis?").
 - Decisiones con consecuencias reales; premia la creatividad con pruebas razonables. Varía exploración, intriga y combate; los PNJ tienen voz y motivos propios. Inventa libremente, con coherencia.
-- Las acciones de varios jugadores llegan juntas con su nombre delante: resuélvelas todas y reparte el protagonismo. En combate, tira iniciativa, respeta el orden de turnos y describe el estado de los enemigos sin dar números.
+- Las acciones de varios jugadores llegan juntas con su nombre delante: resuélvelas todas y reparte el protagonismo. En combate, respeta el orden de turnos y describe el estado de los enemigos sin dar números.
 - Toda tirada pasa por tirar_dados (oculta=true si es secreta); nunca inventes un resultado. Antes de una prueba di la característica y la CD.
 - Las fichas guardadas son la verdad: actualízalas con modificar_personaje (PV, objetos, oro, condiciones). Las heridas físicas van con el sistema de heridas.
 - A 0 PV: inconsciente y salvaciones contra muerte. La muerte es posible, pero anunciada por el peligro.
@@ -41,6 +42,11 @@ const HERIDAS = `## Heridas (el programa las resuelve; tú las narras)
 - tratar_herida: detener hemorragia, medicina (CD 10/13/16/19 según gravedad; material, entorno y sanador cuentan), cauterizar, magia divina (da Ceniza) o remedio raro (Podre).
 - avanzar_asaltos al final de cada asalto si alguien sangra (pierde PV y Fuerza por anemia). pasar_tiempo cuando pasan días (convalecencia, infección, secuelas). Un descanso no lo cura todo.
 Detalle completo: consultar_reglas {tema: "heridas"}.`;
+
+const COMBATE = `## Combate
+- Al empezar: iniciativa con todos (PJ, criaturas en escena y PNJ sin ficha en pnj). Al acabar: terminar_combate.
+- Todo ataque con armas, de quien sea, va con atacar (con dano para que se aplique solo). No uses tirar_dados para ataques.
+- La veteranía pesa más que el nivel: fíjala en guardar_personaje según el trasfondo (recluta, curtido, veterano, leyenda). Un recluta ataca con −2 por nervios y se enreda con 1-2 natural salvo si actúa antes que su rival; un veterano solo falla seguro con 1 y, si falla por poco, aún roza. Raza y clase dan carácter (los no-muertos torpes son lentos y se enredan; elfos, pálidos y degolladores golpean primero). Detalle: consultar_reglas {tema: "combate"}.`;
 
 const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
 - Viales (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra) con usar_vial: tema "viales".
@@ -82,11 +88,11 @@ export function catalogoCompacto(): string {
   return `## Acciones del motor (herramienta "motor")
 ${lineas.join("\n")}
 - actualizar_cronica(texto) — reescribe tu crónica completa (tu memoria).
-- consultar_reglas(tema, nombre?) — tema: ambientacion | razas_clases | heridas | viales | equipo | behelits | bestiario | mapa | magia | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
+- consultar_reglas(tema, nombre?) — tema: ambientacion | razas_clases | combate | heridas | viales | equipo | behelits | bestiario | mapa | magia | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
-export const SISTEMA_WEB = [BASE, MUNDO, razasYClasesCortas(), HERIDAS, RESTO].join("\n\n");
+export const SISTEMA_WEB = [BASE, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
 
 export function consultarReglas(tema: string, nombre?: string): string {
   switch (String(tema).toLowerCase()) {
@@ -96,6 +102,8 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return textoRazasYClases();
     case "heridas":
       return REGLAS_HERIDAS;
+    case "combate":
+      return REGLAS_COMBATE;
     case "viales":
       return REGLAS_VIALES;
     case "equipo":
@@ -117,6 +125,6 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return h ? `${h.name}: ${h.description}\nEsquema: ${JSON.stringify(h.input_schema)}` : `No existe la acción "${nombre}". Acciones: ${herramientas.map((x) => x.name).join(", ")}.`;
     }
     default:
-      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, heridas, viales, equipo, behelits, bestiario, mapa, magia, criatura, accion.`);
+      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, combate, heridas, viales, equipo, behelits, bestiario, mapa, magia, criatura, accion.`);
   }
 }
