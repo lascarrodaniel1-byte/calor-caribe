@@ -34,7 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
-import { atacar, NOMBRES_TEMPLES, tirarIniciativa, VETERANIAS } from "./combate.js";
+import { ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
@@ -79,6 +79,7 @@ const criatura = z.object({
   botin: z.string().optional(),
   presagios: z.number().int().min(1).max(5).optional().describe("Si ve el futuro: d20 que tira por adelantado"),
   temple: z.enum(NOMBRES_TEMPLES).optional().describe("Carácter en combate: no-muerto torpe (zombis, esqueletos), no-muerto, vampiro, espectro, bestia…"),
+  personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional(),
 });
 
 const atributo = z.number().int().min(1).max(30);
@@ -97,6 +98,7 @@ const esquemas = {
     clase: z.enum(NOMBRES_CLASES),
     nivel: z.number().int().min(1).max(20),
     veterania: z.enum(VETERANIAS).optional().describe("Años de oficio según el trasfondo: recluta (pocas peleas), curtido, veterano (muchos años), leyenda. Un mercenario con años de servicio es veterano aunque sea nivel 1. Si se omite, sale del nivel"),
+    personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional().describe("1 o 2 rasgos de carácter según cómo lo describe el jugador: pesan en emboscadas, planes y nervios"),
     pv_max: z.number().int().min(1),
     pv: z.number().int().optional().describe("PV actuales; por defecto, igual a pv_max"),
     ca: z.number().int().min(1),
@@ -119,6 +121,7 @@ const esquemas = {
     quitar_condiciones: z.array(z.string()).optional(),
     nivel: z.number().int().min(1).max(20).optional(),
     veterania: z.enum(VETERANIAS).optional().describe("Sube cuando el personaje ha sobrevivido a muchas batallas"),
+    personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional().describe("Reemplaza sus rasgos de carácter si la historia lo ha cambiado"),
     pv_max: z.number().int().min(1).optional(),
     agregar_secuelas: z.array(z.string()).optional().describe("Secuelas narrativas fuera del sistema de heridas"),
     quitar_secuelas: z.array(z.string()).optional().describe("Solo con magia o ritos extraordinarios"),
@@ -284,10 +287,22 @@ const esquemas = {
           des: z.number().int().optional().describe("Destreza (10 por defecto)"),
           veterania: z.enum(VETERANIAS).optional().describe("Por defecto curtido"),
           temple: z.enum(NOMBRES_TEMPLES).optional().describe("Su raza o naturaleza"),
+          sab: z.number().int().optional().describe("Sabiduría (10 por defecto): para notar emboscadas y leer planes"),
+          pv: z.number().int().min(1).optional().describe("Si lo das, el programa lleva sus PV"),
+          personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional(),
         }),
       )
       .optional()
       .describe("PNJ sin ficha que luchan (aliados o enemigos): un capitán, unos bandidos…"),
+    tactica: z
+      .object({
+        bando: z.array(z.string()).min(1).describe("Quienes tienden la emboscada o siguen el plan (participantes); los demás son sus rivales"),
+        emboscada: z.boolean().optional().describe("Atacan sin ser vistos: se tira sigilo contra la percepción de cada rival"),
+        plan: z.enum(Object.keys(PLANES) as [string, ...string[]]).optional().describe("Calidad del plan según lo preparado: improvisado, bueno o brillante"),
+        alerta: z.enum(Object.keys(ALERTAS) as [string, ...string[]]).optional().describe("Estado de los rivales: dormidos, distraidos, normal o en_guardia"),
+      })
+      .optional()
+      .describe("Emboscadas y planes que dan ventaja a un bando"),
   }),
   atacar: z.object({
     atacante: z.string().describe("PJ, criatura en escena o PNJ registrado en la iniciativa"),
@@ -302,6 +317,7 @@ const esquemas = {
     desventaja: z.boolean().optional(),
     ca: z.number().int().optional().describe("Sustituye la CA del objetivo (cobertura, escudo alzado…)"),
   }),
+  siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
   anotar_mundo: z.object({
     nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
@@ -312,9 +328,10 @@ type Nombre = keyof typeof esquemas;
 
 const descripciones: Record<Nombre, string> = {
   iniciativa:
-    "Empieza un combate: tira la iniciativa de PJ, criaturas y PNJ con su destreza, veteranía, raza y clase, y guarda el orden. Actuar antes que el rival evita que los novatos se enreden.",
+    "Empieza un combate: tira la iniciativa de PJ, criaturas y PNJ con su destreza, veteranía, raza, clase y carácter, y resuelve emboscadas (sorpresa) y planes. Actuar antes que el rival calma los nervios de los novatos.",
   atacar:
     "Resuelve un ataque con armas de cualquiera (PJ, criatura o PNJ): bonificador por atributo, competencia, veteranía, raza y clase; torpezas, roces de los veteranos y críticos; tira y aplica el daño.",
+  siguiente_asalto: "Empieza el siguiente asalto del combate (la sorpresa y el plan solo valen en el primero).",
   terminar_combate: "Cierra el combate en curso (borra el orden de iniciativa y los PNJ sin ficha).",
   tirar_dados:
     "Tira dados de verdad. Úsala SIEMPRE que haya que tirar (ataques, daño, salvaciones, pruebas, iniciativa, " +
@@ -643,7 +660,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "iniciativa": {
         const e = validado.data as z.infer<typeof esquemas.iniciativa>;
-        const texto = tirarIniciativa(partida, e.participantes, e.pnj ?? []);
+        const texto = tirarIniciativa(partida, e.participantes, e.pnj ?? [], e.tactica as Parameters<typeof tirarIniciativa>[3]);
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "atacar": {
@@ -659,6 +676,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           }
         }
         return { contenido: r.texto, aviso: r.aviso };
+      }
+      case "siguiente_asalto": {
+        const texto = siguienteAsalto(partida);
+        return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "terminar_combate": {
         delete partida.combate;

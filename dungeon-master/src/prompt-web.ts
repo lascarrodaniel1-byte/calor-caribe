@@ -44,9 +44,9 @@ const HERIDAS = `## Heridas (el programa las resuelve; tú las narras)
 Detalle completo: consultar_reglas {tema: "heridas"}.`;
 
 const COMBATE = `## Combate
-- Al empezar: iniciativa con todos (PJ, criaturas en escena y PNJ sin ficha en pnj). Al acabar: terminar_combate.
+- Al empezar: iniciativa con todos (PJ, criaturas en escena y PNJ sin ficha en pnj). Si alguien embosca o sigue un plan, pásalo en tactica (bando, emboscada, plan improvisado/bueno/brillante según lo preparado, alerta de los rivales): el programa decide quién queda sorprendido y quién lee el plan; a los veteranos cuesta mucho más sorprenderlos. Cada asalto nuevo: siguiente_asalto. Al acabar: terminar_combate.
 - Todo ataque con armas, de quien sea, va con atacar (con dano para que se aplique solo). No uses tirar_dados para ataques.
-- La veteranía pesa más que el nivel: fíjala en guardar_personaje según el trasfondo (recluta, curtido, veterano, leyenda). Un recluta ataca con −2 por nervios y se enreda con 1-2 natural salvo si actúa antes que su rival; un veterano solo falla seguro con 1 y, si falla por poco, aún roza. Raza y clase dan carácter (los no-muertos torpes son lentos y se enredan; elfos, pálidos y degolladores golpean primero). Detalle: consultar_reglas {tema: "combate"}.`;
+- La veteranía pesa más que el nivel: fíjala en guardar_personaje según el trasfondo (recluta, curtido, veterano, leyenda). Los nervios suben con la presión (golpear después, un rival terrible, estar malherido) y hunden a los reclutas (hasta −5) mientras apenas tocan a los veteranos, que además rozan cuando fallan por poco. Raza, clase y personalidad pesan: los no-muertos torpes son lentos y sin nervios; elfos, pálidos y degolladores golpean primero; un arrogante o confiado subestima y es fácil de sorprender, uno prudente o paranoico no. Pon 1-2 rasgos de personalidad en guardar_personaje según cómo lo describa el jugador, y a tus PNJ. Detalle: consultar_reglas {tema: "combate"}.`;
 
 const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
 - Viales (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra) con usar_vial: tema "viales".

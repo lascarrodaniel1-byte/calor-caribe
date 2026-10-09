@@ -2,6 +2,10 @@
 // combatiente (veteranía), su raza o naturaleza y su clase deciden lo fácil que
 // es que falle: un recluta se enreda con su propia arma a menos que golpee
 // primero; un veterano casi nunca falla del todo, y cuando falla aún roza.
+// Los nervios crecen con la presión (golpear después, un monstruo terrible,
+// estar malherido) y pesan mucho más en los novatos. Las emboscadas y los planes
+// dan ventaja, pero a un veterano cuesta más sorprenderlo, y la personalidad
+// (arrogancia, prudencia, impulsividad…) cambia lo fácil que es engañar a alguien.
 import { danar, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -14,8 +18,12 @@ interface Oficio {
   /** Bonificador al ataque. */
   golpe: number;
   iniciativa: number;
-  /** Penalizador por nervios si no actúa antes que su rival. */
-  nervios: number;
+  /** Penalizador por nervios según la presión (0, 1, 2, 3, 4 o más fuentes de presión). */
+  nervios: number[];
+  /** Sangre fría para notar emboscadas y leer planes. */
+  deteccion: number;
+  /** Penalizador a su percepción si lo pillan dormido. */
+  dormido: number;
   /** Un d20 natural igual o menor que esto es una torpeza (fallo seguro) si no actúa antes que su rival; si actúa antes, solo el 1. */
   torpeza: number;
   /** Si falla por este margen o menos, aún roza (mitad de daño, sin herida). */
@@ -28,10 +36,10 @@ interface Oficio {
 }
 
 export const OFICIO: Record<Veterania, Oficio> = {
-  recluta: { golpe: 0, iniciativa: 0, nervios: -2, torpeza: 2, roce: 0, critico: 20, repiteUno: false, descripcion: "pocas peleas de verdad: −2 por nervios y torpeza con 1-2 natural, salvo si actúa antes que su rival" },
-  curtido: { golpe: 1, iniciativa: 1, nervios: -1, torpeza: 1, roce: 1, critico: 20, repiteUno: false, descripcion: "algunos años de oficio: +1 a atacar e iniciativa, −1 por nervios si no actúa antes que su rival; si falla por 1, roza" },
-  veterano: { golpe: 2, iniciativa: 2, nervios: 0, torpeza: 1, roce: 2, critico: 20, repiteUno: false, descripcion: "muchos años matando: +2 a atacar e iniciativa; si falla por 2 o menos, aún roza" },
-  leyenda: { golpe: 3, iniciativa: 3, nervios: 0, torpeza: 1, roce: 3, critico: 19, repiteUno: true, descripcion: "toda una vida en el filo: +3 a atacar e iniciativa, repite el 1 natural, roza si falla por 3 o menos y hace crítico con 19-20" },
+  recluta: { golpe: 0, iniciativa: 0, nervios: [0, -2, -3, -4, -5], deteccion: 0, dormido: -10, torpeza: 2, roce: 0, critico: 20, repiteUno: false, descripcion: "pocas peleas de verdad: los nervios le pesan mucho (−2 con una presión, hasta −5) y se enreda con 1-2 natural salvo si actúa antes que su rival; fácil de sorprender" },
+  curtido: { golpe: 1, iniciativa: 1, nervios: [0, -1, -1, -2, -3], deteccion: 2, dormido: -7, torpeza: 1, roce: 1, critico: 20, repiteUno: false, descripcion: "algunos años de oficio: +1 a atacar e iniciativa, nervios moderados (−1 a −3), +2 para no ser sorprendido; si falla por 1, roza" },
+  veterano: { golpe: 2, iniciativa: 2, nervios: [0, 0, 0, -1, -2], deteccion: 4, dormido: -5, torpeza: 1, roce: 2, critico: 20, repiteUno: false, descripcion: "muchos años matando: +2 a atacar e iniciativa, solo le pesan los nervios con tres presiones o más, +4 para no ser sorprendido (duerme con un ojo abierto); si falla por 2 o menos, aún roza" },
+  leyenda: { golpe: 3, iniciativa: 3, nervios: [0, 0, 0, 0, -1], deteccion: 6, dormido: -3, torpeza: 1, roce: 3, critico: 19, repiteUno: true, descripcion: "toda una vida en el filo: +3 a atacar e iniciativa, casi inmune a los nervios, +6 para no ser sorprendido, repite el 1 natural, roza si falla por 3 o menos y hace crítico con 19-20" },
 };
 
 /** Veteranía por defecto según el nivel (el DM la fija por trasfondo al crear el personaje). */
@@ -45,6 +53,10 @@ interface Temple {
   /** Se suma al rango de torpeza. */
   torpeza: number;
   repiteUno?: boolean;
+  /** Sentidos para notar emboscadas. */
+  deteccion?: number;
+  /** Sin mente o sin miedo: no sufre nervios. */
+  sinNervios?: boolean;
   nota: string;
 }
 
@@ -52,16 +64,16 @@ interface Temple {
 export const TEMPLES: Record<string, Temple> = {
   "Humano del Faro": { iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "tozudos y versátiles: sin ventajas ni vicios" },
   "Enano de Karak-Dûm": { iniciativa: -1, cuerpo: 1, distancia: 0, torpeza: 0, nota: "lentos en arrancar, implacables cuerpo a cuerpo (+1)" },
-  "Elfo Marchito": { iniciativa: 2, cuerpo: 0, distancia: 1, torpeza: 0, nota: "reflejos de siglos (+2 iniciativa), certeros a distancia (+1)" },
+  "Elfo Marchito": { deteccion: 1, iniciativa: 2, cuerpo: 0, distancia: 1, torpeza: 0, nota: "reflejos de siglos (+2 iniciativa, +1 para notar emboscadas), certeros a distancia (+1)" },
   "Mediano de Hollín": { iniciativa: 1, cuerpo: 0, distancia: 1, torpeza: 0, repiteUno: true, nota: "rápidos y afortunados: repiten el 1 natural, +1 a distancia" },
-  Varg: { iniciativa: 1, cuerpo: 1, distancia: -1, torpeza: 0, nota: "instinto de lobo: +1 iniciativa y cuerpo a cuerpo, −1 a distancia" },
-  "Nacido Pálido": { iniciativa: 2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "reflejos de depredador (+2 iniciativa)" },
+  Varg: { deteccion: 2, iniciativa: 1, cuerpo: 1, distancia: -1, torpeza: 0, nota: "instinto de lobo: +1 iniciativa y cuerpo a cuerpo, −1 a distancia; su olfato da +2 para notar emboscadas" },
+  "Nacido Pálido": { deteccion: 1, iniciativa: 2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "reflejos de depredador (+2 iniciativa)" },
   Cenizo: { iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "serenos: sin ventajas ni vicios" },
-  "no-muerto torpe": { iniciativa: -3, cuerpo: 0, distancia: -2, torpeza: 1, nota: "carne muerta sin mente: −3 iniciativa y una torpeza más" },
-  "no-muerto": { iniciativa: -1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "muertos con mente, sin reflejos de vivo: −1 iniciativa" },
-  vampiro: { iniciativa: 2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "velocidad antinatural: +2 iniciativa" },
+  "no-muerto torpe": { deteccion: -2, sinNervios: true, iniciativa: -3, cuerpo: 0, distancia: -2, torpeza: 1, nota: "carne muerta sin mente: −3 iniciativa, una torpeza más, sin nervios, −2 para notar emboscadas" },
+  "no-muerto": { sinNervios: true, iniciativa: -1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "muertos con mente, sin reflejos de vivo: −1 iniciativa; no sienten nervios" },
+  vampiro: { deteccion: 2, iniciativa: 2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "velocidad antinatural: +2 iniciativa, +2 para notar emboscadas" },
   espectro: { iniciativa: 1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "incorpóreos: +1 iniciativa" },
-  bestia: { iniciativa: 1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "instinto: +1 iniciativa" },
+  bestia: { deteccion: 2, iniciativa: 1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "instinto: +1 iniciativa, +2 para notar emboscadas" },
 };
 export const NOMBRES_TEMPLES = Object.keys(TEMPLES) as [string, ...string[]];
 const SIN_TEMPLE: Temple = { iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "" };
@@ -81,6 +93,52 @@ export const ESTILO_CLASE: Record<string, { iniciativa: number; cuerpo: number; 
 };
 const SIN_ESTILO = { iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "" };
 
+interface Personalidad {
+  /** Para notar emboscadas. */
+  deteccion: number;
+  /** Para leer planes, fintas y trampas. */
+  lectura: number;
+  iniciativa: number;
+  /** Presión extra (o menos) para los nervios. */
+  presion: number;
+  /** No se achanta ante monstruos terribles. */
+  sinTerror?: boolean;
+  torpeza?: number;
+  nota: string;
+}
+
+/** Rasgos de carácter que pesan en el combate. */
+export const PERSONALIDADES: Record<string, Personalidad> = {
+  arrogante: { deteccion: -4, lectura: -4, iniciativa: 0, presion: 0, sinTerror: true, nota: "subestima a todos: −4 para notar emboscadas y leer planes; no se achanta ante monstruos" },
+  confiado: { deteccion: -2, lectura: -2, iniciativa: 0, presion: 0, nota: "baja la guardia: −2 para notar emboscadas y leer planes" },
+  impulsivo: { deteccion: 0, lectura: -3, iniciativa: 2, presion: 0, nota: "+2 iniciativa, pero cae en fintas y trampas (−3 para leer planes)" },
+  temerario: { deteccion: 0, lectura: 0, iniciativa: 1, presion: 0, sinTerror: true, torpeza: 1, nota: "+1 iniciativa y sin miedo a los monstruos, pero se lanza sin cubrirse (una torpeza más)" },
+  prudente: { deteccion: 2, lectura: 2, iniciativa: -1, presion: 0, nota: "+2 para notar emboscadas y leer planes, −1 iniciativa" },
+  calculador: { deteccion: 1, lectura: 3, iniciativa: -1, presion: 0, nota: "+3 para leer planes, +1 para notar emboscadas, −1 iniciativa" },
+  paranoico: { deteccion: 4, lectura: 2, iniciativa: 0, presion: 1, nota: "+4 para notar emboscadas, +2 para leer planes, pero siempre tenso (una presión más)" },
+  sereno: { deteccion: 0, lectura: 1, iniciativa: 0, presion: -1, nota: "una presión menos y +1 para leer planes" },
+  cobarde: { deteccion: 2, lectura: 0, iniciativa: 0, presion: 1, nota: "siempre buscando el peligro (+2 para notar emboscadas), pero los nervios lo comen (una presión más)" },
+  fanatico: { deteccion: -1, lectura: -2, iniciativa: 0, presion: -1, sinTerror: true, nota: "su fe no conoce el miedo (una presión menos, sin terror), pero no ve más allá (−1 y −2)" },
+};
+export const NOMBRES_PERSONALIDADES = Object.keys(PERSONALIDADES) as [string, ...string[]];
+
+export const PLANES = {
+  improvisado: { iniciativa: 1, sigilo: 0, cd: 0, nota: "+1 iniciativa al bando" },
+  bueno: { iniciativa: 2, sigilo: 2, cd: 14, nota: "+2 iniciativa y sigilo; +1 a sus ataques en el primer asalto contra quien no lo lea (CD 14)" },
+  brillante: { iniciativa: 4, sigilo: 4, cd: 18, nota: "+4 iniciativa y sigilo; ventaja en sus ataques del primer asalto contra quien no lo lea (CD 18)" },
+} as const;
+export type CalidadPlan = keyof typeof PLANES;
+export const ALERTAS = { dormidos: 0, distraidos: -5, normal: 0, en_guardia: 5 } as const;
+export type Alerta = keyof typeof ALERTAS;
+
+export interface Tactica {
+  /** Quienes tienden la emboscada o siguen el plan; el resto son sus rivales. */
+  bando: string[];
+  emboscada?: boolean;
+  plan?: CalidadPlan;
+  alerta?: Alerta;
+}
+
 /** PNJ sin ficha que entran en un combate (un capitán, unos bandidos…). */
 export interface PnjCombate {
   nombre: string;
@@ -89,12 +147,20 @@ export interface PnjCombate {
   des?: number;
   veterania?: Veterania;
   temple?: string;
+  sab?: number;
+  personalidad?: string[];
+  /** Si se da, el programa lleva sus PV. */
+  pv?: number;
+  pv_max?: number;
 }
 
 export interface EstadoCombate {
   ronda: number;
   orden: { nombre: string; total: number }[];
   pnj: Record<string, PnjCombate>;
+  /** Sorprendidos: no actúan en el primer asalto y se les ataca con ventaja. */
+  sorprendidos?: string[];
+  plan?: { bando: string[]; calidad: CalidadPlan; leido_por: string[] };
 }
 
 type Combatiente =
@@ -134,6 +200,26 @@ function veteraniaCombatiente(c: Combatiente): Veterania {
 }
 
 const desDeCriatura = (c: Criatura) => Number(/DES\s*(\d+)/i.exec(c.atributos)?.[1] ?? 10);
+const sabDeCriatura = (c: Criatura) => Number(/SAB\s*(\d+)/i.exec(c.atributos)?.[1] ?? 10);
+
+function personalidadDe(c: Combatiente): Personalidad[] {
+  const lista = c.tipo === "pj" ? c.p.personalidad : c.tipo === "criatura" ? c.j.definicion.personalidad : c.n.personalidad;
+  return (lista ?? []).map((x) => PERSONALIDADES[x.toLowerCase()]).filter(Boolean);
+}
+const suma = (ps: Personalidad[], k: "deteccion" | "lectura" | "iniciativa" | "presion" | "torpeza") => ps.reduce((s, p) => s + (p[k] ?? 0), 0);
+
+/** Bonificador para notar emboscadas (sentidos) o leer planes (lectura). */
+function bonoAlerta(c: Combatiente, que: "deteccion" | "lectura"): { bono: number; detalle: string } {
+  const sab = c.tipo === "pj" ? valor(c.p, "sab") : c.tipo === "criatura" ? sabDeCriatura(c.j.definicion) : (c.n.sab ?? 10);
+  const vet = c.tipo === "criatura" ? 0 : OFICIO[veteraniaCombatiente(c)].deteccion;
+  const tp = que === "deteccion" ? (temple(templeDe(c)).deteccion ?? 0) : 0;
+  const pers = suma(personalidadDe(c), que);
+  const partes = [`SAB ${signo(mod(sab))}`, vet ? `oficio ${signo(vet)}` : "", tp ? `temple ${signo(tp)}` : "", pers ? `carácter ${signo(pers)}` : ""];
+  return { bono: mod(sab) + vet + tp + pers, detalle: partes.filter(Boolean).join(", ") };
+}
+
+const nuncaSorprendido = (c: Combatiente) =>
+  c.tipo === "criatura" && (!!c.j.definicion.presagios || c.j.definicion.rasgos.some((r) => /no puede ser sorprendid/i.test(r)));
 
 function bonoIniciativa(c: Combatiente): { bono: number; modo: Modo; detalle: string } {
   const t = temple(templeDe(c));
@@ -141,26 +227,91 @@ function bonoIniciativa(c: Combatiente): { bono: number; modo: Modo; detalle: st
   const estilo = c.tipo === "pj" ? (ESTILO_CLASE[c.p.clase] ?? SIN_ESTILO).iniciativa : 0;
   const des = c.tipo === "pj" ? valor(c.p, "des") : c.tipo === "criatura" ? desDeCriatura(c.j.definicion) : (c.n.des ?? 10);
   const presciencia = c.tipo === "criatura" && c.j.definicion.rasgos.some((r) => /ventaja en iniciativa/i.test(r));
-  const partes = [`DES ${signo(mod(des))}`, of ? `oficio ${signo(of)}` : "", t.iniciativa ? `temple ${signo(t.iniciativa)}` : "", estilo ? `clase ${signo(estilo)}` : ""];
-  return { bono: mod(des) + of + t.iniciativa + estilo, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
+  const pers = suma(personalidadDe(c), "iniciativa");
+  const partes = [`DES ${signo(mod(des))}`, of ? `oficio ${signo(of)}` : "", t.iniciativa ? `temple ${signo(t.iniciativa)}` : "", estilo ? `clase ${signo(estilo)}` : "", pers ? `carácter ${signo(pers)}` : ""];
+  return { bono: mod(des) + of + t.iniciativa + estilo + pers, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
 }
 
-export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCombate[]): string {
-  const combate: EstadoCombate = { ronda: 1, orden: [], pnj: {} };
-  for (const n of pnj) combate.pnj[n.nombre] = n;
+export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCombate[], tactica?: Tactica): string {
+  const combate: EstadoCombate = { ronda: 1, orden: [], pnj: {}, sorprendidos: [] };
+  for (const n of pnj) combate.pnj[n.nombre] = { ...n, pv_max: n.pv_max ?? n.pv };
   partida.combate = combate;
-  const lista = [...nombres, ...pnj.map((n) => n.nombre)];
+  const todos = [...nombres, ...pnj.map((n) => n.nombre)].map((n) => localizar(partida, n));
   const lineas: string[] = [];
-  const tiradas = lista.map((nombre) => {
-    const c = localizar(partida, nombre);
+
+  // Bandos: quien tiende la emboscada o sigue el plan, y sus rivales.
+  const enBando = (c: Combatiente) => !!tactica?.bando.some((b) => igual(b, c.nombre));
+  if (tactica) {
+    const fuera = tactica.bando.filter((b) => !todos.some((c) => igual(c.nombre, b)));
+    if (fuera.length) throw new Error(`${fuera.join(", ")} no está entre los participantes del combate.`);
+  }
+  const bando = todos.filter(enBando);
+  const rivales = todos.filter((c) => !enBando(c));
+  const plan = tactica?.plan ? PLANES[tactica.plan] : undefined;
+
+  // Emboscada: el sigilo del más torpe del bando contra la percepción de cada rival.
+  if (tactica?.emboscada && bando.length) {
+    const sigilos = bando.map((c) => {
+      const des = c.tipo === "pj" ? valor(c.p, "des") : c.tipo === "criatura" ? desDeCriatura(c.j.definicion) : (c.n.des ?? 10);
+      const of = c.tipo === "criatura" ? 0 : OFICIO[veteraniaCombatiente(c)].golpe;
+      const clase = c.tipo === "pj" && /Degollador|Cazador/.test(c.p.clase) ? 2 : 0;
+      const b = mod(des) + of + clase + (plan?.sigilo ?? 0);
+      const t = tirar(`1d20${signo(b)}`);
+      return { nombre: c.nombre, t };
+    });
+    const peor = sigilos.reduce((a, b) => (b.t.total < a.t.total ? b : a));
+    lineas.push(`Emboscada — sigilo del bando: ${sigilos.map((x) => `${x.nombre} ${describir(x.t)}`).join("; ")}. Cuenta el más torpe: ${peor.nombre} (${peor.t.total}).`);
+    const alerta = tactica.alerta ?? "normal";
+    for (const r of rivales) {
+      if (nuncaSorprendido(r)) {
+        lineas.push(`${r.nombre}: no se le puede sorprender.`);
+        continue;
+      }
+      const a = bonoAlerta(r, "deteccion");
+      const extra = alerta === "dormidos" ? (r.tipo === "criatura" ? -5 : OFICIO[veteraniaCombatiente(r)].dormido) : ALERTAS[alerta];
+      const pasiva = 10 + a.bono + extra;
+      const sorprendido = peor.t.total > pasiva;
+      if (sorprendido) combate.sorprendidos!.push(r.nombre);
+      lineas.push(`${r.nombre}: percepción ${pasiva} [10, ${a.detalle}${extra ? `, ${alerta} ${signo(extra)}` : ""}] → ${sorprendido ? "SORPRENDIDO" : "lo ve venir"}`);
+    }
+  }
+
+  // Plan: cada rival que no esté sorprendido puede leerlo.
+  if (plan && tactica?.plan && plan.cd) {
+    const leido: string[] = [];
+    for (const r of rivales) {
+      if (combate.sorprendidos!.includes(r.nombre)) continue;
+      const a = bonoAlerta(r, "lectura");
+      const t = tirar(`1d20${signo(a.bono)}`);
+      const lee = t.total >= plan.cd;
+      if (lee) leido.push(r.nombre);
+      lineas.push(`${r.nombre} intenta leer el plan: ${describir(t)} [${a.detalle}] vs CD ${plan.cd} → ${lee ? "lo lee" : "cae en él"}`);
+    }
+    combate.plan = { bando: bando.map((c) => c.nombre), calidad: tactica.plan, leido_por: leido };
+  }
+
+  const tiradas = todos.map((c) => {
     const b = bonoIniciativa(c);
-    const t = tirar(`1d20${signo(b.bono)}`, b.modo);
-    lineas.push(`${c.nombre}: ${describir(t)}${b.modo === "ventaja" ? " (ventaja)" : ""} [${b.detalle}]`);
-    return { nombre: c.nombre, total: t.total, des: b.bono };
+    const pl = plan && enBando(c) ? plan.iniciativa : 0;
+    const t = tirar(`1d20${signo(b.bono + pl)}`, b.modo);
+    lineas.push(`${c.nombre}: ${describir(t)}${b.modo === "ventaja" ? " (ventaja)" : ""} [${b.detalle}${pl ? `, plan ${signo(pl)}` : ""}]`);
+    return { nombre: c.nombre, total: t.total, des: b.bono, sorprendido: combate.sorprendidos!.includes(c.nombre) };
   });
+  // Los sorprendidos conservan su puesto: solo pierden el primer asalto.
   tiradas.sort((a, b) => b.total - a.total || b.des - a.des);
   combate.orden = tiradas.map(({ nombre, total }) => ({ nombre, total }));
-  return `Iniciativa:\n${lineas.join("\n")}\nOrden: ${combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}`;
+  const sorpr = combate.sorprendidos!.length ? `\nSorprendidos (no actúan en el primer asalto; se les ataca con ventaja): ${combate.sorprendidos!.join(", ")}` : "";
+  return `Iniciativa:\n${lineas.join("\n")}\nOrden: ${combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}${sorpr}`;
+}
+
+/** Pasa al siguiente asalto: la sorpresa y el efecto del plan solo duran el primero. */
+export function siguienteAsalto(partida: Partida): string {
+  const c = partida.combate;
+  if (!c) throw new Error("No hay ningún combate en curso: empieza con iniciativa.");
+  c.ronda += 1;
+  const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
+  c.sorprendidos = [];
+  return `Asalto ${c.ronda}.${fin}`;
 }
 
 /** ¿Actúa el atacante antes que el objetivo en este combate? */
@@ -276,16 +427,46 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     ventaja = true;
     motivos.push("ventaja: el objetivo está en el suelo o indefenso");
   }
+  const combate = partida.combate;
+  const primerAsalto = combate?.ronda === 1;
+  const sorprendido = (n: string) => primerAsalto && !!combate?.sorprendidos?.some((x) => igual(x, n));
+  if (sorprendido(at.nombre)) throw new Error(`${at.nombre} está sorprendido: no puede actuar en el primer asalto. Cuando empiece el siguiente, usa siguiente_asalto.`);
+  if (sorprendido(ob.nombre)) {
+    ventaja = true;
+    motivos.push(`ventaja: ${ob.nombre} está sorprendido`);
+  }
+  const plan = combate?.plan;
+  if (primerAsalto && plan && plan.bando.some((x) => igual(x, at.nombre)) && !plan.bando.some((x) => igual(x, ob.nombre))) {
+    if (plan.leido_por.some((x) => igual(x, ob.nombre))) motivos.push(`${ob.nombre} leyó el plan: no cae en él`);
+    else if (plan.calidad === "brillante") {
+      ventaja = true;
+      motivos.push("ventaja: el plan funciona");
+    } else if (plan.calidad === "bueno") {
+      bono += 1;
+      desglose.push("plan +1");
+    }
+  }
   const modo: Modo = ventaja && !desventaja ? "ventaja" : desventaja && !ventaja ? "desventaja" : "normal";
 
   // Torpeza: cuanto menos oficio, más fácil enredarse… salvo si golpea antes que su rival.
-  const primero = actuaAntes(partida, at.nombre, ob.nombre);
+  const primero = actuaAntes(partida, at.nombre, ob.nombre) || sorprendido(ob.nombre);
+  const pers = personalidadDe(at);
   const torpezaBase = at.tipo === "criatura" ? 1 : of.torpeza;
-  const torpeza = Math.max(1, (primero ? 1 : torpezaBase) + tp.torpeza + estilo.torpeza);
-  const nervios = at.tipo === "criatura" || primero ? 0 : of.nervios;
+  const torpeza = Math.max(1, (primero ? 1 : torpezaBase) + tp.torpeza + estilo.torpeza + suma(pers, "torpeza"));
+
+  // Nervios: cada fuente de presión suma; cuánto pesan depende de la veteranía.
+  const presiones: string[] = [];
+  if (!primero) presiones.push("golpea después");
+  const terrible = ob.tipo === "criatura" && (ob.j.definicion.categoria === "jefe" || ob.j.definicion.peligro >= 4);
+  if (terrible && !pers.some((x) => x.sinTerror)) presiones.push("rival terrible");
+  if (at.tipo === "pj" && at.p.pv < at.p.pv_max / 2) presiones.push("malherido");
+  const presionCaracter = suma(pers, "presion");
+  if (presionCaracter > 0) presiones.push("carácter tenso");
+  const presion = Math.max(0, Math.min(4, presiones.length - (presionCaracter < 0 ? -presionCaracter : 0)));
+  const nervios = at.tipo === "criatura" || tp.sinNervios ? 0 : of.nervios[presion];
   if (nervios) {
     bono += nervios;
-    desglose.push(`nervios ${signo(nervios)}`);
+    desglose.push(`nervios ${signo(nervios)} (${presiones.join(", ")})`);
   }
 
   let t = tirar(`1d20${signo(bono)}`, modo);
@@ -311,7 +492,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       `${describir(t)}${modo !== "normal" ? ` (${modo})` : ""}${repetido} [${desglose.join(", ")}] vs CA ${ca}`,
   ];
   if (motivos.length) lineas.push(motivos.join("; "));
-  if (primero && at.tipo !== "criatura" && (of.nervios || torpezaBase > 1)) lineas.push(`Actúa antes que ${ob.nombre}: golpea sin nervios.`);
+  if (primero && at.tipo !== "criatura" && torpezaBase > 1) lineas.push(`Actúa antes que ${ob.nombre}: no se enreda.`);
   if (torpeza > 1) lineas.push(`Torpeza con 1-${torpeza} natural.`);
 
   const etiquetas = {
@@ -341,7 +522,10 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       if (herida) lineas.push(`Ahora usa infligir_herida con causa "${herida}" para ${p.nombre}.`);
       else if (p.pv === 0) lineas.push(`Ahora usa infligir_herida con causa "cero_pv" para ${p.nombre}.`);
     } else {
-      lineas.push(`${ob.nombre} recibe ${dano} de daño (lleva tú sus PV).`);
+      if (ob.n.pv !== undefined) {
+        ob.n.pv = Math.max(0, ob.n.pv - dano);
+        lineas.push(`${ob.nombre}: −${dano} PV → ${ob.n.pv}/${ob.n.pv_max ?? "?"}${ob.n.pv === 0 ? " — CAE." : ""}`);
+      } else lineas.push(`${ob.nombre} recibe ${dano} de daño (lleva tú sus PV).`);
     }
   } else if (resultado === "critico" && ob.tipo === "pj") {
     lineas.push(`Si el golpe hace daño, usa infligir_herida con causa "critico" para ${ob.nombre}.`);
@@ -356,11 +540,16 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 }
 
 export const REGLAS_COMBATE = `## Combate (iniciativa y ataques los resuelve el programa)
-- Al empezar un combate, iniciativa con todos: PJ, criaturas en escena y los PNJ sin ficha (pnj: nombre, bono_ataque, ca, des, veterania, temple). Guarda el orden; repítela solo en un combate nuevo.
+- Al empezar un combate, iniciativa con todos: PJ, criaturas en escena y los PNJ sin ficha (pnj: nombre, bono_ataque, ca, des, sab, veterania, temple, personalidad). Guarda el orden; repítela solo en un combate nuevo.
 - Cada ataque con armas (de PJ, criatura o PNJ) va con atacar. Si pasas dano (p. ej. "1d8+3", con el modificador ya sumado), se tira y se aplica solo: a las criaturas en escena y a los PJ (te dirá si toca infligir_herida). Los hechizos van con lanzar_hechizo.
 - Veteranía (ponla en guardar_personaje según el trasfondo: quien lleva años en el oficio NO es recluta aunque sea nivel 1; sin ella se deduce del nivel). Los PNJ también la tienen: un capitán de la Compañía es veterano o leyenda, un miliciano es recluta.
 ${Object.entries(OFICIO).map(([k, o]) => `  - ${k}: ${o.descripcion}.`).join("\n")}
-- Actuar antes que el rival (iniciativa) quita los nervios y la torpeza extra a reclutas y curtidos: sin iniciativa tirada, los sufren siempre.
+- Nervios: cada presión suma (golpear después que el rival, un rival terrible —jefe o peligro 4+—, estar malherido, un carácter tenso); cuánto restan depende de la veteranía (arriba). Actuar antes que el rival quita una presión y la torpeza extra. Los no-muertos no sienten nervios.
+- Emboscadas y planes (iniciativa con tactica: bando, emboscada, plan, alerta de los rivales): el sigilo del más torpe del bando contra la percepción de cada rival (10 + SAB + oficio + sentidos + carácter; dormidos, distraídos o en guardia cuentan). A un veterano cuesta mucho más sorprenderlo. Los sorprendidos no actúan en el primer asalto y se les ataca con ventaja. Planes:
+${Object.entries(PLANES).map(([k, p]) => `  - ${k}: ${p.nota}.`).join("\n")}
+  Juzga tú la calidad del plan de los jugadores (o de los PNJ) por lo que han preparado. Al empezar cada asalto nuevo, siguiente_asalto.
+- Personalidad (en guardar_personaje, en los PNJ y en las criaturas): 
+${Object.entries(PERSONALIDADES).map(([k, p]) => `  - ${k}: ${p.nota}.`).join("\n")}
 - Temple de cada raza o naturaleza (en las criaturas, campo temple de su ficha):
 ${Object.entries(TEMPLES).map(([k, t]) => `  - ${k}: ${t.nota}.`).join("\n")}
 - Estilo de cada clase:

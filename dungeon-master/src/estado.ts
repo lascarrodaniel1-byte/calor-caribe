@@ -17,6 +17,8 @@ export interface Personaje {
   nivel: number;
   /** Años de oficio en combate; si falta, se deduce del nivel. */
   veterania?: Veterania;
+  /** Rasgos de carácter que pesan en combate (arrogante, prudente…). */
+  personalidad?: string[];
   pv: number;
   pv_max: number;
   ca: number;
@@ -113,7 +115,7 @@ export function fichaTexto(p: Personaje): string {
   };
   const maxEf = pvMaxEfectivo(p);
   return [
-    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}`,
+    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
     "  " +
       (["fue", "des", "con", "int", "sab", "car"] as const)

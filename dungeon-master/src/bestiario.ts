@@ -53,6 +53,8 @@ export interface Criatura {
   presagios?: number;
   /** Carácter en combate (ver TEMPLES en combate.ts): no-muerto torpe, no-muerto, vampiro, espectro, bestia… */
   temple?: string;
+  /** Carácter en combate (arrogante, calculador…): ver PERSONALIDADES en combate.ts. */
+  personalidad?: string[];
 }
 
 export interface Robo {
@@ -127,6 +129,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ogro",
+    personalidad: ["confiado"],
     categoria: "monstruo",
     peligro: 2,
     region: "Colinas, caminos sin ley, al servicio de señores de la guerra",
@@ -143,6 +146,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Troll de ciénaga",
+    personalidad: ["impulsivo"],
     temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
@@ -195,6 +199,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Mantícora",
+    personalidad: ["impulsivo"],
     temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
@@ -264,6 +269,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Apóstol",
+    personalidad: ["arrogante"],
     categoria: "monstruo",
     peligro: 4,
     region: "Cualquiera: vive entre los humanos con su antigua forma",
@@ -283,6 +289,7 @@ export const BESTIARIO: Criatura[] = [
   // ------------------------------------------------------------ jefes
   {
     nombre: "Vaskar, el Lobo del Eclipse",
+    personalidad: ["temerario"],
     temple: "bestia",
     categoria: "jefe",
     peligro: 5,
@@ -302,6 +309,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "El Juez Sin Ojos",
+    personalidad: ["calculador"],
     categoria: "jefe",
     peligro: 5,
     region: "Catedral sumergida bajo Aldenmar",
@@ -320,6 +328,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ysolde, la Reina Pálida",
+    personalidad: ["arrogante"],
     temple: "vampiro",
     categoria: "jefe",
     peligro: 5,
@@ -433,6 +442,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Vaerth, el Sin Rostro",
+    personalidad: ["calculador"],
     categoria: "jefe",
     peligro: 5,
     region: "Los barrios bajos de Aldenmar; puede ser cualquiera",
@@ -480,6 +490,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Kharoth, Dragón Antiguo del Sol Herido",
+    personalidad: ["arrogante"],
     categoria: "jefe",
     peligro: 5,
     region: "Durmiendo sobre el corazón del dios Solar, en las Agujas de Vahl",
@@ -507,7 +518,7 @@ export function fichaCriatura(c: Criatura): string {
   return [
     `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5 (${c.region})`,
     c.descripcion,
-    `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}`,
+    `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
     c.habilidades.length

@@ -26,8 +26,8 @@ export function estadoParaDM(p: Partida): string {
   if (p.combate) {
     const pnj = Object.values(p.combate.pnj);
     partes.push(
-      `## Combate en curso\nOrden de iniciativa: ${p.combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}` +
-        (pnj.length ? `\nPNJ: ${pnj.map((n) => `${n.nombre} (ataque ${n.bono_ataque >= 0 ? "+" : ""}${n.bono_ataque}, CA ${n.ca}, ${n.veterania ?? "curtido"}${n.temple ? `, ${n.temple}` : ""})`).join("; ")}` : ""),
+      `## Combate en curso (asalto ${p.combate.ronda})${p.combate.sorprendidos?.length ? `\nSorprendidos: ${p.combate.sorprendidos.join(", ")}` : ""}${p.combate.plan ? `\nPlan ${p.combate.plan.calidad} de ${p.combate.plan.bando.join(", ")}; lo leyeron: ${p.combate.plan.leido_por.join(", ") || "nadie"}` : ""}\nOrden de iniciativa: ${p.combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}` +
+        (pnj.length ? `\nPNJ: ${pnj.map((n) => `${n.nombre} (ataque ${n.bono_ataque >= 0 ? "+" : ""}${n.bono_ataque}, CA ${n.ca}, ${n.veterania ?? "curtido"}${n.temple ? `, ${n.temple}` : ""}${n.personalidad?.length ? `, ${n.personalidad.join(" y ")}` : ""})`).join("; ")}` : ""),
     );
   }
   if (p.notas_mundo.length) partes.push(`## Notas de campaña\n${p.notas_mundo.map((n) => `- ${n}`).join("\n")}`);
