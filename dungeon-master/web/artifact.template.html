@@ -430,6 +430,7 @@
   let cronicaDM = "";
   let diario = "";          // situación actual de la aventura (se reescribe al compactar)
   let anales = [];          // capítulos ya vividos, en orden; solo se añaden, nunca se reescriben
+  let detalles = [];        // detalles menores (nombres, precios, objetos, aspecto…): una línea cada uno
   let compactadoHasta = 0;  // ts del último turno ya incluido en el diario
   let turnos = [];          // turnos ya narrados (más recientes al final)
   let pendientes = [];      // acciones en cola
@@ -649,7 +650,7 @@
 ## Cómo funciona esta mesa
 - No recuerdas nada entre turnos. Cada turno recibes tu crónica, el estado del juego (fichas, mapa, criaturas, secretos), los últimos turnos resumidos y las acciones nuevas.
 - Usa el motor con la herramienta "motor": una lista de acciones {accion, datos} que se ejecutan en orden. Cada ronda cuesta: mete en una sola llamada todo lo que no dependa de un resultado anterior (todas las iniciativas, todos los ataques enemigos…) y no consultes reglas que ya conoces.
-- Tu memoria tiene tres partes: los ANALES (capítulos ya vividos, canon), la SITUACIÓN ACTUAL y los turnos recientes. Se escriben solos con lo que ocurre a la vista. Antes de narrar, comprueba en ellos nombres, promesas, deudas y heridas: no contradigas nada de lo que ya pasó.
+- Tu memoria tiene cuatro partes: los ANALES (capítulos ya vividos, canon), la SITUACIÓN ACTUAL, los DETALLES MENORES (nombres de secundarios, precios, objetos dados o perdidos, aspecto de la gente, apodos, frases dichas) y los turnos recientes. Se escriben solos con lo que ocurre a la vista. Antes de narrar, comprueba en ellos nombres, promesas, deudas y heridas: no contradigas nada de lo que ya pasó.
 - Cuando aparezca algo que deba recordarse siempre (un PNJ con nombre, una promesa, una deuda, un secreto descubierto, un lugar clave), guárdalo además con anotar_mundo: las notas de campaña nunca se resumen.
 - Tu crónica (actualizar_cronica) es para tus notas privadas de DM: secretos, planes de los villanos, lo que aún no saben los jugadores. Se reescribe entera: copia lo que siga vigente y añade lo nuevo, en menos de 2500 caracteres.
 - Los resultados del motor se muestran solos a los jugadores: no copies tiradas ni hables de herramientas ni de JSON.
@@ -669,14 +670,15 @@
     const recorta = (txt, n) => (txt.length > n ? txt.slice(0, n) + " […]" : txt);
     recientes.forEach((t, i) => {
       const reciente = i >= recientes.length - 4;
-      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 400 : 160)).join("\n");
+      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 500 : 300)).join("\n");
       if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
-      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, 700)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
+      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, 1600)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
       else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
     });
     const final =
       `# ANALES DE LA AVENTURA (capítulos ya vividos, en orden; es canon, respétalo)\n${anales.length ? anales.map((c, i) => `${i + 1}. ${c}`).join("\n") : "(aún vacíos: la aventura acaba de empezar)"}\n\n` +
       `# SITUACIÓN ACTUAL (antes de los turnos recientes)\n${diario || "(aún vacía)"}\n\n` +
+      (detalles.length ? `# DETALLES MENORES (nombres, precios, objetos, aspecto, frases; respétalos)\n${detalles.map((x) => `- ${x}`).join("\n")}\n\n` : "") +
       `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
       `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida)}\n\n` +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
@@ -719,8 +721,10 @@
   const LIMITE_ANALES = 9000;       // caracteres; por encima, los capítulos más viejos se funden
 
   function partirSecciones(txt) {
-    const m = /===\s*CAP[IÍ]TULO\s*===([\s\S]*?)===\s*SITUACI[OÓ]N\s*===([\s\S]*)/i.exec(txt);
-    return m ? { capitulo: m[1].trim(), situacion: m[2].trim() } : { capitulo: "", situacion: txt.trim() };
+    const m = /===\s*CAP[IÍ]TULO\s*===([\s\S]*?)===\s*SITUACI[OÓ]N\s*===([\s\S]*?)(?:===\s*DETALLES\s*===([\s\S]*))?$/i.exec(txt);
+    if (!m) return { capitulo: "", situacion: txt.trim(), detalles: [] };
+    const lineas = (m[3] || "").split("\n").map((x) => x.replace(/^\s*[-•*]\s*/, "").trim()).filter((x) => x && x.length > 3);
+    return { capitulo: m[1].trim(), situacion: m[2].trim(), detalles: lineas };
   }
 
   async function compactarDiario() {
@@ -734,20 +738,38 @@
         `- Nombres propios exactos. No inventes nada que no esté en los textos. Texto plano en español.\n\n` +
         `=== CAPÍTULO ===\nLo que pasó en los nuevos acontecimientos, en orden, en frases cortas (como mucho 800 caracteres): quién hizo qué, a quién conocieron, qué se prometió, quién murió o quedó herido, qué se ganó o perdió.\n\n` +
         `=== SITUACIÓN ===\nEl estado actual tras esos acontecimientos (como mucho 2500 caracteres). Conserva todo lo que siga vigente de la situación anterior, aunque no salga en lo nuevo. Apartados:\nDÓNDE ESTAMOS:\nMISIÓN Y OBJETIVOS:\nPERSONAJES Y PNJ (nombre: quién es, relación con el grupo, estado):\nPROMESAS, DEUDAS Y ENEMIGOS:\nOBJETOS Y RECURSOS CLAVE:\nHILOS ABIERTOS:\n\n` +
+        `=== DETALLES ===\nLos detalles menores NUEVOS de estos acontecimientos que un buen narrador no debería olvidar, uno por línea empezando por "- ", como mucho 15 y cada uno corto: nombres de secundarios y animales y cómo son, precios pagados, objetos dados, prestados o perdidos, cicatrices, apodos, frases o gestos memorables, cómo es un lugar, gustos y manías. No repitas los que ya están en la lista de detalles conocidos.\n\n` +
+        `## DETALLES YA CONOCIDOS\n${detalles.slice(-60).map((x) => `- ${x}`).join("\n") || "(ninguno)"}\n\n` +
         `## SITUACIÓN ANTERIOR\n${diario || "(vacía)"}\n\n## NUEVOS ACONTECIMIENTOS\n${lote.map(textoTurno).join("\n\n")}\n\n` +
-        `Responde solo con las dos secciones, empezando por la línea "=== CAPÍTULO ===".`;
+        `Responde solo con las tres secciones, empezando por la línea "=== CAPÍTULO ===".`;
       const res = await sample(prompt, { modelTier: "quick", cache: false });
-      const { capitulo, situacion } = partirSecciones(String(res.text || ""));
-      if (!situacion) return;
-      diario = situacion.slice(0, 3200);
-      if (capitulo) anales.push(capitulo.slice(0, 1000));
+      const partes = partirSecciones(String(res.text || ""));
+      if (!partes.situacion) return;
+      diario = partes.situacion.split(/===\s*DETALLES/i)[0].trim().slice(0, 3200);
+      if (partes.capitulo) anales.push(partes.capitulo.slice(0, 1000));
+      const vistos = new Set(detalles.map((x) => x.toLowerCase()));
+      for (const x of partes.detalles.slice(0, 20)) if (!vistos.has(x.toLowerCase())) { detalles.push(x.slice(0, 220)); vistos.add(x.toLowerCase()); }
       await fundirAnales();
+      await fundirDetalles();
       compactadoHasta = lote[lote.length - 1].ts;
-      await db.doc("mesa/estado").update({ diario, anales, compactado_hasta: compactadoHasta }).catch(() => {});
+      await db.doc("mesa/estado").update({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
       pintarDiario();
     } catch {
       // Si falla, se intenta de nuevo tras el próximo turno; no se pierde nada.
     }
+  }
+
+  // Los detalles se guardan sueltos; si son demasiados, los más viejos se agrupan sin perder nombres ni objetos.
+  const LIMITE_DETALLES = 120;
+  async function fundirDetalles() {
+    if (detalles.length <= LIMITE_DETALLES) return;
+    const viejos = detalles.slice(0, 50);
+    const res = await sample(
+      `Agrupa estos detalles de una partida de rol en como mucho 20 líneas cortas, empezando cada una por "- ". Conserva todos los nombres propios, objetos, precios y rasgos; junta los que hablan de lo mismo y quita solo lo repetido. No inventes nada. Responde solo con las líneas.\n\n${viejos.map((x) => `- ${x}`).join("\n")}`,
+      { modelTier: "quick", cache: false },
+    );
+    const nuevos = String(res.text || "").split("\n").map((x) => x.replace(/^\s*[-•*]\s*/, "").trim()).filter(Boolean);
+    if (nuevos.length) detalles.splice(0, viejos.length, ...nuevos.slice(0, 25));
   }
 
   // Los anales solo crecen; cuando pesan demasiado, los capítulos más antiguos se funden en uno.
@@ -768,7 +790,11 @@
     const cont = $("diario");
     const hay = anales.length || diario;
     cont.textContent = hay
-      ? [anales.length ? "CAPÍTULOS\n" + anales.map((c, i) => `${i + 1}. ${c}`).join("\n\n") : "", diario ? "SITUACIÓN ACTUAL\n" + diario : ""].filter(Boolean).join("\n\n")
+      ? [
+          anales.length ? "CAPÍTULOS\n" + anales.map((c, i) => `${i + 1}. ${c}`).join("\n\n") : "",
+          diario ? "SITUACIÓN ACTUAL\n" + diario : "",
+          detalles.length ? "DETALLES\n" + detalles.map((x) => `· ${x}`).join("\n") : "",
+        ].filter(Boolean).join("\n\n")
       : "Aún no hay nada escrito. Tras unos cuantos turnos, aquí quedará el resumen de lo que habéis vivido.";
     cont.classList.toggle("vacio-diario", !hay);
   }
@@ -883,7 +909,7 @@
       const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
       await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
       const { historial, ...sinHistorial } = copia;
-      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, compactado_hasta: compactadoHasta, actualizado: Date.now() });
+      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, detalles, compactado_hasta: compactadoHasta, actualizado: Date.now() });
       for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});
       partida = copia;
       cronicaDM = cronicaNueva;
@@ -1001,6 +1027,7 @@
       cronicaDM = "";
       diario = "";
       anales = [];
+      detalles = [];
       compactadoHasta = 0;
       turnos = [];
       pendientes = [];
@@ -1043,6 +1070,7 @@
         cronicaDM = String(d?.cronica || "");
         diario = String(d?.diario || "");
         anales = Array.isArray(d?.anales) ? d.anales.map(String) : [];
+        detalles = Array.isArray(d?.detalles) ? d.detalles.map(String) : [];
         compactadoHasta = Number(d?.compactado_hasta || 0);
       }
       pintarFichas();

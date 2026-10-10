@@ -29,6 +29,16 @@ Los **nervios** suman una presión por cada cosa que aprieta: golpear después q
 
 Cada raza tiene su temple (los elfos marchitos y los nacidos pálidos golpean primero, los enanos arrancan tarde pero pegan más fuerte, los medianos repiten los 1) y cada clase su estilo (el degollador actúa antes, el berserker pega más fuerte pero se enreda más, el hechicero no es un guerrero). Los no-muertos sin mente, como los Hambrientos, son lentos y torpes. Los PNJ sin ficha, como un capitán, entran en el combate con su propia veteranía. Con dano, el ataque tira y aplica el daño y avisa cuando toca una herida.
 
+### Armaduras y armas
+
+La CA decide si te tocan; la armadura decide si el golpe **atraviesa**. Cada golpe cae en una región del cuerpo, y la protección de lo que cubre esa región se resta al daño según el tipo de arma: **corte** (espadas, hachas, garras), **punta** (dagas, lanzas, flechas, virotes, picos) o **contundente** (mazas, martillos, garrotes, rocas). La protección que queda además rebaja la gravedad de la herida.
+
+- El gambesón frena muy bien los cortes; la malla, casi del todo, pero cede algo ante las puntas y no hace nada contra el golpe; las placas paran cortes y puntas, pero no del todo un mazazo.
+- Las dagas, ligeras, apenas hacen nada contra el metal golpeando al azar; apuntando a un **hueco** (penalizador menor cuanto más veterano), el metal no cuenta y la herida es peor.
+- Mazas y martillos son **brutales**: agravan la herida aunque haya placas. El pico de guerra y el virote están hechos para perforar armadura.
+- Las criaturas tienen su piel (escamas, pellejo) y los esqueletos son de **hueso**: las mazas los destrozan.
+- Las heridas de un ataque las inflige el propio ataque, en la región donde cae y con el tipo de herida del arma.
+
 ## Sistema de heridas
 
 Los PV son aguante; las **heridas** son daño real en el cuerpo y las gestiona el programa con tiradas reales (el DM no puede saltárselas):
@@ -157,7 +167,7 @@ La Mesa de Velmora también existe como página publicada en claude.ai: https://
 - La partida se guarda en la base de datos de la página: todos ven lo mismo en vivo, aunque cierren y vuelvan.
 - Usa el mismo motor que la terminal (heridas, zonas vitales, viales, botín, jefes, behelits), empaquetado dentro de la página.
 - Para invitar a alguien: menú **Compartir** de la página, con permiso para usarla (Contributor) o editarla (Editor si es de fuera de tu organización). Cada jugador necesita una cuenta de Claude.
-- Memoria del DM en tres capas. Los **anales**: cada vez que hay más de 8 turnos sin resumir, la página pide a Claude (modo rápido) un capítulo con lo ocurrido y lo añade al final; los capítulos nunca se reescriben, y solo cuando pesan demasiado los cuatro más viejos se funden en uno. La **situación actual** (dónde estáis, misión, PNJ, promesas, objetos, hilos abiertos) se actualiza en cada compactación. Y los **turnos recientes** enteros: si una compactación falla, no se descarta ningún turno, y se reintenta antes de narrar. Además, el DM guarda con anotar_mundo los hechos que no deben resumirse nunca, y su crónica privada admite hasta 2500 caracteres. Los jugadores leen los anales y la situación en el *Diario de la aventura*.
+- Memoria del DM en tres capas. Los **anales**: cada vez que hay más de 8 turnos sin resumir, la página pide a Claude (modo rápido) un capítulo con lo ocurrido y lo añade al final; los capítulos nunca se reescriben, y solo cuando pesan demasiado los cuatro más viejos se funden en uno. La **situación actual** (dónde estáis, misión, PNJ, promesas, objetos, hilos abiertos) se actualiza en cada compactación. Y los **turnos recientes** enteros: si una compactación falla, no se descarta ningún turno, y se reintenta antes de narrar. Cada compactación apunta también los **detalles menores** (nombres de secundarios, precios, objetos prestados, apodos, cómo es la gente) en una lista aparte que el DM recibe siempre; si crece demasiado, los más viejos se agrupan sin perder nombres. Además, el DM guarda con anotar_mundo los hechos que no deben resumirse nunca, y su crónica privada admite hasta 2500 caracteres. Los jugadores leen los anales y la situación en el *Diario de la aventura*.
 - Para regenerar la página tras cambiar el motor: `npm run artifact` (genera `dist/mesa-de-velmora.html`) y publícala de nuevo en la misma dirección.
 
 ### Multijugador por el navegador

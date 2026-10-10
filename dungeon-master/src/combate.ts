@@ -9,6 +9,8 @@
 import { danar, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
+import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
+import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -149,6 +151,8 @@ export interface PnjCombate {
   temple?: string;
   sab?: number;
   personalidad?: string[];
+  /** Piezas de armadura que lleva (ver PIEZAS en armadura.ts). */
+  armadura?: string[];
   /** Si se da, el programa lleva sus PV. */
   pv?: number;
   pv_max?: number;
@@ -336,6 +340,9 @@ export interface DatosAtaque {
   ventaja?: boolean;
   desventaja?: boolean;
   ca?: number;
+  tipo_dano?: TipoDano;
+  /** Región a la que apunta, o "hueco" para buscar las juntas de la armadura. */
+  apuntar?: Ubicacion | "hueco";
 }
 
 export interface ResultadoAtaque {
@@ -448,6 +455,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   }
   const modo: Modo = ventaja && !desventaja ? "ventaja" : desventaja && !ventaja ? "desventaja" : "normal";
 
+  // Apuntar: a una región concreta o a los huecos de la armadura (cuanto más oficio, menos cuesta).
+  if (d.apuntar) {
+    const castigo =
+      d.apuntar === "hueco" ? (at.tipo === "criatura" ? -4 : { recluta: -6, curtido: -5, veterano: -4, leyenda: -3 }[vet]) : d.apuntar === "cabeza" || d.apuntar === "cuello" ? -4 : -2;
+    bono += castigo;
+    desglose.push(`apunta ${d.apuntar === "hueco" ? "a un hueco" : `a ${d.apuntar}`} ${signo(castigo)}`);
+  }
+
   // Torpeza: cuanto menos oficio, más fácil enredarse… salvo si golpea antes que su rival.
   const primero = actuaAntes(partida, at.nombre, ob.nombre) || sorprendido(ob.nombre);
   const pers = personalidadDe(at);
@@ -508,20 +523,64 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let muerto: string | undefined;
   if (d.dano && (resultado === "impacto" || resultado === "critico" || resultado === "roce")) {
     const r = tirarDano(resultado === "critico" ? doblarDados(d.dano) : d.dano);
-    dano = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
-    lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${dano}` : ""}`);
+    const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
+    lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
+
+    // Armadura: dónde cae el golpe, qué lo cubre y cuánto penetra el arma.
+    const lineaAtaque = at.tipo === "criatura" ? (d.arma && at.j.definicion.ataques.find((a) => a.toLowerCase().includes(d.arma!.toLowerCase()))) || at.j.definicion.ataques[0] || "" : "";
+    const arma = reconocerArma(d.arma) ?? reconocerArma(lineaAtaque);
+    const tipo = d.tipo_dano ?? arma?.tipo;
+    const hueco = d.apuntar === "hueco";
+    const ubicacion: Ubicacion =
+      d.apuntar && d.apuntar !== "hueco" ? d.apuntar : hueco ? (["cuello", "torso", "abdomen", "cabeza"] as const)[tirar("1d4").total - 1] : tirarUbicacion();
+    const piezas = ob.tipo === "pj" ? armaduraDe(ob.p).piezas : ob.tipo === "criatura" ? (ob.j.definicion.blindaje ?? []) : (ob.n.armadura ?? []);
+    let reduccion = 0;
+    let modGravedad = 0;
+    if (tipo) {
+      const region = regionDe(ubicacion);
+      const prot = proteccion(piezas, region, tipo, hueco);
+      const conMetal = proteccion(piezas, region, tipo).valor > proteccion(piezas, region, tipo, true).valor;
+      const pen = (arma?.penetracion ?? 0) < 0 && !conMetal ? 0 : (arma?.penetracion ?? 0);
+      reduccion = prot.valor < 0 ? prot.valor : Math.max(0, prot.valor - pen);
+      modGravedad = -Math.floor(Math.max(0, reduccion) / 2) + (tipo === "contundente" ? (arma?.brutal ?? 0) : 0) + (hueco ? 2 : 0);
+      const cubre = prot.piezas.length ? `${prot.piezas.join(" + ")} (${prot.valor} contra ${tipo})` : `nada lo cubre`;
+      lineas.push(
+        `Cae en ${ubicacion}${hueco ? " (por un hueco: el metal no cuenta)" : ""}: ${cubre}` +
+          `${pen ? `; ${arma!.nombre} ${pen > 0 ? `penetra ${pen}` : `es ligera contra el metal (+${-pen})`}` : ""}` +
+          ` → ${reduccion < 0 ? `vulnerable: +${-reduccion} de daño` : `frena ${reduccion}`}.`,
+      );
+    } else {
+      lineas.push(`(Sin tipo de daño: no sé si es corte, punta o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
+    }
+    dano = Math.max(0, bruto - reduccion);
+    if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
+
     if (ob.tipo === "criatura") {
-      lineas.push(danar(ob.j, dano));
+      if (dano) lineas.push(danar(ob.j, dano));
       if (ob.j.pv <= 0) muerto = ob.j.nombre;
     } else if (ob.tipo === "pj") {
       const p = ob.p;
       p.pv = Math.max(0, p.pv - dano);
-      lineas.push(`${p.nombre}: −${dano} PV → ${p.pv}/${p.pv_max}.`);
-      const herida =
-        resultado === "critico" ? "critico" : resultado === "roce" ? null : p.pv === 0 ? "cero_pv" : dano >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : null;
-      if (herida) lineas.push(`Ahora usa infligir_herida con causa "${herida}" para ${p.nombre}.`);
-      else if (p.pv === 0) lineas.push(`Ahora usa infligir_herida con causa "cero_pv" para ${p.nombre}.`);
-    } else {
+      if (dano) lineas.push(`${p.nombre}: −${dano} PV → ${p.pv}/${p.pv_max}.`);
+      const causa =
+        dano === 0 || resultado === "roce" ? (p.pv === 0 ? "cero_pv" : null) : resultado === "critico" ? "critico" : p.pv === 0 ? "cero_pv" : dano >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : null;
+      if (causa) {
+        const tipoHerida = tipo === "contundente" ? "contusion" : tipo === "corte" ? "corte" : arma?.nombre === "colmillos" ? "mordedura" : "perforacion";
+        const podre = /podre/i.test(lineaAtaque) || (at.tipo === "criatura" && /no-muerto/.test(at.j.definicion.temple ?? "") && arma?.nombre === "colmillos");
+        const cdPodre = Number(/cd_podre\s*(\d+)/i.exec(lineaAtaque)?.[1]) || undefined;
+        lineas.push(
+          `Herida (${causa}):\n` +
+            infligir(p, {
+              causa,
+              tipo: tipoHerida,
+              ubicacion,
+              mod_gravedad: modGravedad,
+              de_no_muerto: podre || undefined,
+              cd_podre: cdPodre,
+            }),
+        );
+      }
+    } else if (dano) {
       if (ob.n.pv !== undefined) {
         ob.n.pv = Math.max(0, ob.n.pv - dano);
         lineas.push(`${ob.nombre}: −${dano} PV → ${ob.n.pv}/${ob.n.pv_max ?? "?"}${ob.n.pv === 0 ? " — CAE." : ""}`);
@@ -535,13 +594,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const estadoObj = ob.tipo === "criatura" ? ` (${estadoTexto(ob.j)})` : ob.tipo === "pj" && dano ? ` (${ob.p.pv}/${ob.p.pv_max} PV)` : "";
   const aviso =
     `${icono} ${at.nombre} → ${ob.nombre}: ${resultado === "critico" ? "¡crítico!" : resultado === "torpeza" ? "torpeza" : resultado}` +
-    `${ob.tipo === "criatura" ? "" : ` (${t.total} vs CA ${ca})`}${dano ? `, ${dano} de daño` : ""}${estadoObj}`;
+    `${ob.tipo === "criatura" ? "" : ` (${t.total} vs CA ${ca})`}${dano ? `, ${dano} de daño` : d.dano && (resultado === "impacto" || resultado === "critico") ? ", la armadura aguanta" : ""}${estadoObj}`;
   return { texto: lineas.join("\n"), aviso, muerto };
 }
 
 export const REGLAS_COMBATE = `## Combate (iniciativa y ataques los resuelve el programa)
 - Al empezar un combate, iniciativa con todos: PJ, criaturas en escena y los PNJ sin ficha (pnj: nombre, bono_ataque, ca, des, sab, veterania, temple, personalidad). Guarda el orden; repítela solo en un combate nuevo.
-- Cada ataque con armas (de PJ, criatura o PNJ) va con atacar. Si pasas dano (p. ej. "1d8+3", con el modificador ya sumado), se tira y se aplica solo: a las criaturas en escena y a los PJ (te dirá si toca infligir_herida). Los hechizos van con lanzar_hechizo.
+- Cada ataque con armas (de PJ, criatura o PNJ) va con atacar. Si pasas dano (p. ej. "1d8+3", con el modificador ya sumado), se tira, pasa por la armadura y se aplica solo: a las criaturas en escena y a los PJ, con su herida si toca (no repitas infligir_herida). Los hechizos van con lanzar_hechizo.
 - Veteranía (ponla en guardar_personaje según el trasfondo: quien lleva años en el oficio NO es recluta aunque sea nivel 1; sin ella se deduce del nivel). Los PNJ también la tienen: un capitán de la Compañía es veterano o leyenda, un miliciano es recluta.
 ${Object.entries(OFICIO).map(([k, o]) => `  - ${k}: ${o.descripcion}.`).join("\n")}
 - Nervios: cada presión suma (golpear después que el rival, un rival terrible —jefe o peligro 4+—, estar malherido, un carácter tenso); cuánto restan depende de la veteranía (arriba). Actuar antes que el rival quita una presión y la torpeza extra. Los no-muertos no sienten nervios.
@@ -554,4 +613,6 @@ ${Object.entries(PERSONALIDADES).map(([k, p]) => `  - ${k}: ${p.nota}.`).join("\
 ${Object.entries(TEMPLES).map(([k, t]) => `  - ${k}: ${t.nota}.`).join("\n")}
 - Estilo de cada clase:
 ${Object.entries(ESTILO_CLASE).filter(([, e]) => e.nota).map(([k, e]) => `  - ${k}: ${e.nota}.`).join("\n")}
-- Las criaturas usan el bonificador de su ficha (o "bono"), fallan seguro solo con un 1 y no rozan. Envenenado, asustado, cegado, jadeando, agotado o apresado dan desventaja al PJ que ataca.`;
+- Las criaturas usan el bonificador de su ficha (o "bono"), fallan seguro solo con un 1 y no rozan. Envenenado, asustado, cegado, jadeando, agotado o apresado dan desventaja al PJ que ataca.
+
+${REGLAS_ARMADURA}`;

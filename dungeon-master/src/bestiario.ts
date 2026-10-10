@@ -55,6 +55,8 @@ export interface Criatura {
   temple?: string;
   /** Carácter en combate (arrogante, calculador…): ver PERSONALIDADES en combate.ts. */
   personalidad?: string[];
+  /** Armadura o piel (ver PIEZAS en armadura.ts): escamas_naturales, pellejo, hueso, placas_completas… */
+  blindaje?: string[];
 }
 
 export interface Robo {
@@ -129,6 +131,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ogro",
+    blindaje: ["pellejo", "cuero"],
     personalidad: ["confiado"],
     categoria: "monstruo",
     peligro: 2,
@@ -146,6 +149,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Troll de ciénaga",
+    blindaje: ["pellejo"],
     personalidad: ["impulsivo"],
     temple: "bestia",
     categoria: "monstruo",
@@ -164,6 +168,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Wyverno",
+    blindaje: ["pellejo"],
     temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
@@ -182,6 +187,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Basilisco",
+    blindaje: ["escamas_naturales"],
     temple: "bestia",
     categoria: "monstruo",
     peligro: 3,
@@ -199,6 +205,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Mantícora",
+    blindaje: ["pellejo"],
     personalidad: ["impulsivo"],
     temple: "bestia",
     categoria: "monstruo",
@@ -234,6 +241,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Gigante de hueso",
+    blindaje: ["hueso"],
     temple: "no-muerto torpe",
     categoria: "monstruo",
     peligro: 4,
@@ -251,6 +259,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Dragón joven de ceniza",
+    blindaje: ["escamas_naturales"],
     temple: "bestia",
     categoria: "monstruo",
     peligro: 4,
@@ -309,6 +318,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "El Juez Sin Ojos",
+    blindaje: ["placas_completas", "gambeson"],
     personalidad: ["calculador"],
     categoria: "jefe",
     peligro: 5,
@@ -490,6 +500,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Kharoth, Dragón Antiguo del Sol Herido",
+    blindaje: ["escamas_naturales"],
     personalidad: ["arrogante"],
     categoria: "jefe",
     peligro: 5,
@@ -518,7 +529,7 @@ export function fichaCriatura(c: Criatura): string {
   return [
     `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5 (${c.region})`,
     c.descripcion,
-    `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}`,
+    `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}${c.blindaje?.length ? ` · blindaje: ${c.blindaje.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
     c.habilidades.length

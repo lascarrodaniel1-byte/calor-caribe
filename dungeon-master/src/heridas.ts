@@ -255,6 +255,11 @@ const TABLA_UBICACION: [number, Ubicacion][] = [
   [1, "cabeza"], [2, "cuello"], [6, "torso"], [9, "abdomen"], [11, "brazo izquierdo"], [13, "brazo derecho"], [16, "pierna izquierda"], [20, "pierna derecha"],
 ];
 
+/** Tira en qué parte del cuerpo cae un golpe. */
+export function tirarUbicacion(): Ubicacion {
+  return deTabla(TABLA_UBICACION, tirar("1d20").total);
+}
+
 const ORDEN_GRAV: Gravedad[] = ["leve", "moderada", "grave", "critica"];
 const maxGrav = (a: Gravedad, b: Gravedad) => (ORDEN_GRAV.indexOf(a) >= ORDEN_GRAV.indexOf(b) ? a : b);
 
@@ -271,6 +276,8 @@ export interface DatosHerida {
   de_no_muerto?: boolean;
   /** CD de CON para resistir la Podre (por defecto 12; más alta en no-muertos poderosos). */
   cd_podre?: number;
+  /** Se suma al d20 de gravedad: negativo si la armadura amortigua, positivo con armas brutales o golpes en un hueco. */
+  mod_gravedad?: number;
 }
 
 export function infligir(p: Personaje, d: DatosHerida): string {
@@ -278,8 +285,10 @@ export function infligir(p: Personaje, d: DatosHerida): string {
   let gravedad = d.gravedad;
   if (!gravedad) {
     const t = tirar("1d20");
-    gravedad = deTabla(TABLAS_CAUSA[d.causa], t.total);
-    log.push(`Gravedad (${d.causa}): d20 = ${t.total} → ${gravedad}`);
+    const m = d.mod_gravedad ?? 0;
+    const v = Math.max(1, Math.min(20, t.total + m));
+    gravedad = deTabla(TABLAS_CAUSA[d.causa], v);
+    log.push(`Gravedad (${d.causa}): d20 = ${t.total}${m ? ` ${m > 0 ? "+" : "−"} ${Math.abs(m)} (${m > 0 ? "arma o golpe que agrava" : "armadura que amortigua"}) = ${v}` : ""} → ${gravedad}`);
   }
   // Estructura anatómica y zona vital.
   let estr: Estructura | undefined = d.estructura ? buscarEstructura(d.estructura) : undefined;

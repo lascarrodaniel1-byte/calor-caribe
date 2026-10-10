@@ -2,6 +2,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoJefe } from "./bestiario.js";
 import type { EstadoBehelit } from "./behelit.js";
+import { armaduraDe, textoArmadura } from "./armadura.js";
 import { veteraniaDe, type EstadoCombate, type Veterania } from "./combate.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
@@ -19,6 +20,8 @@ export interface Personaje {
   veterania?: Veterania;
   /** Rasgos de carácter que pesan en combate (arrogante, prudente…). */
   personalidad?: string[];
+  /** Piezas de armadura puestas (ver PIEZAS en armadura.ts); si falta, se deduce del inventario. */
+  armadura?: string[];
   pv: number;
   pv_max: number;
   ca: number;
@@ -126,6 +129,10 @@ export function fichaTexto(p: Personaje): string {
         })
         .join(" "),
     `  Inventario: ${p.inventario.join(", ") || "—"}`,
+    (() => {
+      const a = armaduraDe(p);
+      return `  Armadura: ${a.piezas.length ? textoArmadura(a.piezas) : "ninguna"}${a.deducida && a.piezas.length ? " (deducida del inventario)" : ""}`;
+    })(),
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

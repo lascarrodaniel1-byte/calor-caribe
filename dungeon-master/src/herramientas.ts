@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
+import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
@@ -80,6 +81,7 @@ const criatura = z.object({
   presagios: z.number().int().min(1).max(5).optional().describe("Si ve el futuro: d20 que tira por adelantado"),
   temple: z.enum(NOMBRES_TEMPLES).optional().describe("Carácter en combate: no-muerto torpe (zombis, esqueletos), no-muerto, vampiro, espectro, bestia…"),
   personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional(),
+  blindaje: z.array(z.enum(NOMBRES_PIEZAS)).optional().describe("Su armadura o piel: escamas_naturales, pellejo, hueso, placas_completas…"),
 });
 
 const atributo = z.number().int().min(1).max(30);
@@ -99,6 +101,7 @@ const esquemas = {
     nivel: z.number().int().min(1).max(20),
     veterania: z.enum(VETERANIAS).optional().describe("Años de oficio según el trasfondo: recluta (pocas peleas), curtido, veterano (muchos años), leyenda. Un mercenario con años de servicio es veterano aunque sea nivel 1. Si se omite, sale del nivel"),
     personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional().describe("1 o 2 rasgos de carácter según cómo lo describe el jugador: pesan en emboscadas, planes y nervios"),
+    armadura: z.array(z.enum(NOMBRES_PIEZAS)).optional().describe("Piezas que lleva puestas; la malla, siempre con gambeson debajo"),
     pv_max: z.number().int().min(1),
     pv: z.number().int().optional().describe("PV actuales; por defecto, igual a pv_max"),
     ca: z.number().int().min(1),
@@ -122,6 +125,7 @@ const esquemas = {
     nivel: z.number().int().min(1).max(20).optional(),
     veterania: z.enum(VETERANIAS).optional().describe("Sube cuando el personaje ha sobrevivido a muchas batallas"),
     personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional().describe("Reemplaza sus rasgos de carácter si la historia lo ha cambiado"),
+    armadura: z.array(z.enum(NOMBRES_PIEZAS)).optional().describe("Reemplaza las piezas de armadura que lleva puestas ([] si se la quita)"),
     pv_max: z.number().int().min(1).optional(),
     agregar_secuelas: z.array(z.string()).optional().describe("Secuelas narrativas fuera del sistema de heridas"),
     quitar_secuelas: z.array(z.string()).optional().describe("Solo con magia o ritos extraordinarios"),
@@ -289,6 +293,7 @@ const esquemas = {
           temple: z.enum(NOMBRES_TEMPLES).optional().describe("Su raza o naturaleza"),
           sab: z.number().int().optional().describe("Sabiduría (10 por defecto): para notar emboscadas y leer planes"),
           pv: z.number().int().min(1).optional().describe("Si lo das, el programa lleva sus PV"),
+          armadura: z.array(z.enum(NOMBRES_PIEZAS)).optional(),
           personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional(),
         }),
       )
@@ -316,6 +321,8 @@ const esquemas = {
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
     ca: z.number().int().optional().describe("Sustituye la CA del objetivo (cobertura, escudo alzado…)"),
+    tipo_dano: z.enum(TIPOS_DANO).optional().describe("corte, punta o contundente, si el arma no se reconoce por su nombre"),
+    apuntar: z.enum([...UBICACIONES, "hueco"]).optional().describe('Región a la que apunta (−2; cabeza o cuello −4) o "hueco": las juntas de la armadura, con daga o estoque'),
   }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
@@ -468,6 +475,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         if (e.nivel !== undefined) {
           p.nivel = e.nivel;
           cambios.push(`nivel ${p.nivel}`);
+        }
+        if (e.armadura !== undefined) {
+          p.armadura = e.armadura;
+          cambios.push(`armadura: ${e.armadura.join(", ") || "ninguna"}`);
         }
         if (e.veterania !== undefined) {
           p.veterania = e.veterania;
