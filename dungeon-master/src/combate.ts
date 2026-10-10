@@ -528,7 +528,10 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
     // Armadura: dónde cae el golpe, qué lo cubre y cuánto penetra el arma.
     const lineaAtaque = at.tipo === "criatura" ? (d.arma && at.j.definicion.ataques.find((a) => a.toLowerCase().includes(d.arma!.toLowerCase()))) || at.j.definicion.ataques[0] || "" : "";
-    const arma = reconocerArma(d.arma) ?? reconocerArma(lineaAtaque);
+    // Sin arma nombrada, la primera del inventario del PJ.
+    const delInventario = !d.arma && at.tipo === "pj" ? at.p.inventario.find((x) => reconocerArma(x)) : undefined;
+    const arma = reconocerArma(d.arma) ?? reconocerArma(lineaAtaque) ?? reconocerArma(delInventario);
+    if (delInventario && !d.tipo_dano) lineas.push(`(Arma por defecto: ${delInventario}.)`);
     const tipo = d.tipo_dano ?? arma?.tipo;
     const hueco = d.apuntar === "hueco";
     const ubicacion: Ubicacion =
