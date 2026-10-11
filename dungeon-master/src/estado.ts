@@ -7,7 +7,7 @@ import { veteraniaDe, type EstadoCombate, type Veterania } from "./combate.js";
 import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
-import { mapaVacio, type EstadoMapa } from "./mapa.js";
+import { mapaVacio, migrarMapa, type EstadoMapa } from "./mapa.js";
 import { tramaVacia, type Pnj, type Trama } from "./narrativa.js";
 import { valor } from "./reglas.js";
 
@@ -101,6 +101,7 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.trama ??= tramaVacia();
   partida.mapa.lugares ??= {};
   partida.mapa.rastro ??= [];
+  migrarMapa(partida.mapa);
   for (const j of Object.values(partida.jefes)) {
     j.presagios ??= [];
     j.robos ??= [];

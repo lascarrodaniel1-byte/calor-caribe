@@ -208,14 +208,12 @@
   .donde small { display: block; font: 400 14px var(--f-ui); color: var(--apagado); }
   .lienzo { border: 6px solid #3b2616; box-shadow: 0 6px 16px #000a, inset 0 0 0 1px #00000055; background: #d9c49a; line-height: 0; }
   .lienzo svg { width: 100%; height: auto; display: block; }
-  .lienzo .etiqueta-region { font: italic 600 32px "Alegreya", Georgia, serif; fill: #5a3d22; opacity: .75; letter-spacing: .02em; }
-  .lienzo .etiqueta-lugar { font: 700 28px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #e6d5b0; stroke-width: 7px; stroke-linejoin: round; }
-  .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 32px; }
+  .lienzo .etiqueta-lugar { font: 700 36px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 9px; stroke-linejoin: round; }
+  .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 40px; }
   .lienzo.ampliable { cursor: zoom-in; }
   .velo .mapa-grande { width: min(1100px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
-  .velo .mapa-grande .lienzo .etiqueta-lugar { font-size: 22px; }
-  .velo .mapa-grande .lienzo .etiqueta-lugar.actual { font-size: 26px; }
-  .velo .mapa-grande .lienzo .etiqueta-region { font-size: 26px; }
+  .velo .mapa-grande .lienzo .etiqueta-lugar { font-size: 26px; stroke-width: 7px; }
+  .velo .mapa-grande .lienzo .etiqueta-lugar.actual { font-size: 30px; }
   .lienzo .onda { animation: onda 2.4s ease-out infinite; transform-origin: center; transform-box: fill-box; }
   @keyframes onda { 0% { opacity: .8; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.2); } }
   @media (prefers-reduced-motion: reduce) { .lienzo .onda { animation: none; opacity: .4; } }
@@ -603,32 +601,8 @@
   }
 
   // ------------------------------------------------------------ mapa
-  // Relieve dibujado a mano con una semilla fija por región, para que el mapa no cambie entre visitas.
-  function azar(semilla) { let x = semilla * 9301 + 49297; return () => ((x = (x * 9301 + 49297) % 233280) / 233280); }
-  function relieve(r, i) {
-    const rnd = azar(i + 7);
-    const t = [];
-    const n = r.relieve === "ciudad" ? 0 : 9;
-    for (let k = 0; k < n; k++) {
-      const ang = rnd() * Math.PI * 2, dist = 30 + rnd() * 70;
-      const x = r.x + Math.cos(ang) * dist * 1.3, y = r.y + Math.sin(ang) * dist * .8;
-      if (r.relieve === "montanas") t.push(`<path d="M${x - 18} ${y + 12} L${x} ${y - 16} L${x + 18} ${y + 12}" fill="#c9b184" stroke="#5a3d22" stroke-width="2.5"/><path d="M${x} ${y - 16} L${x + 5} ${y - 6} L${x - 3} ${y - 2}" fill="none" stroke="#5a3d22" stroke-width="1.5"/>`);
-      else if (r.relieve === "agujas") t.push(`<path d="M${x - 7} ${y + 14} L${x} ${y - 26} L${x + 7} ${y + 14}" fill="#c4ab7c" stroke="#5a3d22" stroke-width="2.5"/>`);
-      else if (r.relieve === "bosque") t.push(`<circle cx="${x}" cy="${y}" r="10" fill="#8f6a4a" stroke="#5a2a1a" stroke-width="2"/><path d="M${x} ${y + 10} v8" stroke="#5a3d22" stroke-width="2.5"/>`);
-      else if (r.relieve === "cienaga") t.push(`<path d="M${x - 16} ${y} q8 -6 16 0 t16 0" fill="none" stroke="#5b6a4a" stroke-width="2.5"/><path d="M${x - 4} ${y - 4} l-3 -10 M${x} ${y - 4} v-12 M${x + 4} ${y - 4} l3 -10" stroke="#5b6a4a" stroke-width="2"/>`);
-      else if (r.relieve === "paramo") t.push(`<path d="M${x - 6} ${y - 6} l12 12 M${x + 6} ${y - 6} l-12 12" stroke="#6b4a2a" stroke-width="2.5"/>`);
-    }
-    if (r.relieve === "ciudad") {
-      t.push(`<circle cx="${r.x}" cy="${r.y}" r="46" fill="none" stroke="#5a3d22" stroke-width="4" stroke-dasharray="10 5"/>`);
-      for (const [dx, dy, h] of [[-18, -6, 28], [0, -14, 40], [18, -4, 24], [-6, 10, 18], [12, 12, 16]]) {
-        t.push(`<rect x="${r.x + dx - 6}" y="${r.y + dy - h / 2}" width="12" height="${h}" fill="#c9b184" stroke="#5a3d22" stroke-width="2"/>`);
-      }
-      t.push(`<path d="M${r.x} ${r.y - 34} l0 -14" stroke="#b5521f" stroke-width="3"/><circle cx="${r.x}" cy="${r.y - 50}" r="5" fill="#e0782c"/>`); // el faro
-    }
-    const ly = r.relieve === "ciudad" ? r.y + 74 : r.y + 92;
-    t.push(`<text class="etiqueta-region" x="${r.x}" y="${ly}" text-anchor="middle">${escapar(r.nombre)}</text>`);
-    return t.join("");
-  }
+  // La ilustración del mapa va incrustada en la página; encima se dibujan los lugares y el sello del grupo.
+  const MAPA_IMG = "/*__MAPA__*/";
 
   function pintarMapa(p) {
     const m = p.mapa || { lugares: {}, rastro: [] };
@@ -636,38 +610,30 @@
     const pos = m.posicion ? L[m.posicion] : null;
     const ruta = m.ruta && L[m.ruta.desde] && L[m.ruta.hasta] ? m.ruta : null;
     const partes = [];
-    partes.push(`<defs><radialGradient id="papel" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#ecdcb6"/><stop offset=".7" stop-color="#d9c49a"/><stop offset="1" stop-color="#b89a68"/></radialGradient></defs>`);
-    partes.push(`<rect width="${V.ANCHO}" height="${V.ALTO}" fill="url(#papel)"/>`);
-    // El Mar de Ceniza, al oeste
-    partes.push(`<path d="M0 0 H70 C40 120 95 210 60 330 C30 450 90 540 50 700 H0 Z" fill="#a9a48c" opacity=".55"/>`);
-    for (let k = 0; k < 7; k++) partes.push(`<path d="M${12 + (k % 2) * 14} ${70 + k * 90} q8 -6 16 0 t16 0" fill="none" stroke="#6f6a55" stroke-width="2"/>`);
-    partes.push(`<text class="etiqueta-region" x="34" y="380" text-anchor="middle" transform="rotate(-90 34 380)">Mar de Ceniza</text>`);
-    V.REGIONES.forEach((r, i) => partes.push(relieve(r, i)));
+    partes.push(`<image href="${MAPA_IMG}" width="${V.ANCHO}" height="${V.ALTO}" preserveAspectRatio="none"/>`);
     // Rastro de lo recorrido
     const rastro = (m.rastro || []).map((id) => L[id]).filter(Boolean);
-    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#7a5a3a" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"/>`);
+    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#3a2414" stroke-width="4" stroke-dasharray="2 11" stroke-linecap="round"/>`);
     // Viaje en curso
     let marca = pos ? { x: pos.x, y: pos.y } : null;
     if (ruta) {
       const a = L[ruta.desde], b = L[ruta.hasta];
-      partes.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8a2a1e" stroke-width="4" stroke-dasharray="14 9" stroke-linecap="round"/>`);
-      partes.push(`<circle cx="${b.x}" cy="${b.y}" r="13" fill="none" stroke="#8a2a1e" stroke-width="4"/>`);
+      partes.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#fff3d2" stroke-opacity=".7" stroke-width="9" stroke-linecap="round"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8a2a1e" stroke-width="5" stroke-dasharray="16 10" stroke-linecap="round"/>`);
+      partes.push(`<circle cx="${b.x}" cy="${b.y}" r="16" fill="none" stroke="#8a2a1e" stroke-width="5"/>`);
       marca = { x: a.x + (b.x - a.x) * ruta.progreso, y: a.y + (b.y - a.y) * ruta.progreso };
+    }
+    // El sello de lacre: dónde estáis
+    if (marca) {
+      partes.push(`<circle class="onda" cx="${marca.x}" cy="${marca.y}" r="28" fill="none" stroke="#b02a1e" stroke-width="5"/>`);
+      partes.push(`<circle cx="${marca.x}" cy="${marca.y}" r="19" fill="#9e2b25" stroke="#f6e8c4" stroke-width="4"/><circle cx="${marca.x}" cy="${marca.y}" r="9" fill="none" stroke="#e8a090" stroke-width="2.5"/>`);
     }
     // Lugares
     for (const l of Object.values(L)) {
       const actual = (pos && l.id === pos.id && !ruta) || (ruta && l.id === ruta.hasta);
-      partes.push(`<circle cx="${l.x}" cy="${l.y}" r="${actual ? 7 : 6}" fill="#3a2414" stroke="#ecdcb6" stroke-width="2"/>`);
-      const izquierda = l.x > V.ANCHO - 200;
-      partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -12 : 12)}" y="${l.y - 10}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
+      partes.push(`<circle cx="${l.x}" cy="${l.y}" r="${actual ? 9 : 8}" fill="#3a2414" stroke="#f6e8c4" stroke-width="3"/>`);
+      const izquierda = l.x > V.ANCHO - 260;
+      partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -14 : 14)}" y="${l.y - 12}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
     }
-    // El sello de lacre: dónde estáis
-    if (marca) {
-      partes.push(`<circle class="onda" cx="${marca.x}" cy="${marca.y}" r="22" fill="none" stroke="#b02a1e" stroke-width="4"/>`);
-      partes.push(`<circle cx="${marca.x}" cy="${marca.y}" r="15" fill="#9e2b25" stroke="#5a120e" stroke-width="3"/><circle cx="${marca.x}" cy="${marca.y}" r="7" fill="none" stroke="#e8a090" stroke-width="2"/>`);
-    }
-    // Rosa de los vientos
-    partes.push(`<g transform="translate(925 625)" stroke="#5a3d22" stroke-width="2"><circle r="30" fill="none"/><path d="M0 -42 L7 0 L0 42 L-7 0 Z" fill="#c9b184"/><path d="M-42 0 L0 -7 L42 0 L0 7 Z" fill="#c9b184"/></g><text x="925" y="572" text-anchor="middle" class="etiqueta-region" style="font-size:20px">N</text>`);
     const svg = `<svg viewBox="0 0 ${V.ANCHO} ${V.ALTO}" role="img" aria-label="Mapa de Velmora con la posición del grupo">${partes.join("")}</svg>`;
     $("mapa").innerHTML = svg;
     $("mapa-grande").innerHTML = svg;

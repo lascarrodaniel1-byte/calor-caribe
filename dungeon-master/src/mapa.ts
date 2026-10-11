@@ -1,27 +1,40 @@
 // Mapa de Velmora: regiones fijas, lugares que el DM va descubriendo y la
-// posición del grupo (también a mitad de un viaje). Coordenadas en un lienzo
-// de 1000 × 700 que la página dibuja como un mapa antiguo.
+// posición del grupo (también a mitad de un viaje). Coordenadas en píxeles de la
+// ilustración del mapa (web/mapa-velmora.jpg, 1260 × 832), sobre la que la página
+// dibuja los lugares y el sello del grupo.
 import { tirar } from "./dados.js";
 
-export const ANCHO = 1000;
-export const ALTO = 700;
+export const ANCHO = 1260;
+export const ALTO = 832;
+/** Versión de las coordenadas guardadas: la 1 era un lienzo de 1000 × 700. */
+export const VERSION_MAPA = 2;
+/** Zona útil de la ilustración (el Mar de Ceniza ocupa el borde izquierdo). */
+const MARGEN = { izq: 190, der: 50, arr: 50, aba: 60 };
 
 export interface Region {
   nombre: string;
   x: number;
   y: number;
-  /** Cómo se dibuja: montañas, ciudad, ciénaga, bosque, páramo o agujas. */
-  relieve: "montanas" | "ciudad" | "cienaga" | "bosque" | "paramo" | "agujas";
 }
 
 export const REGIONES: Region[] = [
-  { nombre: "Las Agujas de Vahl", x: 190, y: 140, relieve: "agujas" },
-  { nombre: "Karak-Dûm", x: 520, y: 115, relieve: "montanas" },
-  { nombre: "El Bosque de Velo Rojo", x: 820, y: 230, relieve: "bosque" },
-  { nombre: "Aldenmar", x: 470, y: 370, relieve: "ciudad" },
-  { nombre: "Las Ciénagas de Hollín", x: 230, y: 510, relieve: "cienaga" },
-  { nombre: "La Marca Hueca", x: 770, y: 530, relieve: "paramo" },
+  { nombre: "Las Agujas de Vahl", x: 255, y: 150 },
+  { nombre: "Karak-Dûm", x: 640, y: 150 },
+  { nombre: "El Bosque de Velo Rojo", x: 1010, y: 290 },
+  { nombre: "Aldenmar", x: 610, y: 420 },
+  { nombre: "Las Ciénagas de Hollín", x: 295, y: 575 },
+  { nombre: "La Marca Hueca", x: 870, y: 620 },
 ];
+
+/** Centros de las regiones en el lienzo antiguo de 1000 × 700, para migrar partidas guardadas. */
+const CENTROS_V1: Record<string, [number, number]> = {
+  "Las Agujas de Vahl": [190, 140],
+  "Karak-Dûm": [520, 115],
+  "El Bosque de Velo Rojo": [820, 230],
+  Aldenmar: [470, 370],
+  "Las Ciénagas de Hollín": [230, 510],
+  "La Marca Hueca": [770, 530],
+};
 export const NOMBRES_REGIONES = REGIONES.map((r) => r.nombre) as [string, ...string[]];
 
 export const TIPOS_LUGAR = ["ciudad", "aldea", "posada", "fortaleza", "ruina", "mazmorra", "cueva", "templo", "bosque", "campamento", "camino", "puerto", "otro"] as const;
@@ -45,9 +58,32 @@ export interface EstadoMapa {
   ruta?: { desde: string; hasta: string; progreso: number };
   /** Lugares por los que ha pasado el grupo, en orden. */
   rastro: string[];
+  /** Versión de las coordenadas (ver VERSION_MAPA). */
+  v?: number;
 }
 
-export const mapaVacio = (): EstadoMapa => ({ lugares: {}, rastro: [] });
+export const mapaVacio = (): EstadoMapa => ({ lugares: {}, rastro: [], v: VERSION_MAPA });
+
+/** Pasa los lugares de una partida guardada con el lienzo antiguo al de la ilustración. */
+export function migrarMapa(m: EstadoMapa): EstadoMapa {
+  if (m.v === VERSION_MAPA) return m;
+  for (const l of Object.values(m.lugares)) {
+    const nueva = REGIONES.find((r) => r.nombre === l.region);
+    const vieja = CENTROS_V1[l.region];
+    if (nueva && vieja) {
+      // Conserva su posición respecto al centro de su región, en la nueva escala.
+      l.x = Math.round(nueva.x + (l.x - vieja[0]) * 1.1);
+      l.y = Math.round(nueva.y + (l.y - vieja[1]) * 1.1);
+    } else {
+      l.x = Math.round((l.x * ANCHO) / 1000);
+      l.y = Math.round((l.y * ALTO) / 700);
+    }
+    l.x = Math.min(ANCHO - MARGEN.der, Math.max(MARGEN.izq, l.x));
+    l.y = Math.min(ALTO - MARGEN.aba, Math.max(MARGEN.arr, l.y));
+  }
+  m.v = VERSION_MAPA;
+  return m;
+}
 
 const normal = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
@@ -66,14 +102,15 @@ export function buscarRegion(nombre: string): Region | undefined {
 function huecoCerca(m: EstadoMapa, x: number, y: number, radioMin: number, radioMax: number) {
   let mejor = { x, y, dist: -1 };
   const otros = Object.values(m.lugares);
+  const k = ANCHO / 1000; // los radios están pensados para el lienzo antiguo
   for (let i = 0; i < 12; i++) {
     const ang = (tirar("1d360").total * Math.PI) / 180;
-    const r = radioMin + Math.random() * (radioMax - radioMin);
-    const px = Math.round(Math.min(ANCHO - 40, Math.max(40, x + Math.cos(ang) * r)));
-    const py = Math.round(Math.min(ALTO - 30, Math.max(30, y + Math.sin(ang) * r)));
+    const r = (radioMin + Math.random() * (radioMax - radioMin)) * k;
+    const px = Math.round(Math.min(ANCHO - MARGEN.der, Math.max(MARGEN.izq, x + Math.cos(ang) * r)));
+    const py = Math.round(Math.min(ALTO - MARGEN.aba, Math.max(MARGEN.arr, y + Math.sin(ang) * r)));
     const dist = otros.length ? Math.min(...otros.map((o) => Math.hypot(o.x - px, o.y - py))) : 999;
     if (dist > mejor.dist) mejor = { x: px, y: py, dist };
-    if (dist > 70) break;
+    if (dist > 70 * k) break;
   }
   return { x: mejor.x, y: mejor.y };
 }

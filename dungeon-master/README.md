@@ -110,7 +110,7 @@ Es una base, no un límite: el DM puede inventar criaturas y habilidades nuevas,
 
 ## Mapa
 
-Los jugadores ven en todo momento un mapa antiguo de Velmora con sus seis regiones, los lugares que vayan descubriendo, el rastro del camino recorrido y un sello de lacre donde está el grupo; durante un viaje, la ruta y lo que llevan recorrido. El DM lo mueve con la acción `ubicacion` cada vez que llegan a otro sitio o viajan (en la página de claude.ai, en el lateral o en «Ver mapa» en el móvil; se amplía al tocarlo).
+Los jugadores ven en todo momento el mapa ilustrado de Velmora (`web/mapa-velmora.jpg`, que el script `npm run artifact` incrusta en la página) con sus seis regiones, los lugares que vayan descubriendo, el rastro del camino recorrido y un sello de lacre donde está el grupo; durante un viaje, la ruta y lo que llevan recorrido. El DM lo mueve con la acción `ubicacion` cada vez que llegan a otro sitio o viajan (en la página de claude.ai, en el lateral o en «Ver mapa» en el móvil; se amplía al tocarlo).
 
 ## Magia
 
@@ -233,7 +233,7 @@ Si juegan varias personas, empieza cada mensaje con el nombre: `Ana: reviso el c
 | `src/viales.ts` | Viales y sus riesgos |
 | `src/equipo.ts` | Tablas de botín, encantamientos, maldiciones y reliquias |
 | `src/bestiario.ts` | Criaturas, jefes y el motor de habilidades especiales |
-| `src/mapa.ts` | Mapa: regiones, lugares, posición del grupo y viajes |
+| `src/mapa.ts` | Mapa: regiones (en píxeles de la ilustración), lugares, posición del grupo y viajes |
 | `src/magia.ts` | Magia: escuelas, hechizos, tributos, catalizadores, maestría y afinidades |
 | `src/behelit.ts` | Behelits, el Behelit Carmesí y el Eclipse |
 | `src/reglas.ts` | Salvaciones (con competencia según la clase) y utilidades |

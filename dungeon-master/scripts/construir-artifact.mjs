@@ -23,7 +23,9 @@ const r = await build({
 // Un "</script" dentro del código cerraría la etiqueta antes de tiempo.
 const motor = r.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
 const plantilla = readFileSync(join(raiz, "web", "artifact.template.html"), "utf8");
-const html = plantilla.replace("/*__MOTOR__*/", () => motor);
+// La ilustración del mapa va dentro de la página, para que sea un único archivo.
+const mapa = "data:image/jpeg;base64," + readFileSync(join(raiz, "web", "mapa-velmora.jpg")).toString("base64");
+const html = plantilla.replace("/*__MOTOR__*/", () => motor).replace("/*__MAPA__*/", () => mapa);
 mkdirSync(dirname(salida), { recursive: true });
 writeFileSync(salida, html);
 console.log(`Página generada: ${salida} (${Math.round(html.length / 1024)} KB)`);
