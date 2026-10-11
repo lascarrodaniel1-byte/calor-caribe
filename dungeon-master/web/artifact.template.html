@@ -514,6 +514,12 @@
   let orden = V.turnos.ordenInicial(); // de quién es el turno: lo guarda quien narra, en «mesa/orden»
   let ctl = null;
   const privados = [];      // respuestas de comandos que solo ve este jugador
+  // Los avisos de fallo también quedan en la bitácora de errores (ver registrarError).
+  const empujarPrivado = privados.push.bind(privados);
+  privados.push = (...textos) => {
+    textos.forEach((t) => { if (/No se pudo|fallo de conexión|se interrumpió|No queda copia|se descarta|límite de uso|ya no se puede|Solo se puede corregir/i.test(String(t))) registrarError("aviso", t); });
+    return empujarPrivado(...textos);
+  };
 
   // ------------------------------------------------------------ utilidades
   const escapar = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1077,13 +1083,35 @@
   const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
   const SIN_REINTENTO = ["invalid_argument", "quota_exceeded", "revoked", "not_granted", "capability_disabled", "capability_removed"];
 
+  // Bitácora de errores en vivo: cada fallo que ve una página queda en `errores/<id>` (sin contenido de la partida: solo
+  // qué falló y el estado de la mesa en ese momento), para poder diagnosticarlo y corregirlo sin esperar a que alguien lo cuente.
+  const erroresVistos = new Map();
+  let erroresEnviados = 0;
+  function registrarError(tipo, mensaje, extra) {
+    try {
+      if (!db || soloLectura || !nombre) return;
+      const t = Date.now();
+      const clave = tipo + "|" + String(mensaje).slice(0, 120);
+      if (t - (erroresVistos.get(clave) || 0) < 60000 || erroresEnviados >= 30) return;
+      erroresVistos.set(clave, t);
+      erroresEnviados++;
+      db.doc("errores/e" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set({
+        ts: t, jugador: nombre, tipo, mensaje: String(mensaje).slice(0, 500), codigo: String(extra?.code || ""), pila: String(extra?.stack || "").slice(0, 700),
+        contexto: { turnos: turnos.length, pendientes: pendientes.length, modo: orden?.modo, turnoDe: orden?.turno, yoId: miId, narrandoYo, turnoVivo: !!turnoVivo, versionEstado, jugadores: jugadores.length, agotado: agotado(), pestana },
+      }).catch(() => {});
+    } catch {}
+  }
+  window.addEventListener("error", (ev) => registrarError("js", ev.message || "error", { stack: ev.error?.stack }));
+  window.addEventListener("unhandledrejection", (ev) => registrarError("promesa", ev.reason?.message || String(ev.reason), { code: ev.reason?.code, stack: ev.reason?.stack }));
+
   /** Repite una vez una operación que falla por un corte transitorio de la plataforma. */
   async function reintentar(fn) {
     try { return await fn(); }
     catch (e) {
       if (SIN_REINTENTO.includes(e?.code)) throw e;
       await dormir(300 + Math.random() * 400);
-      return await fn();
+      try { return await fn(); }
+      catch (e2) { registrarError("db", e2?.message || e2?.code || "fallo de base de datos", e2); throw e2; }
     }
   }
 
@@ -1463,6 +1491,7 @@
           : (MENSAJES_ERROR[e.code] + " Ahora mismo no hay otro jugador conectado que pueda narrar."));
         return false;
       }
+      if (e?.code !== "cancelled") registrarError("dm", e?.message || e?.code || "error del DM", e);
       if (e?.code !== "cancelled") privados.push(MENSAJES_ERROR[e?.code] || "El DM se interrumpió (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar.");
       return false;
     }
