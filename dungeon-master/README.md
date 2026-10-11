@@ -244,6 +244,10 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 - Reiniciar la partida devuelve el turno al primero y mantiene sentados a los jugadores. Las tiradas con `/tirar` y los comandos se pueden usar siempre.
 - La lista y el orden se guardan en los datos de la página (`jugadores/<id>` y `mesa/orden`); el turno solo lo mueve quien narra, para que no se pisen.
 
+### Cuando a un jugador se le acaban los usos
+
+Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
+
 ### Multijugador por el navegador
 
 Una persona arranca la mesa y el resto entra desde el navegador del móvil o del PC:

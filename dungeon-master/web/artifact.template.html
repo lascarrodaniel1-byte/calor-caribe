@@ -503,6 +503,10 @@
   let versionEstado = 0;    // «actualizado» del estado que leímos al empezar a narrar: si cambia, alguien más guardó
   let leasePerdido = false; // se perdió el turno de narrador mientras narrábamos
   let pendienteLeido = null; // lo que el último guardado dejó apuntado (se lee al sincronizar)
+  // Mis usos de Claude se agotaron (hasta cuándo, en mi reloj): mientras tanto narran los demás.
+  let sinUsos = 0;
+  const agotado = () => sinUsos > Date.now();
+  const ERRORES_DE_USOS = { rate_limited: 600000, quota_exceeded: 600000, sampling_disabled: 3600000 };
   let reintentoPendiente = false; // mi acción quedó esperando porque otro narraba: hay que volver a intentarlo al terminar
   let titular = "";         // quién somos al pedir el turno de narrador
   let miId = leer("velmora-id") || ""; // identifica a este jugador en la mesa (el id de su cuenta, o uno propio)
@@ -674,7 +678,7 @@
         const sentados = await reintentar(() => db.collection("jugadores").get());
         entrada = Math.max(Date.now(), ...sentados.docs.map((d) => Number(d.data().entrada) || 0).map((x) => x + 1));
       }
-      await db.doc("jugadores/" + miId).set({ nombre, entrada, visto: Date.now() });
+      await db.doc("jugadores/" + miId).set({ nombre, entrada, visto: Date.now(), ...(agotado() ? { sinUsos: 1 } : {}) });
     }).catch(() => { /* sin permiso: ya avisa enviar() */ }));
     return true;
   }
@@ -708,6 +712,7 @@
       if (j.id === miId) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "tú"; li.append(e); }
       if (turnos_ && toca?.id === j.id) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = turnoVivo ? "responde el DM" : "su turno"; li.append(e); }
       if (!T.activo(j, t)) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "ausente"; li.append(e); }
+      else if (j.sinUsos) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "sin usos"; e.title = "Se le agotaron los usos de Claude: narran los demás"; li.append(e); }
       ul.append(li);
     }
 
@@ -1223,9 +1228,22 @@
   }
   /** Si mi acción se quedó esperando, y ya nadie narra, se vuelve a intentar sola (sin tener que pulsar nada). */
   function comprobarReintento() {
+    if (sinUsos && !agotado()) { sinUsos = 0; registrarme(); } // ya pasó el tiempo: vuelvo a intentarlo yo
+    relevoDeNarrador();
+    if (agotado()) return;
     if (!reintentoPendiente || narrandoYo || turnoVivo || soloLectura || !pendientes.length) return;
     reintentoPendiente = false;
     setTimeout(() => { if (!narrandoYo && !turnoVivo) narrarCola(); }, 400 + Math.random() * 600);
+  }
+  // Si a un jugador se le acabaron los usos, sus acciones las narra otro cuyos usos sigan disponibles.
+  let relevoEn = false;
+  function relevoDeNarrador() {
+    if (relevoEn || narrandoYo || turnoVivo || soloLectura || agotado() || !pendientes.length) return;
+    const ahoraT = ahora();
+    const sinSaldo = (id) => jugadores.some((j) => j.id === id && j.sinUsos && T.activo(j, ahoraT));
+    if (!pendientes.some((p) => p.jid && p.jid !== miId && sinSaldo(p.jid))) return;
+    relevoEn = true;
+    setTimeout(() => { relevoEn = false; if (!narrandoYo && !turnoVivo && !agotado()) narrarCola(); }, 600 + Math.random() * 1400);
   }
   const soltarTurnoNarrador = (ref, holder) => ref.acquire({ holder, ttlMs: 1000 }).catch(() => {});
 
@@ -1253,6 +1271,7 @@
         if (!cola.length) break;
         const ok = await narrar(ref, cola);
         if (ok === false || ok === "vacio") break;
+        if (sinUsos) { sinUsos = 0; registrarme(); } // narré bien: mis usos vuelven a estar disponibles
       }
     } finally {
       clearInterval(renovar);
@@ -1434,6 +1453,15 @@
         pintar();
         return false;
       }
+      if (ERRORES_DE_USOS[e?.code]) {
+        sinUsos = Date.now() + ERRORES_DE_USOS[e.code];
+        registrarme(); // los demás lo ven y se reparten el trabajo
+        const otros = jugadores.filter((j) => j.id !== miId && T.activo(j, ahora()) && !j.sinUsos);
+        privados.push(otros.length
+          ? `A tu cuenta se le acabaron los usos de Claude: ${otros.map((j) => j.nombre).join(", ")} narrará${otros.length > 1 ? "n" : ""} tus acciones. Tus acciones siguen en cola.`
+          : (MENSAJES_ERROR[e.code] + " Ahora mismo no hay otro jugador conectado que pueda narrar."));
+        return false;
+      }
       if (e?.code !== "cancelled") privados.push(MENSAJES_ERROR[e?.code] || "El DM se interrumpió (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar.");
       return false;
     }
@@ -1556,6 +1584,7 @@
       }
       return;
     }
+    if (agotado()) { relevoDeNarrador(); privados.push("Tus usos están agotados: tu acción queda en cola y la narrará otro jugador."); pintar(); return; }
     if (!turnoVivo) narrarCola(); else reintentoPendiente = true; // si otro está narrando, se intentará en cuanto termine
   }
 
