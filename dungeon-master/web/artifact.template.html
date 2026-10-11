@@ -647,6 +647,14 @@
   const T = V.turnos;
   const ahora = () => Date.now();
   const porTurnos = () => T.porTurnos(jugadores, orden, ahora());
+  // ¿Ya tiene ficha guardada este jugador? (Partidas antiguas sin dueño en las fichas: no se exige.)
+  function tieneFicha(p, jugador) {
+    const fichas = Object.values(p?.personajes || {});
+    if (!fichas.length) return false;
+    if (!fichas.some((f) => f.jugador)) return true;
+    const n = String(jugador || "").trim().toLowerCase();
+    return fichas.some((f) => String(f.jugador || "").trim().toLowerCase() === n);
+  }
   const quienToca = () => T.quienToca(jugadores, orden, ahora());
   const estoySentado = () => jugadores.some((j) => j.id === miId);
   // Si hay turnos y estoy en la lista, solo actúo si me toca; con un solo jugador, siempre.
@@ -741,6 +749,7 @@
     try {
       await sincronizar();
       const act = quienToca();
+      if (act.id === miId && !saltando && !tieneFicha(partida, act.nombre)) { privados.push("Aún no has terminado tu personaje: no puedes pasar el turno hasta que el DM guarde tu ficha."); pintar(); return; }
       const sig = T.siguiente(jugadores, act.id, ahora());
       if (!sig) return;
       const ronda = orden.ronda + (sig.nuevaRonda ? 1 : 0);
@@ -1280,7 +1289,7 @@
       const sig = actuante && T.siguiente(jugadores, actuante.id, ahora());
       if (actuante && sig) {
         siguienteJ = sig;
-        infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda };
+        infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda, creando: !tieneFicha(partida, actuante.nombre) };
       }
     }
     const copia = JSON.parse(JSON.stringify(partida));
@@ -1349,6 +1358,7 @@
             cronicaNueva = String(datos?.texto ?? "").slice(0, 5000);
             return { accion, resultado: "Crónica actualizada." };
           }
+          if (accion === "guardar_personaje" && datos && !datos.jugador) datos.jugador = infoTurno?.actuante || nombre; // la ficha queda ligada a quien la juega
           const r = V.ejecutar(String(accion), datos ?? {}, copia);
           if (accion === "ubicacion") pintarMapa(copia);
           if (r.aviso) {
@@ -1394,6 +1404,8 @@
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
+      // Mientras el personaje de quien actúa no esté completo (guardado), el turno no pasa: sigue creándolo.
+      if (siguienteJ && !tieneFicha(copia, infoTurno.actuante)) { siguienteJ = null; avisos.push({ pos: texto.length, texto: `✎ ${infoTurno.actuante} aún no ha terminado su personaje: sigue su turno.` }); }
       const siguienteOrden = siguienteJ ? { turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() } : null;
       const version = siguienteVersion();
       // PUNTO DE CONFIRMACIÓN: una sola escritura guarda el estado nuevo y apunta lo que falta (el turno, el orden, la cola).

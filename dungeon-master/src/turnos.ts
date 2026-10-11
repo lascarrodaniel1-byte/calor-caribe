@@ -84,10 +84,18 @@ export interface InfoTurno {
   siguiente: string;
   /** El actuante es el último de la ronda. */
   cierraRonda: boolean;
+  /** El actuante aún no tiene personaje guardado. */
+  creando?: boolean;
 }
 
 /** Lo que se le dice al DM de la secuencia, para que narre una acción cada vez y dé la palabra bien. */
 export function bloqueTurnos(t: InfoTurno): string {
+  if (t.creando)
+    return [
+      "# TURNOS (la mesa juega por turnos: una acción cada vez, en orden)",
+      `Orden de la ronda ${t.ronda}: ${t.orden.join(" → ")}.`,
+      `${t.actuante} está CREANDO su personaje (aún no tiene ficha guardada). Guíale paso a paso (raza, clase, trasfondo, atributos, equipo) solo a él, y NO pases la palabra a nadie: el turno sigue siendo suyo hasta que su ficha esté completa. Cuando tengas todos los datos, guárdala con guardar_personaje (jugador: «${t.actuante}») y entonces sí, cierra el turno dando la palabra a ${t.siguiente}. No avances la trama ni mandes a los demás.`,
+    ].join("\n");
   return [
     "# TURNOS (la mesa juega por turnos: una acción cada vez, en orden)",
     `Orden de la ronda ${t.ronda}: ${t.orden.join(" → ")}.`,
