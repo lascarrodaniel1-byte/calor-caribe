@@ -383,7 +383,7 @@
     <h2>Cómo se juega</h2>
     <p>El Dungeon Master es Claude: narra, interpreta a todos los personajes del mundo y aplica las reglas. Vosotros decidís qué hacen vuestros personajes.</p>
     <ol>
-      <li><strong>Invita a tus amigos.</strong> En el menú <em>Compartir</em> de esta página, dales permiso para usarla (no solo para verla). Cada uno necesita su propia cuenta de Claude.</li>
+      <li><strong>Invita a tus amigos.</strong> En el menú <em>Compartir</em>, invítalos por su correo como <em>Editor</em> y desactiva el enlace público: con el enlace público, quien viene de fuera de tu organización solo puede mirar, no jugar. Cada uno necesita su propia cuenta de Claude con la sesión iniciada. Si alguien ve el aviso «solo lectura», es esto.</li>
       <li><strong>Pon tu nombre.</strong> El tuyo de jugador, no el del personaje. Puedes cambiarlo abajo, en «Juegas como…».</li>
       <li><strong>Pulsa «Que empiece la historia».</strong> La primera vez, Claude te pedirá permiso para narrar desde tu cuenta: acéptalo. No cuesta nada aparte de tu plan.</li>
       <li><strong>Crea tu personaje con el DM.</strong> Te preguntará raza, clase y trasfondo. Para los atributos puedes usar la serie estándar o tirar el botón <em>4d6kh3</em> seis veces (4 dados de 6, te quedas con los 3 mejores).</li>
@@ -447,6 +447,7 @@
   let pendientes = [];      // acciones en cola
   let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
   let narrandoYo = false;
+  let soloLectura = false;  // este visitante puede mirar pero no escribir en la partida compartida
   let sala = null;          // capacidad "room": quién tiene la página abierta ahora mismo
   let pares = [];
   let ctl = null;
@@ -836,7 +837,7 @@
   }
 
   async function narrarCola() {
-    if (!db || narrandoYo) return;
+    if (!db || narrandoYo || soloLectura) return;
     if (!sample) { privados.push("Esta vista no puede usar Claude. Abre la página en claude.ai (navegador o app)."); pintar(); return; }
     const ref = db.doc("mesa/turno");
     const holder = (uid || "anon") + ":" + pestana;
@@ -965,6 +966,17 @@
   }
 
   // ------------------------------------------------------------ acciones del jugador
+  const AVISO_SOLO_LECTURA =
+    "Tu acceso a esta página es de solo lectura: puedes mirar la partida, pero no jugar. " +
+    "Pide a quien la creó que te invite desde el menú Compartir por tu correo como Editor y que desactive el enlace público " +
+    "(si sois de la misma organización, basta con darte permiso de Colaborador).";
+  function avisarSoloLectura() {
+    soloLectura = true;
+    if (!privados.includes(AVISO_SOLO_LECTURA)) privados.push(AVISO_SOLO_LECTURA);
+    $("enviar").disabled = true;
+    pintar();
+  }
+
   async function enviar(texto) {
     texto = texto.trim();
     if (!texto) return;
@@ -973,12 +985,26 @@
       const r = V.comando(partida, texto);
       if (!r) { privados.push("Comando desconocido. Escribe /ayuda."); pintar(); return; }
       if (r.publico && db) {
-        await db.collection("turnos").add({ ts: Date.now(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `${nombre}: ${r.texto}` }] }).catch(() => {});
+        await db.collection("turnos").add({ ts: Date.now(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `${nombre}: ${r.texto}` }] }).catch(() => { privados.push(r.texto); pintar(); });
       } else { privados.push(r.texto); pintar(); }
       return;
     }
     if (!db) { privados.push("Esta vista no puede guardar la partida. Ábrela en claude.ai."); pintar(); return; }
-    await db.collection("acciones").add({ nombre, uid, texto, ts: Date.now() });
+    if (soloLectura) { avisarSoloLectura(); return; }
+    try {
+      await db.collection("acciones").add({ nombre, uid, texto, ts: Date.now() });
+    } catch (e) {
+      // Un visitante sin permiso de escritura recibe invalid_argument: que no se pierda lo escrito sin aviso.
+      if (e?.code === "invalid_argument" || e?.code === "permission_denied" || e?.code === "not_permitted") {
+        $("accion").value = texto;
+        avisarSoloLectura();
+      } else {
+        $("accion").value = texto;
+        privados.push("No se pudo enviar tu acción (fallo de conexión). Vuelve a intentarlo.");
+        pintar();
+      }
+      return;
+    }
     if (!turnoVivo) narrarCola();
   }
 
@@ -1099,13 +1125,16 @@
     sample = sampleNs;
     uid = (await userNs?.id?.().catch?.(() => "")) || "";
     // Solo quien puede editar la página (dueño o editores) ve el botón de reiniciar.
-    const puedeReiniciar = !!(userNs?.isOwner?.() || userNs?.canEdit?.());
+    const puedeReiniciar = !!((await userNs?.isOwner?.().catch?.(() => false)) || (await userNs?.canEdit?.().catch?.(() => false)));
     $("reiniciar").hidden = !(dbNs && puedeReiniciar);
     if (!db) {
       $("estado-texto").textContent = "Abre esta página en claude.ai para jugar: aquí no se puede guardar la partida.";
       $("empezar").disabled = true;
       return;
     }
+    // ¿Puede esta persona escribir en la partida compartida? false = solo lectura (null = no se sabe: se deja probar).
+    const puedeEscribir = await userNs?.can?.("data.write").catch?.(() => null);
+    if (puedeEscribir === false) avisarSoloLectura();
     db.doc("mesa/estado").onSnapshot((s) => {
       const d = s.exists ? s.data() : null;
       if (!narrandoYo) {
