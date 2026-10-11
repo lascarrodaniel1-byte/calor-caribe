@@ -180,6 +180,14 @@
     background: radial-gradient(circle at 35% 35%, #d9c7a0, #5a4a32 60%, #2a2016); box-shadow: 0 1px 2px #000;
   }
   .fichas .nota { color: var(--apagado); }
+  .mesa-jugadores { margin-bottom: 26px; }
+  .mesa-jugadores ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .mesa-jugadores li { display: flex; align-items: center; gap: 10px; font: 500 18px/1.3 var(--f-ui); color: #f4e8d0; min-width: 0; }
+  .mesa-jugadores .nombre-j { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mesa-jugadores .punto { flex: none; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff6d0, var(--lumbre) 55%, #c9791a); box-shadow: 0 0 8px var(--lumbre); }
+  .mesa-jugadores .etiqueta { flex: none; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--lumbre); border: 1px solid var(--lumbre-suave); border-radius: 3px; padding: 1px 6px; }
+  .mesa-jugadores .sin-nombre { font-style: italic; color: var(--apagado); }
+  #ver-mesa { white-space: nowrap; }
   .cerrar-lateral { display: none; }
   .diario-seccion { margin-bottom: 22px; }
   .diario-seccion summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
@@ -285,6 +293,7 @@
         <option value="complex">Profundo (gasta más)</option>
       </select>
     </label>
+    <button class="boton sobrio" id="ver-mesa" type="button" hidden title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
     <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
     <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
     <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
@@ -315,7 +324,11 @@
         </div>
       </div>
     </main>
-    <aside class="fichas" id="fichas" aria-label="Mapa y fichas">
+    <aside class="fichas" id="fichas" aria-label="Mesa, mapa y fichas">
+      <section class="mesa-jugadores" id="seccion-mesa" aria-labelledby="titulo-mesa" hidden>
+        <h2 id="titulo-mesa">En la mesa</h2>
+        <ul id="lista-mesa"></ul>
+      </section>
       <section class="mapa" aria-labelledby="titulo-mapa">
         <h2 id="titulo-mapa">Mapa de Velmora</h2>
         <div class="donde" id="mapa-donde">Aún no sabemos dónde estáis.<small>El DM os situará al empezar.</small></div>
@@ -436,6 +449,8 @@
   let pendientes = [];      // acciones en cola
   let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
   let narrandoYo = false;
+  let sala = null;          // capacidad "room": quién tiene la página abierta ahora mismo
+  let pares = [];
   let ctl = null;
   const privados = [];      // respuestas de comandos que solo ve este jugador
 
@@ -539,6 +554,43 @@
     registro.append(frag);
     if (alFinal) cronica.scrollTop = cronica.scrollHeight;
     pintarEstado();
+  }
+
+  // ------------------------------------------------------------ quién está conectado
+  function publicarPresencia() {
+    if (!sala) return;
+    sala.presence({ nombre: nombre || null, narrando: narrandoYo || null }).catch(() => {});
+  }
+
+  function pintarMesa() {
+    if (!sala) return;
+    // Una persona con varias pestañas cuenta una vez.
+    const gente = new Map();
+    for (const p of pares) {
+      if (p.kind !== "viewer") continue;
+      const clave = p.by || p.peer;
+      const n = String(p.presence?.nombre || "").slice(0, 30).trim();
+      const g = gente.get(clave) || { nombre: "", yo: false, narra: false };
+      g.nombre = g.nombre || n;
+      g.yo = g.yo || p.isMe;
+      g.narra = g.narra || p.presence?.narrando === true;
+      gente.set(clave, g);
+    }
+    const lista = [...gente.values()].sort((a, b) => Number(b.yo) - Number(a.yo) || a.nombre.localeCompare(b.nombre, "es"));
+    $("num-mesa").textContent = String(lista.length || 1);
+    $("ver-mesa").title = `${lista.length || 1} conectado(s) ahora mismo`;
+    const ul = $("lista-mesa");
+    ul.textContent = "";
+    for (const g of lista) {
+      const li = document.createElement("li");
+      const punto = document.createElement("span"); punto.className = "punto"; punto.setAttribute("aria-hidden", "true");
+      const nom = document.createElement("span"); nom.className = "nombre-j" + (g.nombre ? "" : " sin-nombre");
+      nom.textContent = g.nombre || "Eligiendo nombre…";
+      li.append(punto, nom);
+      if (g.yo) { const t = document.createElement("span"); t.className = "etiqueta"; t.textContent = "tú"; li.append(t); }
+      if (g.narra) { const t = document.createElement("span"); t.className = "etiqueta"; t.textContent = "llama al DM"; li.append(t); }
+      ul.append(li);
+    }
   }
 
   function pintarEstado() {
@@ -825,6 +877,7 @@
     const lease = await ref.acquire({ holder, ttlMs: 45000 }).catch(() => ({ acquired: false }));
     if (!lease.acquired) { privados.push("Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno."); pintar(); return; }
     narrandoYo = true;
+    publicarPresencia();
     $("enviar").disabled = false;
     const renovar = setInterval(() => {
       ref.acquire({ holder, ttlMs: 45000 }).catch(() => {});
@@ -844,6 +897,7 @@
     } finally {
       clearInterval(renovar);
       narrandoYo = false;
+      publicarPresencia();
       await ref.set({ narrando: false }).catch(() => {});
       pintar();
     }
@@ -973,6 +1027,7 @@
     if (!n) return;
     nombre = n;
     anotar("velmora-nombre", n);
+    publicarPresencia();
     $("velo-nombre").hidden = true;
     pintarEstado();
     $("accion").focus();
@@ -991,6 +1046,7 @@
     $(destino).scrollIntoView({ block: "start" });
   };
   $("ver-fichas").onclick = () => abrirLateral("titulo-fichas");
+  $("ver-mesa").onclick = () => abrirLateral("titulo-mesa");
   $("franja-mapa").onclick = () => abrirLateral("titulo-mapa");
   $("cerrar-fichas").onclick = () => { $("fichas").classList.remove("abierto"); };
   const ampliarMapa = () => { $("velo-mapa").hidden = false; $("cerrar-mapa").focus(); };
@@ -1104,6 +1160,15 @@
     db.collection("acciones").orderBy("ts").onSnapshot((s) => {
       pendientes = s.docs.map((d) => ({ id: d.id, ...d.data() }));
       pintar();
+    });
+    // Quién está conectado: opcional; si la capacidad no responde, la página funciona igual.
+    usar("room").then((r) => {
+      if (!r) return;
+      sala = r;
+      $("seccion-mesa").hidden = false;
+      $("ver-mesa").hidden = false;
+      r.onPeers((cambio) => { pares = cambio.peers; pintarMesa(); }, () => { sala = null; $("seccion-mesa").hidden = true; $("ver-mesa").hidden = true; });
+      publicarPresencia();
     });
     // Si quien narraba cerró la página, su turno deja de latir y se da por abandonado.
     let ultimoTurno = null;

@@ -179,6 +179,10 @@ La Mesa de Velmora también existe como página publicada en claude.ai: https://
 - Memoria del DM en tres capas. Los **anales**: cada vez que hay más de 8 turnos sin resumir, la página pide a Claude (modo rápido) un capítulo con lo ocurrido y lo añade al final; los capítulos nunca se reescriben, y solo cuando pesan demasiado los cuatro más viejos se funden en uno. La **situación actual** (dónde estáis, misión, PNJ, promesas, objetos, hilos abiertos) se actualiza en cada compactación. Y los **turnos recientes** enteros: si una compactación falla, no se descarta ningún turno, y se reintenta antes de narrar. Cada compactación apunta también los **detalles menores** (nombres de secundarios, precios, objetos prestados, apodos, cómo es la gente) en una lista aparte que el DM recibe siempre; si crece demasiado, los más viejos se agrupan sin perder nombres. Además, el DM guarda con anotar_mundo los hechos que no deben resumirse nunca, y su crónica privada admite hasta 2500 caracteres. Los jugadores leen los anales y la situación en el *Diario de la aventura*.
 - Para regenerar la página tras cambiar el motor: `npm run artifact` (genera `dist/mesa-de-velmora.html`) y publícala de nuevo en la misma dirección.
 
+### Quién está conectado
+
+En la versión de claude.ai, el lateral muestra **En la mesa**: los jugadores que tienen la página abierta ahora mismo, con una marca «tú» y otra «llama al DM» para quien está haciendo hablar al narrador. La barra superior lleva un contador (👥 3) que en el móvil abre esa lista. Usa la capacidad `room` de los artifacts, así que nada se guarda: quien cierra la página sale de la lista, y una misma persona con dos pestañas cuenta una vez. Si la capacidad no está disponible, la lista y el contador se ocultan y la partida funciona igual.
+
 ### Multijugador por el navegador
 
 Una persona arranca la mesa y el resto entra desde el navegador del móvil o del PC:
