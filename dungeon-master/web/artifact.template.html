@@ -491,6 +491,8 @@
   let soloLectura = false;  // este visitante puede mirar pero no escribir en la partida compartida
   let versionEstado = 0;    // «actualizado» del estado que leímos al empezar a narrar: si cambia, alguien más guardó
   let leasePerdido = false; // se perdió el turno de narrador mientras narrábamos
+  let pendienteLeido = null; // lo que el último guardado dejó apuntado (se lee al sincronizar)
+  let reintentoPendiente = false; // mi acción quedó esperando porque otro narraba: hay que volver a intentarlo al terminar
   let titular = "";         // quién somos al pedir el turno de narrador
   let miId = leer("velmora-id") || ""; // identifica a este jugador en la mesa (el id de su cuenta, o uno propio)
   let jugadores = [];       // quién se ha sentado a la mesa: [{id, nombre, entrada, visto}]
@@ -640,13 +642,21 @@
   const esMiTurno = () => !porTurnos() || (estoySentado() && quienToca()?.id === miId);
 
   // Un jugador se sienta a la mesa y sigue latiendo mientras tenga la página abierta.
+  let cadenaJugador = Promise.resolve();
   async function registrarme(rename) {
     if (!db || soloLectura || !nombre || !miId) return true;
     const otro = jugadores.find((j) => j.id !== miId && j.nombre.toLowerCase() === nombre.toLowerCase() && T.activo(j, ahora()));
     if (rename && otro) return false;
-    const yo = jugadores.find((j) => j.id === miId);
-    try { await db.doc("jugadores/" + miId).set({ nombre, entrada: yo?.entrada || ahora(), visto: ahora() }); }
-    catch { /* sin permiso de escritura: ya avisa enviar() */ }
+    // Una escritura a la vez a mi documento (el latido, el cambio de nombre y la salida no se pisan).
+    await (cadenaJugador = cadenaJugador.then(async () => {
+      let entrada = jugadores.find((j) => j.id === miId)?.entrada;
+      if (!entrada) {
+        // Primera vez: mi puesto en el orden va después de los que ya están, aunque mi reloj vaya atrasado.
+        const sentados = await reintentar(() => db.collection("jugadores").get());
+        entrada = Math.max(Date.now(), ...sentados.docs.map((d) => Number(d.data().entrada) || 0).map((x) => x + 1));
+      }
+      await db.doc("jugadores/" + miId).set({ nombre, entrada, visto: Date.now() });
+    }).catch(() => { /* sin permiso: ya avisa enviar() */ }));
     return true;
   }
 
@@ -723,9 +733,11 @@
       const sig = T.siguiente(jugadores, act.id, ahora());
       if (!sig) return;
       const ronda = orden.ronda + (sig.nuevaRonda ? 1 : 0);
-      await db.doc("mesa/orden").set({ modo: orden.modo, turno: sig.jugador.id, ronda, desde: ahora() });
+      await escribirOrden({ turno: sig.jugador.id, ronda, desde: Date.now() });
+      orden = { ...orden, turno: sig.jugador.id, ronda };
       const texto = saltando && act.id !== miId ? `${nombre} salta el turno de ${act.nombre}` : `${act.nombre} pasa su turno`;
-      await db.collection("turnos").add({ ts: ahora(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `⏭ ${texto}. Ahora le toca a ${sig.jugador.nombre}.` }] });
+      const ts = siguienteTs();
+      await reintentar(() => db.doc("turnos/p" + ts.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts, acciones: [], texto: "", avisos: [{ pos: 0, texto: `⏭ ${texto}. Ahora le toca a ${sig.jugador.nombre}.` }] }));
     } catch {
       privados.push("No se pudo pasar el turno (fallo de conexión). Vuelve a intentarlo.");
       pintar();
@@ -738,7 +750,7 @@
   $("modo-turnos").onchange = async () => {
     if (!db || soloLectura) { pintarMesa(); return; }
     const modo = $("modo-turnos").checked ? "turnos" : "libre";
-    await db.doc("mesa/orden").set({ modo, turno: modo === "turnos" ? (quienToca()?.id || "") : "", ronda: orden.ronda, desde: ahora() }).catch(() => {});
+    await escribirOrden({ modo, turno: modo === "turnos" ? (quienToca()?.id || "") : "", desde: Date.now() }).catch(() => {});
   };
 
   function pintarEstado() {
@@ -1033,6 +1045,92 @@
     cont.classList.toggle("vacio-diario", !hay);
   }
 
+  // ------------------------------------------------------------ sincronización
+  // La base de datos no tiene transacciones y gana la última escritura: por eso cada turno se confirma con UNA sola
+  // escritura (el estado, que lleva apuntado lo que falta por hacer) y lo demás se completa después, de forma que se pueda
+  // repetir sin riesgo. Además, ninguna marca de tiempo se fía del reloj de otro dispositivo.
+  const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+  const SIN_REINTENTO = ["invalid_argument", "quota_exceeded", "revoked", "not_granted", "capability_disabled", "capability_removed"];
+
+  /** Repite una vez una operación que falla por un corte transitorio de la plataforma. */
+  async function reintentar(fn) {
+    try { return await fn(); }
+    catch (e) {
+      if (SIN_REINTENTO.includes(e?.code)) throw e;
+      await dormir(300 + Math.random() * 400);
+      return await fn();
+    }
+  }
+
+  /** Versión del estado y marcas de turno que nunca retroceden, aunque un reloj ajeno vaya adelantado o atrasado. */
+  const siguienteVersion = () => Math.max(Date.now(), versionEstado + 1);
+  const siguienteTs = () => Math.max(Date.now(), turnos.reduce((m, t) => Math.max(m, t.ts || 0), 0) + 1);
+
+  /** Cuándo (con MI reloj) vi cambiar un valor que otro dispositivo escribe con el suyo (último latido, última señal…). */
+  const observados = new Map();
+  // `soloSube`: un latido de un mismo dispositivo siempre sube; un valor más bajo no es una señal de vida.
+  function momentoLocal(clave, valor, soloSube = false) {
+    if (!valor) { observados.delete(clave); return 0; }
+    const t = Date.now();
+    const o = observados.get(clave);
+    if (!o) {
+      // Primera vez que lo veo: no sé cuánto va de desfasado su reloj. Si la diferencia es razonable (menos de una hora) se da por
+      // reciente; si es enorme es un resto de otra sesión. Después solo cuenta lo que yo veo cambiar.
+      const t0 = Math.abs(t - valor) < 3600000 ? t : Math.min(valor, t);
+      observados.set(clave, { valor, t: t0 });
+      return t0;
+    }
+    if (soloSube ? valor > o.valor : valor !== o.valor) o.t = t;
+    o.valor = valor;
+    return o.t;
+  }
+  const leerJugadores = (docs) => docs.map((d) => { const x = d.data(); return { id: d.id, ...x, visto: momentoLocal("v:" + d.id, x.visto, true) }; });
+  const leerOrden = (d) => { const x = d ? d.data() : {}; return { ...T.ordenInicial(), ...x, desde: momentoLocal("orden", x.desde) }; };
+
+  /** El turno se escribe sobre una cadena: una sola escritura a la vez por documento, y siempre con lo último. */
+  let cadenaVivo = Promise.resolve();
+  const enCadenaVivo = (fn) => (cadenaVivo = cadenaVivo.then(fn, fn).catch(() => {}));
+
+  /** Cambios sueltos en el orden: se mezclan campo a campo para que no se pisen entre sí (el modo y el turno). */
+  async function escribirOrden(parcial) {
+    try { await reintentar(() => db.doc("mesa/orden").update(parcial)); }
+    catch (e) {
+      if (e?.code !== "invalid_argument") throw e;
+      await reintentar(() => db.doc("mesa/orden").set({ ...T.ordenInicial(), ...parcial }));
+    }
+  }
+
+  /** Completa lo que el último turno dejó apuntado en el estado; se puede repetir sin riesgo. */
+  async function completarPendiente(p) {
+    if (!p) return;
+    if (p.tipo === "turno") {
+      await reintentar(() => db.doc("turnos/" + p.id).set(p.doc)); // antes de pasar la palabra: el siguiente tiene que verlo
+      await Promise.all([
+        ...(p.limpiar || []).map((id) => reintentar(() => db.doc("turnos/" + id).delete()).catch(() => {})),
+        p.orden ? escribirOrden(p.orden).catch(() => {}) : null,
+        ...(p.ids || []).map((id) => reintentar(() => db.doc("acciones/" + id).delete()).catch(() => {})),
+      ]);
+    } else if (p.tipo === "deshacer") {
+      await Promise.all([
+        reintentar(() => db.doc("turnos/" + p.turnoId).delete()).catch(() => {}),
+        reintentar(() => db.doc("mesa/deshacer").delete()).catch(() => {}),
+        p.orden ? escribirOrden({ turno: p.orden.turno, ronda: p.orden.ronda, desde: Date.now() }).catch(() => {}) : null,
+        ...(p.acciones || []).map(({ id, ...a }) => reintentar(() => db.doc("acciones/" + id).set(a)).catch(() => {})),
+      ]);
+    }
+  }
+
+  // Suscripciones que se recuperan solas: si una muere, se vuelve a crear y se lee todo de nuevo.
+  function suscribir(crear, alRecibir) {
+    let intentos = 0;
+    const iniciar = () => crear((snap) => { intentos = 0; alRecibir(snap); }, (e) => {
+      if (e?.code === "revoked" || intentos >= 6) return;
+      intentos++;
+      setTimeout(() => { iniciar(); if (!narrandoYo) sincronizar(false).catch(() => {}); }, 1500 * intentos);
+    });
+    iniciar();
+  }
+
   // El estado compartido pasa a la memoria de esta página (desde un snapshot o desde una lectura directa).
   function aplicarEstado(d) {
     partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
@@ -1052,24 +1150,34 @@
 
   // Las suscripciones pueden ir hasta ~30 s retrasadas: antes de narrar se lee la partida de verdad,
   // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
-  async function sincronizar() {
-    const [s, t, js, o, mem] = await Promise.all([
+  // Con `reparar` (solo quien tiene el turno de narrador), además completa lo que un turno anterior dejó a medias.
+  async function sincronizar(reparar = true) {
+    const [e, t, js, o, mem] = await reintentar(() => Promise.all([
       db.doc("mesa/estado").get(),
       db.collection("turnos").orderBy("ts", "desc").limit(60).get(),
       db.collection("jugadores").get(),
       db.doc("mesa/orden").get(),
       db.doc("mesa/memoria").get(),
-    ]);
-    aplicarEstado(s.exists ? s.data() : null);
+    ]));
+    aplicarEstado(e.exists ? e.data() : null);
     if (mem.exists) aplicarMemoria(mem.data());
-    else if (s.exists && hayMemoria(s.data())) {
+    else if (e.exists && hayMemoria(e.data())) {
       // Partida guardada antes de separar la memoria: se pasa a su documento una vez.
-      aplicarMemoria(s.data());
-      db.doc("mesa/memoria").set({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
+      aplicarMemoria(e.data());
+      if (reparar) db.doc("mesa/memoria").set({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
     }
     turnos = t.docs.map((x) => ({ _id: x.id, ...x.data() })).reverse();
-    jugadores = js.docs.map((x) => ({ id: x.id, ...x.data() }));
-    orden = { ...T.ordenInicial(), ...(o.exists ? o.data() : {}) };
+    jugadores = leerJugadores(js.docs);
+    orden = leerOrden(o.exists ? o : null);
+    const p = e.exists ? e.data().pendiente : null;
+    pendienteLeido = p || null;
+    if (reparar && p) {
+      const falta = p.tipo === "turno" ? !turnos.some((x) => x._id === p.id) : turnos.some((x) => x._id === p.turnoId);
+      if (falta) {
+        await completarPendiente(p);
+        return sincronizar(false); // ya reparado: se vuelve a leer tal cual está ahora
+      }
+    }
     pintarFichas();
     pintarDiario();
     pintarMesa();
@@ -1081,17 +1189,23 @@
   // El candado de narrador caduca solo (no hay forma de soltarlo): se acorta al terminar para que el siguiente
   // jugador no espere, y si hay uno ajeno que va a caducar enseguida, se espera en vez de dejar la acción parada.
   async function tomarTurnoNarrador(ref, holder) {
+    // Esperas cortas y fijas: no se calcula nada con la hora de la caducidad, que viene del reloj de la plataforma y no del mío.
     for (let intento = 0; intento < 4; intento++) {
       const l = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => ({ acquired: false }));
       if (l.acquired) return true;
-      if (turnoVivo) break; // alguien narra de verdad: no se pisa
-      const falta = l.expiresAt ? Date.parse(l.expiresAt) - Date.now() : 0;
-      if (falta > 0 && falta <= 12000) { await new Promise((r) => setTimeout(r, falta + 250)); continue; }
-      break;
+      if (turnoVivo || intento === 3) break; // alguien narra de verdad: no se pisa
+      await dormir([1200, 2000, 3500][intento]);
     }
-    privados.push(turnoVivo ? "Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno." : "El turno de narrador sigue ocupado por otra pestaña; en unos segundos pulsa «Que el DM responda».");
+    reintentoPendiente = true; // en cuanto se libere, la página lo intenta sola
+    privados.push(turnoVivo ? "Ahora mismo narra otro jugador; tu acción entrará en cuanto termine." : "El turno de narrador sigue ocupado por otra pestaña; la página lo reintentará sola en unos segundos.");
     pintar();
     return false;
+  }
+  /** Si mi acción se quedó esperando, y ya nadie narra, se vuelve a intentar sola (sin tener que pulsar nada). */
+  function comprobarReintento() {
+    if (!reintentoPendiente || narrandoYo || turnoVivo || soloLectura || !pendientes.length) return;
+    reintentoPendiente = false;
+    setTimeout(() => { if (!narrandoYo && !turnoVivo) narrarCola(); }, 400 + Math.random() * 600);
   }
   const soltarTurnoNarrador = (ref, holder) => ref.acquire({ holder, ttlMs: 1000 }).catch(() => {});
 
@@ -1103,28 +1217,28 @@
     titular = holder;
     leasePerdido = false;
     if (!(await tomarTurnoNarrador(ref, holder))) return;
+    reintentoPendiente = false;
     narrandoYo = true;
     pintarMesa();
     const renovar = setInterval(async () => {
       const r = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => null);
       if (r && r.acquired === false) leasePerdido = true; // otro jugador tomó el turno: no hay que guardar nada
-      ref.update({ latido: Date.now() }).catch(() => {});
+      enCadenaVivo(() => ref.update({ latido: Date.now() }));
     }, 15000);
     try {
       // Si una compactación anterior falló y se acumulan turnos, se pone al día antes de narrar.
       for (let vuelta = 0; vuelta < 5; vuelta++) {
         const snap = await db.collection("acciones").orderBy("ts").get();
-        let cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        // Por turnos, el DM solo atiende a quien tiene la palabra; lo de los demás espera a su turno.
-        if (porTurnos()) { const toca = quienToca(); cola = cola.filter((a) => !a.jid || a.jid === toca?.id); }
+        const cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         if (!cola.length) break;
         const ok = await narrar(ref, cola);
-        if (ok === false) break;
+        if (ok === false || ok === "vacio") break;
       }
     } finally {
       clearInterval(renovar);
       narrandoYo = false;
-      await ref.set({ narrando: false }).catch(() => {});
+      await cadenaVivo;
+      await enCadenaVivo(() => reintentar(() => ref.set({ narrando: false })));
       soltarTurnoNarrador(ref, holder);
       pintarMesa();
       pintar();
@@ -1133,10 +1247,21 @@
   }
 
   async function narrar(ref, cola) {
-    const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
-    const correccion = cola.find((a) => a.correccion)?.correccion || null; // si se repite un turno borrado por un error
+    cola = [...cola];
     try { await sincronizar(); }
     catch { privados.push("No se pudo leer la partida para narrar (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar."); pintar(); return false; }
+    // Respuestas deshechas cuyo borrado falló: no cuentan para el DM y se terminarán de borrar con este guardado.
+    const porLimpiar = [...new Set([...(pendienteLeido?.limpiar || []), ...(pendienteLeido?.tipo === "deshacer" ? [pendienteLeido.turnoId] : [])])].filter((id) => turnos.some((t) => t._id === id));
+    if (porLimpiar.length) turnos = turnos.filter((t) => !porLimpiar.includes(t._id));
+    // Ya con la partida al día: fuera lo que ya se narró (si su borrado falló) y, por turnos, lo que no es del que tiene la palabra.
+    const consumidas = new Set(turnos.flatMap((t) => t.ids || []));
+    const yaNarradas = cola.filter((a) => consumidas.has(a.id));
+    yaNarradas.forEach((a) => reintentar(() => db.doc("acciones/" + a.id).delete()).catch(() => {}));
+    cola = cola.filter((a) => !consumidas.has(a.id));
+    if (porTurnos()) { const toca = quienToca(); cola = cola.filter((a) => !a.jid || a.jid === toca?.id); }
+    if (!cola.length) return yaNarradas.length ? true : "vacio";
+    const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
+    const correccion = cola.find((a) => a.correccion)?.correccion || null; // si se repite un turno borrado por un error
     // Por turnos: quién actúa, a quién pasa la palabra y si cierra la ronda.
     let infoTurno = null, siguienteJ = null;
     if (porTurnos()) {
@@ -1157,8 +1282,18 @@
     let texto = "";
     const avisos = [];
     const vivo = { narrando: true, por: infoTurno?.actuante || nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
-    ref.set(vivo).catch(() => {}); // no se espera: el modelo empieza ya
-    let ultimaEscritura = 0, pendienteEscritura = null;
+    enCadenaVivo(() => ref.set(vivo)); // no se espera: el modelo empieza ya
+    // Copia para poder deshacer el turno: se guarda mientras el modelo piensa, así no añade espera al final.
+    const turnoId = "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const guardarCopia = previa.length < 200000
+      ? reintentar(() => db.doc("mesa/deshacer").set({ turnoId, ts: Date.now(), partida: JSON.parse(previa), cronica: cronicaPrevia, orden: ordenPrevio, acciones: cola.map(({ id, correccion: _c, ...a }) => a) })).then(() => true, () => false)
+      : Promise.resolve(false);
+    let ultimaEscritura = 0, pendienteEscritura = null, vivoSucio = false, vivoEscribiendo = false;
+    const bombearVivo = () => {
+      if (vivoEscribiendo || !vivoSucio) return;
+      vivoEscribiendo = true; vivoSucio = false;
+      enCadenaVivo(() => ref.update({ texto, avisos, latido: Date.now() })).finally(() => { vivoEscribiendo = false; bombearVivo(); });
+    };
     const publicarVivo = (forzar) => {
       const ahora = Date.now();
       if (!forzar && ahora - ultimaEscritura < 1500) {
@@ -1167,7 +1302,8 @@
         return;
       }
       ultimaEscritura = ahora;
-      ref.update({ texto, avisos, latido: ahora }).catch(() => {});
+      vivoSucio = true;
+      bombearVivo();
     };
     turnoVivo = { ...vivo };
     pintar();
@@ -1242,28 +1378,25 @@
         narracion: texto,
         marca,
       });
-      const turnoId = "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const turnoDoc = { ts: Date.now(), deshacer: true, acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
+      const deshacerOk = await guardarCopia;
+      const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
-      const ahoraMs = Date.now();
-      await Promise.all([
-        db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: ahoraMs }),
-        db.doc("turnos/" + turnoId).set(turnoDoc),
-        db.doc("mesa/deshacer").set({ turnoId, ts: ahoraMs, partida: JSON.parse(previa), cronica: cronicaPrevia, orden: ordenPrevio, acciones: cola.map(({ id, correccion: _c, ...a }) => a) }),
-      ]);
-      // La palabra pasa al siguiente jugador (ya con el turno y el estado guardados) y la cola se vacía, todo a la vez.
-      await Promise.all([
-        siguienteJ
-          ? db.doc("mesa/orden").set({ modo: orden.modo, turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() }).catch(() => {})
-          : null,
-        ...cola.map((a) => db.doc("acciones/" + a.id).delete().catch(() => {})),
-      ]);
+      const siguienteOrden = siguienteJ ? { turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() } : null;
+      const version = siguienteVersion();
+      // PUNTO DE CONFIRMACIÓN: una sola escritura guarda el estado nuevo y apunta lo que falta (el turno, el orden, la cola).
+      // Si algo falla después, quien narre a continuación lo completa al sincronizar; nada se repite ni se pierde.
+      const pendiente = { tipo: "turno", id: turnoId, doc: turnoDoc, ids: turnoDoc.ids, orden: siguienteOrden, ...(porLimpiar.length ? { limpiar: porLimpiar } : {}) };
+      await reintentar(() => db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: version, pendiente }));
       partida = copia;
       cronicaDM = cronicaNueva;
-      versionEstado = ahoraMs;
+      versionEstado = version;
+      turnos = [...turnos, { _id: turnoId, ...turnoDoc }];
+      if (siguienteOrden) orden = { ...orden, ...siguienteOrden };
       turnoVivo = null;
+      pintar();
+      await completarPendiente(pendiente).catch(() => {}); // si falla, lo completa el siguiente al sincronizar
       return true;
     } catch (e) {
       clearTimeout(pendienteEscritura);
@@ -1327,20 +1460,19 @@
       const snap = await db.doc("mesa/deshacer").get();
       const d = snap.exists ? snap.data() : null;
       if (!d || d.turnoId !== ult._id) return "No queda copia de antes de esa respuesta: no se puede deshacer.";
-      const ahoraMs = Date.now();
-      // Primero el estado (todo lo que hizo el motor vuelve a como estaba); luego se borra la respuesta y se devuelve la acción a la cola.
-      await db.doc("mesa/estado").set({ partida: d.partida, cronica: d.cronica, actualizado: ahoraMs });
+      // Misma idea que al guardar un turno: una sola escritura confirma el estado anterior y apunta lo que falta
+      // (borrar la respuesta y devolver la acción a la cola); si algo falla, se completa al sincronizar.
+      const version = siguienteVersion();
       const correccion = { texto: textoCorreccion, malo: String(ult.texto || "").slice(0, 500) };
-      await Promise.all([
-        db.doc("turnos/" + ult._id).delete(),
-        db.doc("mesa/deshacer").delete(),
-        d.orden ? db.doc("mesa/orden").set(d.orden) : db.doc("mesa/orden").delete(),
-        ...(d.acciones || []).map((a, i) => db.collection("acciones").add({ ...a, ts: ahoraMs + i, correccion })),
-      ]);
-      aplicarEstado({ partida: d.partida, cronica: d.cronica, actualizado: ahoraMs });
-      orden = { ...T.ordenInicial(), ...(d.orden || {}) };
+      const base = siguienteTs();
+      const reencolar = (d.acciones || []).map((a, i) => ({ id: "r" + ult._id + "_" + i, ...a, ts: base + i, correccion }));
+      const pendiente = { tipo: "deshacer", turnoId: ult._id, orden: d.orden || null, acciones: reencolar };
+      await reintentar(() => db.doc("mesa/estado").set({ partida: d.partida, cronica: d.cronica, actualizado: version, pendiente }));
+      aplicarEstado({ partida: d.partida, cronica: d.cronica, actualizado: version });
       turnos = turnos.slice(0, -1);
+      if (d.orden) orden = { ...orden, turno: d.orden.turno, ronda: d.orden.ronda };
       pintarFichas(); pintarMesa(); pintar();
+      await completarPendiente(pendiente).catch(() => {});
       repetir = true;
     } catch {
       return "No se pudo deshacer (fallo de conexión). Inténtalo de nuevo.";
@@ -1372,7 +1504,7 @@
       const r = V.comando(partida, texto);
       if (!r) { privados.push("Comando desconocido. Escribe /ayuda."); pintar(); return; }
       if (r.publico && db) {
-        await db.collection("turnos").add({ ts: Date.now(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `${nombre}: ${r.texto}` }] }).catch(() => { privados.push(r.texto); pintar(); });
+        await db.collection("turnos").add({ ts: siguienteTs(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `${nombre}: ${r.texto}` }] }).catch(() => { privados.push(r.texto); pintar(); });
       } else { privados.push(r.texto); pintar(); }
       return;
     }
@@ -1386,7 +1518,9 @@
       return;
     }
     try {
-      await db.collection("acciones").add({ nombre, uid, jid: miId, texto, ts: Date.now() });
+      // La marca va por encima de las que ya veo (las acciones pendientes y el último turno), aunque mi reloj vaya atrasado.
+      const tsAccion = Math.max(Date.now(), pendientes.reduce((m, p) => Math.max(m, p.ts || 0), 0) + 1, turnos.reduce((m, t) => Math.max(m, t.ts || 0), 0) + 1);
+      await reintentar(() => db.collection("acciones").add({ nombre, uid, jid: miId, texto, ts: tsAccion }));
     } catch (e) {
       // Un visitante sin permiso de escritura recibe invalid_argument: que no se pierda lo escrito sin aviso.
       if (e?.code === "invalid_argument" || e?.code === "permission_denied" || e?.code === "not_permitted") {
@@ -1399,7 +1533,7 @@
       }
       return;
     }
-    if (!turnoVivo) narrarCola();
+    if (!turnoVivo) narrarCola(); else reintentoPendiente = true; // si otro está narrando, se intentará en cuanto termine
   }
 
   function pedirNombre() {
@@ -1542,50 +1676,64 @@
     const puedeEscribir = await userNs?.can?.("data.write").catch?.(() => null);
     if (puedeEscribir === false) avisarSoloLectura();
     let memoriaCargada = false;
-    db.doc("mesa/estado").onSnapshot((s) => {
-      if (!narrandoYo) aplicarEstado(s.exists ? s.data() : null);
-      if (!memoriaCargada && s.exists && hayMemoria(s.data())) aplicarMemoria(s.data()); // partida antigua
+    suscribir((ok, err) => db.doc("mesa/estado").onSnapshot(ok, err), (snap) => {
+      const d = snap.exists ? snap.data() : null;
+      const v = Number(d?.actualizado || 0);
+      // Un snapshot más viejo que lo que ya sé (llegó tarde) no deshace lo nuevo; si el documento desaparece (reinicio), sí se aplica.
+      if (!narrandoYo && !(d && v && v < versionEstado)) aplicarEstado(d);
+      if (!memoriaCargada && d && hayMemoria(d)) aplicarMemoria(d); // partida antigua
       pintarFichas();
       pintarDiario();
     });
-    db.doc("mesa/memoria").onSnapshot((s) => {
-      if (!s.exists) return;
+    suscribir((ok, err) => db.doc("mesa/memoria").onSnapshot(ok, err), (snap) => {
+      if (!snap.exists) return;
       memoriaCargada = true;
-      aplicarMemoria(s.data());
+      aplicarMemoria(snap.data());
       pintarDiario();
     });
-    db.collection("turnos").orderBy("ts", "desc").limit(60).onSnapshot((s) => {
-      turnos = s.docs.map((d) => ({ _id: d.id, ...d.data() })).reverse();
+    suscribir((ok, err) => db.collection("turnos").orderBy("ts", "desc").limit(60).onSnapshot(ok, err), (snap) => {
+      turnos = snap.docs.map((d) => ({ _id: d.id, ...d.data() })).reverse();
       pintar();
     });
-    db.collection("acciones").orderBy("ts").onSnapshot((s) => {
-      pendientes = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+    suscribir((ok, err) => db.collection("acciones").orderBy("ts").onSnapshot(ok, err), (snap) => {
+      pendientes = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       pintar();
+      comprobarReintento();
     });
     // Quién se ha sentado a la mesa y de quién es el turno.
     miId = (uid || miId || "j" + Math.random().toString(36).slice(2, 12)).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 60);
     anotar("velmora-id", miId);
-    db.collection("jugadores").onSnapshot((s) => { jugadores = s.docs.map((d) => ({ id: d.id, ...d.data() })); pintarMesa(); });
-    db.doc("mesa/orden").onSnapshot((s) => { orden = { ...T.ordenInicial(), ...(s.exists ? s.data() : {}) }; pintarMesa(); });
+    suscribir((ok, err) => db.collection("jugadores").onSnapshot(ok, err), (snap) => { jugadores = leerJugadores(snap.docs); pintarMesa(); });
+    suscribir((ok, err) => db.doc("mesa/orden").onSnapshot(ok, err), (snap) => { orden = leerOrden(snap.exists ? snap : null); pintarMesa(); });
     registrarme(false);
-    setInterval(() => registrarme(false), 30000);
+    setInterval(() => registrarme(false), 45000);
     setInterval(pintarMesa, 15000);
-    window.addEventListener("pagehide", () => { if (miId && nombre && !soloLectura) db.doc("jugadores/" + miId).set({ nombre, entrada: jugadores.find((j) => j.id === miId)?.entrada || ahora(), visto: 0 }).catch(() => {}); });
-    // Si quien narraba cerró la página, su turno deja de latir y se da por abandonado.
+    setInterval(comprobarReintento, 5000); // si mi acción quedó esperando, se vuelve a intentar sola aunque no cambie nada
+    window.addEventListener("pagehide", () => {
+      if (miId && nombre && !soloLectura) db.doc("jugadores/" + miId).set({ nombre, entrada: jugadores.find((j) => j.id === miId)?.entrada || ahora(), visto: 0 }).catch(() => {});
+      // Si me voy narrando, intento avisar para que otro jugador retome enseguida (el navegador no siempre deja terminar la escritura).
+      if (narrandoYo) { const r = db.doc("mesa/turno"); r.set({ narrando: false }).catch(() => {}); r.acquire({ holder: titular, ttlMs: 1000 }).catch(() => {}); }
+    });
+    // Al volver a la pestaña o recuperar la conexión se lee todo de nuevo: en segundo plano las suscripciones pueden haberse quedado atrás.
+    const alVolver = () => { if (!document.hidden && !narrandoYo) sincronizar(false).catch(() => {}); };
+    document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("online", alVolver);
+    // Si quien narraba cerró la página, su turno deja de latir y se da por abandonado (el latido se mide con mi reloj, no con el suyo).
     let ultimoTurno = null;
-    const vigente = () => (ultimoTurno?.narrando && Date.now() - (ultimoTurno.latido || 0) < 60000 ? ultimoTurno : null);
-    db.doc("mesa/turno").onSnapshot((s) => {
+    const vigente = () => (ultimoTurno?.narrando && Date.now() - (ultimoTurno.latidoLocal || 0) < 60000 ? ultimoTurno : null);
+    suscribir((ok, err) => db.doc("mesa/turno").onSnapshot(ok, err), (snap) => {
       if (narrandoYo) return;
-      ultimoTurno = s.exists ? s.data() : null;
+      ultimoTurno = snap.exists ? { ...snap.data(), latidoLocal: momentoLocal("latido", snap.data().latido) } : null;
       turnoVivo = vigente();
       pintarMesa();
       pintar();
+      comprobarReintento();
     });
     setInterval(() => {
       if (narrandoYo || !ultimoTurno?.narrando) return;
       const antes = !!turnoVivo;
       turnoVivo = vigente();
-      if (antes !== !!turnoVivo) { pintarMesa(); pintar(); }
+      if (antes !== !!turnoVivo) { pintarMesa(); pintar(); comprobarReintento(); }
     }, 10000);
   })();
 })();

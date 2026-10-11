@@ -22,6 +22,20 @@ Cuando varios juegan, cualquiera puede llamar al DM, y lo que sabe cada página 
 - **El resumen descarta lo caducado**: al compactar, el cronista corrige lo que los hechos nuevos han cambiado y marca como obsoletos los detalles que ya no valen.
 - **El DM recapitula desde lo vigente**: la regla le pide partir del estado actual y no de los turnos viejos, y contar los cambios como cambios.
 
+## Sincronización en tiempo real (que no haya desfases)
+
+La base de datos de la plataforma **no tiene transacciones**: gana la última escritura, no se puede soltar un candado y las suscripciones pueden ir hasta ~30 s retrasadas. La página está diseñada para eso:
+
+- **Un solo punto de confirmación por turno.** El estado nuevo se guarda en **una** escritura que además apunta lo que falta (escribir el turno, pasar la palabra, vaciar la cola). Después se completa todo eso; si algo falla a medias, quien narre a continuación lo completa al sincronizar, sin repetir nada. Lo mismo vale para **deshacer** un turno.
+- **Se lee antes de narrar.** Al empezar cada turno se lee la partida de verdad (estado, últimos turnos, jugadores, orden, memoria), no la copia local. Antes de guardar se comprueba que sigues siendo quien narra y que nadie guardó mientras tanto; si no, el turno se descarta y se repite.
+- **Nada se narra dos veces.** Cada turno anota las acciones que consumió; si el borrado de una acción falla, el siguiente turno la reconoce como ya narrada.
+- **Lo viejo no pisa lo nuevo.** Un aviso atrasado de la base de datos más antiguo que lo que ya se sabe se ignora. Las versiones y las marcas de los turnos nunca retroceden.
+- **Los relojes de cada dispositivo no mandan.** Quién está conectado, si un narrador sigue vivo o cuánto lleva esperando un turno se mide con lo que **mi** página ve cambiar, no con la hora que escribe otro dispositivo; el orden de llegada a la mesa tampoco depende de los relojes.
+- **Una escritura a la vez por documento**, con un reintento ante cortes transitorios, y las suscripciones se vuelven a crear solas si mueren. Al volver a la pestaña o recuperar la conexión se lee todo de nuevo.
+- **Si el narrador desaparece** (cierra la pestaña), otro jugador retoma a los ~60 s (o enseguida, si el navegador deja avisar al cerrar). Una acción que quedó esperando se vuelve a intentar sola, sin pulsar nada.
+
+Se comprobó con varias páginas simuladas contra una misma base de datos que imita a la de la plataforma (retrasos de suscripción, fallos de escritura, relojes desfasados, borrados que fallan, pestañas que se cierran a mitad de un turno); lo que no se ha podido comprobar es el comportamiento real de la plataforma con jugadores reales.
+
 ## Tablero y corrección (que el DM no se pierda)
 
 **Tablero.** Lo primero que lee el DM en cada turno es un tablero muy simple: la **escena en una frase** y, para cada personaje, quién es y quién lo juega, qué **acaba de hacer** (lo anota el programa a partir de la secuencia), dónde estaba **antes**, dónde está **ahora** y su **rumbo**. El DM actualiza el dónde y el rumbo en la marca que escribe al final de cada respuesta, con una línea por personaje que haya cambiado (`Sera: en el sótano, mirando el cerrojo → forzarlo`). Si un dato lleva dos o más turnos sin actualizarse, el tablero lo marca («puede haber cambiado, confírmalo») en vez de darlo por bueno. Si el DM aún no sabe dónde está alguien, el tablero dice «sin ubicar» para que lo sitúe.
