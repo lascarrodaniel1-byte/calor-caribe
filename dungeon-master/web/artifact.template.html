@@ -1138,7 +1138,7 @@
     } else if (p.tipo === "deshacer") {
       await Promise.all([
         reintentar(() => db.doc("turnos/" + p.turnoId).delete()).catch(() => {}),
-        reintentar(() => db.doc("mesa/deshacer").delete()).catch(() => {}),
+        // mesa/deshacer no se borra aquí: si ya se está repitiendo la acción, es la copia nueva. La vieja no vale para ningún turno (se valida por turnoId).
         p.orden ? escribirOrden({ turno: p.orden.turno, ronda: p.orden.ronda, desde: Date.now() }).catch(() => {}) : null,
         ...(p.acciones || []).map(({ id, ...a }) => reintentar(() => db.doc("acciones/" + id).set(a)).catch(() => {})),
       ]);
@@ -1324,8 +1324,9 @@
     enCadenaVivo(() => ref.set(vivo)); // no se espera: el modelo empieza ya
     // Copia para poder deshacer el turno: se guarda mientras el modelo piensa, así no añade espera al final.
     const turnoId = "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const docCopia = { turnoId, ts: Date.now(), partida: JSON.parse(previa), cronica: cronicaPrevia, orden: ordenPrevio, acciones: cola.map(({ id, correccion: _c, ...a }) => a) };
     const guardarCopia = previa.length < 200000
-      ? reintentar(() => db.doc("mesa/deshacer").set({ turnoId, ts: Date.now(), partida: JSON.parse(previa), cronica: cronicaPrevia, orden: ordenPrevio, acciones: cola.map(({ id, correccion: _c, ...a }) => a) })).then(() => true, () => false)
+      ? reintentar(() => db.doc("mesa/deshacer").set(docCopia)).then(() => { copiaLocal = docCopia; return true; }, () => false)
       : Promise.resolve(false);
     let ultimaEscritura = 0, pendienteEscritura = null, vivoSucio = false, vivoEscribiendo = false;
     const bombearVivo = () => {
@@ -1492,6 +1493,19 @@
     $("velo-corregir").hidden = true;
   };
 
+  // La copia que yo mismo guardé del último turno: no depende de que la base de datos ya la devuelva actualizada.
+  let copiaLocal = null;
+  async function leerCopia(turnoId) {
+    if (copiaLocal?.turnoId === turnoId) return { ...copiaLocal, partida: JSON.parse(JSON.stringify(copiaLocal.partida)) };
+    // La copia de otra pestaña puede tardar unos segundos en verse: se reintenta antes de rendirse.
+    for (let i = 0; i < 6; i++) {
+      const snap = await db.doc("mesa/deshacer").get();
+      const d = snap.exists ? snap.data() : null;
+      if (d && d.turnoId === turnoId) return d;
+      await dormir(2000);
+    }
+    return null;
+  }
   /** Devuelve un texto con el motivo si no se pudo; nada si salió bien. */
   async function corregirUltimoTurno(textoCorreccion) {
     if (!db || soloLectura) return "No tienes permiso para escribir en la partida.";
@@ -1508,9 +1522,8 @@
       await sincronizar();
       const ult = turnos[turnos.length - 1];
       if (!ult?._id || ult._id !== ultimo._id) return "Mientras tanto la partida avanzó: ya no se puede deshacer esa respuesta.";
-      const snap = await db.doc("mesa/deshacer").get();
-      const d = snap.exists ? snap.data() : null;
-      if (!d || d.turnoId !== ult._id) return "No queda copia de antes de esa respuesta: no se puede deshacer.";
+      const d = await leerCopia(ult._id);
+      if (!d) return "No queda copia de antes de esa respuesta: no se puede deshacer.";
       // Misma idea que al guardar un turno: una sola escritura confirma el estado anterior y apunta lo que falta
       // (borrar la respuesta y devolver la acción a la cola); si algo falla, se completa al sincronizar.
       const version = siguienteVersion();
