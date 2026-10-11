@@ -2,7 +2,8 @@
 // la terminal, empaquetado para el navegador. El DM es Claude a través de la
 // capacidad "sample" del artifact, que llama al motor con la herramienta "motor".
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
-import { fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
+import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
+import * as secuencia from "./secuencia.js";
 import { ejecutar, herramientas } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
@@ -19,12 +20,28 @@ export function catalogoAcciones(): string {
     .join("\n\n");
 }
 
+/** La ficha completa de un personaje (por su nombre o el de su jugador), para consultar_reglas. */
+export function fichaPorNombre(p: Partida, nombre: string): string {
+  const n = String(nombre ?? "").toLowerCase().trim();
+  const x = Object.values(p.personajes).find((y) => y.nombre.toLowerCase() === n || y.jugador?.toLowerCase().trim() === n);
+  return x ? fichaTexto(x) : `No hay ningún personaje "${nombre}". Personajes: ${Object.values(p.personajes).map((y) => y.nombre).join(", ") || "ninguno"}.`;
+}
+
 /** Estado de la partida tal y como lo necesita el DM (incluye secretos que los jugadores no ven en la página). */
-export function estadoParaDM(p: Partida): string {
+export function estadoParaDM(p: Partida, foco?: string): string {
   const partes: string[] = [];
   partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
   const pjs = Object.values(p.personajes);
-  partes.push(`## Personajes jugadores\n${pjs.length ? pjs.map(fichaTexto).join("\n\n") : "Aún no hay personajes: hay que crearlos."}`);
+  // Por turnos, solo el jugador que actúa lleva la ficha completa; los demás, abreviada (el prompt no crece con cada jugador).
+  const f = (foco ?? "").toLowerCase().trim();
+  const esFoco = (x: (typeof pjs)[number]) => !!f && (x.jugador?.toLowerCase().trim() === f || x.nombre.toLowerCase() === f);
+  const conFoco = pjs.some(esFoco) && pjs.length > 1;
+  partes.push(
+    `## Personajes jugadores${conFoco ? " (ficha completa solo del que actúa; la de los demás, con consultar_reglas {tema: \"ficha\", nombre})" : ""}\n` +
+      (pjs.length ? pjs.map((x) => (conFoco && !esFoco(x) ? fichaCorta(x) : fichaTexto(x))).join(conFoco ? "\n" : "\n\n") : "Aún no hay personajes: hay que crearlos."),
+  );
+  const seq = secuencia.textoSecuencia(p.secuencia);
+  if (seq) partes.push(seq);
   if (p.trama) partes.push(`## Trama\n${textoTrama(p.trama)}`);
   const pnjs = Object.values(p.pnjs ?? {});
   if (pnjs.length) {
@@ -75,5 +92,5 @@ export function estadoParaDM(p: Partida): string {
   return partes.join("\n\n");
 }
 
-export { turnos };
+export { secuencia, turnos };
 export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA_WEB };

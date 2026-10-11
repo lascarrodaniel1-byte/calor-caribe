@@ -349,6 +349,10 @@
         <summary><h2>Diario de la aventura</h2></summary>
         <div class="diario" id="diario">Aún no hay nada escrito.</div>
       </details>
+      <details class="diario-seccion" id="seccion-secuencia">
+        <summary><h2>Secuencia de turnos</h2></summary>
+        <div class="diario" id="secuencia">Aún no hay turnos.</div>
+      </details>
       <h2 id="titulo-fichas">Fichas</h2>
       <div id="lista-fichas"><p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p></div>
       <button class="boton sobrio cerrar-lateral" id="cerrar-fichas" type="button">Cerrar</button>
@@ -522,19 +526,37 @@
     if (t.nota) { const n = document.createElement("div"); n.className = "nota"; n.textContent = t.nota; cont.append(n); }
   }
 
+  // Se dibuja como mucho una vez por fotograma, y los turnos ya acabados se reutilizan: solo se rehace lo vivo.
+  let pintarPendiente = false;
+  const cacheTurnos = new Map();
   function pintar() {
+    if (pintarPendiente) return;
+    pintarPendiente = true;
+    const ya = () => { pintarPendiente = false; pintarYa(); };
+    if (document.hidden) setTimeout(ya, 250); else requestAnimationFrame(ya);
+  }
+
+  function pintarYa() {
     const alFinal = cercaDelFinal();
     const hayAlgo = turnos.length || turnoVivo || pendientes.length || privados.length;
     $("vacio").hidden = !!hayAlgo;
     registro.querySelectorAll(".dinamico").forEach((n) => n.remove());
     const frag = document.createDocumentFragment();
+    const vigentes = new Set();
     turnos.forEach((t, i) => {
-      const caja = document.createElement("div");
-      caja.className = "dinamico turno";
-      if (i) { const hr = document.createElement("hr"); hr.className = "separador"; caja.append(hr); }
-      pintarTurno(t, caja);
+      const clave = `${i ? 1 : 0}|${i}|${t.ts}|${(t.texto || "").length}|${(t.avisos || []).length}|${t.nota || ""}`;
+      vigentes.add(clave);
+      let caja = cacheTurnos.get(clave);
+      if (!caja) {
+        caja = document.createElement("div");
+        caja.className = "dinamico turno";
+        if (i) { const hr = document.createElement("hr"); hr.className = "separador"; caja.append(hr); }
+        pintarTurno(t, caja);
+        cacheTurnos.set(clave, caja);
+      }
       frag.append(caja);
     });
+    for (const k of [...cacheTurnos.keys()]) if (!vigentes.has(k)) cacheTurnos.delete(k);
     if (turnoVivo) {
       const caja = document.createElement("div");
       caja.className = "dinamico turno";
@@ -748,8 +770,18 @@
     $("franja-texto").textContent = `${ruta ? "🧭" : "📍"} ${titulo}`;
   }
 
+  function pintarSecuencia() {
+    const cont = $("secuencia");
+    const seq = partida.secuencia;
+    if (!seq || (!seq.pasos.length && !seq.pendientes.length)) { cont.textContent = "Aún no hay turnos."; cont.classList.add("vacio-diario"); return; }
+    cont.classList.remove("vacio-diario");
+    const pasos = seq.pasos.slice(-12).map((p) => `[ronda ${p.ronda}] ${p.jugador}: ${p.accion}\n   → ${p.resultado}`).join("\n");
+    cont.textContent = pasos + (seq.pendientes.length ? `\n\nPENDIENTE\n${seq.pendientes.map((x) => "· " + x).join("\n")}` : "");
+  }
+
   function pintarFichas() {
     pintarMapa(partida);
+    pintarSecuencia();
     const cont = $("lista-fichas");
     const pjs = Object.values(partida.personajes);
     cont.innerHTML = "";
@@ -772,7 +804,7 @@
 
 `;
 
-  function instrucciones() { return V.SISTEMA_WEB + INSTRUCCIONES_WEB + V.catalogoCompacto(); }
+  function instrucciones() { return V.SISTEMA_WEB + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
 
   const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
 
@@ -794,13 +826,15 @@
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
     // Nunca se descarta un turno sin compactar (si la compactación falló, van todos, los viejos más recortados).
-    const recientes = turnos.filter((t) => (t.ts || 0) > compactadoHasta && (t.texto || t.acciones?.length || t.avisos?.length));
+    // Con la compactación al día son unos 8 o menos; el tope solo importa si lleva mucho tiempo fallando.
+    const recientes = turnos.filter((t) => (t.ts || 0) > compactadoHasta && (t.texto || t.acciones?.length || t.avisos?.length)).slice(-24);
     const recorta = (txt, n) => (txt.length > n ? txt.slice(0, n) + " […]" : txt);
     recientes.forEach((t, i) => {
       const reciente = i >= recientes.length - 4;
-      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 500 : 300)).join("\n");
+      const medio = i >= recientes.length - 12;
+      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 500 : medio ? 300 : 120)).join("\n");
       if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
-      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, 1600)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
+      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, medio ? 1600 : 350)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
       else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
     });
     const final =
@@ -808,7 +842,7 @@
       `# SITUACIÓN ACTUAL (antes de los turnos recientes)\n${diario || "(aún vacía)"}\n\n` +
       (detalles.length ? `# DETALLES MENORES (nombres, precios, objetos, aspecto, frases; respétalos)\n${detalles.map((x) => `- ${x}`).join("\n")}\n\n` : "") +
       `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
-      `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida)}\n\n` +
+      `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida, infoTurno?.actuante)}\n\n` +
       (() => {
         const f = frasesDichas();
         return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
@@ -869,6 +903,8 @@
 
   async function compactarDiario() {
     try {
+      const m = await db.doc("mesa/memoria").get();
+      if (m.exists) aplicarMemoria(m.data());
       const snap = await db.collection("turnos").where("ts", ">", compactadoHasta).orderBy("ts").get();
       const pendientes = snap.docs.map((d) => d.data());
       if (pendientes.length <= TURNOS_SIN_COMPACTAR) return;
@@ -899,7 +935,7 @@
       await fundirAnales();
       await fundirDetalles();
       compactadoHasta = lote[lote.length - 1].ts;
-      await db.doc("mesa/estado").update({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
+      await db.doc("mesa/memoria").set({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
       pintarDiario();
     } catch {
       // Si falla, se intenta de nuevo tras el próximo turno; no se pierde nada.
@@ -933,6 +969,20 @@
     }
   }
 
+  // Se compacta fuera del turno de narrador: el siguiente jugador no espera a que el cronista termine.
+  let compactando = false;
+  function compactarEnSegundoPlano() {
+    if (!db || !sample || compactando || soloLectura) return;
+    if (turnos.filter((t) => (t.ts || 0) > compactadoHasta).length + 1 < TURNOS_SIN_COMPACTAR) return;
+    compactando = true;
+    (async () => {
+      try {
+        const l = await db.doc("mesa/compactacion").acquire({ holder: titular || miId, ttlMs: 180000 }).catch(() => ({ acquired: false }));
+        if (l.acquired) await compactarDiario();
+      } finally { compactando = false; }
+    })();
+  }
+
   function pintarDiario() {
     const cont = $("diario");
     const hay = anales.length || diario;
@@ -950,23 +1000,36 @@
   function aplicarEstado(d) {
     partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
     cronicaDM = String(d?.cronica || "");
-    diario = String(d?.diario || "");
-    anales = Array.isArray(d?.anales) ? d.anales.map(String) : [];
-    detalles = Array.isArray(d?.detalles) ? d.detalles.map(String) : [];
-    compactadoHasta = Number(d?.compactado_hasta || 0);
     versionEstado = Number(d?.actualizado || 0);
   }
+
+  // La memoria (diario, anales, detalles) vive aparte: la escribe solo la compactación, en segundo plano,
+  // y así no se pisa con el guardado de cada turno. Las partidas antiguas la traían dentro del estado.
+  function aplicarMemoria(m) {
+    diario = String(m?.diario || "");
+    anales = Array.isArray(m?.anales) ? m.anales.map(String) : [];
+    detalles = Array.isArray(m?.detalles) ? m.detalles.map(String) : [];
+    compactadoHasta = Number(m?.compactado_hasta || 0);
+  }
+  const hayMemoria = (m) => !!m && (m.diario || (m.anales && m.anales.length) || (m.detalles && m.detalles.length) || m.compactado_hasta);
 
   // Las suscripciones pueden ir hasta ~30 s retrasadas: antes de narrar se lee la partida de verdad,
   // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
   async function sincronizar() {
-    const [s, t, js, o] = await Promise.all([
+    const [s, t, js, o, mem] = await Promise.all([
       db.doc("mesa/estado").get(),
       db.collection("turnos").orderBy("ts", "desc").limit(60).get(),
       db.collection("jugadores").get(),
       db.doc("mesa/orden").get(),
+      db.doc("mesa/memoria").get(),
     ]);
     aplicarEstado(s.exists ? s.data() : null);
+    if (mem.exists) aplicarMemoria(mem.data());
+    else if (s.exists && hayMemoria(s.data())) {
+      // Partida guardada antes de separar la memoria: se pasa a su documento una vez.
+      aplicarMemoria(s.data());
+      db.doc("mesa/memoria").set({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
+    }
     turnos = t.docs.map((x) => x.data()).reverse();
     jugadores = js.docs.map((x) => ({ id: x.id, ...x.data() }));
     orden = { ...T.ordenInicial(), ...(o.exists ? o.data() : {}) };
@@ -996,8 +1059,6 @@
     }, 15000);
     try {
       // Si una compactación anterior falló y se acumulan turnos, se pone al día antes de narrar.
-      await sincronizar().catch(() => {});
-      if (turnos.filter((t) => (t.ts || 0) > compactadoHasta).length > TURNOS_SIN_COMPACTAR * 2) await compactarDiario();
       for (let vuelta = 0; vuelta < 5; vuelta++) {
         const snap = await db.collection("acciones").orderBy("ts").get();
         let cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -1007,13 +1068,13 @@
         const ok = await narrar(ref, cola);
         if (ok === false) break;
       }
-      await compactarDiario();
     } finally {
       clearInterval(renovar);
       narrandoYo = false;
       await ref.set({ narrando: false }).catch(() => {});
       pintarMesa();
       pintar();
+      compactarEnSegundoPlano();
     }
   }
 
@@ -1036,8 +1097,8 @@
     let cronicaNueva = cronicaDM;
     let texto = "";
     const avisos = [];
-    const vivo = { narrando: true, por: nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
-    await ref.set(vivo).catch(() => {});
+    const vivo = { narrando: true, por: infoTurno?.actuante || nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
+    ref.set(vivo).catch(() => {}); // no se espera: el modelo empieza ya
     let ultimaEscritura = 0, pendienteEscritura = null;
     const publicarVivo = (forzar) => {
       const ahora = Date.now();
@@ -1074,6 +1135,7 @@
         if (!lista.length) throw new Error("Pasa al menos una acción en 'acciones'.");
         return lista.map(({ accion, datos }) => {
           if (accion === "consultar_reglas") {
+            if (String(datos?.tema).toLowerCase() === "ficha") return { accion, resultado: V.fichaPorNombre(copia, datos?.nombre) };
             try { return { accion, resultado: V.consultarReglas(datos?.tema, datos?.nombre) }; }
             catch (err) { return { accion, resultado: String(err?.message || err), error: true }; }
           }
@@ -1100,33 +1162,46 @@
         tools: [motor],
         modelTier: $("nivel").value,
         signal: ctl.signal,
-        onText: ({ text }) => { texto = text; turnoVivo.texto = text; publicarVivo(); pintar(); },
+        // La marca de secuencia del final no se enseña a los jugadores, ni siquiera mientras se escribe.
+        onText: ({ text }) => { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); },
       });
-      texto = res.text;
+      const marca = V.secuencia.extraerMarca(res.text);
+      texto = marca.limpio;
       clearTimeout(pendienteEscritura);
       // Antes de guardar: ¿seguimos siendo quienes narran, y nadie más ha guardado mientras tanto?
       // Si no, se descarta este turno (las acciones siguen en cola) en vez de pisar el trabajo de otro.
       if (leasePerdido) throw { code: "lease_perdido" };
-      const renovado = await ref.acquire({ holder: titular, ttlMs: TTL_TURNO }).catch(() => null);
+      const [renovado, actual] = await Promise.all([ref.acquire({ holder: titular, ttlMs: TTL_TURNO }).catch(() => null), db.doc("mesa/estado").get()]);
       if (renovado && renovado.acquired === false) throw { code: "lease_perdido" };
-      const actual = await db.doc("mesa/estado").get();
       if (Number(actual.exists ? actual.data()?.actualizado || 0 : 0) !== versionEstado) throw { code: "conflicto" };
-      // El turno ha terminado: se guarda todo de una vez.
+      // El turno ha terminado: la secuencia (lo ocurrido y lo pendiente) se anota y se guarda todo de una vez.
       const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
-      await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
+      V.secuencia.registrarPaso(copia, {
+        ronda: infoTurno?.ronda ?? orden.ronda ?? 1,
+        jugador: infoTurno?.actuante || [...new Set(acciones.map((a) => a.nombre))].join(", "),
+        accion: acciones.map((a) => a.texto).join(" / "),
+        narracion: texto,
+        marca,
+      });
+      const turnoDoc = { ts: Date.now(), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
-      const ahora = Date.now();
-      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, detalles, compactado_hasta: compactadoHasta, actualizado: ahora });
-      // La palabra pasa al siguiente jugador.
-      if (siguienteJ) {
-        await db.doc("mesa/orden").set({ modo: orden.modo, turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() }).catch(() => {});
-      }
-      for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});
+      const ahoraMs = Date.now();
+      await Promise.all([
+        db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: ahoraMs }),
+        db.collection("turnos").add(turnoDoc),
+      ]);
+      // La palabra pasa al siguiente jugador (ya con el turno y el estado guardados) y la cola se vacía, todo a la vez.
+      await Promise.all([
+        siguienteJ
+          ? db.doc("mesa/orden").set({ modo: orden.modo, turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() }).catch(() => {})
+          : null,
+        ...cola.map((a) => db.doc("acciones/" + a.id).delete().catch(() => {})),
+      ]);
       partida = copia;
       cronicaDM = cronicaNueva;
-      versionEstado = ahora;
+      versionEstado = ahoraMs;
       turnoVivo = null;
       return true;
     } catch (e) {
@@ -1289,6 +1364,8 @@
       await db.doc("mesa/estado").delete();
       await db.doc("mesa/turno").delete();
       await db.doc("mesa/orden").delete(); // los jugadores siguen sentados; el turno vuelve al primero
+      await db.doc("mesa/memoria").delete();
+      await db.doc("mesa/compactacion").delete();
       partida = V.nuevaPartida();
       cronicaDM = "";
       diario = "";
@@ -1333,9 +1410,17 @@
     // ¿Puede esta persona escribir en la partida compartida? false = solo lectura (null = no se sabe: se deja probar).
     const puedeEscribir = await userNs?.can?.("data.write").catch?.(() => null);
     if (puedeEscribir === false) avisarSoloLectura();
+    let memoriaCargada = false;
     db.doc("mesa/estado").onSnapshot((s) => {
       if (!narrandoYo) aplicarEstado(s.exists ? s.data() : null);
+      if (!memoriaCargada && s.exists && hayMemoria(s.data())) aplicarMemoria(s.data()); // partida antigua
       pintarFichas();
+      pintarDiario();
+    });
+    db.doc("mesa/memoria").onSnapshot((s) => {
+      if (!s.exists) return;
+      memoriaCargada = true;
+      aplicarMemoria(s.data());
       pintarDiario();
     });
     db.collection("turnos").orderBy("ts", "desc").limit(60).onSnapshot((s) => {

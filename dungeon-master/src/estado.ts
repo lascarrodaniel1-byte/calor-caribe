@@ -9,6 +9,7 @@ import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
 import { mapaVacio, migrarMapa, type EstadoMapa } from "./mapa.js";
 import { tramaVacia, type Pnj, type Trama } from "./narrativa.js";
+import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
 
 export interface Personaje {
@@ -67,6 +68,8 @@ export interface Partida {
   pnjs?: Record<string, Pnj>;
   /** Hilo de la trama: objetivo, pistas, hilos abiertos y amenaza. */
   trama?: Trama;
+  /** Secuencia de turnos y asuntos pendientes (la escribe el DM al final de cada respuesta). */
+  secuencia?: Secuencia;
 }
 
 export function nuevaPartida(): Partida {
@@ -99,6 +102,7 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.mapa ??= mapaVacio();
   partida.pnjs ??= {};
   partida.trama ??= tramaVacia();
+  partida.secuencia ??= secuenciaVacia();
   partida.mapa.lugares ??= {};
   partida.mapa.rastro ??= [];
   migrarMapa(partida.mapa);
@@ -117,6 +121,19 @@ export function normalizarPartida(partida: Partida): Partida {
     }
   }
   return partida;
+}
+
+/** Ficha abreviada: lo que el DM necesita de un jugador que no actúa en este turno (la completa, con consultar_reglas ficha). */
+export function fichaCorta(p: Personaje): string {
+  const maxEf = pvMaxEfectivo(p);
+  const heridas = p.heridas.map((h) => `${h.id} ${h.gravedad} ${h.ubicacion}${h.sangrando ? " sangrando" : ""}${h.podre ? " con Podre" : ""}`).join("; ");
+  return (
+    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel} · PV ${p.pv}/${maxEf} · CA ${p.ca}` +
+    (p.condiciones.length ? ` · ${p.condiciones.join(", ")}` : "") +
+    (p.anemia ? ` · anemia −${p.anemia}` : "") +
+    (heridas ? ` · Heridas: ${heridas}` : "") +
+    (p.secuelas.length ? ` · ${p.secuelas.length} secuela(s)` : "")
+  );
 }
 
 export function fichaTexto(p: Personaje): string {

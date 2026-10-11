@@ -22,6 +22,24 @@ Cuando varios juegan, cualquiera puede llamar al DM, y lo que sabe cada página 
 - **El resumen descarta lo caducado**: al compactar, el cronista corrige lo que los hechos nuevos han cambiado y marca como obsoletos los detalles que ya no valen.
 - **El DM recapitula desde lo vigente**: la regla le pide partir del estado actual y no de los turnos viejos, y contar los cambios como cambios.
 
+## Secuencia y velocidad (mesa por turnos)
+
+**El DM lleva la secuencia.** Al final de cada respuesta escribe una marca que los jugadores no ven: qué pasó en ese turno y la lista completa de asuntos pendientes (enemigos vivos, puertas abiertas, plazos, deudas…). El programa la quita del texto, la guarda en orden y se la devuelve al DM en cada turno como «Secuencia de turnos» y «Asuntos pendientes», para que no se olvide de nada. Si el DM no la escribe, el programa anota el turno él mismo. Los jugadores la leen en el lateral (**Secuencia de turnos**). En el cierre de ronda, el DM resuelve los pendientes que correspondan.
+
+**Por qué tardaba con varios jugadores, y qué cambió** (medido con una base de datos simulada con 120 ms por operación, un modelo de 2 s y 60 turnos de historial):
+
+| | Antes | Ahora |
+|---|---|---|
+| Hasta guardar el turno | 5,4 s | 3,2 s |
+| Hasta que el narrador queda libre (con compactación pendiente) | 10,2 s | 3,6 s |
+| Con la compactación atrasada | 9,6 s | 3,2 s |
+| Hilo principal del navegador ocupado | 1,9 s | 0,06 s |
+
+- La **compactación** de la memoria ya no bloquea el turno: se hace después, en segundo plano, con su propio candado. Por eso la memoria (diario, anales, detalles) vive en su propio documento (`mesa/memoria`) y no se pisa con el guardado de cada turno.
+- Se quitaron lecturas duplicadas y esperas encadenadas: se lee el estado una vez al empezar, la comprobación previa al guardado va en paralelo y las escrituras finales también.
+- La crónica se **redibuja una vez por fotograma** y solo lo vivo: los turnos ya acabados se reutilizan, en vez de reconstruir los 60 con cada trozo de texto.
+- El estado que se manda al DM **no crece con cada jugador**: solo el que actúa lleva la ficha completa, y los demás una línea (con 5 jugadores, un 64 % menos de estado). La ficha completa de cualquiera se pide con `consultar_reglas {tema: "ficha"}`.
+
 ## Voces y trama
 
 Para que los PNJ no se repitan y la historia no dé vueltas:
