@@ -188,6 +188,18 @@
   .mesa-jugadores .etiqueta { flex: none; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--lumbre); border: 1px solid var(--lumbre-suave); border-radius: 3px; padding: 1px 6px; }
   .mesa-jugadores .sin-nombre { font-style: italic; color: var(--apagado); }
   #ver-mesa { white-space: nowrap; }
+  .mesa-jugadores li.ausente { opacity: .5; }
+  .mesa-jugadores li.su-turno .nombre-j { color: var(--lumbre); font-weight: 700; }
+  .mesa-jugadores .opcion-turnos { display: flex; align-items: center; gap: 10px; margin-top: 14px; font: 500 16px/1.3 var(--f-ui); color: #f4e8d0; cursor: pointer; }
+  .mesa-jugadores .opcion-turnos input { width: 18px; height: 18px; accent-color: var(--lumbre); }
+  .turnos-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; }
+  .turnos-barra .orden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .turnos-barra .ficha-turno { font: 600 15px/1 var(--f-ui); padding: 6px 10px; border-radius: 3px; background: #2c1d12; color: #cdb88f; border: 1px solid #4a3020; }
+  .turnos-barra .ficha-turno.actual { background: linear-gradient(180deg, #f0b45a, #c9791a); color: #2a1a0e; border-color: #8a5410; box-shadow: 0 0 10px var(--lumbre-suave); }
+  .turnos-barra .ficha-turno.ausente { opacity: .55; text-decoration: line-through; }
+  .turnos-barra .aviso-turno { flex: 1 1 220px; font: 600 17px/1.3 var(--f-ui); color: var(--lumbre); }
+  @media (max-width: 800px) { .turnos-barra .orden { display: none; } .turnos-barra { margin-bottom: 6px; } .turnos-barra .aviso-turno { flex-basis: 100%; font-size: 16px; } }
+  .turnos-barra .aviso-turno.mio { color: #fff3d2; text-shadow: 0 0 10px var(--lumbre); }
   .cerrar-lateral { display: none; }
   .diario-seccion { margin-bottom: 22px; }
   .diario-seccion summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
@@ -291,7 +303,7 @@
         <option value="complex">Profundo (gasta más)</option>
       </select>
     </label>
-    <button class="boton sobrio" id="ver-mesa" type="button" hidden title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
+    <button class="boton sobrio" id="ver-mesa" type="button" title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
     <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
     <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
     <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
@@ -323,9 +335,10 @@
       </div>
     </main>
     <aside class="fichas" id="fichas" aria-label="Mesa, mapa y fichas">
-      <section class="mesa-jugadores" id="seccion-mesa" aria-labelledby="titulo-mesa" hidden>
+      <section class="mesa-jugadores" id="seccion-mesa" aria-labelledby="titulo-mesa">
         <h2 id="titulo-mesa">En la mesa</h2>
         <ul id="lista-mesa"></ul>
+        <label class="opcion-turnos" for="modo-turnos"><input type="checkbox" id="modo-turnos" checked> Jugar por turnos</label>
       </section>
       <section class="mapa" aria-labelledby="titulo-mapa">
         <h2 id="titulo-mapa">Mapa de Velmora</h2>
@@ -344,6 +357,12 @@
 
   <footer class="redaccion">
     <div class="columna">
+      <div class="turnos-barra" id="barra-turnos" hidden>
+        <div class="orden" id="orden-turnos" aria-label="Orden de los turnos"></div>
+        <div class="aviso-turno" id="aviso-turno" role="status"></div>
+        <button class="boton sobrio" id="pasar-turno" type="button" hidden>Pasar turno</button>
+        <button class="boton sobrio" id="saltar-turno" type="button" hidden></button>
+      </div>
       <div class="atajos">
         <button class="boton sobrio" type="button" data-cmd="/tirar 1d20">Tirar d20</button>
         <button class="boton sobrio" type="button" data-cmd="/tirar 4d6kh3">4d6kh3</button>
@@ -400,7 +419,7 @@
     </ul>
     <h3>Bueno saberlo</h3>
     <ul>
-      <li>Si varios escribís a la vez, las acciones esperan en cola y el DM las resuelve juntas en el siguiente turno.</li>
+      <li><strong>Se juega por turnos.</strong> Arriba del cuadro de texto ves el orden: cada uno actúa cuando le toca, el DM responde a esa acción y le pasa la palabra al siguiente. Mientras esperas puedes ir escribiendo tu acción; se envía cuando te toque. Si te toca y no quieres hacer nada, pulsa «Pasar turno»; si alguien se ha ido, cualquiera puede saltar su turno. Quien prefiera el desorden de antes puede desmarcar «Jugar por turnos» en el lateral (entonces las acciones esperan en cola y el DM las resuelve juntas).</li>
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
       <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
@@ -451,8 +470,9 @@
   let versionEstado = 0;    // «actualizado» del estado que leímos al empezar a narrar: si cambia, alguien más guardó
   let leasePerdido = false; // se perdió el turno de narrador mientras narrábamos
   let titular = "";         // quién somos al pedir el turno de narrador
-  let sala = null;          // capacidad "room": quién tiene la página abierta ahora mismo
-  let pares = [];
+  let miId = leer("velmora-id") || ""; // identifica a este jugador en la mesa (el id de su cuenta, o uno propio)
+  let jugadores = [];       // quién se ha sentado a la mesa: [{id, nombre, entrada, visto}]
+  let orden = V.turnos.ordenInicial(); // de quién es el turno: lo guarda quien narra, en «mesa/orden»
   let ctl = null;
   const privados = [];      // respuestas de comandos que solo ve este jugador
 
@@ -559,41 +579,112 @@
   }
 
   // ------------------------------------------------------------ quién está conectado
-  function publicarPresencia() {
-    if (!sala) return;
-    sala.presence({ nombre: nombre || null, narrando: narrandoYo || null }).catch(() => {});
+  const T = V.turnos;
+  const ahora = () => Date.now();
+  const porTurnos = () => T.porTurnos(jugadores, orden, ahora());
+  const quienToca = () => T.quienToca(jugadores, orden, ahora());
+  const estoySentado = () => jugadores.some((j) => j.id === miId);
+  // Si hay turnos y estoy en la lista, solo actúo si me toca; con un solo jugador, siempre.
+  const esMiTurno = () => !porTurnos() || (estoySentado() && quienToca()?.id === miId);
+
+  // Un jugador se sienta a la mesa y sigue latiendo mientras tenga la página abierta.
+  async function registrarme(rename) {
+    if (!db || soloLectura || !nombre || !miId) return true;
+    const otro = jugadores.find((j) => j.id !== miId && j.nombre.toLowerCase() === nombre.toLowerCase() && T.activo(j, ahora()));
+    if (rename && otro) return false;
+    const yo = jugadores.find((j) => j.id === miId);
+    try { await db.doc("jugadores/" + miId).set({ nombre, entrada: yo?.entrada || ahora(), visto: ahora() }); }
+    catch { /* sin permiso de escritura: ya avisa enviar() */ }
+    return true;
+  }
+
+  function actualizarEntrada() {
+    const fuera = porTurnos() && !esMiTurno();
+    $("enviar").disabled = soloLectura || fuera;
+    $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
   }
 
   function pintarMesa() {
-    if (!sala) return;
-    // Una persona con varias pestañas cuenta una vez.
-    const gente = new Map();
-    for (const p of pares) {
-      if (p.kind !== "viewer") continue;
-      const clave = p.by || p.peer;
-      const n = String(p.presence?.nombre || "").slice(0, 30).trim();
-      const g = gente.get(clave) || { nombre: "", yo: false, narra: false };
-      g.nombre = g.nombre || n;
-      g.yo = g.yo || p.isMe;
-      g.narra = g.narra || p.presence?.narrando === true;
-      gente.set(clave, g);
-    }
-    const lista = [...gente.values()].sort((a, b) => Number(b.yo) - Number(a.yo) || a.nombre.localeCompare(b.nombre, "es"));
-    $("num-mesa").textContent = String(lista.length || 1);
-    $("ver-mesa").title = `${lista.length || 1} conectado(s) ahora mismo`;
+    const t = ahora();
+    const lista = T.ordenar(jugadores);
+    const vigentes = lista.filter((j) => T.activo(j, t) || (t - (j.visto || 0) < 30 * 60000));
+    const conectados = lista.filter((j) => T.activo(j, t));
+    const turnos_ = porTurnos();
+    const toca = quienToca();
+    $("num-mesa").textContent = String(conectados.length || 1);
+    $("ver-mesa").title = `${conectados.length || 1} conectado(s) ahora mismo`;
+    $("modo-turnos").checked = orden.modo !== "libre";
+
+    // Lateral: quién está a la mesa y de quién es el turno.
     const ul = $("lista-mesa");
     ul.textContent = "";
-    for (const g of lista) {
+    for (const j of vigentes) {
       const li = document.createElement("li");
+      li.className = (T.activo(j, t) ? "" : "ausente ") + (turnos_ && toca?.id === j.id ? "su-turno" : "");
       const punto = document.createElement("span"); punto.className = "punto"; punto.setAttribute("aria-hidden", "true");
-      const nom = document.createElement("span"); nom.className = "nombre-j" + (g.nombre ? "" : " sin-nombre");
-      nom.textContent = g.nombre || "Eligiendo nombre…";
+      const nom = document.createElement("span"); nom.className = "nombre-j"; nom.textContent = j.nombre;
       li.append(punto, nom);
-      if (g.yo) { const t = document.createElement("span"); t.className = "etiqueta"; t.textContent = "tú"; li.append(t); }
-      if (g.narra) { const t = document.createElement("span"); t.className = "etiqueta"; t.textContent = "llama al DM"; li.append(t); }
+      if (j.id === miId) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "tú"; li.append(e); }
+      if (turnos_ && toca?.id === j.id) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = turnoVivo ? "responde el DM" : "su turno"; li.append(e); }
+      if (!T.activo(j, t)) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "ausente"; li.append(e); }
       ul.append(li);
     }
+
+    // Barra sobre el cuadro de texto: el orden y el aviso de turno.
+    const barra = $("barra-turnos");
+    barra.hidden = !turnos_;
+    if (turnos_) {
+      const ord = $("orden-turnos");
+      ord.textContent = "";
+      T.enRonda(jugadores, orden, t).forEach((j, k, todos) => {
+        const c = document.createElement("span");
+        c.className = "ficha-turno" + (toca?.id === j.id ? " actual" : "") + (T.activo(j, t) ? "" : " ausente");
+        c.textContent = j.nombre + (j.id === miId ? " (tú)" : "");
+        ord.append(c);
+        if (k < todos.length - 1) { const f = document.createElement("span"); f.textContent = "→"; f.setAttribute("aria-hidden", "true"); f.style.color = "#8a6a3a"; ord.append(f); }
+      });
+      const mio = esMiTurno();
+      const aviso = $("aviso-turno");
+      aviso.className = "aviso-turno" + (mio ? " mio" : "");
+      aviso.textContent = turnoVivo ? `El DM responde a ${turnoVivo.por}…` : mio ? "Es tu turno: ¿qué haces?" : `Turno de ${toca?.nombre}`;
+      $("pasar-turno").hidden = !(mio && !turnoVivo && !narrandoYo);
+      const salto = !turnoVivo && !narrandoYo && T.puedeSaltar(jugadores, orden, miId, t);
+      $("saltar-turno").hidden = !salto;
+      if (salto) $("saltar-turno").textContent = `Saltar el turno de ${toca?.nombre}`;
+    }
+    actualizarEntrada();
   }
+
+  // Pasar el turno sin pedir nada al DM (el propio, o el de alguien que se ha ido).
+  async function avanzarTurno(saltando) {
+    if (!db || soloLectura || narrandoYo || turnoVivo) return;
+    const toca = quienToca();
+    if (!toca) return;
+    const ref = db.doc("mesa/turno");
+    // Se toma el turno de narrador un momento para no pisar a quien esté guardando.
+    const lease = await ref.acquire({ holder: miId + ":" + pestana, ttlMs: 8000 }).catch(() => ({ acquired: false }));
+    if (!lease.acquired) { privados.push("Espera un momento: el DM está narrando."); pintar(); return; }
+    try {
+      await sincronizar();
+      const act = quienToca();
+      const sig = T.siguiente(jugadores, act.id, ahora());
+      if (!sig) return;
+      const ronda = orden.ronda + (sig.nuevaRonda ? 1 : 0);
+      await db.doc("mesa/orden").set({ modo: orden.modo, turno: sig.jugador.id, ronda, desde: ahora() });
+      const texto = saltando && act.id !== miId ? `${nombre} salta el turno de ${act.nombre}` : `${act.nombre} pasa su turno`;
+      await db.collection("turnos").add({ ts: ahora(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `⏭ ${texto}. Ahora le toca a ${sig.jugador.nombre}.` }] });
+    } catch {
+      privados.push("No se pudo pasar el turno (fallo de conexión). Vuelve a intentarlo.");
+      pintar();
+    }
+  }
+  $("pasar-turno").onclick = () => avanzarTurno(false);
+  $("saltar-turno").onclick = () => avanzarTurno(true);
+  $("modo-turnos").onchange = async () => {
+    if (!db || soloLectura) { pintarMesa(); return; }
+    const modo = $("modo-turnos").checked ? "turnos" : "libre";
+    await db.doc("mesa/orden").set({ modo, turno: modo === "turnos" ? (quienToca()?.id || "") : "", ronda: orden.ronda, desde: ahora() }).catch(() => {});
+  };
 
   function pintarEstado() {
     const e = $("estado");
@@ -699,7 +790,7 @@
     return [...new Set(frases)].slice(-30);
   }
 
-  function construirEntrada(acciones) {
+  function construirEntrada(acciones, infoTurno) {
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
     // Nunca se descarta un turno sin compactar (si la compactación falló, van todos, los viejos más recortados).
@@ -722,6 +813,7 @@
         const f = frasesDichas();
         return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
       })() +
+      (infoTurno ? `${T.bloqueTurnos(infoTurno)}\n\n` : "") +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
     turnosEntrada.push({ role: "user", content: final });
     // Recorta conversación antigua si nos acercamos al límite de 256 KiB.
@@ -868,11 +960,19 @@
   // Las suscripciones pueden ir hasta ~30 s retrasadas: antes de narrar se lee la partida de verdad,
   // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
   async function sincronizar() {
-    const [s, t] = await Promise.all([db.doc("mesa/estado").get(), db.collection("turnos").orderBy("ts", "desc").limit(60).get()]);
+    const [s, t, js, o] = await Promise.all([
+      db.doc("mesa/estado").get(),
+      db.collection("turnos").orderBy("ts", "desc").limit(60).get(),
+      db.collection("jugadores").get(),
+      db.doc("mesa/orden").get(),
+    ]);
     aplicarEstado(s.exists ? s.data() : null);
     turnos = t.docs.map((x) => x.data()).reverse();
+    jugadores = js.docs.map((x) => ({ id: x.id, ...x.data() }));
+    orden = { ...T.ordenInicial(), ...(o.exists ? o.data() : {}) };
     pintarFichas();
     pintarDiario();
+    pintarMesa();
     pintar();
   }
 
@@ -888,8 +988,7 @@
     const lease = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => ({ acquired: false }));
     if (!lease.acquired) { privados.push("Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno."); pintar(); return; }
     narrandoYo = true;
-    publicarPresencia();
-    $("enviar").disabled = false;
+    pintarMesa();
     const renovar = setInterval(async () => {
       const r = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => null);
       if (r && r.acquired === false) leasePerdido = true; // otro jugador tomó el turno: no hay que guardar nada
@@ -901,7 +1000,9 @@
       if (turnos.filter((t) => (t.ts || 0) > compactadoHasta).length > TURNOS_SIN_COMPACTAR * 2) await compactarDiario();
       for (let vuelta = 0; vuelta < 5; vuelta++) {
         const snap = await db.collection("acciones").orderBy("ts").get();
-        const cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        let cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // Por turnos, el DM solo atiende a quien tiene la palabra; lo de los demás espera a su turno.
+        if (porTurnos()) { const toca = quienToca(); cola = cola.filter((a) => !a.jid || a.jid === toca?.id); }
         if (!cola.length) break;
         const ok = await narrar(ref, cola);
         if (ok === false) break;
@@ -910,8 +1011,8 @@
     } finally {
       clearInterval(renovar);
       narrandoYo = false;
-      publicarPresencia();
       await ref.set({ narrando: false }).catch(() => {});
+      pintarMesa();
       pintar();
     }
   }
@@ -920,6 +1021,16 @@
     const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
     try { await sincronizar(); }
     catch { privados.push("No se pudo leer la partida para narrar (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar."); pintar(); return false; }
+    // Por turnos: quién actúa, a quién pasa la palabra y si cierra la ronda.
+    let infoTurno = null, siguienteJ = null;
+    if (porTurnos()) {
+      const actuante = jugadores.find((j) => j.id === cola[0]?.jid) || quienToca();
+      const sig = actuante && T.siguiente(jugadores, actuante.id, ahora());
+      if (actuante && sig) {
+        siguienteJ = sig;
+        infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda };
+      }
+    }
     const copia = JSON.parse(JSON.stringify(partida));
     const avancesAntes = copia.trama?.avances ?? 0;
     let cronicaNueva = cronicaDM;
@@ -985,7 +1096,7 @@
 
     ctl = new AbortController();
     try {
-      const res = await sample(construirEntrada(acciones), {
+      const res = await sample(construirEntrada(acciones, infoTurno), {
         tools: [motor],
         modelTier: $("nivel").value,
         signal: ctl.signal,
@@ -1002,12 +1113,16 @@
       if (Number(actual.exists ? actual.data()?.actualizado || 0 : 0) !== versionEstado) throw { code: "conflicto" };
       // El turno ha terminado: se guarda todo de una vez.
       const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
-      await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
+      await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
       const ahora = Date.now();
       await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, detalles, compactado_hasta: compactadoHasta, actualizado: ahora });
+      // La palabra pasa al siguiente jugador.
+      if (siguienteJ) {
+        await db.doc("mesa/orden").set({ modo: orden.modo, turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() }).catch(() => {});
+      }
       for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});
       partida = copia;
       cronicaDM = cronicaNueva;
@@ -1040,7 +1155,7 @@
   function avisarSoloLectura() {
     soloLectura = true;
     if (!privados.includes(AVISO_SOLO_LECTURA)) privados.push(AVISO_SOLO_LECTURA);
-    $("enviar").disabled = true;
+    actualizarEntrada();
     pintar();
   }
 
@@ -1058,8 +1173,15 @@
     }
     if (!db) { privados.push("Esta vista no puede guardar la partida. Ábrela en claude.ai."); pintar(); return; }
     if (soloLectura) { avisarSoloLectura(); return; }
+    if (porTurnos() && !esMiTurno()) {
+      $("accion").value = texto; // no se pierde: se queda preparada hasta que llegue su turno
+      const aviso = estoySentado() ? T.textoFueraDeTurno(quienToca()?.nombre || "otro jugador") : "Aún te estás sentando a la mesa: espera un instante e inténtalo de nuevo.";
+      if (privados[privados.length - 1] !== aviso) privados.push(aviso);
+      pintar();
+      return;
+    }
     try {
-      await db.collection("acciones").add({ nombre, uid, texto, ts: Date.now() });
+      await db.collection("acciones").add({ nombre, uid, jid: miId, texto, ts: Date.now() });
     } catch (e) {
       // Un visitante sin permiso de escritura recibe invalid_argument: que no se pierda lo escrito sin aviso.
       if (e?.code === "invalid_argument" || e?.code === "permission_denied" || e?.code === "not_permitted") {
@@ -1084,9 +1206,16 @@
     ev.preventDefault();
     const n = $("nombre").value.replace(/[\r\n:]/g, " ").trim().slice(0, 30);
     if (!n) return;
+    const anterior = nombre;
     nombre = n;
+    registrarme(true).then((libre) => {
+      if (libre) return;
+      nombre = anterior;
+      privados.push(`El nombre «${n}» ya lo usa otra persona conectada: elige otro.`);
+      pintar();
+      pedirNombre();
+    });
     anotar("velmora-nombre", n);
-    publicarPresencia();
     $("velo-nombre").hidden = true;
     pintarEstado();
     $("accion").focus();
@@ -1159,12 +1288,14 @@
       await borrarColeccion("turnos");
       await db.doc("mesa/estado").delete();
       await db.doc("mesa/turno").delete();
+      await db.doc("mesa/orden").delete(); // los jugadores siguen sentados; el turno vuelve al primero
       partida = V.nuevaPartida();
       cronicaDM = "";
       diario = "";
       anales = [];
       detalles = [];
       compactadoHasta = 0;
+      orden = T.ordenInicial();
       turnos = [];
       pendientes = [];
       privados.length = 0;
@@ -1215,15 +1346,15 @@
       pendientes = s.docs.map((d) => ({ id: d.id, ...d.data() }));
       pintar();
     });
-    // Quién está conectado: opcional; si la capacidad no responde, la página funciona igual.
-    usar("room").then((r) => {
-      if (!r) return;
-      sala = r;
-      $("seccion-mesa").hidden = false;
-      $("ver-mesa").hidden = false;
-      r.onPeers((cambio) => { pares = cambio.peers; pintarMesa(); }, () => { sala = null; $("seccion-mesa").hidden = true; $("ver-mesa").hidden = true; });
-      publicarPresencia();
-    });
+    // Quién se ha sentado a la mesa y de quién es el turno.
+    miId = (uid || miId || "j" + Math.random().toString(36).slice(2, 12)).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 60);
+    anotar("velmora-id", miId);
+    db.collection("jugadores").onSnapshot((s) => { jugadores = s.docs.map((d) => ({ id: d.id, ...d.data() })); pintarMesa(); });
+    db.doc("mesa/orden").onSnapshot((s) => { orden = { ...T.ordenInicial(), ...(s.exists ? s.data() : {}) }; pintarMesa(); });
+    registrarme(false);
+    setInterval(() => registrarme(false), 30000);
+    setInterval(pintarMesa, 15000);
+    window.addEventListener("pagehide", () => { if (miId && nombre && !soloLectura) db.doc("jugadores/" + miId).set({ nombre, entrada: jugadores.find((j) => j.id === miId)?.entrada || ahora(), visto: 0 }).catch(() => {}); });
     // Si quien narraba cerró la página, su turno deja de latir y se da por abandonado.
     let ultimoTurno = null;
     const vigente = () => (ultimoTurno?.narrando && Date.now() - (ultimoTurno.latido || 0) < 60000 ? ultimoTurno : null);
@@ -1231,13 +1362,14 @@
       if (narrandoYo) return;
       ultimoTurno = s.exists ? s.data() : null;
       turnoVivo = vigente();
+      pintarMesa();
       pintar();
     });
     setInterval(() => {
       if (narrandoYo || !ultimoTurno?.narrando) return;
       const antes = !!turnoVivo;
       turnoVivo = vigente();
-      if (antes !== !!turnoVivo) pintar();
+      if (antes !== !!turnoVivo) { pintarMesa(); pintar(); }
     }, 10000);
   })();
 })();

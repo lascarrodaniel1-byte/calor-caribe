@@ -7,6 +7,7 @@ import { ejecutar, herramientas } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import { textoPnj, textoTrama } from "./narrativa.js";
+import * as turnos from "./turnos.js";
 import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
 
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
@@ -74,4 +75,5 @@ export function estadoParaDM(p: Partida): string {
   return partes.join("\n\n");
 }
 
+export { turnos };
 export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA_WEB };

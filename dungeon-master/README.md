@@ -192,9 +192,16 @@ La Mesa de Velmora también existe como página publicada en claude.ai: https://
 - Memoria del DM en tres capas. Los **anales**: cada vez que hay más de 8 turnos sin resumir, la página pide a Claude (modo rápido) un capítulo con lo ocurrido y lo añade al final; los capítulos nunca se reescriben, y solo cuando pesan demasiado los cuatro más viejos se funden en uno. La **situación actual** (dónde estáis, misión, PNJ, promesas, objetos, hilos abiertos) se actualiza en cada compactación. Y los **turnos recientes** enteros: si una compactación falla, no se descarta ningún turno, y se reintenta antes de narrar. Cada compactación apunta también los **detalles menores** (nombres de secundarios, precios, objetos prestados, apodos, cómo es la gente) en una lista aparte que el DM recibe siempre; si crece demasiado, los más viejos se agrupan sin perder nombres. Además, el DM guarda con anotar_mundo los hechos que no deben resumirse nunca, y su crónica privada admite hasta 2500 caracteres. Los jugadores leen los anales y la situación en el *Diario de la aventura*.
 - Para regenerar la página tras cambiar el motor: `npm run artifact` (genera `dist/mesa-de-velmora.html`) y publícala de nuevo en la misma dirección.
 
-### Quién está conectado
+### Turnos: cada jugador habla cuando le toca
 
-En la versión de claude.ai, el lateral muestra **En la mesa**: los jugadores que tienen la página abierta ahora mismo, con una marca «tú» y otra «llama al DM» para quien está haciendo hablar al narrador. La barra superior lleva un contador (👥 3) que en el móvil abre esa lista. Usa la capacidad `room` de los artifacts, así que nada se guarda: quien cierra la página sale de la lista, y una misma persona con dos pestañas cuenta una vez. Si la capacidad no está disponible, la lista y el contador se ocultan y la partida funciona igual.
+Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una sola acción cada vez y la secuencia sea siempre clara (acción → respuesta del DM → siguiente jugador):
+
+- Encima del cuadro de texto se ve el orden de la ronda (el de llegada a la mesa) y de quién es el turno. Quien no tiene el turno puede ir **preparando** su acción, pero no enviarla hasta que le llegue la palabra.
+- El DM recibe solo la acción de quien juega, la narra con su consecuencia inmediata y le pasa la palabra al siguiente por su nombre. Al último jugador de la ronda le añade el cierre de la ronda: el mundo responde (enemigos, PNJ, el tiempo, la amenaza) y la trama avanza un paso.
+- **Pasar turno** lo usa quien no quiere hacer nada; no gasta una llamada al DM. Si alguien se ha ido (la página deja de dar señales de vida), cualquiera puede **saltar su turno** al momento; si sigue conectado pero no actúa, se puede saltar pasados dos minutos.
+- El lateral **En la mesa** muestra quién está sentado, quién está ausente y de quién es el turno, y tiene la casilla **Jugar por turnos**: desmarcada, vuelve el modo libre de antes (las acciones esperan en cola y el DM las resuelve juntas). Con un solo jugador no hay turnos.
+- Reiniciar la partida devuelve el turno al primero y mantiene sentados a los jugadores. Las tiradas con `/tirar` y los comandos se pueden usar siempre.
+- La lista y el orden se guardan en los datos de la página (`jugadores/<id>` y `mesa/orden`); el turno solo lo mueve quien narra, para que no se pisen.
 
 ### Multijugador por el navegador
 
