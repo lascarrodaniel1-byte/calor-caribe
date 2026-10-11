@@ -30,6 +30,8 @@ export function fichaPorNombre(p: Partida, nombre: string): string {
 /** Estado de la partida tal y como lo necesita el DM (incluye secretos que los jugadores no ven en la página). */
 export function estadoParaDM(p: Partida, foco?: string): string {
   const partes: string[] = [];
+  const tab = secuencia.tablero(p);
+  if (tab) partes.push(tab);
   partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
   const pjs = Object.values(p.personajes);
   // Por turnos, solo el jugador que actúa lleva la ficha completa; los demás, abreviada (el prompt no crece con cada jugador).

@@ -199,6 +199,9 @@
   .turnos-barra .ficha-turno.ausente { opacity: .55; text-decoration: line-through; }
   .turnos-barra .aviso-turno { flex: 1 1 220px; font: 600 17px/1.3 var(--f-ui); color: var(--lumbre); }
   @media (max-width: 800px) { .turnos-barra .orden { display: none; } .turnos-barra { margin-bottom: 6px; } .turnos-barra .aviso-turno { flex-basis: 100%; font-size: 16px; } }
+  .corregir-fila { display: flex; justify-content: flex-end; margin: 4px 0 0; }
+  .corregir-fila .boton { font-size: 15px; padding: 6px 12px; }
+  #texto-correccion { width: 100%; font-size: 18px; color: var(--tinta); background: #f4e8c8; border: 1px solid #8a6a3a; padding: 10px 12px; }
   .turnos-barra .aviso-turno.mio { color: #fff3d2; text-shadow: 0 0 10px var(--lumbre); }
   .cerrar-lateral { display: none; }
   .diario-seccion { margin-bottom: 22px; }
@@ -423,6 +426,7 @@
     </ul>
     <h3>Bueno saberlo</h3>
     <ul>
+      <li><strong>Si el DM se equivoca,</strong> pulsa «↩ Corregir al DM» bajo su última respuesta (o escribe <em>/corregir</em> y lo que falló): se borra esa respuesta con todos sus efectos y se repite tu acción con tu corrección.</li>
       <li><strong>Se juega por turnos.</strong> Arriba del cuadro de texto ves el orden: cada uno actúa cuando le toca, el DM responde a esa acción y le pasa la palabra al siguiente. Mientras esperas puedes ir escribiendo tu acción; se envía cuando te toque. Si te toca y no quieres hacer nada, pulsa «Pasar turno»; si alguien se ha ido, cualquiera puede saltar su turno. Quien prefiera el desorden de antes puede desmarcar «Jugar por turnos» en el lateral (entonces las acciones esperan en cola y el DM las resuelve juntas).</li>
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
@@ -432,6 +436,20 @@
     </ul>
     <div class="botonera">
       <button class="boton" type="submit">Entendido, a la mesa</button>
+    </div>
+  </form>
+</div>
+
+<div class="velo" id="velo-corregir" hidden>
+  <form id="form-corregir">
+    <h2>Corregir al DM</h2>
+    <p>Se borra la última respuesta del DM <strong>con todos sus efectos</strong> (tiradas, heridas, objetos, notas, ubicación) y se repite la acción de <strong id="corregir-quien"></strong> con tu corrección. Sirve para errores de bulto: contradicciones, personajes confundidos, cosas que no pasaron.</p>
+    <label for="texto-correccion">¿Qué hizo mal? (opcional, pero ayuda mucho)</label>
+    <textarea id="texto-correccion" rows="3" maxlength="600" placeholder="Ejemplo: Odo no estaba en la sala; Thorin sigue en el sótano."></textarea>
+    <p class="aviso-error" id="error-corregir" hidden></p>
+    <div class="botonera">
+      <button class="boton sobrio" id="cancelar-corregir" type="button">Cancelar</button>
+      <button class="boton" id="confirmar-corregir" type="submit">Deshacer y repetir</button>
     </div>
   </form>
 </div>
@@ -557,6 +575,18 @@
       frag.append(caja);
     });
     for (const k of [...cacheTurnos.keys()]) if (!vigentes.has(k)) cacheTurnos.delete(k);
+    // Bajo la última respuesta del DM, el botón para corregirla (solo si se puede deshacer y nadie narra).
+    const ultimo = turnos[turnos.length - 1];
+    if (ultimo?.deshacer && !turnoVivo && !narrandoYo && !soloLectura) {
+      const fila = document.createElement("div");
+      fila.className = "dinamico corregir-fila";
+      const btn = document.createElement("button");
+      btn.className = "boton sobrio"; btn.type = "button"; btn.textContent = "↩ Corregir al DM";
+      btn.title = "Borra esta respuesta con todos sus efectos y la repite con tu corrección";
+      btn.onclick = () => abrirCorreccion();
+      fila.append(btn);
+      frag.append(fila);
+    }
     if (turnoVivo) {
       const caja = document.createElement("div");
       caja.className = "dinamico turno";
@@ -684,7 +714,8 @@
     if (!toca) return;
     const ref = db.doc("mesa/turno");
     // Se toma el turno de narrador un momento para no pisar a quien esté guardando.
-    const lease = await ref.acquire({ holder: miId + ":" + pestana, ttlMs: 8000 }).catch(() => ({ acquired: false }));
+    const holderPasar = miId + ":" + pestana;
+    const lease = await ref.acquire({ holder: holderPasar, ttlMs: 8000 }).catch(() => ({ acquired: false }));
     if (!lease.acquired) { privados.push("Espera un momento: el DM está narrando."); pintar(); return; }
     try {
       await sincronizar();
@@ -698,6 +729,8 @@
     } catch {
       privados.push("No se pudo pasar el turno (fallo de conexión). Vuelve a intentarlo.");
       pintar();
+    } finally {
+      soltarTurnoNarrador(ref, holderPasar);
     }
   }
   $("pasar-turno").onclick = () => avanzarTurno(false);
@@ -822,7 +855,7 @@
     return [...new Set(frases)].slice(-30);
   }
 
-  function construirEntrada(acciones, infoTurno) {
+  function construirEntrada(acciones, infoTurno, correccion) {
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
     // Nunca se descarta un turno sin compactar (si la compactación falló, van todos, los viejos más recortados).
@@ -848,6 +881,9 @@
         return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
       })() +
       (infoTurno ? `${T.bloqueTurnos(infoTurno)}\n\n` : "") +
+      (correccion
+        ? `# CORRECCIÓN DE LOS JUGADORES (hazles caso)\nTu respuesta anterior a esta acción tenía un error y se ha BORRADO con todos sus efectos (tiradas, heridas, objetos, notas, ubicación): todo está como antes de ella.\nLo que estaba mal: ${correccion.texto || "no lo han dicho: revisa el tablero y la secuencia y evita cualquier contradicción."}\nLo que dijiste y NO debes repetir: «${correccion.malo}»\nRehaz el turno respetando la corrección y el tablero. Las tiradas se vuelven a hacer.\n\n`
+        : "") +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
     turnosEntrada.push({ role: "user", content: final });
     // Recorta conversación antigua si nos acercamos al límite de 256 KiB.
@@ -977,8 +1013,9 @@
     compactando = true;
     (async () => {
       try {
-        const l = await db.doc("mesa/compactacion").acquire({ holder: titular || miId, ttlMs: 180000 }).catch(() => ({ acquired: false }));
-        if (l.acquired) await compactarDiario();
+        const holderC = titular || miId;
+        const l = await db.doc("mesa/compactacion").acquire({ holder: holderC, ttlMs: 120000 }).catch(() => ({ acquired: false }));
+        if (l.acquired) { await compactarDiario(); db.doc("mesa/compactacion").acquire({ holder: holderC, ttlMs: 1000 }).catch(() => {}); }
       } finally { compactando = false; }
     })();
   }
@@ -1030,7 +1067,7 @@
       aplicarMemoria(s.data());
       db.doc("mesa/memoria").set({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
     }
-    turnos = t.docs.map((x) => x.data()).reverse();
+    turnos = t.docs.map((x) => ({ _id: x.id, ...x.data() })).reverse();
     jugadores = js.docs.map((x) => ({ id: x.id, ...x.data() }));
     orden = { ...T.ordenInicial(), ...(o.exists ? o.data() : {}) };
     pintarFichas();
@@ -1039,7 +1076,24 @@
     pintar();
   }
 
-  const TTL_TURNO = 120000; // el navegador frena los temporizadores de las pestañas ocultas: margen de sobra
+  const TTL_TURNO = 40000; // se renueva cada 15 s; si una pestaña oculta se retrasa, se comprueba antes de guardar
+
+  // El candado de narrador caduca solo (no hay forma de soltarlo): se acorta al terminar para que el siguiente
+  // jugador no espere, y si hay uno ajeno que va a caducar enseguida, se espera en vez de dejar la acción parada.
+  async function tomarTurnoNarrador(ref, holder) {
+    for (let intento = 0; intento < 4; intento++) {
+      const l = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => ({ acquired: false }));
+      if (l.acquired) return true;
+      if (turnoVivo) break; // alguien narra de verdad: no se pisa
+      const falta = l.expiresAt ? Date.parse(l.expiresAt) - Date.now() : 0;
+      if (falta > 0 && falta <= 12000) { await new Promise((r) => setTimeout(r, falta + 250)); continue; }
+      break;
+    }
+    privados.push(turnoVivo ? "Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno." : "El turno de narrador sigue ocupado por otra pestaña; en unos segundos pulsa «Que el DM responda».");
+    pintar();
+    return false;
+  }
+  const soltarTurnoNarrador = (ref, holder) => ref.acquire({ holder, ttlMs: 1000 }).catch(() => {});
 
   async function narrarCola() {
     if (!db || narrandoYo || soloLectura) return;
@@ -1048,8 +1102,7 @@
     const holder = (uid || "anon") + ":" + pestana;
     titular = holder;
     leasePerdido = false;
-    const lease = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => ({ acquired: false }));
-    if (!lease.acquired) { privados.push("Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno."); pintar(); return; }
+    if (!(await tomarTurnoNarrador(ref, holder))) return;
     narrandoYo = true;
     pintarMesa();
     const renovar = setInterval(async () => {
@@ -1072,6 +1125,7 @@
       clearInterval(renovar);
       narrandoYo = false;
       await ref.set({ narrando: false }).catch(() => {});
+      soltarTurnoNarrador(ref, holder);
       pintarMesa();
       pintar();
       compactarEnSegundoPlano();
@@ -1080,6 +1134,7 @@
 
   async function narrar(ref, cola) {
     const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
+    const correccion = cola.find((a) => a.correccion)?.correccion || null; // si se repite un turno borrado por un error
     try { await sincronizar(); }
     catch { privados.push("No se pudo leer la partida para narrar (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar."); pintar(); return false; }
     // Por turnos: quién actúa, a quién pasa la palabra y si cierra la ronda.
@@ -1093,6 +1148,10 @@
       }
     }
     const copia = JSON.parse(JSON.stringify(partida));
+    // Copia de cómo estaba todo antes de este turno, por si los jugadores piden deshacerlo.
+    const previa = JSON.stringify((({ historial, ...resto }) => resto)(copia));
+    const cronicaPrevia = cronicaDM;
+    const ordenPrevio = { modo: orden.modo, turno: orden.turno, ronda: orden.ronda, desde: orden.desde };
     const avancesAntes = copia.trama?.avances ?? 0;
     let cronicaNueva = cronicaDM;
     let texto = "";
@@ -1158,7 +1217,7 @@
 
     ctl = new AbortController();
     try {
-      const res = await sample(construirEntrada(acciones, infoTurno), {
+      const res = await sample(construirEntrada(acciones, infoTurno, correccion), {
         tools: [motor],
         modelTier: $("nivel").value,
         signal: ctl.signal,
@@ -1183,14 +1242,16 @@
         narracion: texto,
         marca,
       });
-      const turnoDoc = { ts: Date.now(), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
+      const turnoId = "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const turnoDoc = { ts: Date.now(), deshacer: true, acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
       const ahoraMs = Date.now();
       await Promise.all([
         db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: ahoraMs }),
-        db.collection("turnos").add(turnoDoc),
+        db.doc("turnos/" + turnoId).set(turnoDoc),
+        db.doc("mesa/deshacer").set({ turnoId, ts: ahoraMs, partida: JSON.parse(previa), cronica: cronicaPrevia, orden: ordenPrevio, acciones: cola.map(({ id, correccion: _c, ...a }) => a) }),
       ]);
       // La palabra pasa al siguiente jugador (ya con el turno y el estado guardados) y la cola se vacía, todo a la vez.
       await Promise.all([
@@ -1222,6 +1283,74 @@
     }
   }
 
+  // ------------------------------------------------------------ corregir al DM
+  // Se borra la última respuesta del DM con todos sus efectos (el estado vuelve a como estaba antes) y se repite
+  // la acción con la corrección de los jugadores. Solo la última, y solo mientras nadie más haya jugado después.
+  const textoQuienActuo = (u) => (u?.acciones || []).map((a) => a.nombre).filter((x, i, v) => v.indexOf(x) === i).join(", ") || "quien jugó";
+  function abrirCorreccion(texto) {
+    const ultimo = turnos[turnos.length - 1];
+    if (!ultimo?.deshacer) { privados.push("No hay ninguna respuesta del DM que se pueda deshacer: solo se puede corregir la última."); pintar(); return; }
+    $("corregir-quien").textContent = textoQuienActuo(ultimo);
+    $("texto-correccion").value = texto || "";
+    $("error-corregir").hidden = true;
+    $("velo-corregir").hidden = false;
+    $("texto-correccion").focus();
+  }
+  $("cancelar-corregir").onclick = () => { $("velo-corregir").hidden = true; };
+  $("form-corregir").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const err = $("error-corregir");
+    err.hidden = true;
+    $("confirmar-corregir").disabled = true;
+    const fallo = await corregirUltimoTurno($("texto-correccion").value.trim());
+    $("confirmar-corregir").disabled = false;
+    if (fallo) { err.textContent = fallo; err.hidden = false; return; }
+    $("velo-corregir").hidden = true;
+  };
+
+  /** Devuelve un texto con el motivo si no se pudo; nada si salió bien. */
+  async function corregirUltimoTurno(textoCorreccion) {
+    if (!db || soloLectura) return "No tienes permiso para escribir en la partida.";
+    if (narrandoYo || turnoVivo) return "El DM está narrando: espera a que termine.";
+    const ultimo = turnos[turnos.length - 1];
+    if (!ultimo?.deshacer || !ultimo._id) return "Solo se puede corregir la última respuesta del DM.";
+    const ref = db.doc("mesa/turno");
+    const holder = (uid || "anon") + ":" + pestana;
+    titular = holder;
+    leasePerdido = false;
+    if (!(await tomarTurnoNarrador(ref, holder))) return "Ahora mismo narra otra persona: inténtalo en unos segundos.";
+    let repetir = false;
+    try {
+      await sincronizar();
+      const ult = turnos[turnos.length - 1];
+      if (!ult?._id || ult._id !== ultimo._id) return "Mientras tanto la partida avanzó: ya no se puede deshacer esa respuesta.";
+      const snap = await db.doc("mesa/deshacer").get();
+      const d = snap.exists ? snap.data() : null;
+      if (!d || d.turnoId !== ult._id) return "No queda copia de antes de esa respuesta: no se puede deshacer.";
+      const ahoraMs = Date.now();
+      // Primero el estado (todo lo que hizo el motor vuelve a como estaba); luego se borra la respuesta y se devuelve la acción a la cola.
+      await db.doc("mesa/estado").set({ partida: d.partida, cronica: d.cronica, actualizado: ahoraMs });
+      const correccion = { texto: textoCorreccion, malo: String(ult.texto || "").slice(0, 500) };
+      await Promise.all([
+        db.doc("turnos/" + ult._id).delete(),
+        db.doc("mesa/deshacer").delete(),
+        d.orden ? db.doc("mesa/orden").set(d.orden) : db.doc("mesa/orden").delete(),
+        ...(d.acciones || []).map((a, i) => db.collection("acciones").add({ ...a, ts: ahoraMs + i, correccion })),
+      ]);
+      aplicarEstado({ partida: d.partida, cronica: d.cronica, actualizado: ahoraMs });
+      orden = { ...T.ordenInicial(), ...(d.orden || {}) };
+      turnos = turnos.slice(0, -1);
+      pintarFichas(); pintarMesa(); pintar();
+      repetir = true;
+    } catch {
+      return "No se pudo deshacer (fallo de conexión). Inténtalo de nuevo.";
+    } finally {
+      if (!repetir) soltarTurnoNarrador(ref, holder);
+    }
+    narrarCola(); // el turno de narrador ya es nuestro: se repite la acción con la corrección
+    return "";
+  }
+
   // ------------------------------------------------------------ acciones del jugador
   const AVISO_SOLO_LECTURA =
     "Tu acceso a esta página es de solo lectura: puedes mirar la partida, pero no jugar. " +
@@ -1238,6 +1367,7 @@
     texto = texto.trim();
     if (!texto) return;
     if (!nombre) { pedirNombre(); return; }
+    if (/^\/corregir\b/i.test(texto)) { abrirCorreccion(texto.replace(/^\/corregir\s*/i, "")); return; }
     if (texto.startsWith("/")) {
       const r = V.comando(partida, texto);
       if (!r) { privados.push("Comando desconocido. Escribe /ayuda."); pintar(); return; }
@@ -1365,6 +1495,7 @@
       await db.doc("mesa/turno").delete();
       await db.doc("mesa/orden").delete(); // los jugadores siguen sentados; el turno vuelve al primero
       await db.doc("mesa/memoria").delete();
+      await db.doc("mesa/deshacer").delete();
       await db.doc("mesa/compactacion").delete();
       partida = V.nuevaPartida();
       cronicaDM = "";
@@ -1424,7 +1555,7 @@
       pintarDiario();
     });
     db.collection("turnos").orderBy("ts", "desc").limit(60).onSnapshot((s) => {
-      turnos = s.docs.map((d) => d.data()).reverse();
+      turnos = s.docs.map((d) => ({ _id: d.id, ...d.data() })).reverse();
       pintar();
     });
     db.collection("acciones").orderBy("ts").onSnapshot((s) => {

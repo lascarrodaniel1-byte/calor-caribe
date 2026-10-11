@@ -22,6 +22,14 @@ Cuando varios juegan, cualquiera puede llamar al DM, y lo que sabe cada página 
 - **El resumen descarta lo caducado**: al compactar, el cronista corrige lo que los hechos nuevos han cambiado y marca como obsoletos los detalles que ya no valen.
 - **El DM recapitula desde lo vigente**: la regla le pide partir del estado actual y no de los turnos viejos, y contar los cambios como cambios.
 
+## Tablero y corrección (que el DM no se pierda)
+
+**Tablero.** Lo primero que lee el DM en cada turno es un tablero muy simple: la **escena en una frase** y, para cada personaje, quién es y quién lo juega, qué **acaba de hacer** (lo anota el programa a partir de la secuencia), dónde estaba **antes**, dónde está **ahora** y su **rumbo**. El DM actualiza el dónde y el rumbo en la marca que escribe al final de cada respuesta, con una línea por personaje que haya cambiado (`Sera: en el sótano, mirando el cerrojo → forzarlo`). Si un dato lleva dos o más turnos sin actualizarse, el tablero lo marca («puede haber cambiado, confírmalo») en vez de darlo por bueno. Si el DM aún no sabe dónde está alguien, el tablero dice «sin ubicar» para que lo sitúe.
+
+**Corregir al DM.** Bajo la última respuesta del DM aparece **↩ Corregir al DM** (o se escribe `/corregir` y lo que falló). Se borra esa respuesta **con todos sus efectos** —tiradas, heridas, objetos, notas, ubicación, trama, secuencia, el turno— porque cada turno guarda una copia de cómo estaba todo antes. La acción vuelve a la cola y el DM la repite, esta vez con la corrección de los jugadores y con lo que dijo mal marcado como «no lo repitas»; las tiradas se vuelven a hacer. Solo se puede corregir la **última** respuesta y mientras nadie más haya jugado después; para errores más antiguos, díselo al DM en tu siguiente acción.
+
+**El candado del narrador.** Para que dos pestañas no narren a la vez hay un candado con caducidad que la plataforma no deja soltar. Antes se quedaba tomado hasta caducar, así que tras cada narración **el siguiente jugador quedaba bloqueado** (hasta dos minutos) y, si había un candado viejo, su acción se quedaba parada en la cola. Ahora se acorta al terminar (el siguiente narra en menos de un segundo) y, si hay uno ajeno que va a caducar enseguida, la página espera y narra sola.
+
 ## Secuencia y velocidad (mesa por turnos)
 
 **El DM lleva la secuencia.** Al final de cada respuesta escribe una marca que los jugadores no ven: qué pasó en ese turno y la lista completa de asuntos pendientes (enemigos vivos, puertas abiertas, plazos, deudas…). El programa la quita del texto, la guarda en orden y se la devuelve al DM en cada turno como «Secuencia de turnos» y «Asuntos pendientes», para que no se olvide de nada. Si el DM no la escribe, el programa anota el turno él mismo. Los jugadores la leen en el lateral (**Secuencia de turnos**). En el cierre de ronda, el DM resuelve los pendientes que correspondan.
