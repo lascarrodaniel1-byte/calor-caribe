@@ -11,6 +11,8 @@ export interface Pnj {
   voz: string;
   quiere: string;
   actitud: string;
+  /** Cómo está ahora: vivo, herido, muerto, capturado… */
+  estado?: string;
   en_escena: boolean;
   /** Lo que ya ha revelado, prometido o dicho de importante (lo más reciente al final). */
   dicho: string[];
@@ -43,6 +45,7 @@ export interface DatosPnj {
   voz?: string;
   quiere?: string;
   actitud?: string;
+  estado?: string;
   en_escena?: boolean;
   dijo?: string;
 }
@@ -57,6 +60,7 @@ export function registrarPnj(partida: Partida, d: DatosPnj): string {
   if (d.voz !== undefined) p.voz = d.voz;
   if (d.quiere !== undefined) p.quiere = d.quiere;
   if (d.actitud !== undefined) p.actitud = d.actitud;
+  if (d.estado !== undefined) p.estado = d.estado;
   if (d.en_escena !== undefined) p.en_escena = d.en_escena;
   if (d.dijo && !p.dicho.some((x) => igual(x, d.dijo!.slice(0, 200)))) {
     p.dicho.push(d.dijo.slice(0, 200));
@@ -73,9 +77,9 @@ export function registrarPnj(partida: Partida, d: DatosPnj): string {
 }
 
 export function textoPnj(p: Pnj, corto = false): string {
-  if (corto) return `${p.nombre} (${p.rol}${p.actitud ? `, ${p.actitud}` : ""})`;
+  if (corto) return `${p.nombre} (${p.rol}${p.estado ? `, ${p.estado}` : ""}${p.actitud ? `, ${p.actitud}` : ""})`;
   return (
-    `${p.nombre} — ${p.rol || "?"}. Voz: ${p.voz || "?"}. Quiere: ${p.quiere || "?"}. Actitud: ${p.actitud || "?"}.` +
+    `${p.nombre} — ${p.rol || "?"}. Estado: ${p.estado || "vivo"}. Voz: ${p.voz || "?"}. Quiere: ${p.quiere || "?"}. Actitud: ${p.actitud || "?"}.` +
     (p.dicho.length ? ` Ya ha dicho: ${p.dicho.map((x) => `«${x}»`).join(" ")}` : "")
   );
 }
@@ -83,6 +87,7 @@ export function textoPnj(p: Pnj, corto = false): string {
 export interface DatosTrama {
   objetivo?: string;
   revelar_pista?: string;
+  retirar_pista?: string;
   abrir_hilo?: string;
   cerrar_hilo?: string;
   resolucion?: string;
@@ -108,6 +113,14 @@ export function actualizarTrama(partida: Partida, d: DatosTrama): string {
       throw new Error(`Ya hay ${MAX_HILOS} hilos abiertos (${t.hilos.join(" | ")}). Cierra o resuelve uno antes de abrir otro: la trama debe avanzar, no enredarse.`);
     t.hilos.push(d.abrir_hilo);
     log.push(`Hilo abierto: ${d.abrir_hilo}`);
+  }
+  if (d.retirar_pista) {
+    const buscado = d.retirar_pista.toLowerCase().trim();
+    const coinciden = t.pistas.map((x, k) => [x, k] as const).filter(([x]) => x.toLowerCase().includes(buscado));
+    if (!coinciden.length) throw new Error(`No hay ninguna pista que contenga "${d.retirar_pista}". Pistas: ${t.pistas.join(" | ") || "ninguna"}`);
+    if (coinciden.length > 1) throw new Error(`"${d.retirar_pista}" aparece en varias pistas: ${coinciden.map(([x]) => `«${x}»`).join(" | ")}. Usa un trozo más específico.`);
+    log.push(`Pista retirada: ${t.pistas.splice(coinciden[0][1], 1)[0]}`);
+    avanza = true;
   }
   if (d.revelar_pista) {
     t.pistas.push(d.revelar_pista);
@@ -156,4 +169,7 @@ export const REGLAS_NARRATIVA = `## Voces y trama (que no se repita ni dé vuelt
 - Interacciones distintas, respuestas distintas: el soborno, la amenaza, la adulación y la pregunta directa no producen el mismo diálogo; la actitud del PNJ cambia según cómo lo traten (actualiza actitud).
 - La trama avanza en cada escena: al acabar un turno algo debe haber cambiado (una pista nueva, una puerta que se abre o se cierra, un precio, una consecuencia, un enemigo que mueve ficha). Regístralo con trama.
 - Como mucho ${MAX_HILOS} hilos abiertos a la vez: no abras un misterio nuevo sin cerrar otro. No inventes giros que deshagan lo ya revelado ni escondas otra vez lo que ya se supo. Las respuestas que se ganan con una buena tirada o una buena idea se dan claras, no con más enigmas.
+- Mantén la verdad al día, sobre todo cuando juegan varios: cada acción puede cambiar cosas distintas. Antes de narrar, registra TODO lo que cambió: la ficha (modificar_personaje), la ubicación, el estado y la actitud del PNJ (pnj: estado, actitud, en_escena), la trama (trama) y las notas.
+- Un hecho que sustituye a otro no se apunta aparte: corrige la nota vieja con anotar_mundo (nota + reemplaza) o bórrala (olvidar) para que no queden dos versiones. Una pista que resultó falsa se retira con trama.retirar_pista.
+- Al recapitular o resumir, parte del ESTADO ACTUAL (trama, PNJ, notas, fichas, situación) y no de los turnos antiguos. Si dos fuentes se contradicen, vale la más reciente. Lo que cambió se cuenta como cambio («antes…, ahora…»), nunca como si siguiera igual. Si dudas de algo, no lo afirmes: cuéntalo como lo último que sabíais.
 - Si los jugadores están atascados o dan vueltas, no añadas complicaciones: dales una salida clara (un PNJ que habla, una pista evidente, la amenaza que les obliga a moverse). Cada vez que pierden tiempo, avanza el reloj de la amenaza (avanzar_amenaza); a 6, golpea.`;

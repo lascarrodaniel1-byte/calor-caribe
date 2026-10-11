@@ -41,7 +41,8 @@ export function estadoParaDM(p: Partida): string {
         (pnj.length ? `\nPNJ: ${pnj.map((n) => `${n.nombre} (ataque ${n.bono_ataque >= 0 ? "+" : ""}${n.bono_ataque}, CA ${n.ca}, ${n.veterania ?? "curtido"}${n.temple ? `, ${n.temple}` : ""}${n.personalidad?.length ? `, ${n.personalidad.join(" y ")}` : ""})`).join("; ")}` : ""),
     );
   }
-  if (p.notas_mundo.length) partes.push(`## Notas de campaña\n${p.notas_mundo.map((n) => `- ${n}`).join("\n")}`);
+  if (p.notas_mundo.length)
+    partes.push(`## Notas de campaña (vigentes; si una cambia, corrígela con anotar_mundo reemplaza/olvidar)\n${p.notas_mundo.map((n) => `- ${n}`).join("\n")}`);
   const jefes = Object.values(p.jefes);
   if (jefes.length) {
     partes.push(

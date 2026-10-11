@@ -448,6 +448,9 @@
   let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
   let narrandoYo = false;
   let soloLectura = false;  // este visitante puede mirar pero no escribir en la partida compartida
+  let versionEstado = 0;    // «actualizado» del estado que leímos al empezar a narrar: si cambia, alguien más guardó
+  let leasePerdido = false; // se perdió el turno de narrador mientras narrábamos
+  let titular = "";         // quién somos al pedir el turno de narrador
   let sala = null;          // capacidad "room": quién tiene la página abierta ahora mismo
   let pares = [];
   let ctl = null;
@@ -669,6 +672,7 @@
 ## Cómo funciona esta mesa
 - No recuerdas nada entre turnos. Cada turno recibes tu crónica, el estado del juego (fichas, mapa, criaturas, secretos), los últimos turnos resumidos y las acciones nuevas.
 - Usa el motor con la herramienta "motor": una lista de acciones {accion, datos} que se ejecutan en orden. Cada ronda cuesta: mete en una sola llamada todo lo que no dependa de un resultado anterior (todas las iniciativas, todos los ataques enemigos…) y no consultes reglas que ya conoces.
+- Con varios jugadores, las acciones de todos llegan juntas y cada una puede cambiar cosas distintas: registra todos los cambios (fichas, PNJ, trama, notas) antes de narrar, y corrige o borra las notas que ya no sean ciertas en vez de dejar dos versiones. Al recapitular, manda lo último que sabéis, no lo que fue antes.
 - Tu memoria tiene cuatro partes: los ANALES (capítulos ya vividos, canon), la SITUACIÓN ACTUAL, los DETALLES MENORES (nombres de secundarios, precios, objetos dados o perdidos, aspecto de la gente, apodos, frases dichas) y los turnos recientes. Se escriben solos con lo que ocurre a la vista. Antes de narrar, comprueba en ellos nombres, promesas, deudas y heridas: no contradigas nada de lo que ya pasó.
 - Cuando aparezca algo que deba recordarse siempre (un PNJ con nombre, una promesa, una deuda, un secreto descubierto, un lugar clave), guárdalo además con anotar_mundo: las notas de campaña nunca se resumen.
 - Tu crónica (actualizar_cronica) es para tus notas privadas de DM: secretos, planes de los villanos, lo que aún no saben los jugadores. Se reescribe entera: copia lo que siga vigente y añade lo nuevo, en menos de 2500 caracteres.
@@ -757,11 +761,18 @@
 
   const LIMITE_ANALES = 9000;       // caracteres; por encima, los capítulos más viejos se funden
 
+  // Divide la respuesta del cronista en sus secciones («=== NOMBRE ===»); sin marcas, todo es la situación.
   function partirSecciones(txt) {
-    const m = /===\s*CAP[IÍ]TULO\s*===([\s\S]*?)===\s*SITUACI[OÓ]N\s*===([\s\S]*?)(?:===\s*DETALLES\s*===([\s\S]*))?$/i.exec(txt);
-    if (!m) return { capitulo: "", situacion: txt.trim(), detalles: [] };
-    const lineas = (m[3] || "").split("\n").map((x) => x.replace(/^\s*[-•*]\s*/, "").trim()).filter((x) => x && x.length > 3);
-    return { capitulo: m[1].trim(), situacion: m[2].trim(), detalles: lineas };
+    const trozos = {};
+    let actual = null;
+    for (const linea of String(txt).split("\n")) {
+      const m = /^\s*===\s*([^=]+?)\s*===\s*$/.exec(linea);
+      if (m) { actual = m[1].toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); trozos[actual] = []; continue; }
+      if (actual) trozos[actual].push(linea);
+    }
+    if (!Object.keys(trozos).length) return { capitulo: "", situacion: String(txt).trim(), detalles: [], obsoletos: [] };
+    const lista = (k) => (trozos[k] || []).map((x) => x.replace(/^\s*[-•*]\s*/, "").trim()).filter((x) => x.length > 3);
+    return { capitulo: (trozos.CAPITULO || []).join("\n").trim(), situacion: (trozos.SITUACION || []).join("\n").trim(), detalles: lista("DETALLES"), obsoletos: lista("OBSOLETOS") };
   }
 
   async function compactarDiario() {
@@ -772,18 +783,25 @@
       const lote = pendientes.slice(0, pendientes.length - TURNOS_QUE_QUEDAN);
       const prompt =
         `Eres el cronista de una partida de rol de dark fantasy. Lee la situación anterior y los nuevos acontecimientos y escribe DOS secciones.\n` +
-        `- Nombres propios exactos. No inventes nada que no esté en los textos. Texto plano en español.\n\n` +
+        `- Nombres propios exactos. No inventes nada que no esté en los textos. Texto plano en español.\n` +
+        `- LO MÁS RECIENTE MANDA: si algo nuevo contradice o sustituye a algo anterior (alguien murió, cambió de bando o de sitio, se perdió o se ganó un objeto, una promesa se cumplió o se rompió, una sospecha resultó falsa), refleja el cambio y NO conserves la versión antigua como si siguiera siendo cierta.\n\n` +
         `=== CAPÍTULO ===\nLo que pasó en los nuevos acontecimientos, en orden, en frases cortas (como mucho 800 caracteres): quién hizo qué, a quién conocieron, qué se prometió, quién murió o quedó herido, qué se ganó o perdió.\n\n` +
-        `=== SITUACIÓN ===\nEl estado actual tras esos acontecimientos (como mucho 2500 caracteres). Conserva todo lo que siga vigente de la situación anterior, aunque no salga en lo nuevo. Apartados:\nDÓNDE ESTAMOS:\nMISIÓN Y OBJETIVOS:\nPERSONAJES Y PNJ (nombre: quién es, relación con el grupo, estado):\nPROMESAS, DEUDAS Y ENEMIGOS:\nOBJETOS Y RECURSOS CLAVE:\nHILOS ABIERTOS:\n\n` +
+        `=== SITUACIÓN ===\nEl estado actual tras esos acontecimientos (como mucho 2500 caracteres). Conserva lo que siga siendo cierto de la situación anterior, aunque no salga en lo nuevo, pero corrige o quita lo que los nuevos acontecimientos han cambiado. Apartados:\nDÓNDE ESTAMOS:\nMISIÓN Y OBJETIVOS:\nPERSONAJES Y PNJ (nombre: quién es, relación con el grupo, estado):\nPROMESAS, DEUDAS Y ENEMIGOS:\nOBJETOS Y RECURSOS CLAVE:\nHILOS ABIERTOS:\n\n` +
         `=== DETALLES ===\nLos detalles menores NUEVOS de estos acontecimientos que un buen narrador no debería olvidar, uno por línea empezando por "- ", como mucho 15 y cada uno corto: nombres de secundarios y animales y cómo son, precios pagados, objetos dados, prestados o perdidos, cicatrices, apodos, frases o gestos memorables, cómo es un lugar, gustos y manías. No repitas los que ya están en la lista de detalles conocidos.\n\n` +
+        `=== OBSOLETOS ===\nDe la lista de detalles ya conocidos, los que los nuevos acontecimientos han dejado de ser ciertos, copiados exactamente, uno por línea empezando por "- ". Si no hay ninguno, deja la sección vacía.\n\n` +
         `## DETALLES YA CONOCIDOS\n${detalles.slice(-60).map((x) => `- ${x}`).join("\n") || "(ninguno)"}\n\n` +
         `## SITUACIÓN ANTERIOR\n${diario || "(vacía)"}\n\n## NUEVOS ACONTECIMIENTOS\n${lote.map(textoTurno).join("\n\n")}\n\n` +
-        `Responde solo con las tres secciones, empezando por la línea "=== CAPÍTULO ===".`;
+        `Responde solo con las cuatro secciones, empezando por la línea "=== CAPÍTULO ===".`;
       const res = await sample(prompt, { modelTier: "quick", cache: false });
       const partes = partirSecciones(String(res.text || ""));
       if (!partes.situacion) return;
-      diario = partes.situacion.split(/===\s*DETALLES/i)[0].trim().slice(0, 3200);
+      diario = partes.situacion.slice(0, 3200);
       if (partes.capitulo) anales.push(partes.capitulo.slice(0, 1000));
+      // Los detalles que dejaron de ser ciertos se quitan antes de añadir los nuevos.
+      for (const o of partes.obsoletos.slice(0, 30)) {
+        const ol = o.toLowerCase();
+        detalles = detalles.filter((x) => { const xl = x.toLowerCase(); return !(xl === ol || (ol.length > 12 && xl.length > 12 && (xl.includes(ol) || ol.includes(xl)))); });
+      }
       const vistos = new Set(detalles.map((x) => x.toLowerCase()));
       for (const x of partes.detalles.slice(0, 20)) if (!vistos.has(x.toLowerCase())) { detalles.push(x.slice(0, 220)); vistos.add(x.toLowerCase()); }
       await fundirAnales();
@@ -836,29 +854,57 @@
     cont.classList.toggle("vacio-diario", !hay);
   }
 
+  // El estado compartido pasa a la memoria de esta página (desde un snapshot o desde una lectura directa).
+  function aplicarEstado(d) {
+    partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
+    cronicaDM = String(d?.cronica || "");
+    diario = String(d?.diario || "");
+    anales = Array.isArray(d?.anales) ? d.anales.map(String) : [];
+    detalles = Array.isArray(d?.detalles) ? d.detalles.map(String) : [];
+    compactadoHasta = Number(d?.compactado_hasta || 0);
+    versionEstado = Number(d?.actualizado || 0);
+  }
+
+  // Las suscripciones pueden ir hasta ~30 s retrasadas: antes de narrar se lee la partida de verdad,
+  // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
+  async function sincronizar() {
+    const [s, t] = await Promise.all([db.doc("mesa/estado").get(), db.collection("turnos").orderBy("ts", "desc").limit(60).get()]);
+    aplicarEstado(s.exists ? s.data() : null);
+    turnos = t.docs.map((x) => x.data()).reverse();
+    pintarFichas();
+    pintarDiario();
+    pintar();
+  }
+
+  const TTL_TURNO = 120000; // el navegador frena los temporizadores de las pestañas ocultas: margen de sobra
+
   async function narrarCola() {
     if (!db || narrandoYo || soloLectura) return;
     if (!sample) { privados.push("Esta vista no puede usar Claude. Abre la página en claude.ai (navegador o app)."); pintar(); return; }
     const ref = db.doc("mesa/turno");
     const holder = (uid || "anon") + ":" + pestana;
-    const lease = await ref.acquire({ holder, ttlMs: 45000 }).catch(() => ({ acquired: false }));
+    titular = holder;
+    leasePerdido = false;
+    const lease = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => ({ acquired: false }));
     if (!lease.acquired) { privados.push("Ahora mismo narra otro jugador; tu acción entrará en el siguiente turno."); pintar(); return; }
     narrandoYo = true;
     publicarPresencia();
     $("enviar").disabled = false;
-    const renovar = setInterval(() => {
-      ref.acquire({ holder, ttlMs: 45000 }).catch(() => {});
+    const renovar = setInterval(async () => {
+      const r = await ref.acquire({ holder, ttlMs: TTL_TURNO }).catch(() => null);
+      if (r && r.acquired === false) leasePerdido = true; // otro jugador tomó el turno: no hay que guardar nada
       ref.update({ latido: Date.now() }).catch(() => {});
     }, 15000);
     try {
       // Si una compactación anterior falló y se acumulan turnos, se pone al día antes de narrar.
+      await sincronizar().catch(() => {});
       if (turnos.filter((t) => (t.ts || 0) > compactadoHasta).length > TURNOS_SIN_COMPACTAR * 2) await compactarDiario();
       for (let vuelta = 0; vuelta < 5; vuelta++) {
         const snap = await db.collection("acciones").orderBy("ts").get();
         const cola = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         if (!cola.length) break;
         const ok = await narrar(ref, cola);
-        if (!ok) break;
+        if (ok === false) break;
       }
       await compactarDiario();
     } finally {
@@ -872,6 +918,8 @@
 
   async function narrar(ref, cola) {
     const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
+    try { await sincronizar(); }
+    catch { privados.push("No se pudo leer la partida para narrar (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar."); pintar(); return false; }
     const copia = JSON.parse(JSON.stringify(partida));
     const avancesAntes = copia.trama?.avances ?? 0;
     let cronicaNueva = cronicaDM;
@@ -945,21 +993,40 @@
       });
       texto = res.text;
       clearTimeout(pendienteEscritura);
+      // Antes de guardar: ¿seguimos siendo quienes narran, y nadie más ha guardado mientras tanto?
+      // Si no, se descarta este turno (las acciones siguen en cola) en vez de pisar el trabajo de otro.
+      if (leasePerdido) throw { code: "lease_perdido" };
+      const renovado = await ref.acquire({ holder: titular, ttlMs: TTL_TURNO }).catch(() => null);
+      if (renovado && renovado.acquired === false) throw { code: "lease_perdido" };
+      const actual = await db.doc("mesa/estado").get();
+      if (Number(actual.exists ? actual.data()?.actualizado || 0 : 0) !== versionEstado) throw { code: "conflicto" };
       // El turno ha terminado: se guarda todo de una vez.
       const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
       await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
-      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, detalles, compactado_hasta: compactadoHasta, actualizado: Date.now() });
+      const ahora = Date.now();
+      await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, detalles, compactado_hasta: compactadoHasta, actualizado: ahora });
       for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});
       partida = copia;
       cronicaDM = cronicaNueva;
+      versionEstado = ahora;
       turnoVivo = null;
       return true;
     } catch (e) {
       clearTimeout(pendienteEscritura);
       turnoVivo = null;
+      if (e?.code === "conflicto") {
+        privados.push("Otro jugador guardó cambios mientras el DM narraba: se repite el turno con la partida al día.");
+        pintar();
+        return "reintentar";
+      }
+      if (e?.code === "lease_perdido") {
+        privados.push("Otro jugador tomó el turno de narrador mientras el DM respondía: este turno se descarta para no mezclar versiones. Tus acciones siguen en cola.");
+        pintar();
+        return false;
+      }
       if (e?.code !== "cancelled") privados.push(MENSAJES_ERROR[e?.code] || "El DM se interrumpió (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar.");
       return false;
     }
@@ -1136,15 +1203,7 @@
     const puedeEscribir = await userNs?.can?.("data.write").catch?.(() => null);
     if (puedeEscribir === false) avisarSoloLectura();
     db.doc("mesa/estado").onSnapshot((s) => {
-      const d = s.exists ? s.data() : null;
-      if (!narrandoYo) {
-        partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
-        cronicaDM = String(d?.cronica || "");
-        diario = String(d?.diario || "");
-        anales = Array.isArray(d?.anales) ? d.anales.map(String) : [];
-        detalles = Array.isArray(d?.detalles) ? d.detalles.map(String) : [];
-        compactadoHasta = Number(d?.compactado_hasta || 0);
-      }
+      if (!narrandoYo) aplicarEstado(s.exists ? s.data() : null);
       pintarFichas();
       pintarDiario();
     });

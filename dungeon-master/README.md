@@ -12,6 +12,16 @@ La campaña está ambientada en **Velmora, el Reino del Sol Herido**: un mundo d
 
 Todo se define en `src/mundo.ts`; cámbialo para crear tu propio mundo.
 
+## Varios jugadores a la vez: que no se pise la información
+
+Cuando varios juegan, cualquiera puede llamar al DM, y lo que sabe cada página puede ir unos segundos retrasado. Para que el DM no cuente lo que ya cambió:
+
+- **Lee la partida de verdad antes de narrar**: al tomar el turno de narrador, y en cada ronda, la página lee el estado y los últimos turnos directamente, en lugar de fiarse de su copia local. Así el DM ve lo que acaba de pasar y no pisa lo guardado por otro.
+- **Detecta los choques**: si alguien más guarda mientras el DM narra, o si se pierde el turno de narrador (la pestaña quedó en segundo plano), ese turno se descarta, las acciones siguen en cola y se repite con la partida al día. El turno de narrador dura 2 minutos, para dar margen a las pestañas ocultas.
+- **Las notas se corrigen**: `anotar_mundo` ya no solo añade; puede reemplazar una nota que cambió o borrar una que ya no es cierta, y no guarda duplicados. Las pistas falsas se retiran (`trama`), y los PNJ llevan su **estado** (vivo, muerto, capturado…).
+- **El resumen descarta lo caducado**: al compactar, el cronista corrige lo que los hechos nuevos han cambiado y marca como obsoletos los detalles que ya no valen.
+- **El DM recapitula desde lo vigente**: la regla le pide partir del estado actual y no de los turnos viejos, y contar los cambios como cambios.
+
 ## Voces y trama
 
 Para que los PNJ no se repitan y la historia no dé vueltas:

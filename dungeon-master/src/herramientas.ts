@@ -333,10 +333,12 @@ const esquemas = {
     actitud: z.string().optional().describe("Actitud hacia el grupo ahora mismo; cámbiala según cómo lo traten"),
     en_escena: z.boolean().optional(),
     dijo: z.string().optional().describe("Lo importante que ha revelado, prometido o mentido en este turno (resumen corto)"),
+    estado: z.string().optional().describe("Cómo está ahora: vivo, herido, muerto, capturado, huido, traidor… Cámbialo cuando cambie"),
   }),
   trama: z.object({
     objetivo: z.string().optional().describe("Objetivo actual del grupo"),
     revelar_pista: z.string().optional().describe("Algo que los jugadores acaban de descubrir"),
+    retirar_pista: z.string().optional().describe("Un trozo del texto de una pista que resultó falsa o que ya no vale; se borra (si hay una versión corregida, pásala en revelar_pista)"),
     abrir_hilo: z.string().optional().describe("Un misterio o asunto pendiente nuevo (como mucho 3 abiertos)"),
     cerrar_hilo: z.string().optional().describe("Hilo abierto que se resuelve o se abandona"),
     resolucion: z.string().optional().describe("Cómo se resolvió el hilo cerrado"),
@@ -346,7 +348,9 @@ const esquemas = {
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
   anotar_mundo: z.object({
-    nota: z.string().describe("Hecho importante de la campaña: PNJ, misión, lugar, pista, deuda, promesa…"),
+    nota: z.string().optional().describe("Hecho importante de la campaña, tal y como es AHORA: PNJ, misión, lugar, deuda, promesa…"),
+    reemplaza: z.string().optional().describe("Un trozo del texto de una nota anterior que este hecho sustituye porque algo cambió (así no quedan dos versiones). Requiere nota"),
+    olvidar: z.string().optional().describe("Un trozo del texto de una nota que ya no es cierta y debe borrarse"),
   }),
 };
 
@@ -398,7 +402,7 @@ const descripciones: Record<Nombre, string> = {
   ubicacion:
     "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos.",
   anotar_mundo:
-    "Guarda un hecho importante de la campaña para no olvidarlo en sesiones futuras.",
+    "Guarda un hecho importante de la campaña, o corrige uno anterior que ha cambiado (reemplaza) o que ya no es cierto (olvidar).",
 };
 
 export const herramientas: Anthropic.Beta.BetaTool[] = (Object.keys(esquemas) as Nombre[]).map((nombre) => {
@@ -730,8 +734,34 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;
-        partida.notas_mundo.push(e.nota);
-        return { contenido: "Nota guardada.", aviso: null };
+        if (!e.nota && !e.olvidar) throw new Error("Pasa nota (un hecho nuevo) o olvidar (el texto de una nota que ya no es cierta).");
+        if (e.reemplaza && !e.nota) throw new Error("Para reemplazar una nota hay que pasar la nota nueva.");
+        const hallar = (trozo: string) => {
+          const t = trozo.toLowerCase().trim();
+          const idx = partida.notas_mundo.map((x, i) => [x, i] as const).filter(([x]) => x.toLowerCase().includes(t));
+          if (!idx.length) throw new Error(`No hay ninguna nota que contenga "${trozo}". Notas: ${partida.notas_mundo.map((x, i) => `${i + 1}. ${x}`).join(" | ") || "ninguna"}`);
+          if (idx.length > 1) throw new Error(`"${trozo}" aparece en varias notas: ${idx.map(([x]) => `«${x}»`).join(" | ")}. Usa un trozo más específico.`);
+          return idx[0][1];
+        };
+        const log: string[] = [];
+        if (e.olvidar) {
+          const i = hallar(e.olvidar);
+          log.push(`Nota borrada: ${partida.notas_mundo.splice(i, 1)[0]}`);
+        }
+        if (e.nota) {
+          if (e.reemplaza) {
+            const i = hallar(e.reemplaza);
+            log.push(`Nota corregida: «${partida.notas_mundo[i]}» → «${e.nota}»`);
+            partida.notas_mundo[i] = e.nota;
+          } else if (partida.notas_mundo.some((x) => x.toLowerCase() === e.nota!.toLowerCase())) {
+            log.push("Esa nota ya estaba.");
+          } else {
+            partida.notas_mundo.push(e.nota);
+            log.push("Nota guardada.");
+          }
+        }
+        if (partida.notas_mundo.length > 50) log.push(`Hay ${partida.notas_mundo.length} notas: funde las repetidas y borra las obsoletas con olvidar.`);
+        return { contenido: log.join("\n"), aviso: null };
       }
     }
   } catch (err) {
