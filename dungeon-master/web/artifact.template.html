@@ -662,6 +662,20 @@
 
   const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
 
+  // Frases de diálogo ya usadas en los últimos turnos, para que el DM no las repita.
+  function frasesDichas() {
+    const frases = [];
+    for (const t of turnos.slice(-10)) {
+      for (const linea of String(t.texto || "").split("\n")) {
+        const trozos = linea.split(/\s*—\s*/).slice(1);
+        // En «—Hola —dijo él—. ¿Qué tal?», los trozos pares son lo dicho y los impares el inciso del narrador.
+        trozos.forEach((x, i) => { if (i % 2 === 0 && x.replace(/[^\p{L}]/gu, "").length > 12) frases.push(x.replace(/^[\s.,;:]+/, "").trim().slice(0, 140)); });
+        for (const m of linea.matchAll(/«([^»]{12,140})»/g)) frases.push(m[1].trim());
+      }
+    }
+    return [...new Set(frases)].slice(-30);
+  }
+
   function construirEntrada(acciones) {
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
@@ -681,6 +695,10 @@
       (detalles.length ? `# DETALLES MENORES (nombres, precios, objetos, aspecto, frases; respétalos)\n${detalles.map((x) => `- ${x}`).join("\n")}\n\n` : "") +
       `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
       `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida)}\n\n` +
+      (() => {
+        const f = frasesDichas();
+        return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
+      })() +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
     turnosEntrada.push({ role: "user", content: final });
     // Recorta conversación antigua si nos acercamos al límite de 256 KiB.
@@ -834,6 +852,7 @@
   async function narrar(ref, cola) {
     const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
     const copia = JSON.parse(JSON.stringify(partida));
+    const avancesAntes = copia.trama?.avances ?? 0;
     let cronicaNueva = cronicaDM;
     let texto = "";
     const avisos = [];
@@ -908,6 +927,8 @@
       // El turno ha terminado: se guarda todo de una vez.
       const nota = res.truncated ? "(La narración se cortó por longitud.)" : undefined;
       await db.collection("turnos").add({ ts: Date.now(), acciones, texto, avisos, ...(nota ? { nota } : {}), nivel: res.modelTierApplied });
+      // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
+      if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       const { historial, ...sinHistorial } = copia;
       await db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, diario, anales, detalles, compactado_hasta: compactadoHasta, actualizado: Date.now() });
       for (const a of cola) await db.doc("acciones/" + a.id).delete().catch(() => {});

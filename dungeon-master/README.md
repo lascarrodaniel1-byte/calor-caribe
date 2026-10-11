@@ -12,6 +12,15 @@ La campaña está ambientada en **Velmora, el Reino del Sol Herido**: un mundo d
 
 Todo se define en `src/mundo.ts`; cámbialo para crear tu propio mundo.
 
+## Voces y trama
+
+Para que los PNJ no se repitan y la historia no dé vueltas:
+
+- **PNJ con voz propia** (`pnj`): cada personaje con nombre tiene rol, forma de hablar, lo que quiere, su actitud hacia el grupo y lo que ya ha dicho. Una amenaza, un soborno o una adulación producen respuestas distintas, y si se le pregunta lo mismo dos veces, reacciona a la insistencia.
+- **Frases ya usadas**: la página extrae los diálogos de los últimos turnos y se los pasa al DM para que no los repita.
+- **Hilo de la trama** (`trama`): objetivo del grupo, pistas reveladas (que no se pueden volver a esconder), como mucho **tres hilos abiertos** (el programa no deja abrir un cuarto sin cerrar otro) y una amenaza con reloj de 6 pasos que avanza cuando el grupo pierde el tiempo y golpea al llenarse.
+- **Aviso de estancamiento**: si pasan tres turnos sin que la trama avance, el DM recibe la orden de revelar algo, cerrar un hilo o mover la amenaza.
+
 ## Combate
 
 La iniciativa y los ataques los resuelve el programa (`iniciativa`, `atacar`, `terminar_combate`), no el DM a ojo. Lo que más pesa no es el nivel, sino la **veteranía**, que el DM fija según el trasfondo (un mercenario con años en la Compañía es veterano aunque sea nivel 1):

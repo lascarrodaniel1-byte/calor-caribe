@@ -6,6 +6,7 @@ import { fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./est
 import { ejecutar, herramientas } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
+import { textoPnj, textoTrama } from "./narrativa.js";
 import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
 
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
@@ -23,6 +24,16 @@ export function estadoParaDM(p: Partida): string {
   partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
   const pjs = Object.values(p.personajes);
   partes.push(`## Personajes jugadores\n${pjs.length ? pjs.map(fichaTexto).join("\n\n") : "Aún no hay personajes: hay que crearlos."}`);
+  if (p.trama) partes.push(`## Trama\n${textoTrama(p.trama)}`);
+  const pnjs = Object.values(p.pnjs ?? {});
+  if (pnjs.length) {
+    const escena = pnjs.filter((x) => x.en_escena);
+    const otros = pnjs.filter((x) => !x.en_escena);
+    partes.push(
+      `## PNJ${escena.length ? `\nEn escena (habla con SU voz y no repitas lo que ya dijo):\n${escena.map((x) => `- ${textoPnj(x)}`).join("\n")}` : ""}` +
+        (otros.length ? `\nConocidos fuera de escena: ${otros.map((x) => textoPnj(x, true)).join("; ")}` : ""),
+    );
+  }
   if (p.combate) {
     const pnj = Object.values(p.combate.pnj);
     partes.push(

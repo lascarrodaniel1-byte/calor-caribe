@@ -35,6 +35,7 @@ import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaI
 import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
+import { actualizarTrama, registrarPnj } from "./narrativa.js";
 import { ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
@@ -324,6 +325,24 @@ const esquemas = {
     tipo_dano: z.enum(TIPOS_DANO).optional().describe("corte, punta o contundente, si el arma no se reconoce por su nombre"),
     apuntar: z.enum([...UBICACIONES, "hueco"]).optional().describe('Región a la que apunta (−2; cabeza o cuello −4) o "hueco": las juntas de la armadura, con daga o estoque'),
   }),
+  pnj: z.object({
+    nombre: z.string(),
+    rol: z.string().optional().describe("Quién es: posadera de El Cuervo Cojo, sargento de la Inquisición…"),
+    voz: z.string().optional().describe("Cómo habla: registro, muletillas, ritmo, acento, lo que nunca diría. Obligatoria la primera vez"),
+    quiere: z.string().optional().describe("Lo que quiere y lo que teme"),
+    actitud: z.string().optional().describe("Actitud hacia el grupo ahora mismo; cámbiala según cómo lo traten"),
+    en_escena: z.boolean().optional(),
+    dijo: z.string().optional().describe("Lo importante que ha revelado, prometido o mentido en este turno (resumen corto)"),
+  }),
+  trama: z.object({
+    objetivo: z.string().optional().describe("Objetivo actual del grupo"),
+    revelar_pista: z.string().optional().describe("Algo que los jugadores acaban de descubrir"),
+    abrir_hilo: z.string().optional().describe("Un misterio o asunto pendiente nuevo (como mucho 3 abiertos)"),
+    cerrar_hilo: z.string().optional().describe("Hilo abierto que se resuelve o se abandona"),
+    resolucion: z.string().optional().describe("Cómo se resolvió el hilo cerrado"),
+    amenaza: z.string().optional().describe("Fija una amenaza nueva (lo que pasará si no actúan); reinicia su reloj"),
+    avanzar_amenaza: z.number().int().min(1).max(6).optional().describe("Pasos que avanza el reloj de la amenaza (a 6 golpea)"),
+  }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
   anotar_mundo: z.object({
@@ -334,6 +353,9 @@ const esquemas = {
 type Nombre = keyof typeof esquemas;
 
 const descripciones: Record<Nombre, string> = {
+  pnj: "Registra o actualiza un PNJ con nombre: su voz, lo que quiere, su actitud y lo que ya ha dicho, para que hable siempre como él y no se repita.",
+  trama:
+    "Lleva el hilo de la trama: objetivo, pistas reveladas, hilos abiertos (como mucho 3) y el reloj de la amenaza. Úsala cada vez que la historia avance.",
   iniciativa:
     "Empieza un combate: tira la iniciativa de PJ, criaturas y PNJ con su destreza, veteranía, raza, clase y carácter, y resuelve emboscadas (sorpresa) y planes. Actuar antes que el rival calma los nervios de los novatos.",
   atacar:
@@ -687,6 +709,16 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           }
         }
         return { contenido: r.texto, aviso: r.aviso };
+      }
+      case "pnj": {
+        const e = validado.data as z.infer<typeof esquemas.pnj>;
+        return { contenido: registrarPnj(partida, e), aviso: null };
+      }
+      case "trama": {
+        const e = validado.data as z.infer<typeof esquemas.trama>;
+        const texto = actualizarTrama(partida, e);
+        const visible = texto.split("\n").filter((l) => /^(Pista revelada|Hilo cerrado|Objetivo)/.test(l));
+        return { contenido: texto, aviso: visible.length ? `🧭 ${visible.join("\n")}` : null };
       }
       case "siguiente_asalto": {
         const texto = siguienteAsalto(partida);

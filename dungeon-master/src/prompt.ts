@@ -5,6 +5,7 @@ import { REGLAS_EQUIPO } from "./equipo.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
 import { REGLAS_MAGIA } from "./magia.js";
 import { REGLAS_MAPA } from "./mapa.js";
+import { REGLAS_NARRATIVA } from "./narrativa.js";
 import { REGLAS_VIALES } from "./viales.js";
 import { AMBIENTACION, textoRazasYClases } from "./mundo.js";
 
@@ -19,6 +20,8 @@ export const SISTEMA = `Eres el Dungeon Master de una campaña de dark fantasy c
 - Mantén la coherencia: recuerda nombres, promesas, heridas, objetos y deudas. Usa la herramienta anotar_mundo para los hechos que importarán más adelante.
 - Puede haber varios jugadores a la vez: cada mensaje llega con el nombre de quien habla delante ("Ana: abro la puerta"), y a veces llegan acciones de varios juntas. Resuélvelas todas, en un orden lógico, y reparte el protagonismo: si alguien lleva rato sin actuar, dale pie. En combate, respeta el orden de iniciativa y espera a que cada jugador declare su acción en su turno.
 - Varía el ritmo entre exploración, interacción social y combate. Los PNJ tienen motivaciones propias y voz propia.
+
+${REGLAS_NARRATIVA}
 
 ## Reglas y dados
 - Sigue las reglas de D&D 5e (SRD). Ante dudas, prioriza que el juego fluya y explica brevemente tu decisión.

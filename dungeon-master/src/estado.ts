@@ -8,6 +8,7 @@ import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
 import { mapaVacio, type EstadoMapa } from "./mapa.js";
+import { tramaVacia, type Pnj, type Trama } from "./narrativa.js";
 import { valor } from "./reglas.js";
 
 export interface Personaje {
@@ -62,6 +63,10 @@ export interface Partida {
   mapa: EstadoMapa;
   /** Combate en curso: orden de iniciativa y PNJ sin ficha. */
   combate?: EstadoCombate;
+  /** PNJ con nombre: voz, deseos, actitud y lo que ya han dicho. */
+  pnjs?: Record<string, Pnj>;
+  /** Hilo de la trama: objetivo, pistas, hilos abiertos y amenaza. */
+  trama?: Trama;
 }
 
 export function nuevaPartida(): Partida {
@@ -92,6 +97,8 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.jefes ??= {};
   partida.behelit ??= { carmesi_creado: false, destinados: [] };
   partida.mapa ??= mapaVacio();
+  partida.pnjs ??= {};
+  partida.trama ??= tramaVacia();
   partida.mapa.lugares ??= {};
   partida.mapa.rastro ??= [];
   for (const j of Object.values(partida.jefes)) {
