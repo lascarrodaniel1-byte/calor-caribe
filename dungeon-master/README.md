@@ -248,6 +248,14 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 
 Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
 
+### Análisis de confusiones del DM
+
+- **Bitácora de errores** (`errores/`): cada fallo que ve una página (JavaScript, base de datos, DM) queda con el estado de la mesa en ese momento, sin el texto de los jugadores.
+- **Correcciones** (`correcciones/`): cada vez que alguien usa «Corregir al DM» queda lo que el DM respondió mal, la acción original, las tiradas que hizo y la frase de corrección. Sirve para ver en qué se equivoca y por qué.
+- **Reglas de interpretación** (en el prompt del DM): resolver «el mago» o el nombre del jugador como el personaje que es, tomar lo escrito como intención y no como resultado, resolver las acciones encadenadas una a una con su tirada, no inventar cifras, no hablar de herramientas ni errores y pedir las opciones válidas al crear el personaje.
+- **Guía para jugadores** en el «Cómo jugar»: cómo escribir las acciones para que el DM las entienda.
+- Una acción ya narrada no se vuelve a narrar aunque la base de datos tarde en mostrar el turno guardado.
+
 ### Multijugador por el navegador
 
 Una persona arranca la mesa y el resto entra desde el navegador del móvil o del PC:

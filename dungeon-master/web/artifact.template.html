@@ -427,6 +427,18 @@
       <li><strong>CAR (Carisma):</strong> persuadir, intimidar, engañar y liderar; también la fuerza de voluntad frente al miedo y los poderes que doblegan la mente. Es la característica de magia del Berserker, el Caballero y el Segador.</li>
     </ul>
     <p>Cuando una clase tiene «competencia» en una salvación, la suma además de tu modificador. Consejo: sube primero la característica principal de tu clase, y luego CON, que sirve a todos.</p>
+    <h3>Cómo escribir tus acciones</h3>
+    <p>El DM lee tu texto tal cual. Cuanto más claro lo escribas, menos se confunde:</p>
+    <ul>
+      <li><strong>Di qué intentas, no cómo acaba.</strong> «Intento subir a Al-fero al carro» y no «subo a Al-fero y estamos a salvo». El resultado lo decide el DM con los dados.</li>
+      <li><strong>Usa los nombres de los personajes</strong> (Dal Tepes, Al-fero, Agmar), no los de los jugadores ni apodos como «el mago» o «el berserker». Con los enemigos, igual: «Hambriento 3», «Ysolt».</li>
+      <li><strong>Una intención por turno.</strong> Si encadenas varias cosas («primero a Dal, luego a Al-fero, y por último a mí»), el DM las resuelve una a una y se detiene en la primera que salga mal. Mejor una buena acción por turno.</li>
+      <li><strong>Separa lo que dices de lo que haces.</strong> El diálogo, con raya o comillas (—Sube, maldita sea—); lo que haces, en primera persona. Las dudas o comentarios fuera de personaje, entre doble paréntesis: ((¿tengo línea de visión?)).</li>
+      <li><strong>Concreta con qué, a quién y dónde:</strong> «ataco con el estoque al Hambriento 3, a la cabeza» o «trato la herida del brazo con alcohol y aguja». Usa solo lo que tienes en tu ficha.</li>
+      <li><strong>No actúes por otros jugadores.</strong> Si quieres que otro personaje haga algo, díselo con una frase («le grito a Agmar que corte la cuerda»); decidirá su jugador en su turno. Los PNJ sí puedes pedirles cosas, pero ellos pueden negarse.</li>
+      <li><strong>Escribe la acción ya pensada.</strong> Sin autocorrecciones a mitad de frase («no, mejor…») ni mayúsculas o insultos que no aportan; la urgencia se expresa con «rápido, sin detenerme a mirar».</li>
+      <li><strong>Si el DM se equivoca</strong> (te confundió de personaje, inventó un dato o se olvidó de algo), usa <strong>Corregir al DM</strong> con una frase concreta: «Dije que agarraba al mago (Al-fero), no a Dal Tepes». Una corrección clara vale más que repetir la acción.</li>
+    </ul>
     <h3>Los dados</h3>
     <ul>
       <li><strong>Tirar d20</strong> lanza un dado de 20 caras, el que decide casi todo en D&amp;D: si aciertas un golpe, si convences a alguien, si esquivas una trampa. Al resultado se le suma tu bonificador (por ejemplo, +3 por tener Destreza 16) y se compara con una dificultad: CD 10 es fácil, 15 media y 20 muy difícil. Un 20 natural es un éxito brillante (en un ataque, un crítico) y un 1 natural, un desastre.</li>
@@ -1322,9 +1334,9 @@
     if (porLimpiar.length) turnos = turnos.filter((t) => !porLimpiar.includes(t._id));
     // Ya con la partida al día: fuera lo que ya se narró (si su borrado falló) y, por turnos, lo que no es del que tiene la palabra.
     const consumidas = new Set(turnos.flatMap((t) => t.ids || []));
-    const yaNarradas = cola.filter((a) => consumidas.has(a.id));
+    const yaNarradas = cola.filter((a) => consumidas.has(a.id) || idsNarradas.has(a.id));
     yaNarradas.forEach((a) => reintentar(() => db.doc("acciones/" + a.id).delete()).catch(() => {}));
-    cola = cola.filter((a) => !consumidas.has(a.id));
+    cola = cola.filter((a) => !consumidas.has(a.id) && !idsNarradas.has(a.id));
     if (porTurnos()) { const toca = quienToca(); cola = cola.filter((a) => !a.jid || a.jid === toca?.id); }
     if (!cola.length) return yaNarradas.length ? true : "vacio";
     const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
@@ -1464,6 +1476,7 @@
       cronicaDM = cronicaNueva;
       versionEstado = version;
       turnos = [...turnos, { _id: turnoId, ...turnoDoc }];
+      cola.forEach((a) => idsNarradas.add(a.id)); // aunque la base de datos tarde en mostrar el turno, esta página no repite la acción
       if (siguienteOrden) orden = { ...orden, ...siguienteOrden };
       turnoVivo = null;
       pintar();
@@ -1522,6 +1535,8 @@
     $("velo-corregir").hidden = true;
   };
 
+  // Acciones que esta página ya narró y guardó: una lectura atrasada de la base de datos no las vuelve a narrar.
+  const idsNarradas = new Set();
   // La copia que yo mismo guardé del último turno: no depende de que la base de datos ya la devuelva actualizada.
   let copiaLocal = null;
   async function leerCopia(turnoId) {
@@ -1557,6 +1572,14 @@
       // (borrar la respuesta y devolver la acción a la cola); si algo falla, se completa al sincronizar.
       const version = siguienteVersion();
       const correccion = { texto: textoCorreccion, malo: String(ult.texto || "").slice(0, 500) };
+      // Queda constancia de qué dijo mal el DM y qué corrigieron los jugadores, para poder estudiar por qué se confunde.
+      db.doc("correcciones/c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)).set({
+        ts: Date.now(), por: nombre, ronda: ult.ronda || 0, jugadorTurno: ult.jugador || "", turnoId: ult._id,
+        acciones: (ult.acciones || []).map((a) => ({ nombre: String(a.nombre), texto: String(a.texto).slice(0, 800) })),
+        respuestaMala: String(ult.texto || "").slice(0, 2500),
+        avisos: (ult.avisos || []).slice(0, 12).map((a) => String(a.texto || "").slice(0, 300)),
+        correccion: String(textoCorreccion || "").slice(0, 800),
+      }).catch(() => {});
       const base = siguienteTs();
       const reencolar = (d.acciones || []).map((a, i) => ({ id: "r" + ult._id + "_" + i, ...a, ts: base + i, correccion }));
       const pendiente = { tipo: "deshacer", turnoId: ult._id, orden: d.orden || null, acciones: reencolar };
