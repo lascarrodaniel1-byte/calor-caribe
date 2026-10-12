@@ -248,6 +248,12 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 
 Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
 
+### Formulario de personaje y aventuras nuevas
+
+- **Crear personaje:** el botón **📜 Crear personaje** (o `/personaje`) abre un formulario con todo lo que hace falta: nombre, raza, clase, veteranía, personalidad, atributos (serie estándar o 4d6kh3 hechas por la página, con sugerencia de reparto para la clase), escuelas de magia si es Hechicero, equipo extra y trasfondo. La página calcula los atributos finales con el bono racial y los PV, y envía una **ficha completa** al DM, que la guarda tal cual sin preguntar nada más.
+- **Reiniciar de verdad:** el diario, los capítulos y los detalles se borran también en las demás páginas abiertas, y una compactación que estuviera en marcha no los vuelve a escribir.
+- **No repetir tramas:** al reiniciar, la aventura que acaba se resume (apertura, objetivo, amenaza, hilos, giros, PNJ, lugares) en `mesa/aventuras`, que el reinicio **no** borra (guarda las últimas 8). El DM recibe esa lista como «aventuras anteriores: no las repitas» y debe inventar un gancho, unos PNJ y unos lugares distintos.
+
 ### Análisis de confusiones del DM
 
 - **Bitácora de errores** (`errores/`): cada fallo que ve una página (JavaScript, base de datos, DM) queda con el estado de la mesa en ese momento, sin el texto de los jugadores.

@@ -279,6 +279,22 @@
   .tutorial ol, .tutorial ul { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 10px; }
   .tutorial li::marker { color: #7a3a1a; font-weight: 700; }
   .tutorial .ejemplo { font-style: italic; color: #4a2a14; }
+  .velo form.formulario { max-width: 680px; font: 17px/1.45 var(--f-narracion); }
+  .formulario .campo { display: flex; flex-direction: column; gap: 4px; }
+  .formulario .campo > label, .formulario legend { font-weight: 700; color: #3a1f10; }
+  .formulario .fila { display: flex; gap: 10px; flex-wrap: wrap; }
+  .formulario .fila > * { flex: 1 1 200px; min-width: 0; }
+  .formulario select, .formulario input[type=text], .formulario textarea {
+    width: 100%; font: 17px var(--f-narracion); color: var(--tinta); background: #f4e8cc; border: 1px solid #6b4a2a; border-radius: 3px; padding: 7px 9px; min-height: 0;
+  }
+  .formulario textarea { min-height: 84px; resize: vertical; }
+  .formulario .ayuda { font-size: 15px; color: #5a4128; margin: 0; }
+  .formulario fieldset { border: 1px solid #6b4a2a88; border-radius: 3px; padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .formulario .atributo { display: grid; grid-template-columns: 52px 1fr 1.4fr; gap: 8px; align-items: center; }
+  .formulario .atributo b { font-family: var(--f-letrero); font-weight: 400; font-size: 20px; color: #5a1d12; }
+  .formulario .resumen { background: #00000012; border-radius: 3px; padding: 8px 10px; font-weight: 700; }
+  .formulario .metodos { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .formulario .metodos label { display: inline-flex; gap: 6px; align-items: center; }
   .boton.peligro { background: linear-gradient(180deg, #b8463c, var(--sangre) 55%, #6e1c17); color: #fbe9e2; border-color: #4a120e; text-shadow: none; box-shadow: inset 0 1px 0 #ffffff33, 0 2px 4px #0008; }
 
   @media (max-width: 800px) {
@@ -371,6 +387,7 @@
         <button class="boton sobrio" id="saltar-turno" type="button" hidden></button>
       </div>
       <div class="atajos">
+        <button class="boton" type="button" id="crear-personaje" hidden>📜 Crear personaje</button>
         <button class="boton sobrio" type="button" data-cmd="/tirar 1d20">Tirar d20</button>
         <button class="boton sobrio" type="button" data-cmd="/tirar 4d6kh3">4d6kh3</button>
         <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
@@ -412,7 +429,7 @@
       <li><strong>Invita a tus amigos.</strong> En el menú <em>Compartir</em>, invítalos por su correo como <em>Editor</em> y desactiva el enlace público: con el enlace público, quien viene de fuera de tu organización solo puede mirar, no jugar. Cada uno necesita su propia cuenta de Claude con la sesión iniciada. Si alguien ve el aviso «solo lectura», es esto.</li>
       <li><strong>Pon tu nombre.</strong> El tuyo de jugador, no el del personaje. Puedes cambiarlo abajo, en «Juegas como…».</li>
       <li><strong>Pulsa «Que empiece la historia».</strong> La primera vez, Claude te pedirá permiso para narrar desde tu cuenta: acéptalo. No cuesta nada aparte de tu plan.</li>
-      <li><strong>Crea tu personaje con el DM.</strong> Te preguntará raza, clase y trasfondo. Para los atributos puedes usar la serie estándar o tirar el botón <em>4d6kh3</em> seis veces (4 dados de 6, te quedas con los 3 mejores).</li>
+      <li><strong>Crea tu personaje con el formulario.</strong> Pulsa <strong>📜 Crear personaje</strong> y rellénalo de una vez: nombre, raza, clase, veteranía, personalidad, atributos (serie estándar o tiradas de <em>4d6kh3</em>, que hace la propia página) y trasfondo. Ves al momento tus atributos finales con el bono de raza y tus PV. Al enviarlo, el DM guarda la ficha tal cual y no te pregunta nada más.</li>
       <li><strong>Escribe lo que hace tu personaje</strong> y pulsa Enter. Por ejemplo: <span class="ejemplo">«Me acerco a la barra, pido una cerveza negra y pregunto por el hombre sin ojos.»</span> Cuanto más concreto, mejor responde el DM.</li>
       <li><strong>Lee la respuesta.</strong> La narración aparece en el pergamino; las tiradas, heridas y botín, en las placas de madera. Tu vida, heridas e inventario están en <em>Fichas</em>, y dónde estáis, en el <em>mapa</em>, que el DM mueve cuando viajáis. En el <em>Diario de la aventura</em> queda el resumen de todo lo vivido.</li>
     </ol>
@@ -489,6 +506,19 @@
   </form>
 </div>
 
+<div class="velo" id="velo-personaje" hidden>
+  <form id="form-personaje" class="tutorial formulario" novalidate>
+    <h2>Crea tu personaje</h2>
+    <p>Rellena todo y pulsa <strong>Enviar ficha</strong>: el DM la guarda tal cual y no te preguntará nada más. Puedes cerrarlo y volver: lo escrito se conserva.</p>
+    <div id="campos-personaje"></div>
+    <p class="aviso-error" id="error-personaje" role="alert" hidden></p>
+    <div class="botonera">
+      <button class="boton sobrio" id="cerrar-personaje" type="button">Cerrar</button>
+      <button class="boton" id="enviar-personaje" type="submit">Enviar ficha</button>
+    </div>
+  </form>
+</div>
+
 <script>/*__MOTOR__*/</script>
 <script>
 (() => {
@@ -507,6 +537,7 @@
   let anales = [];          // capítulos ya vividos, en orden; solo se añaden, nunca se reescriben
   let detalles = [];        // detalles menores (nombres, precios, objetos, aspecto…): una línea cada uno
   let compactadoHasta = 0;  // ts del último turno ya incluido en el diario
+  let aventurasPrevias = []; // resúmenes de las aventuras ya jugadas en esta mesa (sobreviven al reinicio)
   let turnos = [];          // turnos ya narrados (más recientes al final)
   let pendientes = [];      // acciones en cola
   let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
@@ -701,7 +732,13 @@
     return true;
   }
 
+  function actualizarBotonPersonaje() {
+    const b = $("crear-personaje");
+    if (b) b.hidden = !(db && !soloLectura && nombre && !tieneFicha(partida, nombre));
+  }
+
   function actualizarEntrada() {
+    actualizarBotonPersonaje();
     const fuera = porTurnos() && !esMiTurno();
     $("enviar").disabled = soloLectura || fuera;
     $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
@@ -803,6 +840,7 @@
       ? `El DM narra (lo pidió ${turnoVivo.por})…`
       : pendientes.length ? `${pendientes.length} acción(es) esperando al DM` : "El DM espera vuestras acciones";
     $("quien").textContent = nombre ? `Juegas como ${nombre} · cambiar` : "Elegir nombre";
+    actualizarBotonPersonaje();
   }
 
   // ------------------------------------------------------------ mapa
@@ -929,6 +967,7 @@
       `# ANALES DE LA AVENTURA (capítulos ya vividos, en orden; es canon, respétalo)\n${anales.length ? anales.map((c, i) => `${i + 1}. ${c}`).join("\n") : "(aún vacíos: la aventura acaba de empezar)"}\n\n` +
       `# SITUACIÓN ACTUAL (antes de los turnos recientes)\n${diario || "(aún vacía)"}\n\n` +
       (detalles.length ? `# DETALLES MENORES (nombres, precios, objetos, aspecto, frases; respétalos)\n${detalles.map((x) => `- ${x}`).join("\n")}\n\n` : "") +
+      (aventurasPrevias.length ? `${V.aventuras.textoAventurasPrevias(aventurasPrevias)}\n\n` : "") +
       `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
       `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida, infoTurno?.actuante)}\n\n` +
       (() => {
@@ -1026,6 +1065,8 @@
       await fundirAnales();
       await fundirDetalles();
       compactadoHasta = lote[lote.length - 1].ts;
+      // Si mientras tanto se reinició la partida, esta memoria es de la aventura anterior: no se guarda.
+      if (!(await db.doc("mesa/estado").get().then((x) => x.exists, () => true))) { aplicarMemoria({}); pintarDiario(); return; }
       await db.doc("mesa/memoria").set({ diario, anales, detalles, compactado_hasta: compactadoHasta }).catch(() => {});
       pintarDiario();
     } catch {
@@ -1217,15 +1258,18 @@
   // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
   // Con `reparar` (solo quien tiene el turno de narrador), además completa lo que un turno anterior dejó a medias.
   async function sincronizar(reparar = true) {
-    const [e, t, js, o, mem] = await reintentar(() => Promise.all([
+    const [e, t, js, o, mem, aventurasDoc] = await reintentar(() => Promise.all([
       db.doc("mesa/estado").get(),
       db.collection("turnos").orderBy("ts", "desc").limit(60).get(),
       db.collection("jugadores").get(),
       db.doc("mesa/orden").get(),
       db.doc("mesa/memoria").get(),
+      db.doc("mesa/aventuras").get(),
     ]));
     aplicarEstado(e.exists ? e.data() : null);
+    if (aventurasDoc?.exists) aventurasPrevias = V.aventuras.leerArchivo(aventurasDoc.data());
     if (mem.exists) aplicarMemoria(mem.data());
+    else if (!(e.exists && hayMemoria(e.data()))) aplicarMemoria({}); // se reinició la partida: el diario también empieza de cero
     else if (e.exists && hayMemoria(e.data())) {
       // Partida guardada antes de separar la memoria: se pasa a su documento una vez.
       aplicarMemoria(e.data());
@@ -1616,6 +1660,7 @@
     if (!texto) return;
     if (!nombre) { pedirNombre(); return; }
     if (/^\/corregir\b/i.test(texto)) { abrirCorreccion(texto.replace(/^\/corregir\s*/i, "")); return; }
+    if (/^\/personaje\b/i.test(texto)) { abrirFormulario(); return; }
     if (texto.startsWith("/")) {
       const r = V.comando(partida, texto);
       if (!r) { privados.push("Comando desconocido. Escribe /ayuda."); pintar(); return; }
@@ -1740,6 +1785,16 @@
     boton.disabled = true;
     boton.textContent = "Borrando…";
     try {
+      // Antes de borrar, se guarda un resumen de esta aventura para que la siguiente no la repita (este archivo NO se borra).
+      try {
+        await sincronizar(false);
+        if (partida.trama?.objetivo || partida.trama?.hilos?.length || turnos.length > 2) {
+          const resumen = V.aventuras.resumenAventura(partida, anales[0] || turnos.find((t) => t.texto)?.texto || "");
+          const lista = V.aventuras.archivar(aventurasPrevias, { ts: Date.now(), resumen });
+          await reintentar(() => db.doc("mesa/aventuras").set({ aventuras: lista }));
+          aventurasPrevias = lista;
+        }
+      } catch { /* si no se puede archivar, se reinicia igualmente */ }
       await borrarColeccion("acciones");
       await borrarColeccion("turnos");
       await db.doc("mesa/estado").delete();
@@ -1750,6 +1805,7 @@
       await db.doc("mesa/compactacion").delete();
       partida = V.nuevaPartida();
       cronicaDM = "";
+      copiaLocal = null;
       diario = "";
       anales = [];
       detalles = [];
@@ -1768,6 +1824,175 @@
       boton.disabled = false;
       boton.textContent = "Sí, borrar todo";
     }
+  };
+
+  // ------------------------------------------------------------ formulario de personaje
+  // El jugador lo rellena todo de una vez; el DM recibe la ficha completa (bono racial y PV ya calculados) y la guarda sin preguntar más.
+  const FM = V.formulario;
+  const DF = FM.DATOS_FORMULARIO;
+  const ATR = FM.ATRIBUTOS;
+  const form = { construido: false, metodo: "estandar", pool: [...DF.serie], tirado: false };
+  const opcion = (valor, texto) => { const o = document.createElement("option"); o.value = valor; o.textContent = texto; return o; };
+  const numAzar = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return 1 + (a[0] % n); };
+  const tirar4d6kh3 = () => { const d = [numAzar(6), numAzar(6), numAzar(6), numAzar(6)].sort((a, b) => b - a); return d[0] + d[1] + d[2]; };
+  const fmod = (v) => { const m = FM.mod(v); return m >= 0 ? "+" + m : String(m); };
+
+  function construirFormulario() {
+    if (form.construido) return;
+    form.construido = true;
+    const raiz = $("campos-personaje");
+    const campo = (id, etiqueta, control, ayuda) => {
+      const d = document.createElement("div"); d.className = "campo";
+      const l = document.createElement("label"); l.htmlFor = id; l.textContent = etiqueta;
+      d.append(l, control);
+      if (ayuda) { const a = document.createElement("p"); a.className = "ayuda"; a.id = id + "-ayuda"; d.append(a); }
+      return d;
+    };
+    const select = (id, opciones, vacio) => { const s = document.createElement("select"); s.id = id; if (vacio) s.append(opcion("", vacio)); opciones.forEach(([v, t]) => s.append(opcion(v, t))); return s; };
+    const texto = (id, max, ph) => { const i = document.createElement("input"); i.type = "text"; i.id = id; i.maxLength = max; if (ph) i.placeholder = ph; i.autocomplete = "off"; return i; };
+
+    raiz.append(campo("pj-nombre", "Nombre de tu personaje", texto("pj-nombre", 40, "No el tuyo de jugador")));
+    const fila1 = document.createElement("div"); fila1.className = "fila";
+    fila1.append(
+      campo("pj-raza", "Raza", select("pj-raza", DF.razas.map((r) => [r.nombre, `${r.nombre} (${r.bonos})`]), "Elige…"), true),
+      campo("pj-clase", "Clase", select("pj-clase", DF.clases.map((c) => [c.nombre, c.nombre]), "Elige…"), true),
+    );
+    raiz.append(fila1);
+    const fila2 = document.createElement("div"); fila2.className = "fila";
+    const per = DF.personalidades.map((x) => [x.nombre, x.nombre]);
+    fila2.append(
+      campo("pj-vet", "Veteranía", select("pj-vet", DF.veteranias.map((v) => [v.nombre, v.nombre])), true),
+      campo("pj-per1", "Personalidad (principal)", select("pj-per1", per, "Elige…"), true),
+      campo("pj-per2", "Personalidad (segunda, opcional)", select("pj-per2", per, "Ninguna"), true),
+    );
+    raiz.append(fila2);
+
+    // Atributos
+    const fs = document.createElement("fieldset");
+    const lg = document.createElement("legend"); lg.textContent = "Atributos"; fs.append(lg);
+    const met = document.createElement("div"); met.className = "metodos";
+    met.innerHTML = `<label><input type="radio" name="pj-metodo" value="estandar" checked> Serie estándar (15, 14, 13, 12, 10, 8)</label><label><input type="radio" name="pj-metodo" value="tirada"> Tirar 4d6kh3 seis veces</label>`;
+    const botones = document.createElement("div"); botones.className = "botonera"; botones.style.justifyContent = "flex-start";
+    const bTirar = document.createElement("button"); bTirar.type = "button"; bTirar.className = "boton sobrio"; bTirar.id = "pj-tirar"; bTirar.textContent = "🎲 Tirar los dados"; bTirar.hidden = true;
+    const bSug = document.createElement("button"); bSug.type = "button"; bSug.className = "boton sobrio"; bSug.id = "pj-sugerir"; bSug.textContent = "Sugerir reparto para mi clase";
+    botones.append(bTirar, bSug);
+    fs.append(met, botones);
+    const pAyuda = document.createElement("p"); pAyuda.className = "ayuda"; pAyuda.id = "pj-pool"; fs.append(pAyuda);
+    ATR.forEach((a) => {
+      const f = document.createElement("div"); f.className = "atributo";
+      const b = document.createElement("b"); b.textContent = a.toUpperCase();
+      const sel = document.createElement("select"); sel.id = "pj-a-" + a; sel.setAttribute("aria-label", a.toUpperCase());
+      const fin = document.createElement("span"); fin.id = "pj-f-" + a;
+      f.append(b, sel, fin); fs.append(f);
+    });
+    raiz.append(fs);
+
+    // Magia (solo Hechicero)
+    const magia = document.createElement("div"); magia.id = "pj-magia"; magia.hidden = true;
+    const fila3 = document.createElement("div"); fila3.className = "fila";
+    fila3.append(
+      campo("pj-esc1", "Escuela de magia 1", select("pj-esc1", DF.escuelas.map((e) => [e, e]), "Elige…")),
+      campo("pj-esc2", "Escuela de magia 2", select("pj-esc2", DF.escuelas.map((e) => [e, e]), "Elige…")),
+    );
+    const ayM = document.createElement("p"); ayM.className = "ayuda"; ayM.textContent = "El Hechicero conoce todos los hechizos de círculo 0 y 1 de sus dos escuelas: no hace falta elegir hechizos.";
+    magia.append(fila3, ayM); raiz.append(magia);
+
+    raiz.append(campo("pj-extra", "Equipo extra (opcional)", texto("pj-extra", 150, "Además del equipo inicial de tu clase")));
+    const ta = document.createElement("textarea"); ta.id = "pj-trasfondo"; ta.maxLength = 700; ta.rows = 4; ta.placeholder = "De dónde vienes, qué hiciste antes, qué buscas en Aldenmar y cómo eres.";
+    raiz.append(campo("pj-trasfondo", "Trasfondo", ta, true));
+    const res = document.createElement("div"); res.className = "resumen"; res.id = "pj-resumen"; raiz.append(res);
+
+    // Comportamiento
+    const rellenarAtributos = () => {
+      ATR.forEach((a) => {
+        const sel = $("pj-a-" + a); const actual = sel.value;
+        sel.textContent = "";
+        sel.append(opcion("", "—"));
+        [...new Set(form.pool)].sort((x, y) => y - x).forEach((v) => sel.append(opcion(String(v), String(v))));
+        if (actual && [...sel.options].some((o) => o.value === actual)) sel.value = actual;
+      });
+    };
+    const actualizar = () => {
+      const raza = DF.razas.find((r) => r.nombre === $("pj-raza").value);
+      const clase = DF.clases.find((c) => c.nombre === $("pj-clase").value);
+      $("pj-raza-ayuda").textContent = raza ? raza.descripcion : "";
+      $("pj-clase-ayuda").textContent = clase ? `Dado de golpe d${clase.dado} · atributo principal ${clase.principal}. Equipo inicial: ${clase.equipo}` : "";
+      const v = DF.veteranias.find((x) => x.nombre === $("pj-vet").value); $("pj-vet-ayuda").textContent = v ? v.nota : "";
+      [["pj-per1"], ["pj-per2"]].forEach(([id]) => { const x = DF.personalidades.find((q) => q.nombre === $(id).value); $(id + "-ayuda").textContent = x ? x.nota : ""; });
+      $("pj-magia").hidden = !clase?.mago;
+      $("pj-trasfondo-ayuda").textContent = `${$("pj-trasfondo").value.length}/700`;
+      let con = 0;
+      ATR.forEach((a) => {
+        const base = Number($("pj-a-" + a).value);
+        const bono = raza ? raza.valores[a] : 0;
+        const fin = $("pj-f-" + a);
+        if (!base) { fin.textContent = bono ? `(bono racial ${bono > 0 ? "+" : ""}${bono})` : ""; return; }
+        fin.textContent = `${base}${bono ? ` ${bono > 0 ? "+" : "−"} ${Math.abs(bono)}` : ""} = ${base + bono} (${fmod(base + bono)})`;
+        if (a === "con") con = base + bono;
+      });
+      $("pj-resumen").textContent = clase && con ? `PV iniciales: ${Math.max(1, clase.dado + FM.mod(con))} (d${clase.dado} máximo + mod. CON)` : "PV iniciales: elige clase y Constitución.";
+      $("pj-pool").textContent = form.metodo === "tirada" ? (form.tirado ? `Tus tiradas: ${form.pool.join(", ")}. Úsalas una vez cada una.` : "Pulsa «Tirar los dados» para obtener tus seis valores.") : "Usa cada valor una sola vez.";
+    };
+    form.actualizar = actualizar;
+    rellenarAtributos();
+    raiz.addEventListener("input", () => { $("error-personaje").hidden = true; actualizar(); });
+    raiz.addEventListener("change", () => { $("error-personaje").hidden = true; actualizar(); });
+    document.querySelectorAll('input[name="pj-metodo"]').forEach((r) => r.addEventListener("change", () => {
+      if (!r.checked) return;
+      form.metodo = r.value;
+      form.pool = form.metodo === "estandar" ? [...DF.serie] : form.tirado ? form.pool : [];
+      bTirar.hidden = form.metodo !== "tirada"; bTirar.disabled = form.tirado;
+      ATR.forEach((a) => ($("pj-a-" + a).value = ""));
+      rellenarAtributos(); actualizar();
+    }));
+    bTirar.onclick = () => {
+      if (form.tirado) return;
+      form.pool = Array.from({ length: 6 }, tirar4d6kh3);
+      form.tirado = true; bTirar.disabled = true;
+      rellenarAtributos(); actualizar();
+    };
+    bSug.onclick = () => {
+      const clase = DF.clases.find((c) => c.nombre === $("pj-clase").value);
+      if (!form.pool.length) return;
+      const prio = [];
+      for (const m of (clase?.principal || "").matchAll(/FUE|DES|CON|INT|SAB|CAR/g)) prio.push(m[0].toLowerCase());
+      for (const a of ["con", "des", "sab", "fue", "int", "car"]) if (!prio.includes(a)) prio.push(a);
+      const valores = [...form.pool].sort((x, y) => y - x);
+      prio.forEach((a, i) => ($("pj-a-" + a).value = String(valores[i])));
+      actualizar();
+    };
+    actualizar();
+  }
+
+  function abrirFormulario() {
+    if (!nombre) { pedirNombre(); return; }
+    if (!db || soloLectura) { privados.push("Para crear un personaje necesitas poder escribir en la partida."); pintar(); return; }
+    construirFormulario();
+    $("error-personaje").hidden = true;
+    $("velo-personaje").hidden = false;
+    form.actualizar();
+    $("pj-nombre").focus();
+  }
+  $("crear-personaje").onclick = abrirFormulario;
+  $("cerrar-personaje").onclick = () => { $("velo-personaje").hidden = true; };
+  $("form-personaje").onsubmit = (ev) => {
+    ev.preventDefault();
+    const per = [$("pj-per1").value, $("pj-per2").value].filter(Boolean);
+    const base = {};
+    ATR.forEach((a) => (base[a] = Number($("pj-a-" + a).value) || 0));
+    const datos = {
+      nombre: $("pj-nombre").value, jugador: nombre, raza: $("pj-raza").value, clase: $("pj-clase").value, veterania: $("pj-vet").value,
+      personalidad: per, base, metodo: form.metodo, escuelas: [$("pj-esc1").value, $("pj-esc2").value].filter(Boolean),
+      trasfondo: $("pj-trasfondo").value, extra: $("pj-extra").value,
+    };
+    const errores = FM.validarFicha(datos);
+    // Con tiradas, el reparto tiene que usar justo los valores obtenidos.
+    if (form.metodo === "tirada" && (!form.tirado || [...ATR.map((a) => base[a])].sort().join() !== [...form.pool].sort().join())) errores.push("Reparte exactamente los seis valores que has tirado (y tira los dados primero).");
+    const caja = $("error-personaje");
+    if (errores.length) { caja.textContent = errores.join(" "); caja.hidden = false; return; }
+    caja.hidden = true;
+    $("velo-personaje").hidden = true;
+    enviar(FM.textoFicha(datos));
   };
 
   // ------------------------------------------------------------ arranque
@@ -1802,8 +2027,13 @@
       pintarFichas();
       pintarDiario();
     });
+    suscribir((ok, err) => db.doc("mesa/aventuras").onSnapshot(ok, err), (snap) => { aventurasPrevias = snap.exists ? V.aventuras.leerArchivo(snap.data()) : []; });
     suscribir((ok, err) => db.doc("mesa/memoria").onSnapshot(ok, err), (snap) => {
-      if (!snap.exists) return;
+      if (!snap.exists) {
+        // La memoria se borró (reinicio hecho desde otra página): aquí también empieza de cero, o la volvería a escribir esta página.
+        if (memoriaCargada || diario || anales.length || detalles.length) { memoriaCargada = false; aplicarMemoria({}); pintarDiario(); }
+        return;
+      }
       memoriaCargada = true;
       aplicarMemoria(snap.data());
       pintarDiario();

@@ -94,7 +94,7 @@ export function bloqueTurnos(t: InfoTurno): string {
     return [
       "# TURNOS (la mesa juega por turnos: una acción cada vez, en orden)",
       `Orden de la ronda ${t.ronda}: ${t.orden.join(" → ")}.`,
-      `${t.actuante} está CREANDO su personaje (aún no tiene ficha guardada). Guíale paso a paso (raza, clase, trasfondo, atributos, equipo) solo a él, y NO pases la palabra a nadie: el turno sigue siendo suyo hasta que su ficha esté completa. Cuando tengas todos los datos, guárdala con guardar_personaje (jugador: «${t.actuante}») y entonces sí, cierra el turno dando la palabra a ${t.siguiente}. No avances la trama ni mandes a los demás.`,
+      `${t.actuante} está CREANDO su personaje (aún no tiene ficha guardada). Dile que pulse «📜 Crear personaje» (formulario que lo pide todo de una vez) o, si prefiere escribirlo, guíale con todas las opciones válidas a la vez, solo a él, y NO pases la palabra a nadie: el turno sigue siendo suyo hasta que su ficha esté completa. Cuando tengas todos los datos, guárdala con guardar_personaje (jugador: «${t.actuante}») y entonces sí, cierra el turno dando la palabra a ${t.siguiente}. No avances la trama ni mandes a los demás.`,
     ].join("\n");
   return [
     "# TURNOS (la mesa juega por turnos: una acción cada vez, en orden)",
