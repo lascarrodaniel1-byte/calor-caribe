@@ -248,6 +248,13 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 
 Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
 
+### Narrativa por arcos y PNJ vivos
+
+- **Arcos con principio, nudo y desenlace:** la trama se lleva en arcos (`trama`: `abrir_arco` con su premisa, `avanzar_arco` a nudo o desenlace con un hito, `cerrar_arco` con su desenlace). Como mucho 3 abiertos a la vez; los jugadores ven avisos 📖 en cada paso. Los hilos de partidas antiguas pasan a ser arcos en su nudo.
+- **Ritmo:** el programa cuenta los turnos de cada arco en su fase y avisa al DM cuando se alarga (inicio 3, nudo 7, desenlace 3 turnos). Un arco no se cierra sin desenlace, y los arcos resueltos quedan anotados para no reabrirlos ni repetirlos. Cada escena es un mini-arco que no deja nada en el aire.
+- **PNJ que no se quedan parados:** cada PNJ tiene una `agenda` (qué hace cuando nadie lo ve) y puede incidir en un `arco`. El programa cuenta los turnos que lleva fuera de escena y, pasados 3, avisa al DM de que mueva ficha: su avance llega a los protagonistas como un eco breve (un rumor, un mensaje, una huella, una llegada), no como un resumen de lo que hace cada uno. Al cerrar un arco avisa de qué PNJ se quedan sin asunto para darles una agenda nueva o un final.
+- **Foco en los protagonistas:** los PNJ existen para empujar, tentar, estorbar o ayudar a los jugadores; el DM no narra lo que hacen todos a cada momento.
+
 ### Formulario de personaje y aventuras nuevas
 
 - **Crear personaje:** el botón **📜 Crear personaje** (o `/personaje`) abre un formulario con todo lo que hace falta: nombre, raza, clase, veteranía, personalidad, atributos (serie estándar o 4d6kh3 hechas por la página, con sugerencia de reparto para la clase), escuelas de magia si es Hechicero, equipo extra y trasfondo. La página calcula los atributos finales con el bono racial y los PV, y envía una **ficha completa** al DM, que la guarda tal cual sin preguntar nada más.

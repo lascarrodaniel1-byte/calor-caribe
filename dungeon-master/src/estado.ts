@@ -8,7 +8,7 @@ import type { Objeto } from "./equipo.js";
 import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
 import { mapaVacio, migrarMapa, type EstadoMapa } from "./mapa.js";
-import { tramaVacia, type Pnj, type Trama } from "./narrativa.js";
+import { normalizarTrama, tramaVacia, type Pnj, type Trama } from "./narrativa.js";
 import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
 
@@ -101,7 +101,7 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.behelit ??= { carmesi_creado: false, destinados: [] };
   partida.mapa ??= mapaVacio();
   partida.pnjs ??= {};
-  partida.trama ??= tramaVacia();
+  partida.trama = normalizarTrama(partida.trama ?? tramaVacia());
   partida.secuencia ??= secuenciaVacia();
   partida.mapa.lugares ??= {};
   partida.mapa.rastro ??= [];

@@ -466,6 +466,7 @@
     </ul>
     <h3>Bueno saberlo</h3>
     <ul>
+      <li><strong>La historia va por arcos.</strong> Cada historia (un encargo, un misterio, un enemigo) tiene su <em>inicio</em>, su <em>nudo</em> y su <em>desenlace</em>, y el DM las lleva hasta el final: verás avisos 📖 cuando un arco se abre, se complica o se cierra. Los PNJ no se quedan parados cuando os vais: siguen a lo suyo y de vez en cuando os llegará el eco de lo que hacen, siempre con vosotros como protagonistas.</li>
       <li><strong>Si el DM se equivoca,</strong> pulsa «↩ Corregir al DM» bajo su última respuesta (o escribe <em>/corregir</em> y lo que falló): se borra esa respuesta con todos sus efectos y se repite tu acción con tu corrección.</li>
       <li><strong>Se juega por turnos.</strong> Arriba del cuadro de texto ves el orden: cada uno actúa cuando le toca, el DM responde a esa acción y le pasa la palabra al siguiente. Mientras esperas puedes ir escribiendo tu acción; se envía cuando te toque. Si te toca y no quieres hacer nada, pulsa «Pasar turno»; si alguien se ha ido, cualquiera puede saltar su turno. Quien prefiera el desorden de antes puede desmarcar «Jugar por turnos» en el lateral (entonces las acciones esperan en cola y el DM las resuelve juntas).</li>
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
@@ -1507,6 +1508,7 @@
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
+      V.narrativa.contarTurno(copia); // los arcos envejecen en su fase y los PNJ fuera de escena llevan un turno más sin moverse
       const { historial, ...sinHistorial } = copia;
       // Mientras el personaje de quien actúa no esté completo (guardado), el turno no pasa: sigue creándolo.
       if (siguienteJ && !tieneFicha(copia, infoTurno.actuante)) { siguienteJ = null; avisos.push({ pos: texto.length, texto: `✎ ${infoTurno.actuante} aún no ha terminado su personaje: sigue su turno.` }); }

@@ -332,6 +332,8 @@ const esquemas = {
     quiere: z.string().optional().describe("Lo que quiere y lo que teme"),
     actitud: z.string().optional().describe("Actitud hacia el grupo ahora mismo; cámbiala según cómo lo traten"),
     en_escena: z.boolean().optional(),
+    agenda: z.string().optional().describe("Qué hace y hacia dónde va cuando los protagonistas no lo ven (no se queda parado: persigue lo que quiere). Actualízala cuando avance"),
+    arco: z.string().optional().describe("Nombre del arco abierto en el que incide"),
     dijo: z.string().optional().describe("Lo importante que ha revelado, prometido o mentido en este turno (resumen corto)"),
     estado: z.string().optional().describe("Cómo está ahora: vivo, herido, muerto, capturado, huido, traidor… Cámbialo cuando cambie"),
   }),
@@ -339,9 +341,17 @@ const esquemas = {
     objetivo: z.string().optional().describe("Objetivo actual del grupo"),
     revelar_pista: z.string().optional().describe("Algo que los jugadores acaban de descubrir"),
     retirar_pista: z.string().optional().describe("Un trozo del texto de una pista que resultó falsa o que ya no vale; se borra (si hay una versión corregida, pásala en revelar_pista)"),
-    abrir_hilo: z.string().optional().describe("Un misterio o asunto pendiente nuevo (como mucho 3 abiertos)"),
-    cerrar_hilo: z.string().optional().describe("Hilo abierto que se resuelve o se abandona"),
-    resolucion: z.string().optional().describe("Cómo se resolvió el hilo cerrado"),
+    abrir_arco: z.string().optional().describe("Nombre de un arco nuevo (empieza en INICIO; como mucho 3 abiertos). Requiere premisa"),
+    premisa: z.string().optional().describe("El principio del arco: de qué va, quién interviene y qué se juega"),
+    final_previsto: z.string().optional().describe("Hacia dónde apunta el final del arco (puede cambiar)"),
+    avanzar_arco: z.string().optional().describe("Arco que pasa a su siguiente tiempo (requiere fase y hito)"),
+    fase: z.enum(["nudo", "desenlace"]).optional().describe("Fase a la que pasa el arco"),
+    hito: z.string().optional().describe("Qué ha pasado para que el arco avance: la complicación, el giro, la decisión"),
+    cerrar_arco: z.string().optional().describe("Arco que termina (requiere desenlace)"),
+    desenlace: z.string().optional().describe("Cómo acaba el arco: qué se consiguió, qué costó, qué cambia"),
+    abrir_hilo: z.string().optional().describe("(Antiguo) igual que abrir_arco, con el texto como premisa"),
+    cerrar_hilo: z.string().optional().describe("(Antiguo) igual que cerrar_arco"),
+    resolucion: z.string().optional().describe("(Antiguo) igual que desenlace"),
     amenaza: z.string().optional().describe("Fija una amenaza nueva (lo que pasará si no actúan); reinicia su reloj"),
     avanzar_amenaza: z.number().int().min(1).max(6).optional().describe("Pasos que avanza el reloj de la amenaza (a 6 golpea)"),
   }),
@@ -357,9 +367,9 @@ const esquemas = {
 type Nombre = keyof typeof esquemas;
 
 const descripciones: Record<Nombre, string> = {
-  pnj: "Registra o actualiza un PNJ con nombre: su voz, lo que quiere, su actitud y lo que ya ha dicho, para que hable siempre como él y no se repita.",
+  pnj: "Registra o actualiza un PNJ con nombre: su voz, lo que quiere, su actitud, su agenda (qué hace cuando no lo ven) y lo que ya ha dicho, para que hable siempre como él, no se repita y no se quede parado.",
   trama:
-    "Lleva el hilo de la trama: objetivo, pistas reveladas, hilos abiertos (como mucho 3) y el reloj de la amenaza. Úsala cada vez que la historia avance.",
+    "Lleva la trama en arcos con inicio, nudo y desenlace (abrir_arco, avanzar_arco, cerrar_arco; como mucho 3 abiertos), el objetivo, las pistas reveladas y el reloj de la amenaza. Úsala cada vez que la historia avance.",
   iniciativa:
     "Empieza un combate: tira la iniciativa de PJ, criaturas y PNJ con su destreza, veteranía, raza, clase y carácter, y resuelve emboscadas (sorpresa) y planes. Actuar antes que el rival calma los nervios de los novatos.",
   atacar:
@@ -721,8 +731,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       case "trama": {
         const e = validado.data as z.infer<typeof esquemas.trama>;
         const texto = actualizarTrama(partida, e);
-        const visible = texto.split("\n").filter((l) => /^(Pista revelada|Hilo cerrado|Objetivo)/.test(l));
-        return { contenido: texto, aviso: visible.length ? `🧭 ${visible.join("\n")}` : null };
+        const visible = texto.split("\n").filter((l) => /^(Pista revelada|Hilo cerrado|Objetivo|Arco)/.test(l));
+        const arcos = visible.filter((l) => l.startsWith("Arco")).map((l) => `📖 ${l}`);
+        const otros = visible.filter((l) => !l.startsWith("Arco"));
+        return { contenido: texto, aviso: [...arcos, ...(otros.length ? [`🧭 ${otros.join("\n")}`] : [])].join("\n") || null };
       }
       case "siguiente_asalto": {
         const texto = siguienteAsalto(partida);
