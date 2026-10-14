@@ -248,6 +248,13 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 
 Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
 
+### Espacio, tiempo y pruebas estrictas
+
+- **Mapa nuevo y fiel:** la ilustración es la de 821 × 953, con una rosa de los vientos (norte arriba). `ubicacion` acepta `direccion` (N…NO) y `distancia`: «la garita norte» queda de verdad al norte de la ciudad y, si un lugar estaba mal puesto, se recoloca. El DM ve el rumbo real de cada lugar desde el grupo. Las partidas guardadas con el mapa anterior se migran conservando los rumbos.
+- **Plano de la escena** (`plano`): puntos en metros (personajes, PNJ, criaturas y referencias como el fuego o el carro), con el norte arriba. El DM los coloca y los mueve antes de narrar; el programa calcula distancias y rumbos y se los devuelve como verdad. Los jugadores lo ven dibujado bajo el mapa. Con los dos en el plano, un ataque cuerpo a cuerpo comprueba el alcance (2 m; 3 m con asta) y uno a distancia, hasta 120 m.
+- **Reloj del mundo** (`tiempo`): día y hora, que el DM avanza cada turno según lo que dura la acción; los asaltos (6 s) y los días de reposo lo mueven solos. Aparece en el mapa, en el tablero y en cada paso de la secuencia.
+- **Pruebas estrictas** (`prueba`): cada habilidad usa su característica y se rechaza la que no corresponde («la Inteligencia no influye en Persuasión»), la competencia sale de la clase (o del trasfondo, si el DM la justifica; el Barbero-Cirujano tiene pericia en Medicina), un personaje a 0 PV no puede hacer pruebas, y `tirar_dados` ya no vale para pruebas de un PJ. Las reglas del DM le piden además comprobar antes que lo que se intenta se puede hacer (objeto, hechizo, alcance, estado).
+
 ### Narrativa por arcos y PNJ vivos
 
 - **Arcos con principio, nudo y desenlace:** la trama se lleva en arcos (`trama`: `abrir_arco` con su premisa, `avanzar_arco` a nudo o desenlace con un hito, `cerrar_arco` con su desenlace). Como mucho 3 abiertos a la vez; los jugadores ven avisos 📖 en cada paso. Los hilos de partidas antiguas pasan a ser arcos en su nudo.

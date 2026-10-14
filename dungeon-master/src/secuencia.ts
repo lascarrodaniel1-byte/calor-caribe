@@ -5,6 +5,7 @@
 // ocurrido turno a turno ni lo que quedó abierto). Si el DM no la escribe, el
 // programa anota el turno él mismo.
 import type { Partida } from "./estado.js";
+import { textoReloj } from "./espacio.js";
 
 export interface Paso {
   ronda: number;
@@ -15,6 +16,8 @@ export interface Paso {
   resultado: string;
   /** El DM no escribió la marca: el resultado es el comienzo de su narración. */
   auto?: boolean;
+  /** Día y hora del mundo al acabar el turno. */
+  hora?: string;
 }
 
 /** Dónde está y qué hace alguien ahora, de dónde viene y a dónde va. */
@@ -127,6 +130,7 @@ export function registrarPaso(partida: Partida, d: DatosPaso): Paso {
     accion: resumir(d.accion, 160),
     resultado: d.marca.resultado ?? resumir(d.narracion, 260),
     ...(d.marca.resultado ? {} : { auto: true }),
+    ...(partida.reloj ? { hora: textoReloj(partida.reloj) } : {}),
   };
   s.pasos.push(paso);
   if (s.pasos.length > MAX_PASOS) s.pasos.splice(0, s.pasos.length - MAX_PASOS);
@@ -185,6 +189,7 @@ export function tablero(partida: Partida): string {
     .map(([k, v]) => `- ${k} (PNJ): ${v.ahora}${v.rumbo ? ` · RUMBO: ${v.rumbo}` : ""}`);
   return [
     "## TABLERO (léelo primero: dónde está cada uno)",
+    ...(partida.reloj ? [`AHORA: ${textoReloj(partida.reloj)}`] : ["HORA: sin fijar (fíjala con tiempo fijar)"]),
     `ESCENA: ${s?.escena ?? (lugar ? `el grupo está en ${lugar}` : "sin fijar: sitúala tú en tu próxima respuesta")}`,
     ...lineas,
     ...otros,
@@ -195,7 +200,7 @@ export function tablero(partida: Partida): string {
 export function textoSecuencia(s: Secuencia | undefined, rondaActual?: number): string {
   if (!s || (!s.pasos.length && !s.pendientes.length)) return "";
   const recientes = rondaActual === undefined ? s.pasos.slice(-12) : s.pasos.filter((p) => p.ronda >= rondaActual - 1).slice(-20);
-  const lineas = recientes.map((p, i) => `${i + 1}. [ronda ${p.ronda}] ${p.jugador}: ${p.accion} → ${p.resultado}${p.auto ? " (anotado por el programa)" : ""}`);
+  const lineas = recientes.map((p, i) => `${i + 1}. [ronda ${p.ronda}${p.hora ? ` · ${p.hora}` : ""}] ${p.jugador}: ${p.accion} → ${p.resultado}${p.auto ? " (anotado por el programa)" : ""}`);
   return [
     "## Secuencia de turnos (lo ocurrido, en orden; es canon)",
     lineas.join("\n") || "(aún sin turnos)",

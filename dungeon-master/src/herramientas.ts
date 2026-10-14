@@ -32,7 +32,9 @@ import {
   UBICACIONES,
 } from "./heridas.js";
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
-import { moverGrupo, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
+import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
+import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
@@ -273,11 +275,15 @@ const esquemas = {
     lugar: z.string().describe("Dónde está el grupo ahora (o de dónde parte si viaja). Reutiliza el mismo nombre para el mismo sitio"),
     region: z.enum(NOMBRES_REGIONES).optional().describe("Región, si el lugar es nuevo"),
     cerca_de: z.string().optional().describe("Lugar conocido junto al que está, si es nuevo"),
+    direccion: z.enum(DIRECCIONES).optional().describe("Hacia dónde queda respecto a cerca_de (o al centro de su región): N, NE, E, SE, S, SO, O, NO. El norte es ARRIBA del mapa. Si el lugar ya existe y estaba mal colocado, se recoloca"),
+    distancia: z.enum(Object.keys(DISTANCIAS) as [keyof typeof DISTANCIAS, ...(keyof typeof DISTANCIAS)[]]).optional().describe("pegado, cerca, lejos o muy_lejos (por defecto cerca)"),
     tipo: z.enum(TIPOS_LUGAR).optional(),
     descripcion: z.string().optional().describe("Una línea para el mapa"),
     viajando_hacia: z.string().optional().describe("Destino, si están de viaje; omítelo al llegar"),
     destino_region: z.enum(NOMBRES_REGIONES).optional(),
     destino_cerca_de: z.string().optional(),
+    destino_direccion: z.enum(DIRECCIONES).optional().describe("Rumbo del destino respecto a destino_cerca_de o al lugar de partida"),
+    destino_distancia: z.enum(Object.keys(DISTANCIAS) as [keyof typeof DISTANCIAS, ...(keyof typeof DISTANCIAS)[]]).optional(),
     destino_tipo: z.enum(TIPOS_LUGAR).optional(),
     progreso: z.number().min(0).max(1).optional().describe("Parte del viaje recorrida, de 0 a 1"),
   }),
@@ -355,6 +361,52 @@ const esquemas = {
     amenaza: z.string().optional().describe("Fija una amenaza nueva (lo que pasará si no actúan); reinicia su reloj"),
     avanzar_amenaza: z.number().int().min(1).max(6).optional().describe("Pasos que avanza el reloj de la amenaza (a 6 golpea)"),
   }),
+  plano: z.object({
+    escena: z.string().optional().describe("Nombre de la escena (un sitio concreto). Si cambia, el plano se reinicia"),
+    poner: z
+      .array(
+        z.object({
+          nombre: z.string().describe("Personaje, PNJ, criatura o cosa (el fuego, el carro, la puerta norte…)"),
+          tipo: z.enum(["pj", "pnj", "cosa"]).optional().describe("Se deduce del nombre; fíjalo si no"),
+          ref: z.string().optional().describe("Punto ya colocado respecto al que se sitúa (omítelo solo para el primero)"),
+          direccion: z.enum(DIRECCIONES).optional().describe("Rumbo respecto a ref: el norte es ARRIBA"),
+          metros: z.number().min(0.5).max(500).optional(),
+          nota: z.string().optional().describe("Una nota corta: «arde», «mirando al sur»…"),
+        }),
+      )
+      .optional()
+      .describe("Coloca (o recoloca) puntos"),
+    mover: z
+      .array(
+        z.object({
+          nombre: z.string(),
+          direccion: z.enum(DIRECCIONES).optional(),
+          hacia: z.string().optional().describe("Avanza hacia este punto"),
+          de: z.string().optional().describe("Se aleja de este punto"),
+          metros: z.number().min(0.5).max(500),
+        }),
+      )
+      .optional()
+      .describe("Mueve a quien se desplaza (llámalo ANTES de narrar el movimiento)"),
+    quitar: z.array(z.string()).optional().describe("Puntos que ya no importan"),
+  }),
+  tiempo: z.object({
+    fijar: z.object({ dia: z.number().int().min(1).optional(), hora: z.number().int().min(0).max(23), minuto: z.number().int().min(0).max(59).optional() }).optional().describe("Pon el reloj en una hora (la primera vez, al empezar; luego solo hacia delante)"),
+    avanzar: z.object({ segundos: z.number().int().min(1).optional(), minutos: z.number().int().min(1).optional(), horas: z.number().int().min(1).optional(), dias: z.number().int().min(1).optional() }).optional().describe("Cuánto pasa en este turno según lo que dura lo hecho"),
+    motivo: z.string().optional().describe("Qué ha pasado en ese tiempo, en pocas palabras"),
+  }),
+  prueba: z.object({
+    quien: z.string().describe("Personaje (o PNJ) que hace la prueba"),
+    habilidad: z.enum(NOMBRES_HABILIDADES).optional().describe("Habilidad: su característica es la que cuenta. Omítela en una prueba pura de característica o una salvación"),
+    atributo: z.enum(ATRIBUTOS).optional().describe("Obligatorio en salvaciones y pruebas puras. Si lo pasas junto a una habilidad y no es la suya, la herramienta rechaza la tirada"),
+    tipo: z.enum(["habilidad", "salvacion"]).optional().describe("salvacion para una salvación (suma la competencia de salvación de su clase)"),
+    cd: z.number().int().min(1).max(35),
+    competente: z.boolean().optional().describe("Fuerza la competencia en la habilidad si su trasfondo la justifica (true) o la quita (false); por defecto, la de su clase"),
+    ventaja: z.boolean().optional(),
+    desventaja: z.boolean().optional(),
+    bono: z.number().int().optional().describe("PNJ: su bonificador total. PJ: ajuste por situación (herramientas, cobertura…)"),
+    motivo: z.string().describe("Qué intenta, en pocas palabras"),
+  }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
   anotar_mundo: z.object({
@@ -410,7 +462,13 @@ const descripciones: Record<Nombre, string> = {
   lanzar_hechizo:
     "Lanza un hechizo de un personaje jugador: tirada de lanzamiento, efecto y el precio que paga (calor, aliento, sangre, cordura o años), con catalizadores.",
   ubicacion:
-    "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos.",
+    "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos, con su direccion (el norte es arriba del mapa); con direccion recoloca uno mal puesto.",
+  plano:
+    "Plano de la escena en metros (norte arriba): coloca y mueve a personajes, PNJ, criaturas y puntos de referencia (el fuego, el carro, la puerta). El programa calcula distancias y rumbos y te los devuelve como verdad espacial; los ataques cuerpo a cuerpo comprueban el alcance.",
+  tiempo:
+    "Reloj del mundo (día y hora): fíjalo al empezar y avánzalo cada turno según lo que dura la acción. Los asaltos y los días de reposo lo mueven solos.",
+  prueba:
+    "Prueba de habilidad, de característica o salvación de un personaje: aplica la característica correcta (rechaza la que no corresponde a la habilidad), la competencia de su clase y compara con la CD.",
   anotar_mundo:
     "Guarda un hecho importante de la campaña, o corrige uno anterior que ha cambiado (reemplaza) o que ya no es cierto (olvidar).",
 };
@@ -464,6 +522,8 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
     switch (nombre as Nombre) {
       case "tirar_dados": {
         const e = validado.data as z.infer<typeof esquemas.tirar_dados>;
+        if (pareceUnaPrueba(partida, e.expresion, e.motivo))
+          throw new Error("Esto es una prueba de característica, habilidad o salvación de un personaje: hazla con la herramienta prueba (aplica su característica y competencia y comprueba que la habilidad corresponde). tirar_dados es para dados sueltos (daño, tablas, azar).");
         const t = tirar(e.expresion, e.modo ?? "normal");
         const linea = describir(t);
         const modo = e.modo && e.modo !== "normal" ? ` con ${e.modo}` : "";
@@ -585,6 +645,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.pasar_tiempo>;
         const ps = e.personajes?.length ? e.personajes.map((n) => buscar(partida, n)) : Object.values(partida.personajes);
         for (const p of ps) descansar(p, e.dias, e.calidad);
+        avanzarSiHay(partida, e.dias * 86400);
         const texto = ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`).join("\n\n");
         return { contenido: texto, aviso: `⏳ ${e.dias} día(s), ${e.calidad}\n${texto}` };
       }
@@ -594,6 +655,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
           ? e.personajes.map((n) => buscar(partida, n))
           : Object.values(partida.personajes).filter((p) => p.heridas.some((h) => h.sangrando || /costillas/.test(h.estructura ?? "")));
         for (const p of Object.values(partida.personajes)) enfriar(p, e.asaltos);
+        avanzarSiHay(partida, e.asaltos * 6);
         if (!ps.length) return { contenido: "Nadie está sangrando.", aviso: null };
         const texto = ps.map((p) => avanzarAsaltos(p, e.asaltos, e.esfuerzo ?? true)).join("\n");
         return { contenido: texto, aviso: `🩸 ${texto}` };
@@ -700,6 +762,21 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const texto = lanzar(p, { ...e, objetivo });
         return { contenido: `${texto}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
       }
+      case "plano": {
+        const e = validado.data as z.infer<typeof esquemas.plano>;
+        const texto = actualizarPlano(partida, e);
+        return { contenido: texto, aviso: `🗺️ ${texto.split("\n").filter((l) => !l.startsWith("-") && !l.startsWith("##")).join("\n")}` };
+      }
+      case "tiempo": {
+        const e = validado.data as z.infer<typeof esquemas.tiempo>;
+        const texto = actualizarReloj(partida, e);
+        return { contenido: texto, aviso: texto };
+      }
+      case "prueba": {
+        const e = validado.data as z.infer<typeof esquemas.prueba>;
+        const r = resolverPrueba(partida, e);
+        return { contenido: r.texto, aviso: r.texto };
+      }
       case "ubicacion": {
         const e = validado.data as z.infer<typeof esquemas.ubicacion>;
         const texto = moverGrupo(partida.mapa, { ...e, nombre: e.lugar });
@@ -712,6 +789,14 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "atacar": {
         const e = validado.data as z.infer<typeof esquemas.atacar>;
+        // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
+        const dist = distanciaPlano(partida, e.atacante, e.objetivo);
+        if (dist) {
+          const asta = /alabarda|guada|lanza|pica|jabalina larga|estacas?/i.test(e.arma ?? "");
+          const alcance = e.a_distancia ? 120 : asta ? 3 : 2;
+          if (dist.metros > alcance)
+            throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
+        }
         const r = atacar(partida, e);
         if (r.muerto) {
           const j = enEscena(partida, r.muerto);
@@ -737,6 +822,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         return { contenido: texto, aviso: [...arcos, ...(otros.length ? [`🧭 ${otros.join("\n")}`] : [])].join("\n") || null };
       }
       case "siguiente_asalto": {
+        avanzarSiHay(partida, 6);
         const texto = siguienteAsalto(partida);
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }

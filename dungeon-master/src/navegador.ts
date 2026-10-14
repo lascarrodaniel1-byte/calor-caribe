@@ -12,6 +12,7 @@ import { textoPnj, textoPnjsFuera, textoTrama } from "./narrativa.js";
 import * as turnos from "./turnos.js";
 import * as formulario from "./formulario.js";
 import * as aventuras from "./aventuras.js";
+import * as espacio from "./espacio.js";
 import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
 
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
@@ -35,6 +36,9 @@ export function estadoParaDM(p: Partida, foco?: string): string {
   const partes: string[] = [];
   const tab = secuencia.tablero(p);
   if (tab) partes.push(tab);
+  const plano = espacio.textoPlano(p.plano);
+  if (plano) partes.push(plano);
+  else partes.push("## PLANO DE LA ESCENA\n(vacío: si hay una escena con varios actores —combate, calle, sala—, ábrela con plano y coloca a los presentes)");
   partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
   const pjs = Object.values(p.personajes);
   // Por turnos, solo el jugador que actúa lleva la ficha completa; los demás, abreviada (el prompt no crece con cada jugador).
@@ -97,5 +101,5 @@ export function estadoParaDM(p: Partida, foco?: string): string {
   return partes.join("\n\n");
 }
 
-export { aventuras, formulario, narrativa, secuencia, turnos };
+export { aventuras, espacio, formulario, narrativa, secuencia, turnos };
 export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA_WEB };

@@ -223,12 +223,17 @@
   .donde small { display: block; font: 400 14px var(--f-ui); color: var(--apagado); }
   .lienzo { border: 6px solid #3b2616; box-shadow: 0 6px 16px #000a, inset 0 0 0 1px #00000055; background: #d9c49a; line-height: 0; }
   .lienzo svg { width: 100%; height: auto; display: block; }
-  .lienzo .etiqueta-lugar { font: 700 36px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 9px; stroke-linejoin: round; }
-  .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 40px; }
+  .lienzo .etiqueta-lugar { font: 700 23px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 6px; stroke-linejoin: round; }
+  .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 26px; }
+  .lienzo.plano { background: #e9d9b4; }
+  .lienzo.plano .pl-etq { font: 700 12px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 3.5px; stroke-linejoin: round; }
+  .lienzo.plano .pl-etq.pj { fill: #7a1d15; }
+  .lienzo.plano text.pl-menor { font: 600 10px "Alegreya Sans", system-ui, sans-serif; fill: #6b5233; }
+  .plano-pie { font: 400 14px var(--f-ui); color: var(--apagado); margin: 6px 0 0; }
   .lienzo.ampliable { cursor: zoom-in; }
   .velo .mapa-grande { width: min(1100px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
-  .velo .mapa-grande .lienzo .etiqueta-lugar { font-size: 26px; stroke-width: 7px; }
-  .velo .mapa-grande .lienzo .etiqueta-lugar.actual { font-size: 30px; }
+  .velo .mapa-grande .lienzo svg { width: auto; max-width: 100%; max-height: 82vh; margin: 0 auto; }
+  .velo .mapa-grande .lienzo { text-align: center; background: #1b110a; }
   .lienzo .onda { animation: onda 2.4s ease-out infinite; transform-origin: center; transform-box: fill-box; }
   @keyframes onda { 0% { opacity: .8; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.2); } }
   @media (prefers-reduced-motion: reduce) { .lienzo .onda { animation: none; opacity: .4; } }
@@ -364,6 +369,12 @@
         <div class="donde" id="mapa-donde">Aún no sabemos dónde estáis.<small>El DM os situará al empezar.</small></div>
         <div class="lienzo ampliable" id="mapa" role="button" tabindex="0" title="Ver el mapa en grande"></div>
       </section>
+      <details class="diario-seccion" id="seccion-plano" open>
+        <summary><h2>Plano de la escena</h2></summary>
+        <div class="donde" id="plano-donde"></div>
+        <div class="lienzo plano" id="plano" role="img" aria-label="Plano de la escena con la posición de cada uno"></div>
+        <p class="plano-pie">Norte arriba. Rojos: personajes; oscuros: PNJ y criaturas; cuadrados: puntos de referencia.</p>
+      </details>
       <details class="diario-seccion" id="seccion-diario">
         <summary><h2>Diario de la aventura</h2></summary>
         <div class="diario" id="diario">Aún no hay nada escrito.</div>
@@ -454,6 +465,8 @@
       <li><strong>Concreta con qué, a quién y dónde:</strong> «ataco con el estoque al Hambriento 3, a la cabeza» o «trato la herida del brazo con alcohol y aguja». Usa solo lo que tienes en tu ficha.</li>
       <li><strong>No actúes por otros jugadores.</strong> Si quieres que otro personaje haga algo, díselo con una frase («le grito a Agmar que corte la cuerda»); decidirá su jugador en su turno. Los PNJ sí puedes pedirles cosas, pero ellos pueden negarse.</li>
       <li><strong>Escribe la acción ya pensada.</strong> Sin autocorrecciones a mitad de frase («no, mejor…») ni mayúsculas o insultos que no aportan; la urgencia se expresa con «rápido, sin detenerme a mirar».</li>
+      <li><strong>Cada habilidad usa su característica.</strong> Persuadir, engañar o intimidar es Carisma; percibir o curar, Sabiduría; saber o investigar, Inteligencia; sigilo y acrobacias, Destreza; trepar o forzar, Fuerza. Si propones otra («uso mi inteligencia para convencerle»), el DM te dirá que no influye y tirarás con la correcta. Tampoco se puede hacer lo que no tienes (un objeto que no llevas, un hechizo que no conoces) ni lo que queda fuera de alcance.</li>
+      <li><strong>Dónde y cuándo:</strong> el norte es siempre <em>arriba</em>, en el mapa y en el <strong>plano de la escena</strong> (a la derecha, bajo el mapa), que muestra en metros dónde está cada uno. La hora del mundo aparece con el mapa (🕒). Si el DM te sitúa mal («detrás del fuego» cuando estás delante), corrígele con el plano en la mano.</li>
       <li><strong>Si el DM se equivoca</strong> (te confundió de personaje, inventó un dato o se olvidó de algo), usa <strong>Corregir al DM</strong> con una frase concreta: «Dije que agarraba al mago (Al-fero), no a Dal Tepes». Una corrección clara vale más que repetir la acción.</li>
     </ul>
     <h3>Los dados</h3>
@@ -854,29 +867,32 @@
     const pos = m.posicion ? L[m.posicion] : null;
     const ruta = m.ruta && L[m.ruta.desde] && L[m.ruta.hasta] ? m.ruta : null;
     const partes = [];
+    const K = V.ANCHO / 1260; // los tamaños de los símbolos están pensados para un lienzo de 1260 de ancho
     partes.push(`<image href="${MAPA_IMG}" width="${V.ANCHO}" height="${V.ALTO}" preserveAspectRatio="none"/>`);
+    // Rosa de los vientos: el norte es siempre arriba
+    partes.push(`<g transform="translate(${V.ANCHO - 62},62)" aria-label="Norte arriba"><circle r="34" fill="#f6e8c4" fill-opacity=".82" stroke="#3a2414" stroke-width="2.5"/><path d="M0,-27 L7,0 L0,5 L-7,0 Z" fill="#8a2a1e" stroke="#3a2414" stroke-width="1.5"/><path d="M0,27 L7,0 L0,-5 L-7,0 Z" fill="#3a2414" fill-opacity=".55"/><text y="-40" text-anchor="middle" font-family="Alegreya Sans, system-ui, sans-serif" font-size="19" font-weight="800" fill="#3a2414" stroke="#f6e8c4" stroke-width="4" paint-order="stroke">N</text></g>`);
     // Rastro de lo recorrido
     const rastro = (m.rastro || []).map((id) => L[id]).filter(Boolean);
-    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#3a2414" stroke-width="4" stroke-dasharray="2 11" stroke-linecap="round"/>`);
+    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#3a2414" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`);
     // Viaje en curso
     let marca = pos ? { x: pos.x, y: pos.y } : null;
     if (ruta) {
       const a = L[ruta.desde], b = L[ruta.hasta];
-      partes.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#fff3d2" stroke-opacity=".7" stroke-width="9" stroke-linecap="round"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8a2a1e" stroke-width="5" stroke-dasharray="16 10" stroke-linecap="round"/>`);
-      partes.push(`<circle cx="${b.x}" cy="${b.y}" r="16" fill="none" stroke="#8a2a1e" stroke-width="5"/>`);
+      partes.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#fff3d2" stroke-opacity=".7" stroke-width="7" stroke-linecap="round"/><line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8a2a1e" stroke-width="4" stroke-dasharray="12 8" stroke-linecap="round"/>`);
+      partes.push(`<circle cx="${b.x}" cy="${b.y}" r="12" fill="none" stroke="#8a2a1e" stroke-width="4"/>`);
       marca = { x: a.x + (b.x - a.x) * ruta.progreso, y: a.y + (b.y - a.y) * ruta.progreso };
     }
     // El sello de lacre: dónde estáis
     if (marca) {
-      partes.push(`<circle class="onda" cx="${marca.x}" cy="${marca.y}" r="28" fill="none" stroke="#b02a1e" stroke-width="5"/>`);
-      partes.push(`<circle cx="${marca.x}" cy="${marca.y}" r="19" fill="#9e2b25" stroke="#f6e8c4" stroke-width="4"/><circle cx="${marca.x}" cy="${marca.y}" r="9" fill="none" stroke="#e8a090" stroke-width="2.5"/>`);
+      partes.push(`<circle class="onda" cx="${marca.x}" cy="${marca.y}" r="${19 * K * 1.5}" fill="none" stroke="#b02a1e" stroke-width="4"/>`);
+      partes.push(`<circle cx="${marca.x}" cy="${marca.y}" r="${19 * K * 1.2}" fill="#9e2b25" stroke="#f6e8c4" stroke-width="3"/><circle cx="${marca.x}" cy="${marca.y}" r="${9 * K * 1.2}" fill="none" stroke="#e8a090" stroke-width="2"/>`);
     }
     // Lugares
     for (const l of Object.values(L)) {
       const actual = (pos && l.id === pos.id && !ruta) || (ruta && l.id === ruta.hasta);
-      partes.push(`<circle cx="${l.x}" cy="${l.y}" r="${actual ? 9 : 8}" fill="#3a2414" stroke="#f6e8c4" stroke-width="3"/>`);
-      const izquierda = l.x > V.ANCHO - 260;
-      partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -14 : 14)}" y="${l.y - 12}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
+      partes.push(`<circle cx="${l.x}" cy="${l.y}" r="${actual ? 7 : 6}" fill="#3a2414" stroke="#f6e8c4" stroke-width="2.5"/>`);
+      const izquierda = l.x > V.ANCHO - 190;
+      partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -11 : 11)}" y="${l.y - 9}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
     }
     const svg = `<svg viewBox="0 0 ${V.ANCHO} ${V.ALTO}" role="img" aria-label="Mapa de Velmora con la posición del grupo">${partes.join("")}</svg>`;
     $("mapa").innerHTML = svg;
@@ -893,7 +909,8 @@
       titulo = "Aún no sabemos dónde estáis.";
       detalle = "El DM os situará al empezar.";
     }
-    $("mapa-donde").innerHTML = `${ruta ? "🧭" : "📍"} ${escapar(titulo)}<small>${escapar(detalle)}</small>`;
+    const hora = V.espacio.textoReloj(p.reloj);
+    $("mapa-donde").innerHTML = `${ruta ? "🧭" : "📍"} ${escapar(titulo)}<small>${escapar(detalle)}</small>${hora ? `<small>🕒 ${escapar(hora)}</small>` : ""}`;
     $("franja-texto").textContent = `${ruta ? "🧭" : "📍"} ${titulo}`;
   }
 
@@ -906,8 +923,53 @@
     cont.textContent = pasos + (seq.pendientes.length ? `\n\nPENDIENTE\n${seq.pendientes.map((x) => "· " + x).join("\n")}` : "");
   }
 
+  // El plano de la escena: dónde está cada uno, en metros, con el norte arriba (lo que el DM tiene como verdad espacial).
+  function pintarPlano(p) {
+    const pl = p.plano;
+    const puntos = pl ? Object.entries(pl.puntos) : [];
+    const hora = V.espacio.textoReloj(p.reloj);
+    $("plano-donde").innerHTML = puntos.length ? `${escapar(pl.escena || "Escena actual")}${hora ? `<small>🕒 ${escapar(hora)}</small>` : ""}` : `Sin plano todavía<small>El DM lo abrirá cuando haya una escena con varios actores${hora ? ` · 🕒 ${escapar(hora)}` : ""}.</small>`;
+    if (!puntos.length) { $("plano").innerHTML = ""; $("plano").hidden = true; return; }
+    $("plano").hidden = false;
+    const xs = puntos.map(([, q]) => q.x), ys = puntos.map(([, q]) => q.y);
+    const pad = 4;
+    const minx = Math.min(...xs) - pad, maxx = Math.max(...xs) + pad, miny = Math.min(...ys) - pad, maxy = Math.max(...ys) + pad;
+    const W = 360, H = 300;
+    const esc = Math.min(40, Math.min(W / (maxx - minx), H / (maxy - miny)));
+    const ox = (W - (maxx - minx) * esc) / 2 - minx * esc, oy = (H - (maxy - miny) * esc) / 2 - miny * esc;
+    const X = (x) => (x * esc + ox).toFixed(1), Y = (y) => (y * esc + oy).toFixed(1);
+    const paso = esc * 5 >= 40 ? 5 : esc * 10 >= 40 ? 10 : 20;
+    const partes = [`<rect width="${W}" height="${H}" fill="#e9d9b4"/>`];
+    for (let gx = Math.ceil(minx / paso) * paso; gx <= maxx; gx += paso) partes.push(`<line x1="${X(gx)}" y1="0" x2="${X(gx)}" y2="${H}" stroke="#8a6a3a" stroke-opacity=".28"/>`);
+    for (let gy = Math.ceil(miny / paso) * paso; gy <= maxy; gy += paso) partes.push(`<line x1="0" y1="${Y(gy)}" x2="${W}" y2="${Y(gy)}" stroke="#8a6a3a" stroke-opacity=".28"/>`);
+    // Norte y escala
+    partes.push(`<g transform="translate(${W - 24},26)"><circle r="15" fill="#f6e8c4" fill-opacity=".85" stroke="#3a2414"/><path d="M0,-11 L4,2 L0,5 L-4,2 Z" fill="#8a2a1e"/><text y="-19" text-anchor="middle" class="pl-etq" font-size="11">N</text></g>`);
+    partes.push(`<line x1="10" y1="${H - 12}" x2="${(10 + paso * esc).toFixed(1)}" y2="${H - 12}" stroke="#3a2414" stroke-width="2"/><text x="10" y="${H - 18}" class="pl-menor">${paso} m</text>`);
+    const etiquetas = [], rotulos = [];
+    for (const [nombre, q] of puntos) {
+      const cx = X(q.x), cy = Y(q.y);
+      if (q.tipo === "pj") partes.push(`<circle cx="${cx}" cy="${cy}" r="8" fill="#9e2b25" stroke="#f6e8c4" stroke-width="2.5"/>`);
+      else if (q.tipo === "pnj") partes.push(`<circle cx="${cx}" cy="${cy}" r="7" fill="#3a2414" stroke="#f6e8c4" stroke-width="2.5"/>`);
+      else partes.push(`<rect x="${(cx - 6).toFixed(1)}" y="${(cy - 6).toFixed(1)}" width="12" height="12" fill="#8a7a5a" stroke="#f6e8c4" stroke-width="2"/>`);
+      const dcha = Number(cx) > W - 120;
+      // Las etiquetas no se pisan: si el sitio está ocupado, se prueba un poco más arriba o más abajo.
+      const ancho = nombre.length * 6.4;
+      const lx = Number(cx) + (dcha ? -12 - ancho : 12);
+      let ly = Number(cy) + 4;
+      for (const dy of [0, -13, 13, -26, 26]) {
+        const y = Number(cy) + 4 + dy;
+        if (!etiquetas.some((e) => Math.abs(e.y - y) < 12 && lx < e.x + e.w && lx + ancho > e.x)) { ly = y; break; }
+      }
+      etiquetas.push({ x: lx, y: ly, w: ancho });
+      rotulos.push(`<text class="pl-etq${q.tipo === "pj" ? " pj" : ""}" x="${(Number(cx) + (dcha ? -12 : 12)).toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${dcha ? "end" : "start"}">${escapar(nombre)}</text>`);
+    }
+    partes.push(...rotulos); // los rótulos van encima de todos los puntos
+    $("plano").innerHTML = `<svg viewBox="0 0 ${W} ${H}">${partes.join("")}</svg>`;
+  }
+
   function pintarFichas() {
     pintarMapa(partida);
+    pintarPlano(partida);
     pintarSecuencia();
     const cont = $("lista-fichas");
     const pjs = Object.values(partida.personajes);

@@ -11,6 +11,8 @@ import { herramientas } from "./herramientas.js";
 import { REGLAS_MAGIA } from "./magia.js";
 import { REGLAS_MAPA } from "./mapa.js";
 import { REGLAS_NARRATIVA } from "./narrativa.js";
+import { REGLAS_ESPACIO_TIEMPO } from "./espacio.js";
+import { REGLAS_PRUEBAS } from "./pruebas.js";
 import { AMBIENTACION, CLASES, RAZAS, textoRazasYClases } from "./mundo.js";
 import { REGLAS_VIALES } from "./viales.js";
 
@@ -19,7 +21,7 @@ const BASE = `Eres el Dungeon Master de una campaña multijugador de dark fantas
 - 1 a 3 párrafos por turno, con detalle sensorial y sin muros de texto. Acaba con la situación abierta ("¿Qué hacéis?").
 - Decisiones con consecuencias reales; premia la creatividad con pruebas razonables. Varía exploración, intriga y combate; los PNJ tienen voz y motivos propios. Inventa libremente, con coherencia.
 - Las acciones de varios jugadores llegan juntas con su nombre delante: resuélvelas todas y reparte el protagonismo. En combate, respeta el orden de turnos y describe el estado de los enemigos sin dar números.
-- Toda tirada pasa por tirar_dados (oculta=true si es secreta); nunca inventes un resultado. Antes de una prueba di la característica y la CD.
+- Las pruebas, habilidades y salvaciones de un personaje van con la herramienta prueba; los ataques, con atacar; el resto de dados sueltos, con tirar_dados (oculta=true si es secreta). Nunca inventes un resultado. Antes de una prueba di la característica, la habilidad y la CD.
 - Las fichas guardadas son la verdad: actualízalas con modificar_personaje (PV, objetos, oro, condiciones). Las heridas físicas van con el sistema de heridas.
 - A 0 PV: inconsciente y salvaciones contra muerte. La muerte es posible, pero anunciada por el peligro.
 - Inicio: presenta Velmora en pocas líneas y guía la creación de personaje (raza y clase de Velmora, trasfondo, atributos con la serie estándar 15,14,13,12,10,8 o 4d6kh3 seis veces; suma el bono racial; PV = dado de golpe máximo + mod. CON; equipo inicial de la clase) y guárdala con guardar_personaje (con jugador: el nombre de quien la juega). En el juego por turnos, mientras la ficha de un jugador no esté guardada su turno NO pasa: guíale solo a él hasta completarla y no des la palabra a otro hasta entonces. Luego, un gancho fuerte: abre el primer arco de la historia (trama abrir_arco, con su premisa) y un PNJ con agenda propia.
@@ -106,7 +108,7 @@ ${lineas.join("\n")}
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
-export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
+export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
 
 export function consultarReglas(tema: string, nombre?: string): string {
   switch (String(tema).toLowerCase()) {

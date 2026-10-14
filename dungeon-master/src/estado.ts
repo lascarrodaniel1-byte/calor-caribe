@@ -9,6 +9,7 @@ import { pvMaxEfectivo, resumenHerida, type Herida } from "./heridas.js";
 import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
 import { mapaVacio, migrarMapa, type EstadoMapa } from "./mapa.js";
 import { normalizarTrama, tramaVacia, type Pnj, type Trama } from "./narrativa.js";
+import type { Plano, Reloj } from "./espacio.js";
 import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
 
@@ -70,6 +71,10 @@ export interface Partida {
   trama?: Trama;
   /** Secuencia de turnos y asuntos pendientes (la escribe el DM al final de cada respuesta). */
   secuencia?: Secuencia;
+  /** Plano de la escena actual: dónde está cada uno, en metros (norte arriba). */
+  plano?: Plano;
+  /** Día y hora del mundo. */
+  reloj?: Reloj;
 }
 
 export function nuevaPartida(): Partida {
