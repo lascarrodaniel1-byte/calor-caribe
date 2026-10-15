@@ -10,6 +10,7 @@ import { magiaInicial, textoMagia, type MagiaPersonaje } from "./magia.js";
 import { mapaVacio, migrarMapa, type EstadoMapa } from "./mapa.js";
 import { normalizarTrama, tramaVacia, type Pnj, type Trama } from "./narrativa.js";
 import type { Plano, Reloj } from "./espacio.js";
+import type { RegistroEncuentro } from "./encuentros.js";
 import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
 
@@ -75,6 +76,8 @@ export interface Partida {
   plano?: Plano;
   /** Día y hora del mundo. */
   reloj?: Reloj;
+  /** Últimos encuentros (para no repetir enemigos). */
+  encuentros?: RegistroEncuentro[];
 }
 
 export function nuevaPartida(): Partida {

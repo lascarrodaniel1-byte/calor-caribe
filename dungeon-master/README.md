@@ -248,6 +248,12 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 
 Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
 
+### Variedad de enemigos
+
+- **Antes:** el DM elegía los enemigos él solo, sin azar, y tendía a repetir los que más pesan en la ambientación (Hambrientos, Inquisición de la Llama Gris). Los dados de combate sí eran aleatorios, pero **qué** aparecía no.
+- **Ahora:** la herramienta `encuentro` tira de verdad en una tabla (humanos, fauna y monstruos, no-muertos, culto, Corte Pálida, Inquisición, peligros del entorno, encuentros sociales y hallazgos) ponderada por la región donde está el grupo, la hora, el nivel medio y la dificultad. Cada resultado trae quiénes son, qué quieren, cómo evitarlos o resolverlos sin pelear y cómo montarlos.
+- **Memoria:** el programa recuerda los últimos encuentros y penaliza repetir familia (nunca salen más de dos seguidos de la misma, y los no-muertos quedan en torno a una quinta parte). `aparecer_criatura` se niega a poner un tercer encuentro seguido de la misma familia salvo `repetir=true`, y el estado del DM muestra un aviso cuando se abusa de una.
+
 ### Espacio, tiempo y pruebas estrictas
 
 - **Mapa nuevo y fiel:** la ilustración es la de 821 × 953, con una rosa de los vientos (norte arriba). `ubicacion` acepta `direccion` (N…NO) y `distancia`: «la garita norte» queda de verdad al norte de la ciudad y, si un lugar estaba mal puesto, se recoloca. El DM ve el rumbo real de cada lugar desde el grupo. Las partidas guardadas con el mapa anterior se migran conservando los rumbos.

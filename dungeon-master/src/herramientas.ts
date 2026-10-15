@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
 import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
@@ -209,6 +210,13 @@ const esquemas = {
     nombre: z.string().describe("Nombre de la criatura (del bestiario o nueva) o alias de esta instancia, p. ej. \"Ogro tuerto\""),
     plantilla: z.string().optional().describe("Criatura del bestiario en la que se basa (si el nombre es un alias)"),
     definicion: criatura.optional().describe("Para criaturas nuevas inventadas por ti"),
+    repetir: z.boolean().optional().describe("Solo si la trama exige otra vez el mismo tipo de enemigo tras dos encuentros seguidos de su familia"),
+  }),
+  encuentro: z.object({
+    tipo: z.enum(["combate", "peligro", "social", "hallazgo"]).optional().describe("Restringe el tipo; por defecto, cualquiera"),
+    dificultad: z.enum(["facil", "media", "dificil", "mortal"]).optional().describe("Cuántos y cuán fuertes (por defecto media)"),
+    region: z.string().optional().describe("Por defecto, la región donde está el grupo"),
+    excluir: z.array(z.string()).optional().describe("Familias que no pueden salir: no-muertos, fauna, monstruos, humanos, inquisicion, culto, corte_palida, entorno, social, hallazgo"),
   }),
   danar_criatura: z.object({
     nombre: z.string(),
@@ -463,6 +471,8 @@ const descripciones: Record<Nombre, string> = {
     "Lanza un hechizo de un personaje jugador: tirada de lanzamiento, efecto y el precio que paga (calor, aliento, sangre, cordura o años), con catalizadores.",
   ubicacion:
     "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos, con su direccion (el norte es arriba del mapa); con direccion recoloca uno mal puesto.",
+  encuentro:
+    "Tira un encuentro aleatorio de verdad (tabla por región, hora, nivel y dificultad) que evita repetir lo reciente: enemigos de varias familias, peligros, escenas sociales y hallazgos. Úsalo siempre que necesites un encuentro que no esté ya decidido por la historia.",
   plano:
     "Plano de la escena en metros (norte arriba): coloca y mueve a personajes, PNJ, criaturas y puntos de referencia (el fuego, el carro, la puerta). El programa calcula distancias y rumbos y te los devuelve como verdad espacial; los ataques cuerpo a cuerpo comprueban el alcance.",
   tiempo:
@@ -694,6 +704,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.aparecer_criatura>;
         const def: Criatura | undefined = e.definicion ?? buscarCriatura(e.plantilla ?? e.nombre);
         if (!def) throw new Error(`"${e.plantilla ?? e.nombre}" no está en el bestiario: pasa una definicion completa para crearla.`);
+        const rep = !e.repetir && def.categoria !== "jefe" ? repetida(partida, def.nombre) : null;
+        if (rep)
+          throw new Error(`Llevas dos encuentros seguidos con enemigos de la familia «${rep}»: este sería el tercero. Varía: llama a encuentro (tira de verdad según región, hora y nivel y evita lo reciente). Si la trama exige repetir, vuelve a llamar con repetir=true.`);
+        registrarEnemigo(partida, def.nombre);
         const texto = aparecer(partida, def, e.nombre);
         return { contenido: texto, aviso: `⚠️  ${e.nombre}${def.categoria === "jefe" ? " (JEFE)" : ""}` };
       }
@@ -761,6 +775,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const objetivo = e.objetivo ? buscar(partida, e.objetivo) : undefined;
         const texto = lanzar(p, { ...e, objetivo });
         return { contenido: `${texto}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
+      }
+      case "encuentro": {
+        const e = validado.data as z.infer<typeof esquemas.encuentro>;
+        return { contenido: sortearEncuentro(partida, e), aviso: null };
       }
       case "plano": {
         const e = validado.data as z.infer<typeof esquemas.plano>;

@@ -13,6 +13,7 @@ import * as turnos from "./turnos.js";
 import * as formulario from "./formulario.js";
 import * as aventuras from "./aventuras.js";
 import * as espacio from "./espacio.js";
+import * as encuentros from "./encuentros.js";
 import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
 
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
@@ -36,6 +37,8 @@ export function estadoParaDM(p: Partida, foco?: string): string {
   const partes: string[] = [];
   const tab = secuencia.tablero(p);
   if (tab) partes.push(tab);
+  const variedad = encuentros.textoVariedad(p);
+  if (variedad) partes.push(variedad);
   const plano = espacio.textoPlano(p.plano);
   if (plano) partes.push(plano);
   else partes.push("## PLANO DE LA ESCENA\n(vacío: si hay una escena con varios actores —combate, calle, sala—, ábrela con plano y coloca a los presentes)");

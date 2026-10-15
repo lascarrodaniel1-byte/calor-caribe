@@ -12,6 +12,7 @@ import { REGLAS_MAGIA } from "./magia.js";
 import { REGLAS_MAPA } from "./mapa.js";
 import { REGLAS_NARRATIVA } from "./narrativa.js";
 import { REGLAS_ESPACIO_TIEMPO } from "./espacio.js";
+import { REGLAS_ENCUENTROS } from "./encuentros.js";
 import { REGLAS_PRUEBAS } from "./pruebas.js";
 import { AMBIENTACION, CLASES, RAZAS, textoRazasYClases } from "./mundo.js";
 import { REGLAS_VIALES } from "./viales.js";
@@ -108,7 +109,7 @@ ${lineas.join("\n")}
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
-export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
+export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
 
 export function consultarReglas(tema: string, nombre?: string): string {
   switch (String(tema).toLowerCase()) {
