@@ -76,6 +76,7 @@ export const TEMPLES: Record<string, Temple> = {
   vampiro: { deteccion: 2, iniciativa: 2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "velocidad antinatural: +2 iniciativa, +2 para notar emboscadas" },
   espectro: { iniciativa: 1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "incorpóreos: +1 iniciativa" },
   bestia: { deteccion: 2, iniciativa: 1, cuerpo: 0, distancia: 0, torpeza: 0, nota: "instinto: +1 iniciativa, +2 para notar emboscadas" },
+  "cazador de leyendas": { deteccion: 3, iniciativa: 3, cuerpo: 1, distancia: 1, torpeza: 0, nota: "oficio de cazar a los que ya nadie caza: +3 iniciativa, +3 para notar emboscadas, +1 a todo ataque" },
 };
 export const NOMBRES_TEMPLES = Object.keys(TEMPLES) as [string, ...string[]];
 const SIN_TEMPLE: Temple = { iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "" };

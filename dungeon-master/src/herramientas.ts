@@ -213,6 +213,9 @@ const esquemas = {
     repetir: z.boolean().optional().describe("Solo si la trama exige otra vez el mismo tipo de enemigo tras dos encuentros seguidos de su familia"),
   }),
   encuentro: z.object({
+    jefe: z.string().optional().describe('"azar" o el nombre de un jefe (Kuru, Vaerth, Ilvara, Vaskar, El Juez, Ysolde, La Madre de los Hambrientos): fuerza que la causa sea un jefe fuera de su zona; sirve para que una misión sea consecuencia de su plan'),
+    sin_jefe: z.boolean().optional().describe("Impide que salga un jefe"),
+    mision: z.string().optional().describe("La misión en curso: si sale un jefe, se explica cómo su plan la provocó"),
     tipo: z.enum(["combate", "peligro", "social", "hallazgo"]).optional().describe("Restringe el tipo; por defecto, cualquiera"),
     dificultad: z.enum(["facil", "media", "dificil", "mortal"]).optional().describe("Cuántos y cuán fuertes (por defecto media)"),
     region: z.string().optional().describe("Por defecto, la región donde está el grupo"),

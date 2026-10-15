@@ -77,6 +77,51 @@ export function familiaDe(nombre: string): string {
   return nombre.toLowerCase().replace(/\s*\d+$/, "").trim();
 }
 
+/** El bonus especial de cada región: qué familias de enemigos pesan más allí y cuánto se acerca un jefe. */
+export interface BonusRegion {
+  /** Multiplicadores por familia (1 = sin bonus). */
+  familias: Record<string, number>;
+  /** Probabilidad extra (puntos porcentuales) de que el encuentro tenga que ver con un jefe fuera de su zona. */
+  jefe: number;
+  nota: string;
+}
+export const BONUS_REGION: Record<string, BonusRegion> = {
+  Aldenmar: { familias: { humanos: 1.8, inquisicion: 1.5, culto: 1.3, social: 1.4 }, jefe: 2, nota: "ciudad de intrigas: abundan los humanos con intereses (bandas, desertores, cazarrecompensas), la Llama Gris y los cultos subterráneos" },
+  "Ciénagas": { familias: { monstruos: 2, entorno: 1.6, culto: 1.4, humanos: 1.2 }, jefe: 3, nota: "cieno y fosas: trolls y monstruos de pantano, peligros del terreno y devotos que alimentan la fosa sin fondo" },
+  Karak: { familias: { monstruos: 1.8, entorno: 1.7, humanos: 1.3 }, jefe: 3, nota: "ruinas enanas selladas: monstruos de cueva, derrumbes y saqueadores atraídos por lo que duerme abajo" },
+  "Velo Rojo": { familias: { fauna: 2.2, "no-muertos": 1.4, corte_palida: 1.6, social: 0.8 }, jefe: 4, nota: "bosque de voces: jaurías y bestias, espectros y los emisarios pálidos de la Corte" },
+  "Marca Hueca": { familias: { "no-muertos": 2, monstruos: 1.5, corte_palida: 1.5, humanos: 1.1 }, jefe: 5, nota: "campo de batalla de un siglo: muertos alzados, monstruos del páramo y la sombra de la Corte Pálida" },
+  Agujas: { familias: { monstruos: 2, entorno: 1.6, culto: 1.2 }, jefe: 3, nota: "cumbres y monasterios: wyvernos y dragones, pasos peligrosos y flagelantes fanáticos" },
+};
+
+export function bonusDe(region: string): { clave: string; bonus: BonusRegion } | null {
+  const k = Object.keys(BONUS_REGION).find((x) => region.toLowerCase().includes(x.toLowerCase()));
+  return k ? { clave: k, bonus: BONUS_REGION[k] } : null;
+}
+
+/** Jefes que pueden aparecer fuera de su zona, con el plan que los trae y las razones posibles. */
+interface JefeFuera {
+  /** Nombre (o parte) en el bestiario. */
+  bestiario: string;
+  corto: string;
+  /** Dónde suele estar (trozos de nombre de región). */
+  zona: string[];
+  /** Nivel medio a partir del cual puede dar la cara en persona; por debajo, solo sus señales. */
+  minNivel: number;
+  plan: string;
+  razones: string[];
+  senales: string;
+}
+export const JEFES_FUERA: JefeFuera[] = [
+  { bestiario: "Kuru", corto: "Kuru", zona: [], minNivel: 4, plan: "Cazar la próxima leyenda: sigue el rastro de quien porte reliquias, Ceniza o un destino marcado (quizá alguien del grupo).", razones: ["Sigue a un objetivo del grupo o a un PNJ que viaja con él", "Un contrato: alguien ha pagado por la cabeza de una criatura legendaria que el grupo está a punto de encontrar", "Persigue a otro jefe y el grupo está en su camino"], senales: "Una pieza cazada con una limpieza que ninguna banda tiene, un campamento sin huellas, un cadáver legendario desollado con oficio, preguntas sobre «quién lleva algo antiguo»" },
+  { bestiario: "Vaerth", corto: "Vaerth", zona: ["Aldenmar"], minNivel: 4, plan: "Reunir rostros y esencias hasta tener los de alguien que importe: busca a quien lleve un apellido, un cargo o un talento valioso.", razones: ["Ha robado la cara de un PNJ que el grupo conoce y la lleva por el camino", "Sigue a una víctima que huyó de Aldenmar", "Sustituye a un contacto del grupo para llegar a un tesoro"], senales: "Un conocido que actúa raro, que olvida algo que sabía o que sabe algo que no debería; mercaderes con la misma voz en dos sitios" },
+  { bestiario: "Ilvara", corto: "Ilvara", zona: ["Agujas"], minNivel: 4, plan: "Cumplir una profecía de muerte que ya escribió: va tejiendo el mañana de unos pocos hacia un lugar concreto.", razones: ["Un encargo de la misión es en realidad una profecía suya que necesita que se cumpla", "Ha enviado a un emisario ciego a recoger algo del camino del grupo", "Un hilo de su telar ha cruzado a uno de los personajes"], senales: "Una profecía de muerte escrita en una pared o anunciada por un desconocido; hilos de plata en las puertas; un PNJ que «ya sabía» lo que pasaría" },
+  { bestiario: "Vaskar", corto: "Vaskar", zona: ["Velo Rojo"], minNivel: 5, plan: "Recuperar a su manada perdida: llama a los Varg y a los que llevan su sangre, y rastrea a quien tenga el colmillo del Eclipse.", razones: ["Un Varg del grupo (o su contacto) ha sido llamado", "Persigue un colmillo o reliquia robada del bosque", "La misión lleva el olor de su manada"], senales: "Aullidos que ningún lobo da, huellas de un tamaño imposible, Varg que se transforman sin querer" },
+  { bestiario: "Juez Sin Ojos", corto: "El Juez", zona: ["Aldenmar"], minNivel: 5, plan: "Dictar su sentencia sobre un culpable que ya eligió: avanza hacia donde esté su pecado.", razones: ["Un PNJ del grupo es su culpable y viaja con ellos", "La misión transporta algo que él considera un pecado", "Sigue a un fugitivo que juró no ser juzgado"], senales: "Sentencias clavadas en puertas, confesiones forzadas que llegan por rumores, acólitos de la Llama Gris con vendas en los ojos" },
+  { bestiario: "Ysolde", corto: "Ysolde", zona: ["Marca Hueca"], minNivel: 5, plan: "Extender la Corte Pálida: busca sangre noble, un heredero o a quien ella pueda convertir en servidor.", razones: ["Un invitado de su corte ha sido «invitado» fuera de su zona", "La misión toca una promesa que ella hizo hace siglos", "Quiere el cuerpo de alguien que el grupo protege"], senales: "Invitaciones sin remitente, esbirros muy corteses, animales que se acercan en silencio, un banquete preparado para el grupo" },
+  { bestiario: "Madre de los Hambrientos", corto: "La Madre de los Hambrientos", zona: ["Ciénagas"], minNivel: 5, plan: "Parir una nueva marea: sus Hambrientos buscan carne y llevan un olor hacia algo que ella desea.", razones: ["Sus crías se desbordan por un camino nuevo porque algo se ha roto en la fosa", "Un culto la está moviendo (o alimentando) hacia otra fosa"], senales: "Manadas de Hambrientos que llegan juntos y de una sola dirección, olor a carne licuada, fosas que se hunden" },
+];
+
 export interface RegistroEncuentro {
   familia: string;
   nombre: string;
@@ -111,13 +156,16 @@ export function repetida(partida: Partida, nombre: string): string | null {
 
 export function textoVariedad(partida: Partida): string {
   const h = partida.encuentros ?? [];
-  if (!h.length) return "";
+  const region = partida.mapa.lugares[partida.mapa.posicion ?? ""]?.region ?? "";
+  const b = bonusDe(region);
+  const linea = b ? `Bonus de la región (${b.clave}): ${b.bonus.nota}. Pesan más ahí: ${Object.entries(b.bonus.familias).filter(([, m]) => m > 1).map(([f]) => f).join(", ")}.\n` : "";
+  if (!h.length) return linea ? `## Variedad de enemigos\n${linea.trimEnd()}` : "";
   const fam = h.slice(-5).map((x) => x.familia);
   const cuenta = new Map<string, number>();
   for (const f of fam) cuenta.set(f, (cuenta.get(f) ?? 0) + 1);
   const [top, n] = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0];
   return (
-    `## Variedad de enemigos (últimos encuentros: ${h.slice(-6).map((x) => x.nombre).join(" → ")})\n` +
+    `## Variedad de enemigos (últimos encuentros: ${h.slice(-6).map((x) => x.nombre).join(" → ")})\n${linea}` +
     (n >= 3 || (fam.length >= 3 && n / fam.length > 0.5)
       ? `⚠ ${n} de los últimos ${fam.length} encuentros fueron de «${top}»: el próximo, de otra familia (usa la herramienta encuentro).`
       : "Bien repartidos: sigue variando (humanos, fauna, culto, entorno, social…), no todo es un combate.")
@@ -125,6 +173,12 @@ export function textoVariedad(partida: Partida): string {
 }
 
 export interface DatosEncuentro {
+  /** "azar" o el nombre de un jefe: fuerza que el encuentro sea un jefe fuera de su zona. */
+  jefe?: string;
+  /** Impide que salga un jefe aunque toque. */
+  sin_jefe?: boolean;
+  /** La misión en curso: si sale un jefe, se explica cómo su plan la provocó. */
+  mision?: string;
   tipo?: TipoEncuentro;
   dificultad?: "facil" | "media" | "dificil" | "mortal";
   /** Fuerza la región (por defecto, donde está el grupo). */
@@ -135,6 +189,39 @@ export interface DatosEncuentro {
 
 const horaDe = (p: Partida) => (p.reloj ? Math.floor((p.reloj.segundos % 86400) / 3600) : null);
 
+/** Un jefe fuera de su zona: casi siempre sus señales o un emisario, rara vez en persona, y siempre con su plan detrás. */
+function encuentroDeJefe(partida: Partida, d: DatosEncuentro, region: string, nivel: number, motivo: string): string | null {
+  const h = partida.encuentros ?? [];
+  const recientes = new Set(h.slice(-10).filter((x) => x.familia === "jefe").map((x) => x.nombre));
+  const quiere = (d.jefe ?? "azar").toLowerCase();
+  let candidatos = JEFES_FUERA.filter((j) => !recientes.has(j.corto));
+  if (quiere !== "azar") candidatos = JEFES_FUERA.filter((j) => j.corto.toLowerCase().includes(quiere) || j.bestiario.toLowerCase().includes(quiere));
+  else candidatos = candidatos.filter((j) => !j.zona.some((z) => region.toLowerCase().includes(z.toLowerCase()))); // fuera de su zona
+  if (!candidatos.length) return null;
+  const j = candidatos[tirar(`1d${candidatos.length < 2 ? 2 : candidatos.length}`).total - 1] ?? candidatos[0];
+  const tirada = tirar("1d100").total;
+  const enPersona = nivel >= j.minNivel && tirada <= 15;
+  const emisario = !enPersona && tirada <= (nivel >= j.minNivel ? 55 : 45);
+  const modo = enPersona ? "EN PERSONA" : emisario ? "EMISARIO" : "INDICIOS";
+  partida.encuentros ??= [];
+  partida.encuentros.push({ familia: "jefe", nombre: j.corto, paso: partida.secuencia?.total ?? 0 });
+  if (partida.encuentros.length > MAX_HISTORIAL) partida.encuentros.splice(0, partida.encuentros.length - MAX_HISTORIAL);
+  const razones = j.razones.map((r) => `   · ${r}`).join("\n");
+  return [
+    `🎲 ENCUENTRO — JEFE FUERA DE SU ZONA (${motivo}; d100 = ${tirada}; ${region || "región sin fijar"}, nivel medio ${nivel})`,
+    `Jefe: ${j.corto} (${j.bestiario}${j.zona.length ? `; su sitio: ${j.zona.join("/")}` : "; no tiene sitio fijo"}). Presencia: ${modo}.`,
+    enPersona
+      ? `En persona: aparecer_criatura con plantilla «${j.bestiario}». Es mortal para este grupo: planifica un trato, una huida, un terreno que cambie la pelea o una intervención; un jefe no tiene por qué luchar a muerte ni al primer encuentro.`
+      : emisario
+        ? `Un emisario suyo (un servidor, un rastreador, un agente que no sabe todo): usa un enemigo corriente acorde al nivel, con un encargo y una pista de quién lo manda. El jefe sigue lejos.`
+        : `Solo indicios, sin enemigos a la vista: ${j.senales}.`,
+    `Su plan: ${j.plan}`,
+    `Por qué está aquí (elige una o inventa otra coherente con la historia; la explicas TÚ cuando toque, con pistas y no de golpe):\n${razones}`,
+    d.mision ? `Misión en curso: «${d.mision}». Haz que sea consecuencia de su plan o de su acción (¿quién la encargó de verdad? ¿qué buscaba?) y revélalo poco a poco.` : "Si hay una misión en curso, puede ser consecuencia de su plan: ese es el hilo que une todo.",
+    `REGÍSTRALO para que no sea un adorno y viva en segundo plano: pnj {nombre: «${j.corto}», rol, voz, quiere, agenda: su plan en marcha, arco, en_escena: false}; trama abrir_arco (o avanzar el arco de la misión) con la premisa de su plan; el programa te avisará cuando lleve turnos fuera de escena para que su avance llegue como eco.`,
+  ].join("\n");
+}
+
 export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): string {
   const region = d.region ?? partida.mapa.lugares[partida.mapa.posicion ?? ""]?.region ?? "";
   const hora = horaDe(partida);
@@ -142,6 +229,18 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
   const pjs = Object.values(partida.personajes);
   const nivel = pjs.length ? Math.round(pjs.reduce((s, p) => s + p.nivel, 0) / pjs.length) : 1;
   const dif = d.dificultad ?? "media";
+  // ¿Un jefe fuera de su zona? Pequeña probabilidad, mayor en regiones peligrosas, con la amenaza en marcha o en dificultad alta.
+  const bonusReg = bonusDe(region);
+  const prob = Math.max(0, 5 + (bonusReg?.bonus.jefe ?? 0) + ((partida.trama?.reloj ?? 0) >= 4 ? 4 : 0) + { facil: -4, media: 0, dificil: 2, mortal: 6 }[dif]);
+  const hayJefeReciente = (partida.encuentros ?? []).slice(-8).some((x) => x.familia === "jefe");
+  if (!d.sin_jefe && (d.tipo === undefined || d.tipo === "combate" || d.jefe !== undefined)) {
+    const forzado = d.jefe !== undefined;
+    const dado = tirar("1d100").total;
+    if (forzado || (!hayJefeReciente && dado <= prob)) {
+      const r = encuentroDeJefe(partida, d, region, nivel, forzado ? "forzado: el origen de la misión" : `salió con ${dado} ≤ ${prob} %`);
+      if (r) return r;
+    }
+  }
   const techo = (nivel <= 2 ? 2 : nivel <= 4 ? 3 : nivel <= 8 ? 4 : 5) + (dif === "mortal" ? 1 : dif === "facil" ? -1 : 0);
   const h = partida.encuentros ?? [];
   const prohibidas = new Set<string>(d.excluir ?? []);
@@ -151,6 +250,7 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
     let w = t.peso;
     if (t.regiones.length) w *= t.regiones.some((r) => region.toLowerCase().includes(r.toLowerCase())) ? 3 : 0.25;
     if (t.momento && noche !== null) w *= (t.momento === "noche") === noche ? 1.6 : 0.3;
+    if (bonusReg) w *= bonusReg.bonus.familias[t.familia] ?? 1; // el bonus especial de la región
     if (t.peligro > techo) w *= 0.05;
     if (t.peligro < techo - 2) w *= 0.6;
     // Memoria: cada vez que esta familia salió entre los últimos encuentros, pesa menos.
@@ -184,11 +284,13 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
     `Qué quieren: ${elegido.quieren}`,
     `Cómo se evita o se resuelve sin pelear: ${elegido.salida}`,
     `Cómo usarlo: ${uso}`,
+    bonusReg ? `Bonus de la región (${bonusReg.clave}): ${bonusReg.bonus.nota}.` : "",
     `Mételo en la historia (por qué están aquí ahora, cómo toca a un arco o a un PNJ), no lo sueltes sin más. Familia: ${elegido.familia}${prohibidas.size ? ` (se evitaron: ${[...prohibidas].join(", ")} por repetición)` : ""}.`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export const REGLAS_ENCUENTROS = `## Variedad de enemigos y encuentros (no todo es un Hambriento ni de la Inquisición)
 - Tú no tienes azar propio y tiendes a repetir lo que más aparece en la ambientación: los Hambrientos y la Inquisición de la Llama Gris son UNA amenaza de fondo entre muchas, no el enemigo por defecto. Para cualquier encuentro aleatorio (viaje, exploración, un descanso interrumpido, «¿qué hay en esta calle?») NO lo decidas tú: llama a encuentro, que tira de verdad según región, hora, nivel y dificultad y evita repetir lo reciente.
 - Reparte: humanos (bandoleros, desertores, cazarrecompensas, contrabandistas, saqueadores), fauna y monstruos, no-muertos, culto, Corte Pálida, Inquisición, entorno (niebla, pantano, derrumbe) y encuentros sociales o de hallazgo. No más de uno de cada tres encuentros de la misma familia; el programa te lo recuerda y puede negarte aparecer_criatura si repites tres veces (repetir=true solo si la trama lo exige).
+- Cada región tiene su bonus (qué familias pesan más allí) y encuentro lo aplica. Además hay una pequeña posibilidad de que el encuentro sea un JEFE FUERA DE SU ZONA (casi siempre solo sus indicios o un emisario; en persona, rara vez y solo a nivel alto). Cuando salga, la razón la pones tú, con coherencia: puede ser su plan, lo que persigue o el verdadero origen de la misión en curso (pasa la misión en mision, o usa jefe: "azar"/nombre para que una misión sea consecuencia de un jefe). Regístralo siempre como PNJ con agenda y arco en segundo plano (pnj + trama), para que viva fuera de escena y llegue como eco.
 - No todo encuentro es un combate: muchos se resuelven hablando, pagando, huyendo o sorteando el peligro. Dale a cada enemigo un motivo para estar ahí ahora y una forma de evitarlo.`;

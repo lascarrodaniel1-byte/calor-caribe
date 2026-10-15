@@ -518,6 +518,43 @@ export const BESTIARIO: Criatura[] = [
     ],
     botin: "Corazón del dios Solar (reliquia definitiva); un tesoro de un siglo",
   },
+  {
+    nombre: "Kuru, el Cazador de Leyendas",
+    temple: "cazador de leyendas",
+    personalidad: ["calculador", "paranoico"],
+    blindaje: ["gambeson", "escamas", "yelmo"],
+    categoria: "jefe",
+    peligro: 5,
+    region: "Sin patria: allí donde haya algo legendario que cazar (cualquier región)",
+    descripcion:
+      "Un hombre delgado, de voz tranquila, con un abrigo cosido con pieles de bestias que nadie más ha visto y un collar de colmillos de dragón. No odia a sus presas: las estudia, las respeta y las mata. Dicen que ha cazado a un wyverno sin ayuda y que ya busca al próximo dios. Lleva una lanza de caza, dos espadas curvas y la paciencia de quien nunca ha fallado dos veces al mismo enemigo.",
+    ca: 20,
+    pv: "170",
+    velocidad: "12 m, trepar 12 m",
+    atributos: "FUE 18 DES 24 CON 18 INT 18 SAB 20 CAR 14",
+    ataques: [
+      "Lanza de caza (alcance 3 m): +13, 2d8+7 perforante",
+      "Espadas curvas (x3 con la acción de atacar): +13, 2d6+7 cortante cada una",
+      "Cuchillo de lanzar (12/36 m): +13, 1d8+7 perforante",
+    ],
+    rasgos: [
+      "Maestro de armas: crítico con 19-20; apunta siempre a las juntas de la armadura (apuntar «hueco») sin penalizador y se mete por los huecos de gorjal y grebas",
+      "ADAPTACIÓN (hasta 3 por combate): cada vez que recibe daño de un tipo nuevo o ve una táctica nueva (fuego, un plan, una emboscada, un conjuro, un ataque a distancia), en su siguiente turno gana resistencia a ese tipo de daño o ventaja contra esa táctica hasta el final del combate. Apunta qué ha aprendido: no vuelve a caer en lo mismo",
+      "ESCURRIDIZO: se desengancha sin provocar ataques de oportunidad, se mueve al doble de velocidad sin provocar y puede esconderse como acción adicional aunque lo estén mirando (humo, sombras, tumulto). Ventaja en salvaciones contra apresado, derribado, asustado y cegado",
+      "Retirada calculada: la primera vez que cae por debajo de la mitad de sus PV rompe el combate (trampa de humo o cuerda, y huye) si le queda alguna salida; solo muere si se la cierran. Vuelve en otro encuentro con una adaptación más y sabiendo cómo lucha cada uno de sus rivales",
+      "Cazador de leyendas: ventaja en ataques contra criaturas de peligro 3 o más, contra magos y contra quien porte reliquias o Ceniza; nota lo legendario a un kilómetro. Estudia a su presa antes de atacar: en la primera ronda tiene ventaja en iniciativa si pudo observar al grupo",
+      "2 acciones legendarias por ronda (moverse sin provocar, lanzar un cuchillo, esconderse)",
+      "Resistencia legendaria (2/día)",
+      "Sin rencor ni prisa: habla con calma, ofrece tratos y abandona un combate perdido; no sacrifica su vida por una pieza",
+    ],
+    habilidades: [
+      { nombre: "Estudiar a la presa", descripcion: "Acción adicional: elige a un enemigo que pueda ver; sus ataques contra él tienen ventaja hasta que ese enemigo cambie de táctica o caiga.", condicion: "marcado: Kuru tiene ventaja contra él hasta que cambie de táctica" },
+      { nombre: "Danza de las cien heridas", descripcion: "Gira entre sus rivales cortando a todos los que estén a 3 m.", salvacion: "des", cd: 19, dano: "4d8+7", tipo_dano: "cortante", mitad_si_exito: true, herida: "critico", recarga: 5 },
+      { nombre: "Humo de ceniza", descripcion: "Rompe una bolsa de ceniza y resina: una nube de 6 m de radio en la que solo él ve. Se retira o se reposiciona dentro.", salvacion: "con", cd: 18, condicion: "cegado hasta el final de su siguiente turno", recarga: 6 },
+      { nombre: "Estocada de leyenda", descripcion: "Un único golpe contra un objetivo que haya estudiado y que esté solo, derribado, apresado o sorprendido.", salvacion: "con", cd: 20, dano: "6d10+7", tipo_dano: "perforante", muerte_si_falla_por: 10, herida: "critico" },
+    ],
+    botin: "Colmillo de wyverno engarzado en su lanza (arma encantada, +2); el diario donde apunta cómo mató a cada leyenda y a quién busca ahora",
+  },
 ];
 
 export function buscarCriatura(nombre: string): Criatura | undefined {
