@@ -34,6 +34,20 @@ export interface Habilidad {
   robo?: string;
 }
 
+/** El trasfondo de un jefe: lo establecido (canon) y lo propuesto aún por confirmar. */
+export interface Trasfondo {
+  /** Su historia, tal y como está establecida. */
+  origen: string;
+  /** Con quién está enemistado y por qué (establecido). */
+  enemigos?: string;
+  /** Propuestas para completarlo, sin confirmar: el DM puede usarlas con criterio hasta que se decida. */
+  propuesto?: string[];
+  /** Preguntas aún abiertas sobre él. */
+  abierto?: string[];
+  /** Cómo revelar su historia poco a poco (pistas, rumores, objetos). */
+  pistas?: string[];
+}
+
 /** Un regente manda sobre un dominio: no está solo, envía a sus subordinados a cumplir su voluntad y, en persona, va con su séquito. */
 export interface Regente {
   /** Lo que gobierna: «la Inquisición de la Llama Gris», «la Corte Pálida»… */
@@ -45,6 +59,8 @@ export interface Regente {
 
 export interface Criatura {
   nombre: string;
+  /** Su historia: origen, enemistades, pistas para revelarla. Solo la conoce el DM. */
+  trasfondo?: Trasfondo;
   /** Si gobierna un dominio: sus subordinados, y que puede enviarlos o llevarlos consigo. */
   regente?: Regente;
   categoria: "bestia" | "monstruo" | "jefe";
@@ -314,7 +330,27 @@ export const BESTIARIO: Criatura[] = [
     categoria: "jefe",
     peligro: 5,
     region: "Corazón del Bosque de Velo Rojo",
-    descripcion: "El primer Varg, padre de la maldición. Un lobo del tamaño de un carro, con la luna muerta en los ojos.",
+    descripcion: "El primer Varg, padre de la maldición. Antes fue un hombre de la época de los dioses; hoy, un lobo del tamaño de un carro, con la luna muerta en los ojos.",
+    trasfondo: {
+      origen:
+        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Un día cazó un lobo para usar sus dientes en un ritual de magia negra. Ese lobo era hijo del dios de la luna. El dios, que ya conocía las intenciones de Vaskar y supo cómo había matado a su hijo, aprovechó que se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad. De esa maldición nace la Maldición del Lobo que marca a los Varg.",
+      enemigos:
+        "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses.",
+      propuesto: [
+        "Sigue siendo el hombre por dentro: conserva su astucia, su vileza y su conocimiento de magia negra; es un lobo que piensa, miente, negocia y traiciona (por eso INT 14 y SAB 16).",
+        "El dios de la luna murió con los demás dioses hace 99 años: nadie puede levantar su maldición, y eso es lo que Vaskar no soporta. Lo que busca hoy es ser humano de nuevo (el «fin de la maldición» de su botín es su cebo, o su única salida).",
+        "La Maldición del Lobo se transmite por su mordedura y por su Aullido del Eclipse: los Varg son «hijos» suyos, y por eso la Inquisición los quema (ven en ellos el pecado de Vaskar).",
+        "Los dientes de lobo del ritual nunca llegaron a servirle: lo que quiso robar le costó la forma humana. Hay quien guarda aún el colmillo del hijo de la luna (el Colmillo del Eclipse).",
+        "Aliados posibles: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo; enemigos: el Juez y su Inquisición, y quien quiera cazarlo (Kuru lo tendría en su lista de leyendas).",
+      ],
+      abierto: ["¿Cómo se llamaba el dios de la luna?", "¿Qué ritual preparaba Vaskar y para qué?", "¿Qué hizo el Juez entonces: lo juzgó antes de la maldición, o llegó tarde?", "¿Por qué el Velo Rojo es su cubil?"],
+      pistas: [
+        "Leyendas de Varg sobre «el hombre que mató al hijo de la luna»",
+        "Un colmillo de lobo marcado con símbolos de magia negra, o un grimorio con sangre de lobo",
+        "Los archivos de la Inquisición hablan de un condenado sin ejecutar «de antes de la Caída»",
+        "Los Varg que se transforman bajo su Aullido murmuran palabras en una lengua antigua que no conocen",
+      ],
+    },
     ca: 17,
     pv: "200",
     velocidad: "15 m",
@@ -335,6 +371,11 @@ export const BESTIARIO: Criatura[] = [
     peligro: 5,
     region: "Catedral sumergida bajo Aldenmar",
     descripcion: "El primer Inquisidor, que se arrancó los ojos para no ver morir a los dioses. Aún juzga, y siempre condena.",
+    trasfondo: {
+      origen: "El primer Inquisidor: se arrancó los ojos para no ver morir a los dioses y aún juzga, y siempre condena.",
+      enemigos: "Vaskar, el Lobo del Eclipse: lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses.",
+      abierto: ["¿Qué sentencia dictó contra Vaskar y por qué no se cumplió?"],
+    },
     ca: 19,
     pv: "180",
     velocidad: "9 m",
@@ -615,6 +656,9 @@ export function fichaCriatura(c: Criatura): string {
     `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}${c.blindaje?.length ? ` · blindaje: ${c.blindaje.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
+    c.trasfondo
+      ? `TRASFONDO (secreto del DM; los PNJ solo saben rumores): ${c.trasfondo.origen}${c.trasfondo.enemigos ? ` ENEMIGOS: ${c.trasfondo.enemigos}` : ""}${c.trasfondo.propuesto?.length ? ` PROPUESTO (sin confirmar; úsalo con criterio): ${c.trasfondo.propuesto.join(" · ")}` : ""}${c.trasfondo.pistas?.length ? ` PISTAS para revelarlo poco a poco: ${c.trasfondo.pistas.join(" · ")}.` : ""}${c.trasfondo.abierto?.length ? ` AÚN ABIERTO: ${c.trasfondo.abierto.join(" ")}` : ""}`
+      : "",
     c.regente
       ? `REGENTE (${c.regente.titulo}): ${c.regente.corte} Subordinados: ${c.regente.servidores.map((x) => `${x.nombre} ×${x.cuantos}${x.plantilla ? ` [plantilla «${x.plantilla}»]` : ""} — ${x.nota}`).join(" | ")}. Puede enviarlos a cumplir su voluntad sin estar presente (llegan como emisarios o como fuerza armada) y, si da la cara, su séquito lo acompaña: no lo pongas nunca solo.`
       : "",

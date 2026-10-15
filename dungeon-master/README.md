@@ -248,6 +248,12 @@ Con dos o más jugadores, la mesa juega **por turnos** para que el DM reciba una
 
 Cada jugador narra con los usos de Claude de su propia cuenta. Si a una cuenta se le acaban (límite de uso, cuota o cuenta sin acceso a Claude), su página lo avisa, se marca con **sin usos** en la lista «En la mesa» y deja de intentar narrar. Sus acciones siguen en cola y las narra otro jugador conectado al que sí le queden, así el reparto es automático y la mesa no se para. Pasados unos minutos (una hora si la cuenta no puede usar Claude) vuelve a intentarlo sola, y la marca se quita en cuanto narra bien. Si no hay nadie más con usos, se avisa.
 
+### Trasfondo de los jefes
+
+Cada jefe puede llevar un **trasfondo** en su ficha (`consultar_reglas criatura`): su historia establecida, sus enemigos, pistas para ir revelándolo, lo que se **propone** sin confirmar y lo que sigue **abierto**. Solo lo ve el DM; los PNJ únicamente conocen rumores y leyendas.
+
+- **Vaskar, el Lobo del Eclipse** (establecido): en la época de los dioses era un hombre traicionero y de malas intenciones que practicaba magia negra. Cazó un lobo para usar sus dientes en un ritual; era hijo del dios de la luna, que conocía sus intenciones y lo maldijo mientras dormía bajo la luna, convirtiéndolo en lobo para la eternidad. De esa maldición nace la de los Varg. Su enemigo es el primer Inquisidor (el Juez Sin Ojos), por la magia negra y la ofensa a los dioses; la enemistad se refleja también en la ficha del Juez y en los jefes fuera de zona (si uno está activo cerca, chocan). Lo que se ha **propuesto** (sin confirmar): que conserva su astucia y su vileza, que el dios murió y nadie puede levantar la maldición, que lo que busca hoy es volver a ser humano y que los Varg son sus «hijos».
+
 ### Variedad de enemigos
 
 - **Antes:** el DM elegía los enemigos él solo, sin azar, y tendía a repetir los que más pesan en la ambientación (Hambrientos, Inquisición de la Llama Gris). Los dados de combate sí eran aleatorios, pero **qué** aparecía no.
