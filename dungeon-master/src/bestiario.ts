@@ -34,8 +34,19 @@ export interface Habilidad {
   robo?: string;
 }
 
+/** Un regente manda sobre un dominio: no está solo, envía a sus subordinados a cumplir su voluntad y, en persona, va con su séquito. */
+export interface Regente {
+  /** Lo que gobierna: «la Inquisición de la Llama Gris», «la Corte Pálida»… */
+  titulo: string;
+  /** Cómo manda: su corte, su forma de dar órdenes. */
+  corte: string;
+  servidores: { nombre: string; /** Plantilla del bestiario, si la hay (si no, se improvisa con pnj/iniciativa). */ plantilla?: string; cuantos: string; nota: string }[];
+}
+
 export interface Criatura {
   nombre: string;
+  /** Si gobierna un dominio: sus subordinados, y que puede enviarlos o llevarlos consigo. */
+  regente?: Regente;
   categoria: "bestia" | "monstruo" | "jefe";
   /** 1 (peligro común) a 5 (mata a un grupo entero si se descuida). */
   peligro: 1 | 2 | 3 | 4 | 5;
@@ -329,8 +340,18 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "9 m",
     atributos: "FUE 20 DES 12 CON 18 INT 16 SAB 22 CAR 20",
     ataques: ["Espadón de llama gris (x2): +11, 2d6+5 cortante + 3d6 fuego"],
-    rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "Resistencia legendaria (3/día)"],
+    regente: {
+      titulo: "regente de la Inquisición de la Llama Gris",
+      corte: "Gobierna desde la catedral sumergida por sentencias selladas que sus inquisidores cumplen sin preguntar; casi nunca sale: juzga a distancia y envía a sus purificadores.",
+      servidores: [
+        { nombre: "Inquisidores de la Llama Gris", cuantos: "3-5", nota: "patrulla con antorchas y licencias selladas: ejecutan su sentencia; veteranos, ataque +4, CA 15, 20 PV" },
+        { nombre: "Acólitos vendados", cuantos: "4-8", nota: "fanáticos que «ven» por él y repiten sus sentencias en voz alta; ataque +3, CA 11, 11 PV; no se achantan" },
+        { nombre: "Sabuesos de ceniza", plantilla: "Lobo de Ceniza", cuantos: "2-4", nota: "lobos que la Inquisición adiestra para rastrear a los condenados" },
+      ],
+    },
+    rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "REGENTE: nunca está solo; sus subordinados cumplen sus sentencias lejos de él y, si da la cara, lo rodea su séquito", "Resistencia legendaria (3/día)"],
     habilidades: [
+      { nombre: "Convocar a los suyos", descripcion: "Una campana de la catedral suena y acuden 1d4+1 inquisidores y acólitos por las puertas en la ronda siguiente (aparecer_criatura o pnj)." },
       { nombre: "Veredicto", descripcion: "Señala a un culpable.", salvacion: "sab", cd: 18, dano: "8d10", tipo_dano: "fuego", mitad_si_exito: true, muerte_si_falla_por: 5, recarga: 5 },
       { nombre: "Confesión", descripcion: "Todos a 18 m confiesan su peor pecado en voz alta o arden.", salvacion: "car", cd: 17, dano: "4d10", tipo_dano: "psíquico", condicion: "aturdido 1 asalto" },
     ],
@@ -349,8 +370,19 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "12 m, trepar 12 m",
     atributos: "FUE 18 DES 18 CON 18 INT 18 SAB 16 CAR 24",
     ataques: ["Garras: +10, 2d8+4 cortante; apresada (CD 18)", "Mordisco (objetivo apresado): +10, 1d8+4 + 4d10 necrótico; ella recupera lo mismo"],
-    rasgos: ["Regeneración 20 salvo luz solar o agua bendecida con sal", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "Resistencia legendaria (3/día)"],
+    regente: {
+      titulo: "reina de la Corte Pálida",
+      corte: "Reina en Vel Morhal rodeada de cortesanos que le deben la vida (y la muerte); manda por invitaciones, favores y cenas, y nunca se ensucia las manos.",
+      servidores: [
+        { nombre: "Esbirros de la Corte Pálida", cuantos: "2-4", nota: "sirvientes pálidos, elegantes y rápidos; ataque +5, CA 14, 22 PV; llevan un mensaje o una invitación" },
+        { nombre: "Caballeros de Vel Morhal", cuantos: "2-3", nota: "no-muertos con armadura de placas que guardan su castillo y su ataúd; ataque +6, CA 17, 30 PV" },
+        { nombre: "Sirvientes de las fosas", plantilla: "Ghul de las fosas", cuantos: "1-2", nota: "ghuls domesticados que limpian lo que la Corte deja" },
+        { nombre: "Jauría de la Marca", plantilla: "Hambriento", cuantos: "6-10", nota: "muertos de la Marca que acuden a su llamada cuando necesita multitud (sin cortesía)" },
+      ],
+    },
+    rasgos: ["Regeneración 20 salvo luz solar o agua bendecida con sal", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "REGENTE: rodeada de su Corte; envía esbirros e invitaciones a su voluntad y, en persona, nunca llega sola", "Resistencia legendaria (3/día)"],
     habilidades: [
+      { nombre: "Convocar a la Corte", descripcion: "Chasquea los dedos y acuden 1d4 esbirros o caballeros por el pasillo más cercano en la ronda siguiente (aparecer_criatura o pnj)." },
       { nombre: "Mirada de la Reina", descripcion: "Un objetivo que la vea.", salvacion: "sab", cd: 19, condicion: "hechizado: la ve como su más querida aliada 1 hora" },
       { nombre: "Vaciar", descripcion: "Bebe hasta el fondo de un objetivo apresado. Quien muere así se levanta al día siguiente como su siervo.", salvacion: "con", cd: 18, dano: "6d10", tipo_dano: "necrótico", sangre: 15, muerte_si_falla_por: 10 },
     ],
@@ -368,11 +400,23 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "6 m",
     atributos: "FUE 22 DES 6 CON 24 INT 8 SAB 14 CAR 3",
     ataques: ["Brazos de la fosa (x3): +10, 2d10+6 contundente; apresado (CD 17); Podre (cd_podre 16)"],
-    rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "Inmune a veneno, necrótico, miedo"],
+    regente: {
+      titulo: "madre y soberana de los Hambrientos",
+      corte: "No piensa, pero manda: los muertos de las Ciénagas obedecen su hambre, los ghuls la rodean como hijos mayores y los Devotos del Dios Hambriento le llevan carne y la cuidan como a una diosa.",
+      servidores: [
+        { nombre: "Hambrientos", plantilla: "Hambriento", cuantos: "5-12", nota: "sus crías: salen en marea, de una sola dirección y sin miedo" },
+        { nombre: "Ghuls de las fosas", plantilla: "Ghul de las fosas", cuantos: "1-3", nota: "hijos mayores que guían a la manada y ordenan a los pequeños" },
+        { nombre: "Devotos del Dios Hambriento", cuantos: "3-6", nota: "fanáticos que le llevan carne y vigilan sus fosas; ataque +3, CA 11, 11 PV, cuchillos de hueso" },
+        { nombre: "Gigante de hueso", plantilla: "Gigante de hueso", cuantos: "1", nota: "cuando la marea necesita algo más grande, un gigante cosido con huesos de la fosa" },
+      ],
+    },
+    rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "REGENTE: pare y envía a los suyos; sus Hambrientos, ghuls y devotos actúan por ella a distancia y la rodean si se la ataca", "Inmune a veneno, necrótico, miedo"],
     habilidades: [
       { nombre: "Abrazo de la fosa", descripcion: "Contra un objetivo apresado al inicio de su turno: lo hunde en la masa. Quien muere así es absorbido: su cuerpo pasa a formar parte de la Madre.", salvacion: "fue", cd: 17, dano: "4d10", tipo_dano: "contundente", muerte_si_falla_por: 5 },
       { nombre: "Vómito de Podre", descripcion: "Cono de 9 m de carne licuada.", salvacion: "con", cd: 16, dano: "8d8", tipo_dano: "necrótico", mitad_si_exito: true, herida: "menor", recarga: 5 },
     ],
+    botin:
+      "Corazón de la Fosa (reliquia maldita): órgano negro que late al ritmo de los muertos; una vez al día, quien lo porte ordena a un grupo de Hambrientos que no ataque durante 1 minuto (CON CD 15 o contrae la Podre, cada vez). | Costuras de la Madre: tendón vivo que cierra una herida grave (+4 a tratar_herida), pero deja una marca de Podre en la piel. | Cera de sepulcro (3 frascos): cubierto con ella, un no-muerto no te huele durante 1 hora. | Al morir, los Hambrientos de la zona se desploman en cuestión de horas, y la fosa deja ver lo que se tragó: armas, oro y reliquias de un siglo.",
   },
   {
     nombre: "El Que Golpea Bajo la Piedra",
@@ -390,6 +434,8 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Tragar", descripcion: "Tras un mordisco.", salvacion: "des", cd: 19, condicion: "tragado: 6d6 ácido por turno; sale si causa 30 de daño desde dentro en un turno; si muere dentro, no queda cadáver", muerte_si_falla_por: 10 },
       { nombre: "Derrumbe", descripcion: "Golpea el techo de la caverna.", salvacion: "des", cd: 17, dano: "8d10", tipo_dano: "contundente", mitad_si_exito: true, herida: "golpe_masivo", condicion: "enterrado (asfixia en CON asaltos)", recarga: 6 },
     ],
+    botin:
+      "Diente de la Piedra (arma, encantada +2): un colmillo de roca negra largo como un brazo, que se empuña como pica o maza; 2d8 contundente y ignora la mitad del blindaje de piedra y de metal enano. | Cristal de los hondos: resuena con las cavidades; avisa de derrumbes y túneles a 30 m, y una vez al día provoca un derrumbe controlado en un techo cercano. | Mena viva (1d4 lingotes): metal que nadie sabe nombrar y que sigue enfriándose; un herrero enano puede forjar con un lingote una pieza de armadura de placas con +1 de protección contundente y que no se oxida. | Los planos de la Fortaleza Silente: grabados en su cubil por los enanos que huyeron, con las puertas, los sellos y lo que quedó dentro.",
   },
   {
     nombre: "Ilvara, la Tejedora de Mañanas",
@@ -569,6 +615,9 @@ export function fichaCriatura(c: Criatura): string {
     `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}${c.blindaje?.length ? ` · blindaje: ${c.blindaje.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
+    c.regente
+      ? `REGENTE (${c.regente.titulo}): ${c.regente.corte} Subordinados: ${c.regente.servidores.map((x) => `${x.nombre} ×${x.cuantos}${x.plantilla ? ` [plantilla «${x.plantilla}»]` : ""} — ${x.nota}`).join(" | ")}. Puede enviarlos a cumplir su voluntad sin estar presente (llegan como emisarios o como fuerza armada) y, si da la cara, su séquito lo acompaña: no lo pongas nunca solo.`
+      : "",
     c.habilidades.length
       ? `Habilidades especiales (resuélvelas con habilidad_criatura): ${c.habilidades
           .map((h) => `${h.nombre}${h.recarga ? ` [recarga ${h.recarga === 6 ? "6" : `${h.recarga}-6`}]` : ""}: ${h.descripcion}${h.salvacion ? ` ${h.salvacion.toUpperCase()} CD ${h.cd}` : ""}${h.robo ? ` — ROBA ${h.robo} del mejor atributo` : ""}${h.muerte_si_falla_por !== undefined ? ` — MUERTE INSTANTÁNEA si falla${h.muerte_si_falla_por ? ` por ${h.muerte_si_falla_por}+` : ""}` : ""}`)
@@ -736,6 +785,8 @@ export function textoBestiario(): string {
 Esto es una base, no un límite. Puedes y debes inventar criaturas nuevas cuando la aventura lo pida (harpías, gólems, hidras, krakens de ciénaga, nigromantes, caballeros caídos, demonios menores, enjambres, lo que sea), coherentes con Velmora. Para criaturas con habilidades peligrosas, regístralas con aparecer_criatura (con "definicion") para que el programa lleve sus PV y resuelva sus habilidades. Las criaturas sencillas puedes llevarlas tú con tirar_dados.
 Algunos jefes ven el futuro (presagios: sustituye con presagio_criatura las tiradas de los jugadores en los momentos clave y renueva uno al inicio de cada ronda; descríbelo: "ella ya sabía que ibas a hacer eso") o roban esencia (atributos, rasgos de raza y clase, formas): úsalo para que el jefe imite al personaje robado, use sus rasgos contra el grupo y se haga pasar por él.
 Los jefes son extremadamente difíciles: no es obligatorio vencerlos en combate directo. Siémbralos con rumores, rastros y víctimas antes de que aparezcan, y deja que los jugadores preparen, huyan, negocien o busquen sus debilidades. Anuncia el peligro de una habilidad letal antes de que se use por primera vez (una señal, un aviso, un cadáver).
+
+Los REGENTES (el Juez Sin Ojos, Ysolde y la Madre de los Hambrientos) gobiernan un dominio: tienen subordinados (ver su ficha) que envían a cumplir su voluntad —monstruos, esbirros, minions—, y cuando están en escena van con su séquito. Una oleada de Hambrientos, una patrulla de la Llama Gris o una invitación de la Corte pueden ser la mano de su regente: dales esa razón.
 
 ### Bestias y monstruos
 ${porCat(["bestia", "monstruo"])}

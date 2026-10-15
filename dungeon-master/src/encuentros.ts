@@ -2,6 +2,7 @@
 // los enemigos que más pesan en la ambientación (Hambrientos, la Inquisición). Aquí vive una tabla de encuentros que
 // tira el programa (según región, hora, nivel y dificultad) y una memoria de los últimos enemigos que penaliza repetirse.
 import { tirar } from "./dados.js";
+import { buscarCriatura } from "./bestiario.js";
 import type { Partida } from "./estado.js";
 
 export type TipoEncuentro = "combate" | "peligro" | "social" | "hallazgo";
@@ -200,8 +201,12 @@ function encuentroDeJefe(partida: Partida, d: DatosEncuentro, region: string, ni
   if (!candidatos.length) return null;
   const j = candidatos[tirar(`1d${candidatos.length < 2 ? 2 : candidatos.length}`).total - 1] ?? candidatos[0];
   const tirada = tirar("1d100").total;
-  const enPersona = nivel >= j.minNivel && tirada <= 15;
-  const emisario = !enPersona && tirada <= (nivel >= j.minNivel ? 55 : 45);
+  const regente = buscarCriatura(j.bestiario)?.regente;
+  // Los regentes delegan: casi nunca dan la cara y casi siempre actúan a través de sus subordinados.
+  const enPersona = nivel >= j.minNivel && tirada <= (regente ? 8 : 15);
+  const emisario = !enPersona && tirada <= (regente ? 75 : nivel >= j.minNivel ? 55 : 45);
+  const servidor = regente ? regente.servidores[tirar(`1d${Math.max(2, regente.servidores.length)}`).total - 1] ?? regente.servidores[0] : null;
+  const usoServidor = servidor ? `${servidor.nombre} (${servidor.cuantos})${servidor.plantilla ? `, plantilla «${servidor.plantilla}»` : ""}: ${servidor.nota}` : "";
   const modo = enPersona ? "EN PERSONA" : emisario ? "EMISARIO" : "INDICIOS";
   partida.encuentros ??= [];
   partida.encuentros.push({ familia: "jefe", nombre: j.corto, paso: partida.secuencia?.total ?? 0 });
@@ -210,16 +215,19 @@ function encuentroDeJefe(partida: Partida, d: DatosEncuentro, region: string, ni
   return [
     `🎲 ENCUENTRO — JEFE FUERA DE SU ZONA (${motivo}; d100 = ${tirada}; ${region || "región sin fijar"}, nivel medio ${nivel})`,
     `Jefe: ${j.corto} (${j.bestiario}${j.zona.length ? `; su sitio: ${j.zona.join("/")}` : "; no tiene sitio fijo"}). Presencia: ${modo}.`,
+    regente ? `Es un REGENTE (${regente.titulo}): ${regente.corte}` : "",
     enPersona
-      ? `En persona: aparecer_criatura con plantilla «${j.bestiario}». Es mortal para este grupo: planifica un trato, una huida, un terreno que cambie la pelea o una intervención; un jefe no tiene por qué luchar a muerte ni al primer encuentro.`
+      ? `En persona: aparecer_criatura con plantilla «${j.bestiario}»${regente ? `, SIEMPRE con su séquito (${regente.servidores.map((x) => x.nombre).join(", ")}: elige 1-2 grupos)` : ""}. Es mortal para este grupo: planifica un trato, una huida, un terreno que cambie la pelea o una intervención; un jefe no tiene por qué luchar a muerte ni al primer encuentro.`
       : emisario
-        ? `Un emisario suyo (un servidor, un rastreador, un agente que no sabe todo): usa un enemigo corriente acorde al nivel, con un encargo y una pista de quién lo manda. El jefe sigue lejos.`
+        ? regente
+          ? `Lo envía a cumplir su voluntad, sin estar presente: ${usoServidor}. Que se note quién los manda (insignia, sentencia, invitación, marea) y qué buscan.`
+          : `Un emisario suyo (un servidor, un rastreador, un agente que no sabe todo): usa un enemigo corriente acorde al nivel, con un encargo y una pista de quién lo manda. El jefe sigue lejos.`
         : `Solo indicios, sin enemigos a la vista: ${j.senales}.`,
     `Su plan: ${j.plan}`,
     `Por qué está aquí (elige una o inventa otra coherente con la historia; la explicas TÚ cuando toque, con pistas y no de golpe):\n${razones}`,
     d.mision ? `Misión en curso: «${d.mision}». Haz que sea consecuencia de su plan o de su acción (¿quién la encargó de verdad? ¿qué buscaba?) y revélalo poco a poco.` : "Si hay una misión en curso, puede ser consecuencia de su plan: ese es el hilo que une todo.",
     `REGÍSTRALO para que no sea un adorno y viva en segundo plano: pnj {nombre: «${j.corto}», rol, voz, quiere, agenda: su plan en marcha, arco, en_escena: false}; trama abrir_arco (o avanzar el arco de la misión) con la premisa de su plan; el programa te avisará cuando lleve turnos fuera de escena para que su avance llegue como eco.`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): string {
