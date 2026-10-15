@@ -227,6 +227,10 @@ function encuentroDeJefe(partida: Partida, d: DatosEncuentro, region: string, ni
         : `Solo indicios, sin enemigos a la vista: ${j.senales}.`,
     `Su plan: ${j.plan}`,
     j.enemigo ? `Su enemigo: ${j.enemigo}` : "",
+    (() => {
+      const m = buscarCriatura(j.bestiario)?.trasfondo?.mision;
+      return m ? `Misión semilla lista (${m.estado}): «${m.nombre}»: ${m.inicio} Si encaja, ábrela con trama abrir_arco y sigue su nudo y desenlaces (consulta_reglas criatura «${j.corto}»).` : "";
+    })(),
     `Por qué está aquí (elige una o inventa otra coherente con la historia; la explicas TÚ cuando toque, con pistas y no de golpe):\n${razones}`,
     d.mision ? `Misión en curso: «${d.mision}». Haz que sea consecuencia de su plan o de su acción (¿quién la encargó de verdad? ¿qué buscaba?) y revélalo poco a poco.` : "Si hay una misión en curso, puede ser consecuencia de su plan: ese es el hilo que une todo.",
     `REGÍSTRALO para que no sea un adorno y viva en segundo plano: pnj {nombre: «${j.corto}», rol, voz, quiere, agenda: su plan en marcha, arco, en_escena: false}; trama abrir_arco (o avanzar el arco de la misión) con la premisa de su plan; el programa te avisará cuando lleve turnos fuera de escena para que su avance llegue como eco.`,

@@ -46,6 +46,17 @@ export interface Trasfondo {
   abierto?: string[];
   /** Cómo revelar su historia poco a poco (pistas, rumores, objetos). */
   pistas?: string[];
+  /** Una misión lista para jugar que resuelve una de sus preguntas abiertas y lo empalma con la historia. */
+  mision?: {
+    nombre: string;
+    /** Estado: «propuesta» hasta que se confirme. */
+    estado: string;
+    inicio: string;
+    nudo: string;
+    desenlaces: string[];
+    pnjs: string[];
+    ganchos: string[];
+  };
 }
 
 /** Un regente manda sobre un dominio: no está solo, envía a sus subordinados a cumplir su voluntad y, en persona, va con su séquito. */
@@ -333,16 +344,10 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "El primer Varg, padre de la maldición. Antes fue un hombre de la época de los dioses; hoy, un lobo del tamaño de un carro, con la luna muerta en los ojos.",
     trasfondo: {
       origen:
-        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Quería la vida eterna: preparó un ritual para robar la esencia de Kashi, el dios de la luna, a través de uno de sus hijos, y usarla para alargar su vida. Para ello cazó un lobo (hijo de Kashi) y quiso usar sus dientes. Kashi, que ya conocía sus intenciones y supo cómo había matado a su hijo, aprovechó que Vaskar se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (su vida eterna se cumplió como castigo). No llegó a tomar nada de la esencia de Kashi, y los dientes del ritual nunca le sirvieron: lo que quiso robar le costó la forma humana. De esa maldición nace la Maldición del Lobo que marca a los Varg, que son sus «hijos»: la maldición se transmite por su mordedura y por su Aullido del Eclipse. Por dentro sigue siendo el hombre: conserva su astucia, su vileza y su magia negra; es un lobo que piensa, miente, negocia y traiciona. Kashi murió con los demás dioses (hace 99 años), así que nadie puede levantar la maldición. Por eso Vaskar busca un objeto de verdadero poder de Kashi que la rompa. Su cubil es el Bosque de Velo Rojo porque allí se rumorea que se encuentran objetos mágicos, pero todos los que se rumorean allí son rumores o señuelos. Solo existe UNA reliquia de Kashi: la FALANGE DE KASHI, la falange del dedo anular del dios, que simbolizaba su unión con los seres de la luna, como los lobos. No hay más. Da un bonus para pelear contra los Varg y la capacidad de teletransportarse, en las noches de luna llena, a todos los lugares a donde llegue la luz de la luna. Solo la puede usar un HUMANO y solo bajo la LUNA LLENA, y Vaskar NO puede salir en luna llena. Desde que está maldito, sus sentidos no pueden detectarla, y puede que ya ni esté en el Velo Rojo.",
+        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Quería la vida eterna: preparó un ritual para robar la esencia de Kashi, el dios de la luna, a través de uno de sus hijos, y usarla para alargar su vida. Para ello cazó un lobo (hijo de Kashi) y quiso usar sus dientes. Kashi, que ya conocía sus intenciones y supo cómo había matado a su hijo, aprovechó que Vaskar se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (su vida eterna se cumplió como castigo). No llegó a tomar nada de la esencia de Kashi, y los dientes del ritual nunca le sirvieron: lo que quiso robar le costó la forma humana. De esa maldición nace la Maldición del Lobo que marca a los Varg, que son sus «hijos»: la maldición se transmite por su mordedura y por su Aullido del Eclipse. Por dentro sigue siendo el hombre: conserva su astucia, su vileza y su magia negra; es un lobo que piensa, miente, negocia y traiciona. Kashi murió con los demás dioses (hace 99 años), así que nadie puede levantar la maldición. Por eso Vaskar busca un objeto de verdadero poder de Kashi que la rompa. Su cubil es el Bosque de Velo Rojo porque allí se rumorea que se encuentran objetos mágicos, pero todos los que se rumorean allí son rumores o señuelos. Solo existe UNA reliquia de Kashi: la FALANGE DE KASHI, la falange del dedo anular del dios, que simbolizaba su unión con los seres de la luna, como los lobos. No hay más. Da un bonus para pelear contra los Varg (+2 a ataque y daño y ventaja en las salvaciones contra el Aullido del Eclipse y la furia de la luna de los Varg) y la capacidad de teletransportarse, en las noches de luna llena, a todos los lugares a donde llegue la luz de la luna (una vez por noche de luna llena, al aire libre o donde entre luz por un hueco, con lo que lleve puesto). Solo la puede usar un HUMANO y solo bajo la LUNA LLENA, y Vaskar NO puede salir en luna llena. Desde que está maldito, sus sentidos no pueden detectarla, y quien la lleve es invisible a ellos (no lo huele ni lo detecta, aunque pueda deducirlo por lo que haga el portador); puede que ya ni esté en el Velo Rojo. Como solo un humano puede usarla, Vaskar necesita manos humanas ajenas que la busquen por él: engaña, chantajea o recluta a aventureros, saqueadores o Varg humanos, y deja señuelos y rumores que atraen buscadores. Los saqueadores y la Inquisición siguen esos mismos rumores del Velo Rojo y chocan entre sí y con los Varg.",
       enemigos:
         "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. El Juez llegó tarde a juzgarlo (la maldición de Kashi se le adelantó) y Kashi le retiró su favor por eso. Aliados: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo. Kuru lo tendría en su lista de leyendas.",
-      propuesto: [
-        "Como solo un humano puede usar la Falange, y solo en luna llena (noche en la que ni siquiera puede salir), Vaskar necesita manos humanas ajenas: engaña, chantajea o recluta a aventureros, saqueadores o Varg humanos para que la busquen por él, y deja señuelos y rumores que atraen buscadores (muchos mueren o acaban en su poder).",
-        "Cifras de la Falange de Kashi (reliquia): +2 a ataque y daño contra Varg y ventaja en las salvaciones contra el Aullido del Eclipse y la furia de la luna de los Varg; en noche de luna llena, una vez por noche, el portador (humano) se teletransporta a cualquier lugar al que llegue la luz de la luna (al aire libre o donde entre luz por un hueco), con lo que lleve puesto. Con ella en el grupo, Vaskar tiene un motivo para rastrearlos y un punto débil: su arma más temida es de su dios.",
-        "Consecuencia natural: quien cargue la Falange es invisible a los sentidos de Vaskar (no lo huele ni lo detecta), aunque él pueda deducirlo por lo que haga el portador.",
-        "Los saqueadores y la Inquisición siguen los mismos rumores del Velo Rojo y chocan entre sí y con los Varg.",
-      ],
-      abierto: ["¿Dónde está la Falange de Kashi ahora, y quién la tiene (o la tuvo)?"],
+      abierto: ["¿Dónde está la Falange de Kashi ahora, y quién la tiene? (lo propone la misión semilla de abajo, pendiente de tu aprobación)"],
       pistas: [
         "Leyendas de Varg sobre «el hombre que mató al hijo de la luna» y el nombre de Kashi, el dios de la luna",
         "Un colmillo de lobo marcado con símbolos de magia negra, o un grimorio con sangre de lobo",
@@ -351,6 +356,33 @@ export const BESTIARIO: Criatura[] = [
         "Rumores y cebos sobre «objetos mágicos» en el Velo Rojo que nadie ha encontrado nunca",
         "Un relicario con un hueso de dedo que brilla bajo la luna llena, y noches en que alguien «aparece» donde llega la luz de la luna",
       ],
+      mision: {
+        nombre: "El hueso que brilla con la luna",
+        estado: "propuesta, pendiente de tu aprobación",
+        inicio:
+          "Mirel, una buhonera humana de las Ciénagas, contrata al grupo en secreto (o les pide ayuda en una posada/mercado) para encontrar «un hueso de dedo que brilla con la luna llena». Les dice que es una reliquia que sanará a su hijo; la verdad: su hijo es un Varg convertido por Vaskar, que lo retiene como rehén hasta que ella le lleve la Falange (necesita manos humanas). Mirel no sabe qué es la reliquia, solo que la quiere el Lobo.",
+        nudo:
+          "La Falange está en un mercado de Aldenmar (el Mercado nocturno o un puesto de «huesos de dioses», que circulan como reliquias): la tiene Odrec, un vendedor de huesos que la usa como amuleto sin saber lo que es; en las lunas llenas ha aparecido en sitios imposibles y cree que es suerte. El grupo la encuentra, pero la Inquisición de la Llama Gris (capitana Veyra) ha notado una reliquia divina por orden del Juez, y los saqueadores y Kuru siguen los mismos rumores: todos van a por Odrec. Y alguien del grupo (humano) puede usarla en luna llena.",
+        desenlaces: [
+          "Se la dan a Vaskar (en una noche que no sea de luna llena): libera a Mirel y a su hijo, y Vaskar la usa para intentar romper su maldición; qué pasa lo decides tú (propuesta: no la rompe, pero lo acerca a ser humano una vez por luna llena)",
+          "Se quedan con la Falange: bonus contra Varg y teletransporte en luna llena, pero Vaskar y los Varg los cazan, y el Juez siente la reliquia: arco nuevo con la Inquisición",
+          "Se la entregan al Juez en la catedral hundida: el Juez la custodia (se pierde su uso) y puede dar un favor o su Rayo de luz solar primigenia; Vaskar los marca como enemigos",
+          "La destruyen: nadie más podrá usarla, Vaskar se hunde en la desesperación y Mirel pierde a su hijo",
+        ],
+        pnjs: [
+          "Mirel (buhonera humana, chantajeada por Vaskar; quiere salvar a su hijo Varg; miente por miedo)",
+          "Odrec (vendedor de huesos de Aldenmar; ignora lo que tiene y se aferra a su «suerte»)",
+          "Capitana Veyra (Inquisición de la Llama Gris; sigue el rastro de lo divino que siente el Juez)",
+          "Kuru (cazador de leyendas; la Falange es una pieza de caza si alguien la porta)",
+          "Un Varg emisario de Vaskar que vigila a Mirel desde las sombras",
+        ],
+        ganchos: [
+          "En Aldenmar: el grupo conoce a Mirel en una posada del puerto, o un Varg herido pide ayuda",
+          "En el Velo Rojo: un Varg moribundo que les pide llevar un mensaje a Mirel",
+          "Desde la Compañía del Cuervo: un encargo de escolta que en realidad lleva a Mirel hacia Aldenmar",
+          "Por el Juez: un inquisidor les pregunta si han visto «un hueso que brilla»",
+        ],
+      },
     },
     ca: 17,
     pv: "200",
@@ -374,17 +406,12 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "El primer Inquisidor, hijo del dios del sol Ka'i y de una humana. Se arrancó los ojos cuando quedó atrapado al socorrer a su padre. Aún juzga, y siempre condena.",
     trasfondo: {
       origen:
-        "Era hijo de Ka'i, el dios del sol (el dios Solar), y de una humana (la madre no es relevante). Por ser semidiós, los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa y lo hicieron guardián de sus creaciones y de todo lo divino: así nació el primer Inquisidor. Cuando fue a juzgar a Vaskar por su magia negra y la ofensa a los dioses llegó tarde (Kashi, el dios de la luna, ya lo había maldecido) y Kashi le retiró su favor por eso. Se arrancó los ojos porque quedó atrapado cuando fue a socorrer a su padre: ante su inminente muerte, prefirió sacarse los ojos. Conserva su don sin ellos: su «vista ciega» es ese don, que no depende de los ojos, y sigue viendo la naturaleza divina y maldita de todo. Vive en la catedral hundida bajo Aldenmar porque fue el último lugar donde habló con su padre. Aún juzga, y siempre condena.",
+        "Era hijo de Ka'i, el dios del sol (el dios Solar), y de una humana (la madre no es relevante). Por ser semidiós, los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa y lo hicieron guardián de sus creaciones y de todo lo divino: así nació el primer Inquisidor. Cuando fue a juzgar a Vaskar por su magia negra y la ofensa a los dioses llegó tarde (Kashi, el dios de la luna, ya lo había maldecido) y Kashi le retiró su favor por eso. Se arrancó los ojos porque quedó atrapado cuando fue a socorrer a su padre: ante la inminente muerte de Ka'i, prefirió sacarse los ojos. Ka'i le recordó su misión y le pidió no flaquear ante el mal: esas fueron sus últimas palabras. Conserva su don sin ojos: su «vista ciega» es ese don, que no depende de los ojos, y sigue viendo la naturaleza divina y maldita de todo. Vive en la catedral hundida bajo Aldenmar porque fue el último lugar donde habló con su padre. La catedral solo guarda sus cosas, el botín que puede dar y los recuerdos de su padre. Fue guardián de lo divino y falló: juzga con una dureza que es expiación. Ka'i es el dios Solar cuyo corazón duerme bajo Kharoth en las Agujas de Vahl; el Juez nunca ha ido a por él (o no puede acercarse): es su herida más honda. La Inquisición de la Llama Gris es su obra: la llama gris es el fuego del sol de su padre, ya apagado y cenizo, y sus inquisidores heredan, sin entenderlo, su misión de guardar lo divino y perseguir la magia negra. Detecta cualquier objeto divino o maldito a gran distancia (como la Falange de Kashi): es muy peligroso para quien lleve uno. Aún juzga, y siempre condena.",
       enemigos:
         "Vaskar, el Lobo del Eclipse: lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses.",
       propuesto: [
-        "Fue guardián de lo divino y falló: llegó tarde con Vaskar y no pudo salvar a su padre ni a los dioses; juzga con una dureza que es expiación.",
-        "Su padre, Ka'i, es el dios Solar cuyo corazón duerme bajo Kharoth en las Agujas de Vahl. El Juez nunca ha ido a por él (o no puede acercarse): es su herida más honda.",
-        "La Inquisición de la Llama Gris es su obra: la llama gris es el fuego del sol de su padre, ya apagado y cenizo. Sus inquisidores heredan, sin entenderlo, su misión de guardar lo divino y perseguir la magia negra.",
-        "Detecta cualquier objeto divino o maldito a gran distancia (como la Falange de Kashi, la única reliquia de Kashi que queda): es muy peligroso para quien lleve uno. Seguir su rastro es seguir al Juez.",
-        "La catedral hundida conserva lo que dijo Ka'i en su última conversación, y por eso no se va ni la deja caer.",
+        "Cifras del Rayo de luz solar primigenia (su botín): +2 a ataque y daño contra no-muertos y criaturas malditas; ilumina la oscuridad más grande (incluso la mágica) en un radio de 36 m; y acaba con los vampiros que alcanza (CON CD 20 o mueren; si superan, quedan a 0 PV y arden): por eso Ysolde regenera «salvo luz solar». Uno por campaña.",
       ],
-      abierto: ["¿Qué fue lo último que le dijo Ka'i, y por qué no se marcha de la catedral?", "¿La «inminente muerte» era la de Ka'i, la suya, o la de ambos?"],
       pistas: [
         "Antiguos grabados de un semidiós de ojos de oro vendado, guardián de los altares",
         "La Inquisición reza a «el Hijo del Sol» y a veces llama a su líder «el Guardián»",
@@ -413,7 +440,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Veredicto", descripcion: "Señala a un culpable.", salvacion: "sab", cd: 18, dano: "8d10", tipo_dano: "fuego", mitad_si_exito: true, muerte_si_falla_por: 5, recarga: 5 },
       { nombre: "Confesión", descripcion: "Todos a 18 m confiesan su peor pecado en voz alta o arden.", salvacion: "car", cd: 17, dano: "4d10", tipo_dano: "psíquico", condicion: "aturdido 1 asalto" },
     ],
-    botin: "Espadón de llama gris (encantado); los archivos secretos de la Inquisición",
+    botin: "Espadón de llama gris (encantado); los archivos secretos de la Inquisición; Rayo de luz solar primigenia (reliquia, guardado en la catedral: un rayo del sol de Ka'i, da bonus contra muertos vivientes y lo maldito, permite iluminar la oscuridad más grande y acaba con los vampiros) y los recuerdos de Ka'i que la catedral conserva",
   },
   {
     nombre: "Ysolde, la Reina Pálida",
@@ -674,7 +701,7 @@ export function fichaCriatura(c: Criatura): string {
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
     c.trasfondo
-      ? `TRASFONDO (secreto del DM; los PNJ solo saben rumores): ${c.trasfondo.origen}${c.trasfondo.enemigos ? ` ENEMIGOS: ${c.trasfondo.enemigos}` : ""}${c.trasfondo.propuesto?.length ? ` PROPUESTO (sin confirmar; úsalo con criterio): ${c.trasfondo.propuesto.join(" · ")}` : ""}${c.trasfondo.pistas?.length ? ` PISTAS para revelarlo poco a poco: ${c.trasfondo.pistas.join(" · ")}.` : ""}${c.trasfondo.abierto?.length ? ` AÚN ABIERTO: ${c.trasfondo.abierto.join(" ")}` : ""}`
+      ? `TRASFONDO (secreto del DM; los PNJ solo saben rumores): ${c.trasfondo.origen}${c.trasfondo.enemigos ? ` ENEMIGOS: ${c.trasfondo.enemigos}` : ""}${c.trasfondo.propuesto?.length ? ` PROPUESTO (sin confirmar; úsalo con criterio): ${c.trasfondo.propuesto.join(" · ")}` : ""}${c.trasfondo.pistas?.length ? ` PISTAS para revelarlo poco a poco: ${c.trasfondo.pistas.join(" · ")}.` : ""}${c.trasfondo.abierto?.length ? ` AÚN ABIERTO: ${c.trasfondo.abierto.join(" ")}` : ""}${c.trasfondo.mision ? ` MISIÓN SEMILLA «${c.trasfondo.mision.nombre}» (${c.trasfondo.mision.estado}): INICIO: ${c.trasfondo.mision.inicio} NUDO: ${c.trasfondo.mision.nudo} DESENLACES POSIBLES: ${c.trasfondo.mision.desenlaces.join(" | ")} PNJ: ${c.trasfondo.mision.pnjs.join(" | ")} GANCHOS: ${c.trasfondo.mision.ganchos.join(" | ")}. Para jugarla: trama abrir_arco con su premisa, registra a los PNJ con agenda (pnj) y avanza el arco con avanzar_arco.` : ""}`
       : "",
     c.regente
       ? `REGENTE (${c.regente.titulo}): ${c.regente.corte} Subordinados: ${c.regente.servidores.map((x) => `${x.nombre} ×${x.cuantos}${x.plantilla ? ` [plantilla «${x.plantilla}»]` : ""} — ${x.nota}`).join(" | ")}. Puede enviarlos a cumplir su voluntad sin estar presente (llegan como emisarios o como fuerza armada) y, si da la cara, su séquito lo acompaña: no lo pongas nunca solo.`
