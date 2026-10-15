@@ -333,19 +333,21 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "El primer Varg, padre de la maldición. Antes fue un hombre de la época de los dioses; hoy, un lobo del tamaño de un carro, con la luna muerta en los ojos.",
     trasfondo: {
       origen:
-        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Un día cazó un lobo para usar sus dientes en un ritual de magia negra. Ese lobo era hijo del dios de la luna. El dios, que ya conocía las intenciones de Vaskar y supo cómo había matado a su hijo, aprovechó que se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad. De esa maldición nace la Maldición del Lobo que marca a los Varg.",
+        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Un día cazó un lobo para usar sus dientes en un ritual de magia negra con el fin de lograr la vida eterna. Ese lobo era hijo del dios de la luna, Kashi. Kashi, que ya conocía las intenciones de Vaskar y supo cómo había matado a su hijo, aprovechó que se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (así, su vida eterna se cumplió como castigo). De esa maldición nace la Maldición del Lobo que marca a los Varg. Hoy su cubil es el Bosque de Velo Rojo, donde se rumorea que se pueden encontrar objetos mágicos: los busca para romper su maldición, pero la propia maldición lo limita y no le deja encontrarlos fácilmente.",
       enemigos:
-        "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses.",
+        "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. El Juez llegó tarde a juzgarlo (la maldición de Kashi se le adelantó) y Kashi le retiró su favor por eso.",
       propuesto: [
         "Sigue siendo el hombre por dentro: conserva su astucia, su vileza y su conocimiento de magia negra; es un lobo que piensa, miente, negocia y traiciona (por eso INT 14 y SAB 16).",
-        "El dios de la luna murió con los demás dioses hace 99 años: nadie puede levantar su maldición, y eso es lo que Vaskar no soporta. Lo que busca hoy es ser humano de nuevo (el «fin de la maldición» de su botín es su cebo, o su única salida).",
+        "Kashi murió con los demás dioses hace 99 años: nadie puede levantar su maldición. Por eso Vaskar necesita un objeto mágico, y el «fin de la maldición» de su botín es su cebo (o su única salida).",
+        "Cómo lo limita la maldición (elige una o varias): al acercarse al objeto que podría liberarlo se transforma en bestia sin juicio; la luna lo adormece cuando está a punto de lograrlo; o no puede tocar ni ver lo que lo rompería, y por eso necesita manos ajenas (puede engañar, chantajear o reclutar a aventureros para que busquen por él).",
+        "Los objetos mágicos del Velo Rojo son en su mayoría rumores, trampas o señuelos; alguno puede ser real, quizá un resto de Kashi.",
         "La Maldición del Lobo se transmite por su mordedura y por su Aullido del Eclipse: los Varg son «hijos» suyos, y por eso la Inquisición los quema (ven en ellos el pecado de Vaskar).",
         "Los dientes de lobo del ritual nunca llegaron a servirle: lo que quiso robar le costó la forma humana. Hay quien guarda aún el colmillo del hijo de la luna (el Colmillo del Eclipse).",
         "Aliados posibles: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo; enemigos: el Juez y su Inquisición, y quien quiera cazarlo (Kuru lo tendría en su lista de leyendas).",
       ],
-      abierto: ["¿Cómo se llamaba el dios de la luna?", "¿Qué ritual preparaba Vaskar y para qué?", "¿Qué hizo el Juez entonces: lo juzgó antes de la maldición, o llegó tarde?", "¿Por qué el Velo Rojo es su cubil?"],
+      abierto: ["¿Qué objetos mágicos hay de verdad en el Velo Rojo, y cuál podría romper la maldición?", "¿Cómo exactamente lo limita la maldición?", "¿Murió Kashi con los demás dioses o se retiró antes de la Caída?", "¿Qué ritual concreto de vida eterna preparaba?"],
       pistas: [
-        "Leyendas de Varg sobre «el hombre que mató al hijo de la luna»",
+        "Leyendas de Varg sobre «el hombre que mató al hijo de la luna» y el nombre de Kashi, el dios de la luna",
         "Un colmillo de lobo marcado con símbolos de magia negra, o un grimorio con sangre de lobo",
         "Los archivos de la Inquisición hablan de un condenado sin ejecutar «de antes de la Caída»",
         "Los Varg que se transforman bajo su Aullido murmuran palabras en una lengua antigua que no conocen",
@@ -373,8 +375,8 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "El primer Inquisidor, que se arrancó los ojos para no ver morir a los dioses. Aún juzga, y siempre condena.",
     trasfondo: {
       origen: "El primer Inquisidor: se arrancó los ojos para no ver morir a los dioses y aún juzga, y siempre condena.",
-      enemigos: "Vaskar, el Lobo del Eclipse: lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses.",
-      abierto: ["¿Qué sentencia dictó contra Vaskar y por qué no se cumplió?"],
+      enemigos: "Vaskar, el Lobo del Eclipse: lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. Llegó tarde a juzgarlo y Kashi, el dios de la luna, le retiró su favor por eso.",
+      abierto: ["¿Cómo vivió el Juez la pérdida del favor de Kashi? ¿Se relaciona con haberse arrancado los ojos?"],
     },
     ca: 19,
     pv: "180",
