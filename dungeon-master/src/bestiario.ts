@@ -333,21 +333,23 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "El primer Varg, padre de la maldición. Antes fue un hombre de la época de los dioses; hoy, un lobo del tamaño de un carro, con la luna muerta en los ojos.",
     trasfondo: {
       origen:
-        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Quería la vida eterna: preparó un ritual para robar la esencia de Kashi, el dios de la luna, a través de uno de sus hijos, y usarla para alargar su vida. Para ello cazó un lobo (hijo de Kashi) y quiso usar sus dientes. Kashi, que ya conocía sus intenciones y supo cómo había matado a su hijo, aprovechó que Vaskar se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (su vida eterna se cumplió como castigo). Los dientes del ritual nunca llegaron a servirle: lo que quiso robar le costó la forma humana. De esa maldición nace la Maldición del Lobo que marca a los Varg, que son sus «hijos»: la maldición se transmite por su mordedura y por su Aullido del Eclipse. Por dentro sigue siendo el hombre: conserva su astucia, su vileza y su magia negra; es un lobo que piensa, miente, negocia y traiciona. Kashi murió con los demás dioses (hace 99 años), así que nadie puede levantar la maldición. Por eso Vaskar busca objetos mágicos que la rompan: reliquias de verdadero poder de Kashi. Su cubil es el Bosque de Velo Rojo porque allí se rumorea que se encuentran, pero los objetos del Velo Rojo son todos rumores o señuelos. Las reliquias de Kashi sí pueden existir, pero desde que está maldito sus sentidos no pueden detectarlas, y puede que ya ni estén en el Velo Rojo.",
+        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Quería la vida eterna: preparó un ritual para robar la esencia de Kashi, el dios de la luna, a través de uno de sus hijos, y usarla para alargar su vida. Para ello cazó un lobo (hijo de Kashi) y quiso usar sus dientes. Kashi, que ya conocía sus intenciones y supo cómo había matado a su hijo, aprovechó que Vaskar se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (su vida eterna se cumplió como castigo). No llegó a tomar nada de la esencia de Kashi, y los dientes del ritual nunca le sirvieron: lo que quiso robar le costó la forma humana. De esa maldición nace la Maldición del Lobo que marca a los Varg, que son sus «hijos»: la maldición se transmite por su mordedura y por su Aullido del Eclipse. Por dentro sigue siendo el hombre: conserva su astucia, su vileza y su magia negra; es un lobo que piensa, miente, negocia y traiciona. Kashi murió con los demás dioses (hace 99 años), así que nadie puede levantar la maldición. Por eso Vaskar busca objetos mágicos que la rompan: reliquias de verdadero poder de Kashi. Su cubil es el Bosque de Velo Rojo porque allí se rumorea que se encuentran, pero los objetos del Velo Rojo son todos rumores o señuelos. Las reliquias de Kashi sí pueden existir, pero desde que está maldito sus sentidos no pueden detectarlas, y puede que ya ni estén en el Velo Rojo. Esas reliquias solo las puede usar un HUMANO y solo bajo la LUNA LLENA, y Vaskar NO puede salir en luna llena. Una de ellas es la FALANGE DE KASHI: la falange del dedo anular del dios, que simbolizaba su unión con los seres de la luna, como los lobos. Da un bonus para pelear contra los Varg y la capacidad de teletransportarse, en las noches de luna llena, a todos los lugares a donde llegue la luz de la luna.",
       enemigos:
         "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. El Juez llegó tarde a juzgarlo (la maldición de Kashi se le adelantó) y Kashi le retiró su favor por eso. Aliados: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo. Kuru lo tendría en su lista de leyendas.",
       propuesto: [
-        "Como no puede detectar las reliquias de Kashi, necesita manos ajenas: engaña, chantajea o recluta a aventureros, saqueadores o Varg para que busquen por él, y deja señuelos y rumores que atraen buscadores (muchos mueren o acaban en su poder).",
+        "Como solo un humano puede usar las reliquias, y solo en luna llena (noche en la que ni siquiera puede salir), Vaskar necesita manos humanas ajenas: engaña, chantajea o recluta a aventureros, saqueadores o Varg humanos para que busquen por él, y deja señuelos y rumores que atraen buscadores (muchos mueren o acaban en su poder).",
+        "Cifras de la Falange de Kashi (reliquia): +2 a ataque y daño contra Varg y ventaja en las salvaciones contra el Aullido del Eclipse y la furia de la luna de los Varg; en noche de luna llena, una vez por noche, el portador (humano) se teletransporta a cualquier lugar al que llegue la luz de la luna (al aire libre o donde entre luz por un hueco), con lo que lleve puesto. Con ella en el grupo, Vaskar tiene un motivo para rastrearlos y un punto débil: su arma más temida es de su dios.",
         "Consecuencia natural: quien cargue una reliquia de Kashi es invisible a los sentidos de Vaskar (no lo huele ni lo detecta), aunque él pueda deducirlo por lo que haga el portador.",
         "Los saqueadores y la Inquisición siguen los mismos rumores del Velo Rojo y chocan entre sí y con los Varg.",
       ],
-      abierto: ["¿Cuáles son las reliquias de Kashi, qué hacen y dónde están ahora?", "¿Hasta dónde llegó el ritual: tomó algo de la esencia de Kashi antes de ser maldecido?"],
+      abierto: ["¿Qué otras reliquias de Kashi hay además de la Falange, y dónde están ahora (incluida la Falange)?", "¿Qué usos tienen las demás reliquias?"],
       pistas: [
         "Leyendas de Varg sobre «el hombre que mató al hijo de la luna» y el nombre de Kashi, el dios de la luna",
         "Un colmillo de lobo marcado con símbolos de magia negra, o un grimorio con sangre de lobo",
         "Los archivos de la Inquisición hablan de un condenado sin ejecutar «de antes de la Caída»",
         "Los Varg que se transforman bajo su Aullido murmuran palabras en una lengua antigua que no conocen",
         "Rumores y cebos sobre «objetos mágicos» en el Velo Rojo que nadie ha encontrado nunca",
+        "Un relicario con un hueso de dedo que brilla bajo la luna llena, y noches en que alguien «aparece» donde llega la luz de la luna",
       ],
     },
     ca: 17,
@@ -369,11 +371,26 @@ export const BESTIARIO: Criatura[] = [
     categoria: "jefe",
     peligro: 5,
     region: "Catedral sumergida bajo Aldenmar",
-    descripcion: "El primer Inquisidor, que se arrancó los ojos para no ver morir a los dioses. Aún juzga, y siempre condena.",
+    descripcion: "El primer Inquisidor, hijo del dios del sol Ka'i y de una humana. Se arrancó los ojos para no ver morir a los dioses. Aún juzga, y siempre condena.",
     trasfondo: {
-      origen: "El primer Inquisidor: se arrancó los ojos para no ver morir a los dioses y aún juzga, y siempre condena.",
-      enemigos: "Vaskar, el Lobo del Eclipse: lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. Llegó tarde a juzgarlo y Kashi, el dios de la luna, le retiró su favor por eso.",
-      abierto: ["¿Cómo vivió el Juez la pérdida del favor de Kashi? ¿Se relaciona con haberse arrancado los ojos?"],
+      origen:
+        "Era hijo de Ka'i, el dios del sol, y de una humana. Por ser semidiós, los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa y lo hicieron guardián de sus creaciones y de todo lo divino: así nació el primer Inquisidor. Cuando fue a juzgar a Vaskar por su magia negra y la ofensa a los dioses llegó tarde (Kashi, el dios de la luna, ya lo había maldecido) y Kashi le retiró su favor por eso. Se arrancó los ojos para no ver morir a los dioses. Aún juzga, y siempre condena.",
+      enemigos:
+        "Vaskar, el Lobo del Eclipse: lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses.",
+      propuesto: [
+        "Aun sin ojos conserva su don de semidiós: su «vista ciega» (36 m) es el don de ver la naturaleza divina y maldita de todo, que no depende de los ojos. Sabe si un objeto es una reliquia divina o está maldito, si una persona lleva Ceniza o un pacto, y si una criatura es obra de los dioses o una aberración.",
+        "Fue guardián de lo divino y falló: llegó tarde con Vaskar y no pudo evitar que los dioses murieran. Se arrancó los ojos por culpa y por no ver lo que no pudo impedir; juzga con una dureza que es expiación.",
+        "Su padre, Ka'i, es el dios Solar cuyo corazón duerme bajo Kharoth en las Agujas de Vahl. El Juez nunca ha ido a por él (o no puede acercarse): es su herida más honda.",
+        "La Inquisición de la Llama Gris es su obra: la llama gris es el fuego del sol de su padre, ya apagado y cenizo. Sus inquisidores heredan, sin entenderlo, su misión de guardar lo divino y perseguir la magia negra.",
+        "Detecta cualquier reliquia de los dioses a gran distancia (como la Falange de Kashi) y siente las maldiciones: es muy peligroso para quien lleve una.",
+      ],
+      abierto: ["¿Ka'i es el dios Solar cuyo corazón guarda Kharoth?", "¿Cómo se llamaba su madre humana y qué fue de ella?", "¿Por qué decidió arrancarse los ojos exactamente? (¿la caída de los dioses, o antes?)", "¿Por qué vive en la catedral sumergida bajo Aldenmar?"],
+      pistas: [
+        "Antiguos grabados de un semidiós de ojos de oro vendado, guardián de los altares",
+        "La Inquisición reza a «el Hijo del Sol» y a veces llama a su líder «el Guardián»",
+        "Los inquisidores usan vendas en los ojos como penitencia en su honor",
+        "Archivos sellados sobre una sentencia que «llegó tarde» y un favor perdido de la luna",
+      ],
     },
     ca: 19,
     pv: "180",
@@ -389,7 +406,7 @@ export const BESTIARIO: Criatura[] = [
         { nombre: "Sabuesos de ceniza", plantilla: "Lobo de Ceniza", cuantos: "2-4", nota: "lobos que la Inquisición adiestra para rastrear a los condenados" },
       ],
     },
-    rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "REGENTE: nunca está solo; sus subordinados cumplen sus sentencias lejos de él y, si da la cara, lo rodea su séquito", "Resistencia legendaria (3/día)"],
+    rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "Semidiós: los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa (reliquias, maldiciones, Ceniza, criaturas sagradas o aberrantes) y de custodiar todo lo divino", "REGENTE: nunca está solo; sus subordinados cumplen sus sentencias lejos de él y, si da la cara, lo rodea su séquito", "Resistencia legendaria (3/día)"],
     habilidades: [
       { nombre: "Convocar a los suyos", descripcion: "Una campana de la catedral suena y acuden 1d4+1 inquisidores y acólitos por las puertas en la ronda siguiente (aparecer_criatura o pnj)." },
       { nombre: "Veredicto", descripcion: "Señala a un culpable.", salvacion: "sab", cd: 18, dano: "8d10", tipo_dano: "fuego", mitad_si_exito: true, muerte_si_falla_por: 5, recarga: 5 },
