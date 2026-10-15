@@ -333,24 +333,21 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "El primer Varg, padre de la maldición. Antes fue un hombre de la época de los dioses; hoy, un lobo del tamaño de un carro, con la luna muerta en los ojos.",
     trasfondo: {
       origen:
-        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Un día cazó un lobo para usar sus dientes en un ritual de magia negra con el fin de lograr la vida eterna. Ese lobo era hijo del dios de la luna, Kashi. Kashi, que ya conocía las intenciones de Vaskar y supo cómo había matado a su hijo, aprovechó que se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (así, su vida eterna se cumplió como castigo). De esa maldición nace la Maldición del Lobo que marca a los Varg. Hoy su cubil es el Bosque de Velo Rojo, donde se rumorea que se pueden encontrar objetos mágicos: los busca para romper su maldición, pero la propia maldición lo limita y no le deja encontrarlos fácilmente.",
+        "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Quería la vida eterna: preparó un ritual para robar la esencia de Kashi, el dios de la luna, a través de uno de sus hijos, y usarla para alargar su vida. Para ello cazó un lobo (hijo de Kashi) y quiso usar sus dientes. Kashi, que ya conocía sus intenciones y supo cómo había matado a su hijo, aprovechó que Vaskar se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (su vida eterna se cumplió como castigo). Los dientes del ritual nunca llegaron a servirle: lo que quiso robar le costó la forma humana. De esa maldición nace la Maldición del Lobo que marca a los Varg, que son sus «hijos»: la maldición se transmite por su mordedura y por su Aullido del Eclipse. Por dentro sigue siendo el hombre: conserva su astucia, su vileza y su magia negra; es un lobo que piensa, miente, negocia y traiciona. Kashi murió con los demás dioses (hace 99 años), así que nadie puede levantar la maldición. Por eso Vaskar busca objetos mágicos que la rompan: reliquias de verdadero poder de Kashi. Su cubil es el Bosque de Velo Rojo porque allí se rumorea que se encuentran, pero los objetos del Velo Rojo son todos rumores o señuelos. Las reliquias de Kashi sí pueden existir, pero desde que está maldito sus sentidos no pueden detectarlas, y puede que ya ni estén en el Velo Rojo.",
       enemigos:
-        "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. El Juez llegó tarde a juzgarlo (la maldición de Kashi se le adelantó) y Kashi le retiró su favor por eso.",
+        "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. El Juez llegó tarde a juzgarlo (la maldición de Kashi se le adelantó) y Kashi le retiró su favor por eso. Aliados: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo. Kuru lo tendría en su lista de leyendas.",
       propuesto: [
-        "Sigue siendo el hombre por dentro: conserva su astucia, su vileza y su conocimiento de magia negra; es un lobo que piensa, miente, negocia y traiciona (por eso INT 14 y SAB 16).",
-        "Kashi murió con los demás dioses hace 99 años: nadie puede levantar su maldición. Por eso Vaskar necesita un objeto mágico, y el «fin de la maldición» de su botín es su cebo (o su única salida).",
-        "Cómo lo limita la maldición (elige una o varias): al acercarse al objeto que podría liberarlo se transforma en bestia sin juicio; la luna lo adormece cuando está a punto de lograrlo; o no puede tocar ni ver lo que lo rompería, y por eso necesita manos ajenas (puede engañar, chantajear o reclutar a aventureros para que busquen por él).",
-        "Los objetos mágicos del Velo Rojo son en su mayoría rumores, trampas o señuelos; alguno puede ser real, quizá un resto de Kashi.",
-        "La Maldición del Lobo se transmite por su mordedura y por su Aullido del Eclipse: los Varg son «hijos» suyos, y por eso la Inquisición los quema (ven en ellos el pecado de Vaskar).",
-        "Los dientes de lobo del ritual nunca llegaron a servirle: lo que quiso robar le costó la forma humana. Hay quien guarda aún el colmillo del hijo de la luna (el Colmillo del Eclipse).",
-        "Aliados posibles: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo; enemigos: el Juez y su Inquisición, y quien quiera cazarlo (Kuru lo tendría en su lista de leyendas).",
+        "Como no puede detectar las reliquias de Kashi, necesita manos ajenas: engaña, chantajea o recluta a aventureros, saqueadores o Varg para que busquen por él, y deja señuelos y rumores que atraen buscadores (muchos mueren o acaban en su poder).",
+        "Consecuencia natural: quien cargue una reliquia de Kashi es invisible a los sentidos de Vaskar (no lo huele ni lo detecta), aunque él pueda deducirlo por lo que haga el portador.",
+        "Los saqueadores y la Inquisición siguen los mismos rumores del Velo Rojo y chocan entre sí y con los Varg.",
       ],
-      abierto: ["¿Qué objetos mágicos hay de verdad en el Velo Rojo, y cuál podría romper la maldición?", "¿Cómo exactamente lo limita la maldición?", "¿Murió Kashi con los demás dioses o se retiró antes de la Caída?", "¿Qué ritual concreto de vida eterna preparaba?"],
+      abierto: ["¿Cuáles son las reliquias de Kashi, qué hacen y dónde están ahora?", "¿Hasta dónde llegó el ritual: tomó algo de la esencia de Kashi antes de ser maldecido?"],
       pistas: [
         "Leyendas de Varg sobre «el hombre que mató al hijo de la luna» y el nombre de Kashi, el dios de la luna",
         "Un colmillo de lobo marcado con símbolos de magia negra, o un grimorio con sangre de lobo",
         "Los archivos de la Inquisición hablan de un condenado sin ejecutar «de antes de la Caída»",
         "Los Varg que se transforman bajo su Aullido murmuran palabras en una lengua antigua que no conocen",
+        "Rumores y cebos sobre «objetos mágicos» en el Velo Rojo que nadie ha encontrado nunca",
       ],
     },
     ca: 17,
