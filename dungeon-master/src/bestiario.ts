@@ -513,7 +513,7 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "Una masa de cadáveres cosidos por la Podre, grande como una casa, que pare Hambrientos sin parar.",
     trasfondo: {
       origen:
-        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin. Los muertos no descansaron porque a ninguno se le hizo el rito de la sal. Se devoraron entre sí porque no quedaban vivos que comer. DEBILIDAD: la sal y el fuego la dañan, pero solo en grandes cantidades; un poco de sal o una antorcha no basta. Para destruirla de verdad hace falta un arma muy poderosa capaz de aniquilarla hasta el punto de que no pueda regenerarse: un arma que destruya el alma o que combata la Podre. El Rayo de luz solar primigenia NO la mata (quizá pueda hacerle daño).",
+        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin. Los muertos no descansaron porque a ninguno se le hizo el rito de la sal. Se devoraron entre sí porque no quedaban vivos que comer. DEBILIDAD: la sal y el fuego la dañan, pero solo en grandes cantidades; un poco de sal o una antorcha no basta. Para destruirla de verdad hace falta un arma muy poderosa capaz de aniquilarla hasta el punto de que no pueda regenerarse: un arma que destruya el alma o que combata la Podre: el COLMILLO DE HIERRO (espadón legendario que corta el alma) es esa arma; con él la Madre deja de regenerar y puede ser destruida. El Rayo de luz solar primigenia NO la mata (quizá pueda hacerle daño).",
       propuesto: [
         "Cifras mías: vulnerable a fuego y a daño de sal (esparcida, a puñados o en carga), con regeneración de unos 10 PV por ronda que solo se detiene bajo fuego o sal masivos; el Rayo de luz solar primigenia le hace daño pero no la mata",
         "El Dios Hambriento (mío): no es un dios de verdad, sino el nombre que los Devotos dan al hambre de la Madre; la veneran como su templo viviente y creen que cada muerto que absorbe es una ofrenda",
@@ -522,7 +522,7 @@ export const BESTIARIO: Criatura[] = [
       ],
       abierto: [
         "¿Qué guerra fue y quién luchó en ella?",
-        "¿Qué arma concreta destruye almas o combate la Podre, y dónde está? (puede ser una misión)",
+        "¿Dónde está el Colmillo de Hierro, el arma que puede destruirla? (puede ser una misión)",
         "¿Cuánta sal y fuego hacen falta exactamente? (ver cifras propuestas)",
       ],
       pistas: [

@@ -201,7 +201,7 @@ Huevos de piedra con un rostro desordenado, que pertenecen al **Coro de los Cinc
 
 ## Armas legendarias
 
-Únicas en toda la campaña (solo existe una de cada) y casi imposibles de conseguir: salen solo del botín de jefes (2 %) o cuando el DM las pone en la historia. Todas protegen frente al Eclipse. **Colmillo de Hierro** (espadón descomunal, letal contra demonios y apóstoles), **Lanza de la Primera Llama**, **Escudo de Aldren el Fiel**, **Daga del Último Rito** (corta profecías y presagios) y **Martillo del Herrero Ciego** (obliga a los cambiaformas a mostrarse). El DM puede inventar más.
+Únicas en toda la campaña (solo existe una de cada) y casi imposibles de conseguir: salen solo del botín de jefes (2 %) o cuando el DM las pone en la historia. Todas protegen frente al Eclipse. **Colmillo de Hierro** (espadón descomunal, letal contra demonios y apóstoles; corta el alma, así que anula la regeneración de la Madre de los Hambrientos y puede destruirla), **Lanza de la Primera Llama**, **Escudo de Aldren el Fiel**, **Daga del Último Rito** (corta profecías y presagios) y **Martillo del Herrero Ciego** (obliga a los cambiaformas a mostrarse). El DM puede inventar más.
 
 ## Requisitos
 

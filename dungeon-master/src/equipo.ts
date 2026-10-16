@@ -119,7 +119,7 @@ export const LEGENDARIAS: { nombre: string; descripcion: string }[] = [
   {
     nombre: "Colmillo de Hierro",
     descripcion:
-      "Un espadón descomunal, más losa de hierro que espada (2d8 cortante, pesada, a dos manos, FUE 17 o desventaja). +2 a ataque y daño; +2d8 contra demonios, apóstoles y no-muertos. Forjado con el hierro de las cadenas que ataron a un dios: los apóstoles lo temen",
+      "Un espadón descomunal, más losa de hierro que espada (2d8 cortante, pesada, a dos manos, FUE 17 o desventaja). +2 a ataque y daño; +2d8 contra demonios, apóstoles y no-muertos. Forjado con el hierro de las cadenas que ataron a un dios: los apóstoles lo temen. Su filo corta el alma: el daño que hace a no-muertos y a criaturas de la Podre no lo recupera ninguna regeneración, y lo que cae bajo él no se levanta ni se rehace. Es el arma capaz de destruir de verdad a la Madre de los Hambrientos",
   },
   {
     nombre: "Lanza de la Primera Llama",
