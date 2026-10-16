@@ -510,20 +510,12 @@ export const BESTIARIO: Criatura[] = [
     categoria: "jefe",
     peligro: 5,
     region: "Una fosa común sin fondo en las Ciénagas de Hollín",
-    descripcion: "Una masa de cadáveres cosidos por la Podre, grande como una casa, que pare Hambrientos sin parar.",
+    descripcion: "Una masa de cadáveres cosidos por la Podre: un cuerpo de 2,5 m de alto y muy ancho, que pare Hambrientos sin parar.",
     trasfondo: {
       origen:
-        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin. Los muertos no descansaron porque a ninguno se le hizo el rito de la sal. Se devoraron entre sí porque no quedaban vivos que comer. DEBILIDAD: la sal y el fuego la dañan, pero solo en grandes cantidades; un poco de sal o una antorcha no basta. Para destruirla de verdad hace falta un arma muy poderosa capaz de aniquilarla hasta el punto de que no pueda regenerarse: un arma que destruya el alma o que combata la Podre: el COLMILLO DE HIERRO (espadón legendario que corta el alma) es esa arma; con él la Madre deja de regenerar y puede ser destruida. El Rayo de luz solar primigenia NO la mata (quizá pueda hacerle daño).",
-      propuesto: [
-        "Cifras mías: vulnerable a fuego y a daño de sal (esparcida, a puñados o en carga), con regeneración de unos 10 PV por ronda que solo se detiene bajo fuego o sal masivos; el Rayo de luz solar primigenia le hace daño pero no la mata",
-        "El Dios Hambriento (mío): no es un dios de verdad, sino el nombre que los Devotos dan al hambre de la Madre; la veneran como su templo viviente y creen que cada muerto que absorbe es una ofrenda",
-        "El dios nuevo (mío): los Devotos creen que, cuando la fosa absorba bastantes muertos, la Madre parirá un dios que no tendrá hambre porque será todo lo comido; promete a los desesperados que nadie volverá a pasar hambre ni a morir solo, porque entrará en él",
-        "Quien lo exige (mío): para ser «dios nuevo» necesita almas, no solo carne; por eso los Devotos buscan moribundos y asedios, y por eso un arma que destruya el alma es su peor amenaza",
-      ],
+        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin. Los muertos no descansaron porque a ninguno se le hizo el rito de la sal. Se devoraron entre sí porque no quedaban vivos que comer. DEBILIDAD: la sal y el fuego la dañan, pero solo en grandes cantidades; un poco de sal o una antorcha no basta. Para destruirla de verdad hace falta un arma muy poderosa capaz de aniquilarla hasta el punto de que no pueda regenerarse: un arma que destruya el alma o que combata la Podre: el COLMILLO DE HIERRO (espadón legendario que corta el alma) es esa arma; con él la Madre deja de regenerar y puede ser destruida. El Rayo de luz solar primigenia NO la mata (quizá pueda hacerle daño). REGENERACIÓN: se regenera (10 PV al inicio de su turno); la sal y el fuego la dañan, y basta con la suficiente cantidad de ambos para superar su capacidad regenerativa (más de 10 PV de fuego o sal en una ronda, esparcida a puñados, en carga o en llamas grandes). CUERPO: 2,5 m de alto y muy ancho. EL DIOS HAMBRIENTO: no es un dios real, sino el nombre que los Devotos dan al hambre de la Madre; la veneran como su templo viviente y creen que cada muerto que absorbe es una ofrenda. EL DIOS NUEVO: los Devotos creen que, cuando la fosa absorba bastantes muertos, la Madre parirá un dios que no tendrá hambre porque será todo lo comido; promete a los desesperados que nadie volverá a pasar hambre ni a morir solo, porque entrará en él. Para ser «dios nuevo» necesita almas, no solo carne; por eso los Devotos buscan moribundos y asedios, y un arma que destruya el alma es su peor amenaza. De la guerra del campo solo importa que ocurrió: no hay más historia que contar.",
       abierto: [
-        "¿Qué guerra fue y quién luchó en ella?",
-        "¿Dónde está el Colmillo de Hierro, el arma que puede destruirla? (puede ser una misión)",
-        "¿Cuánta sal y fuego hacen falta exactamente? (ver cifras propuestas)",
+        "El Colmillo de Hierro, el arma que puede destruirla, aparece al azar (botín de jefe o donde el DM lo ponga): no tiene paradero fijo.",
       ],
       pistas: [
         "Huesos de armas y armaduras de ejércitos distintos, mezclados y mordidos, bajo el fango de Hollín",
@@ -557,7 +549,7 @@ export const BESTIARIO: Criatura[] = [
         agentes: ["Devotos del Dios Hambriento infiltrados", "Sepultureros sobornados", "Ghuls que guían a la manada", "Contrabandistas de Hollín"],
       },
     },
-    rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "REGENTE: pare y envía a los suyos; sus Hambrientos, ghuls y devotos actúan por ella a distancia y la rodean si se la ataca", "Inmune a veneno, necrótico, miedo"],
+    rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "REGENTE: pare y envía a los suyos; sus Hambrientos, ghuls y devotos actúan por ella a distancia y la rodean si se la ataca", "Regeneración 10 al inicio de su turno, salvo que haya recibido más de 10 de fuego o sal en la ronda; el Colmillo de Hierro la anula y permite destruirla","Inmune a veneno, necrótico, miedo"],
     habilidades: [
       { nombre: "Abrazo de la fosa", descripcion: "Contra un objetivo apresado al inicio de su turno: lo hunde en la masa. Quien muere así es absorbido: su cuerpo pasa a formar parte de la Madre.", salvacion: "fue", cd: 17, dano: "4d10", tipo_dano: "contundente", muerte_si_falla_por: 5 },
       { nombre: "Vómito de Podre", descripcion: "Cono de 9 m de carne licuada.", salvacion: "con", cd: 16, dano: "8d8", tipo_dano: "necrótico", mitad_si_exito: true, herida: "menor", recarga: 5 },
