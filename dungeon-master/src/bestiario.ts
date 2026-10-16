@@ -349,7 +349,7 @@ export const BESTIARIO: Criatura[] = [
         "En la época de los dioses, Vaskar era un hombre que practicaba magia negra: traicionero y de malas intenciones. Quería la vida eterna: preparó un ritual para robar la esencia de Kashi, el dios de la luna, a través de uno de sus hijos, y usarla para alargar su vida. Para ello cazó un lobo (hijo de Kashi) y quiso usar sus dientes. Kashi, que ya conocía sus intenciones y supo cómo había matado a su hijo, aprovechó que Vaskar se quedó dormido bajo la luz de la luna y lo maldijo: lo convirtió en lobo para la eternidad (su vida eterna se cumplió como castigo). No llegó a tomar nada de la esencia de Kashi, y los dientes del ritual nunca le sirvieron: lo que quiso robar le costó la forma humana. De esa maldición nace la Maldición del Lobo que marca a los Varg, que son sus «hijos»: la maldición se transmite por su mordedura y por su Aullido del Eclipse. Por dentro sigue siendo el hombre: conserva su astucia, su vileza y su magia negra; es un lobo que piensa, miente, negocia y traiciona. Kashi murió con los demás dioses (hace 99 años), así que nadie puede levantar la maldición. Por eso Vaskar busca un objeto de verdadero poder de Kashi que cree que la romperá. Su cubil es el Bosque de Velo Rojo porque allí se rumorea que se encuentran objetos mágicos, pero todos los que se rumorean allí son rumores o señuelos. Solo existe UNA reliquia de Kashi: la FALANGE DE KASHI, la falange del dedo anular del dios, que simbolizaba su unión con los seres de la luna, como los lobos. No hay más. La Falange NO tiene poder para romper nada (tampoco la maldición): Vaskar solo cree que lo libera, y se equivoca. Da un bonus para pelear contra los Varg (+2 a ataque y daño y ventaja en las salvaciones contra el Aullido del Eclipse y la furia de la luna de los Varg) y la capacidad de teletransportarse, en las noches de luna llena, a todos los lugares a donde llegue la luz de la luna (una vez por noche de luna llena, al aire libre o donde entre luz por un hueco, con lo que lleve puesto). Solo la puede usar un HUMANO y solo bajo la LUNA LLENA, y Vaskar NO puede salir en luna llena. Desde que está maldito, sus sentidos no pueden detectarla, y quien la lleve es invisible a ellos (no lo huele ni lo detecta, aunque pueda deducirlo por lo que haga el portador); puede que ya ni esté en el Velo Rojo. Como solo un humano puede usarla, Vaskar necesita manos humanas ajenas que la busquen por él: engaña, chantajea o recluta a aventureros, saqueadores o Varg humanos, y deja señuelos y rumores que atraen buscadores. Los saqueadores y la Inquisición siguen esos mismos rumores del Velo Rojo y chocan entre sí y con los Varg.",
       enemigos:
         "El primer Inquisidor (el Juez Sin Ojos): lo odia por su uso de la magia negra y por la ofensa a los dioses. Es una enemistad que viene de la época de los dioses. El Juez llegó tarde a juzgarlo (la maldición de Kashi se le adelantó) y Kashi le retiró su favor por eso. Aliados: Varg que lo veneran, bestias del Velo Rojo y cualquiera a quien prometa curarlo. Kuru lo tendría en su lista de leyendas.",
-      abierto: ["¿Dónde está la Falange de Kashi ahora, y quién la tiene? (lo propone la misión semilla de abajo, pendiente de tu aprobación)"],
+      abierto: ["¿Dónde está la Falange de Kashi ahora, y quién la tiene? (lo resuelve la misión semilla de abajo, aprobada)"],
       pistas: [
         "Leyendas de Varg sobre «el hombre que mató al hijo de la luna» y el nombre de Kashi, el dios de la luna",
         "Un colmillo de lobo marcado con símbolos de magia negra, o un grimorio con sangre de lobo",
@@ -360,7 +360,7 @@ export const BESTIARIO: Criatura[] = [
       ],
       mision: {
         nombre: "El hueso que brilla con la luna",
-        estado: "propuesta, pendiente de tu aprobación",
+        estado: "aprobada por el usuario",
         inicio:
           "Mirel, una buhonera humana de las Ciénagas, contrata al grupo en secreto (o les pide ayuda en una posada/mercado) para encontrar «un hueso de dedo que brilla con la luna llena». Les dice que es una reliquia que sanará a su hijo; la verdad: su hijo es un Varg convertido por Vaskar, que lo retiene como rehén hasta que ella le lleve la Falange (necesita manos humanas). Mirel no sabe qué es la reliquia, solo que la quiere el Lobo.",
         nudo:
@@ -511,6 +511,21 @@ export const BESTIARIO: Criatura[] = [
     peligro: 5,
     region: "Una fosa común sin fondo en las Ciénagas de Hollín",
     descripcion: "Una masa de cadáveres cosidos por la Podre, grande como una casa, que pare Hambrientos sin parar.",
+    trasfondo: {
+      origen:
+        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin.",
+      abierto: [
+        "¿Qué guerra fue, quién luchó en ella y por qué sus muertos no descansaron?",
+        "¿Qué los hizo empezar a devorarse entre sí (la Podre, un dios, un rito)?",
+        "¿Qué relación tiene con el Dios Hambriento de los Devotos y con el «dios nuevo» que promete?",
+        "¿Qué la frena o la destruye (sal, fuego, el Rayo de luz solar primigenia)?",
+      ],
+      pistas: [
+        "Huesos de armas y armaduras de ejércitos distintos, mezclados y mordidos, bajo el fango de Hollín",
+        "Los más viejos de las Ciénagas hablan de «el campo donde los muertos se comieron»",
+        "Los Hambrientos mastican incluso metal y cuero de uniformes que nadie reconoce",
+      ],
+    },
     ca: 15,
     pv: "260",
     velocidad: "6 m",
