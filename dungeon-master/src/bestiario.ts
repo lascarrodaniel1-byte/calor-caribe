@@ -446,7 +446,32 @@ export const BESTIARIO: Criatura[] = [
     categoria: "jefe",
     peligro: 5,
     region: "Castillo de Vel Morhal, en la Marca Hueca",
-    descripcion: "Reina de la Corte Pálida, hermosa y antigua. Habla con cortesía exquisita mientras te vacía.",
+    descripcion: "Reina de la Corte Pálida, hermosa y antigua, hija de Dracone, el Primus Imperatus, a quien mató para ocupar su trono. Habla con cortesía exquisita mientras te vacía.",
+    trasfondo: {
+      origen:
+        "Es hija de Dracone, el «Primus Imperatus»: el primer regente pálido, que unificó bajo su mando a los pálidos, que hoy forman parte de la orden de Ysolde (la Corte Pálida). Ysolde mató a su padre con su propia mano en un golpe de estado para robarle el trono: pensaba que Dracone no era lo bastante ambicioso y no estaba de acuerdo en plantear una idea imperialista. Ella sí: reina con una visión imperialista de la Corte Pálida.",
+      propuesto: [
+        "La corona pálida (su botín maldito) era la corona de Dracone: se maldijo con su muerte a manos de su hija. Quien se la pone carga con el parricidio.",
+        "Su imperialismo: someter primero la Marca Hueca entera (las aldeas que hoy trata como ganado) y después Velmora, con Aldenmar como premio. Llama «imperio» a lo que Dracone llamaba «orden».",
+        "Sobreviven leales a Dracone, los «Fieles del Primus»: pálidos que fingen servirla o se ocultan en la Marca, deseando vengarlo; pueden ser aliados o cebo para los jugadores.",
+        "Los Caballeros de Vel Morhal eran la guardia de honor de Dracone: juraron a Ysolde por obediencia o por miedo, y algunos la odian. Su ataúd reposa en Vel Morhal junto al sepulcro de su padre.",
+        "Es la enemiga natural del Juez y de la Llama Gris (la Inquisición persigue vampiros): el Rayo de luz solar primigenia del Juez es el arma que más teme, y por eso su regeneración falla «salvo luz solar».",
+        "Kuru la tendría en su lista de leyendas: una reina vampira que mató a su propio padre.",
+      ],
+      abierto: [
+        "¿Cuándo ocurrió el golpe (antes o después de la Caída) y cómo lo mató?",
+        "¿Por qué Dracone se oponía a la idea imperialista (prudencia, pacto, ética, miedo a los dioses)?",
+        "¿Qué significa «Primus Imperatus» para los pálidos y cómo los unificó (por la fuerza o por pacto)?",
+        "¿Cuál es exactamente la idea imperialista de Ysolde?",
+      ],
+      pistas: [
+        "Tapices de Vel Morhal con la figura de Dracone cortada o cosida con hilo rojo",
+        "Cortesanos pálidos que bajan la voz al nombrar al «Primus»",
+        "Un retrato del Primus Imperatus con la cara raspada en una sala cerrada",
+        "Una tumba vacía o sellada en las criptas de Vel Morhal",
+        "Un noble pálido que dice recordar «cuando la Corte era una familia»",
+      ],
+    },
     ca: 18,
     pv: "220",
     velocidad: "12 m, trepar 12 m",

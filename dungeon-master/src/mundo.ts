@@ -250,7 +250,7 @@ Dark fantasy: violencia con peso, recursos escasos, moral gris, esperanza difíc
 - **La Inquisición de la Llama Gris**: purifican con fuego. Persiguen la brujería, a los varg y a los nacidos pálidos. Necesarios y temidos.
 - **Las Hermanas de la Sutura**: orden de cirujanas y sanadoras. Sus enfermerías son las únicas fiables del reino; cobran caro, en dinero o en favores.
 - **La Compañía del Cuervo Negro**: mercenarios que luchan por quien pague, sin preguntas sobre la raza ni el pasado.
-- **La Corte Pálida**: nobleza vampírica que trata a las aldeas de la Marca como ganado… y, a su manera, las protege de cosas peores.
+- **La Corte Pálida**: nobleza vampírica que trata a las aldeas de la Marca como ganado… y, a su manera, las protege de cosas peores. (Secreto del DM: la unificó Dracone, el «Primus Imperatus», el primer regente pálido; hoy los pálidos forman parte de la orden de su hija, Ysolde, que lo mató con su propia mano en un golpe de estado porque lo veía poco ambicioso y contrario a una idea imperialista.)
 - **Los Devotos del Dios Hambriento**: un culto que cree que de la Podre nacerá un dios nuevo, y quiere ayudarlo a nacer.
 
 ## Amenazas
