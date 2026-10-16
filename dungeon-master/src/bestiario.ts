@@ -449,27 +449,14 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "Reina de la Corte Pálida, hermosa y antigua, hija de Dracone, el Primus Imperatus, a quien mató para ocupar su trono. Habla con cortesía exquisita mientras te vacía.",
     trasfondo: {
       origen:
-        "Es hija de Dracone, el «Primus Imperatus»: el primer regente pálido, que unificó bajo su mando a los pálidos, que hoy forman parte de la orden de Ysolde (la Corte Pálida). Ysolde mató a su padre con su propia mano en un golpe de estado para robarle el trono: pensaba que Dracone no era lo bastante ambicioso y no estaba de acuerdo en plantear una idea imperialista. Ella sí: reina con una visión imperialista de la Corte Pálida.",
-      propuesto: [
-        "La corona pálida (su botín maldito) era la corona de Dracone: se maldijo con su muerte a manos de su hija. Quien se la pone carga con el parricidio.",
-        "Su imperialismo: someter primero la Marca Hueca entera (las aldeas que hoy trata como ganado) y después Velmora, con Aldenmar como premio. Llama «imperio» a lo que Dracone llamaba «orden».",
-        "Sobreviven leales a Dracone, los «Fieles del Primus»: pálidos que fingen servirla o se ocultan en la Marca, deseando vengarlo; pueden ser aliados o cebo para los jugadores.",
-        "Los Caballeros de Vel Morhal eran la guardia de honor de Dracone: juraron a Ysolde por obediencia o por miedo, y algunos la odian. Su ataúd reposa en Vel Morhal junto al sepulcro de su padre.",
-        "Es la enemiga natural del Juez y de la Llama Gris (la Inquisición persigue vampiros): el Rayo de luz solar primigenia del Juez es el arma que más teme, y por eso su regeneración falla «salvo luz solar».",
-        "Kuru la tendría en su lista de leyendas: una reina vampira que mató a su propio padre.",
-      ],
-      abierto: [
-        "¿Cuándo ocurrió el golpe (antes o después de la Caída) y cómo lo mató?",
-        "¿Por qué Dracone se oponía a la idea imperialista (prudencia, pacto, ética, miedo a los dioses)?",
-        "¿Qué significa «Primus Imperatus» para los pálidos y cómo los unificó (por la fuerza o por pacto)?",
-        "¿Cuál es exactamente la idea imperialista de Ysolde?",
-      ],
+        "Es hija de Dracone, el «Primus Imperatus»: el primer regente pálido, que unificó bajo su mando a los pálidos con una mezcla de fuerza y política, y que hoy forman parte de la orden de Ysolde (la Corte Pálida). Dracone se oponía a una idea imperialista por ética: decía que su raza era demasiado civilizada y tenía un potencial tan alto que podría desatar barbarie. Ysolde pensaba que su padre no era lo bastante ambicioso. Después de la Caída, lo mató con su propia mano en un golpe de estado para robarle el trono: tras una fiera pelea, lo mató con su magia, absorbiendo su esencia vital. Su idea imperialista: someter primero la Marca Hueca entera y después Velmora, con Aldenmar como premio. Ella lo llama «imperio»; Dracone lo llamaba «orden». La corona pálida (su botín maldito) era la corona de Dracone y quedó maldita con su muerte a manos de su hija: quien se la pone carga con el parricidio. Quedan leales a Dracone, los «Fieles del Primus»: pálidos que fingen servirla o se esconden en la Marca, que pueden ser aliados o cebo. Los Caballeros de Vel Morhal eran la guardia de honor de Dracone: juraron a Ysolde por obediencia o por miedo, y algunos la odian. Su ataúd reposa en Vel Morhal junto al sepulcro de su padre. Es la enemiga natural del Juez y la Llama Gris: el Rayo de luz solar primigenia es el arma que más teme, lo que explica que su regeneración falle «salvo luz solar». Kuru la tendría en su lista de leyendas.",
       pistas: [
         "Tapices de Vel Morhal con la figura de Dracone cortada o cosida con hilo rojo",
         "Cortesanos pálidos que bajan la voz al nombrar al «Primus»",
         "Un retrato del Primus Imperatus con la cara raspada en una sala cerrada",
         "Una tumba vacía o sellada en las criptas de Vel Morhal",
         "Un noble pálido que dice recordar «cuando la Corte era una familia»",
+        "Un pálido anciano que repite que «somos demasiado civilizados para ser imperio»",
       ],
     },
     ca: 18,
