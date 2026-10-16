@@ -1570,6 +1570,7 @@
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
+      V.regentes.contarTurno(copia);
       V.narrativa.contarTurno(copia); // los arcos envejecen en su fase y los PNJ fuera de escena llevan un turno más sin moverse
       const { historial, ...sinHistorial } = copia;
       // Mientras el personaje de quien actúa no esté completo (guardado), el turno no pasa: sigue creándolo.

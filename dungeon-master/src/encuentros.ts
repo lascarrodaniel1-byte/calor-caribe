@@ -4,6 +4,7 @@
 import { tirar } from "./dados.js";
 import { buscarCriatura } from "./bestiario.js";
 import type { Partida } from "./estado.js";
+import { pesoPorInfluencia } from "./regentes.js";
 
 export type TipoEncuentro = "combate" | "peligro" | "social" | "hallazgo";
 
@@ -261,11 +262,13 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
   const prohibidas = new Set<string>(d.excluir ?? []);
   const ultimas2 = h.slice(-2);
   if (ultimas2.length === 2 && ultimas2[0].familia === ultimas2[1].familia) prohibidas.add(ultimas2[0].familia);
+  const pesoInf = pesoPorInfluencia(partida, region);
   const pesos = TABLA.filter((t) => (!d.tipo || t.tipo === d.tipo) && !prohibidas.has(t.familia)).map((t) => {
     let w = t.peso;
     if (t.regiones.length) w *= t.regiones.some((r) => region.toLowerCase().includes(r.toLowerCase())) ? 3 : 0.25;
     if (t.momento && noche !== null) w *= (t.momento === "noche") === noche ? 1.6 : 0.3;
     if (bonusReg) w *= bonusReg.bonus.familias[t.familia] ?? 1; // el bonus especial de la región
+    w *= pesoInf[t.familia] ?? 1; // la política de los regentes empuja a sus familias
     if (t.peligro > techo) w *= 0.05;
     if (t.peligro < techo - 2) w *= 0.6;
     // Memoria: cada vez que esta familia salió entre los últimos encuentros, pesa menos.

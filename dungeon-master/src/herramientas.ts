@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
 import { registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
 import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
@@ -211,6 +212,17 @@ const esquemas = {
     plantilla: z.string().optional().describe("Criatura del bestiario en la que se basa (si el nombre es un alias)"),
     definicion: criatura.optional().describe("Para criaturas nuevas inventadas por ti"),
     repetir: z.boolean().optional().describe("Solo si la trama exige otra vez el mismo tipo de enemigo tras dos encuentros seguidos de su familia"),
+  }),
+  regente: z.object({
+    accion: z.enum(["jugada", "relacion", "estado"]).describe("jugada: un regente mueve su política; relacion: fijas cómo están dos regentes; estado: consultas"),
+    regente: z.string().optional().describe("El Juez Sin Ojos, Ysolde o La Madre de los Hambrientos"),
+    tipo: z.enum(TIPOS_JUGADA).optional(),
+    region: z.string().optional().describe("Dónde incide (región del mapa)"),
+    objetivo: z.string().optional().describe("Contra o con quién: otro regente, facción, PNJ o lugar"),
+    detalle: z.string().optional().describe("Qué hace en concreto, con agentes y medios"),
+    con: z.string().optional().describe("Para relacion: el otro regente"),
+    valor: z.number().int().min(-3).max(3).optional().describe("Para relacion: -3 guerra … +3 alianza"),
+    motivo: z.string().optional(),
   }),
   encuentro: z.object({
     jefe: z.string().optional().describe('"azar" o el nombre de un jefe (Kuru, Vaerth, Ilvara, Vaskar, El Juez, Ysolde, La Madre de los Hambrientos): fuerza que la causa sea un jefe fuera de su zona; sirve para que una misión sea consecuencia de su plan'),
@@ -476,6 +488,8 @@ const descripciones: Record<Nombre, string> = {
     "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos, con su direccion (el norte es arriba del mapa); con direccion recoloca uno mal puesto.",
   encuentro:
     "Tira un encuentro aleatorio de verdad (tabla por región, hora, nivel y dificultad) que evita repetir lo reciente: enemigos de varias familias, peligros, escenas sociales y hallazgos. Úsalo siempre que necesites un encuentro que no esté ya decidido por la historia.",
+  regente:
+    "Política de los regentes (Juez Sin Ojos, Ysolde, Madre de los Hambrientos) en segundo plano: comprar voluntades, espías, sabotajes, chantaje, propaganda, emisarios, alianzas y traiciones; y la relación entre ellos, que cambia por conveniencia y situación.",
   plano:
     "Plano de la escena en metros (norte arriba): coloca y mueve a personajes, PNJ, criaturas y puntos de referencia (el fuego, el carro, la puerta). El programa calcula distancias y rumbos y te los devuelve como verdad espacial; los ataques cuerpo a cuerpo comprueban el alcance.",
   tiempo:
@@ -778,6 +792,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const objetivo = e.objetivo ? buscar(partida, e.objetivo) : undefined;
         const texto = lanzar(p, { ...e, objetivo });
         return { contenido: `${texto}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
+      }
+      case "regente": {
+        const e = validado.data as z.infer<typeof esquemas.regente>;
+        return { contenido: actualizarRegentes(partida, e), aviso: null };
       }
       case "encuentro": {
         const e = validado.data as z.infer<typeof esquemas.encuentro>;

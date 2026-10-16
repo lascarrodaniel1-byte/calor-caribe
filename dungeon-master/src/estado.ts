@@ -1,5 +1,6 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
 import type Anthropic from "@anthropic-ai/sdk";
+import type { EstadoRegentes } from "./regentes.js";
 import type { EstadoJefe } from "./bestiario.js";
 import type { EstadoBehelit } from "./behelit.js";
 import { armaduraDe, textoArmadura } from "./armadura.js";
@@ -78,6 +79,8 @@ export interface Partida {
   reloj?: Reloj;
   /** Últimos encuentros (para no repetir enemigos). */
   encuentros?: RegistroEncuentro[];
+  /** Política de los regentes: influencia, espías, relaciones y jugadas. */
+  regentes?: EstadoRegentes;
 }
 
 export function nuevaPartida(): Partida {

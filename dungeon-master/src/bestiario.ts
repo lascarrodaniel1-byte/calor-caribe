@@ -66,6 +66,8 @@ export interface Regente {
   /** Cómo manda: su corte, su forma de dar órdenes. */
   corte: string;
   servidores: { nombre: string; /** Plantilla del bestiario, si la hay (si no, se improvisa con pnj/iniciativa). */ plantilla?: string; cuantos: string; nota: string }[];
+  /** Cómo inciden políticamente fuera de su dominio para imponerse. */
+  politica?: { objetivo: string; medios: string[]; agentes: string[] };
 }
 
 export interface Criatura {
@@ -430,6 +432,16 @@ export const BESTIARIO: Criatura[] = [
         { nombre: "Acólitos vendados", cuantos: "4-8", nota: "fanáticos que «ven» por él y repiten sus sentencias en voz alta; ataque +3, CA 11, 11 PV; no se achantan" },
         { nombre: "Sabuesos de ceniza", plantilla: "Lobo de Ceniza", cuantos: "2-4", nota: "lobos que la Inquisición adiestra para rastrear a los condenados" },
       ],
+      politica: {
+        objetivo: "Imponer la Llama Gris como autoridad suprema de Aldenmar (por encima del Consejo de Ceniza) y erradicar la magia negra, los Varg y los vampiros.",
+        medios: [
+          "comprar voluntades: cargos, licencias de magia y exenciones a cambio de lealtad; jueces, escribanos y capitanes que le deben el puesto",
+          "espiar: confesores, penitentes y «oídos de la Llama» en tabernas y aldeas; inquisidores de incógnito",
+          "sabotaje: incautar reliquias, quemar archivos, cerrar licencias, declarar hereje a un rival o incendiar sus sedes",
+          "chantaje y propaganda: confesiones forzadas, sentencias públicas y sermones que convierten a un enemigo en demonio",
+        ],
+        agentes: ["Inquisidores de incógnito", "Escribanos y jueces comprados", "Confesores espías", "Capitana Veyra y su patrulla"],
+      },
     },
     rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "Semidiós: los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa (reliquias, maldiciones, Ceniza, criaturas sagradas o aberrantes) y de custodiar todo lo divino", "REGENTE: nunca está solo; sus subordinados cumplen sus sentencias lejos de él y, si da la cara, lo rodea su séquito", "Resistencia legendaria (3/día)"],
     habilidades: [
@@ -473,6 +485,16 @@ export const BESTIARIO: Criatura[] = [
         { nombre: "Sirvientes de las fosas", plantilla: "Ghul de las fosas", cuantos: "1-2", nota: "ghuls domesticados que limpian lo que la Corte deja" },
         { nombre: "Jauría de la Marca", plantilla: "Hambriento", cuantos: "6-10", nota: "muertos de la Marca que acuden a su llamada cuando necesita multitud (sin cortesía)" },
       ],
+      politica: {
+        objetivo: "Someter primero la Marca Hueca entera y después Velmora, con Aldenmar como premio.",
+        medios: [
+          "comprar voluntades: deudas de sangre, invitaciones, favores y un título a quien se arrodille; nobles y capitanes que le deben la vida (o la no-muerte)",
+          "espiar: cortesanos pálidos infiltrados, sirvientes y huéspedes que informan; ojos en las cortes de otros",
+          "sabotaje: cortar rutas y suministros, apagar hogueras de la Inquisición, envenenar a un rival o difundir la Podre en una ciudad enemiga",
+          "seducción y hechizo (Mirada de la Reina): convertir a un notable en su títere; cenas que acaban en servidumbre",
+        ],
+        agentes: ["Cortesanos pálidos infiltrados", "Nobles endeudados", "Esbirros de la Corte con una invitación", "Fieles del Primus que fingen servirla"],
+      },
     },
     rasgos: ["Regeneración 20 salvo luz solar o agua bendecida con sal", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "REGENTE: rodeada de su Corte; envía esbirros e invitaciones a su voluntad y, en persona, nunca llega sola", "Resistencia legendaria (3/día)"],
     habilidades: [
@@ -503,6 +525,16 @@ export const BESTIARIO: Criatura[] = [
         { nombre: "Devotos del Dios Hambriento", cuantos: "3-6", nota: "fanáticos que le llevan carne y vigilan sus fosas; ataque +3, CA 11, 11 PV, cuchillos de hueso" },
         { nombre: "Gigante de hueso", plantilla: "Gigante de hueso", cuantos: "1", nota: "cuando la marea necesita algo más grande, un gigante cosido con huesos de la fosa" },
       ],
+      politica: {
+        objetivo: "Que la Podre y el hambre se extiendan hasta que nazca el dios nuevo: abrir fosas, alimentarlas y que no haya hoguera que las frene.",
+        medios: [
+          "comprar voluntades a través de los Devotos del Dios Hambriento: sepultureros, enterradores, contrabandistas de Hollín y curas corruptos que miran a otro lado",
+          "espiar: devotos en los barrios bajos, ghuls que escuchan en los cementerios",
+          "sabotaje: impedir los ritos de sal y fuego para que los muertos se levanten, envenenar pozos con Podre o abrir una fosa nueva bajo una aldea",
+          "propaganda: predicadores del hambre, promesas de un dios nuevo a los desesperados",
+        ],
+        agentes: ["Devotos del Dios Hambriento infiltrados", "Sepultureros sobornados", "Ghuls que guían a la manada", "Contrabandistas de Hollín"],
+      },
     },
     rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "REGENTE: pare y envía a los suyos; sus Hambrientos, ghuls y devotos actúan por ella a distancia y la rodean si se la ataca", "Inmune a veneno, necrótico, miedo"],
     habilidades: [
@@ -713,7 +745,7 @@ export function fichaCriatura(c: Criatura): string {
       ? `TRASFONDO (secreto del DM; los PNJ solo saben rumores): ${c.trasfondo.origen}${c.trasfondo.enemigos ? ` ENEMIGOS: ${c.trasfondo.enemigos}` : ""}${c.trasfondo.propuesto?.length ? ` PROPUESTO (sin confirmar; úsalo con criterio): ${c.trasfondo.propuesto.join(" · ")}` : ""}${c.trasfondo.pistas?.length ? ` PISTAS para revelarlo poco a poco: ${c.trasfondo.pistas.join(" · ")}.` : ""}${c.trasfondo.abierto?.length ? ` AÚN ABIERTO: ${c.trasfondo.abierto.join(" ")}` : ""}${c.trasfondo.mision ? ` MISIÓN SEMILLA «${c.trasfondo.mision.nombre}» (${c.trasfondo.mision.estado}): INICIO: ${c.trasfondo.mision.inicio} NUDO: ${c.trasfondo.mision.nudo} DESENLACES POSIBLES: ${c.trasfondo.mision.desenlaces.join(" | ")} PNJ: ${c.trasfondo.mision.pnjs.join(" | ")} GANCHOS: ${c.trasfondo.mision.ganchos.join(" | ")}. Para jugarla: trama abrir_arco con su premisa, registra a los PNJ con agenda (pnj) y avanza el arco con avanzar_arco.` : ""}`
       : "",
     c.regente
-      ? `REGENTE (${c.regente.titulo}): ${c.regente.corte} Subordinados: ${c.regente.servidores.map((x) => `${x.nombre} ×${x.cuantos}${x.plantilla ? ` [plantilla «${x.plantilla}»]` : ""} — ${x.nota}`).join(" | ")}. Puede enviarlos a cumplir su voluntad sin estar presente (llegan como emisarios o como fuerza armada) y, si da la cara, su séquito lo acompaña: no lo pongas nunca solo.`
+      ? `REGENTE (${c.regente.titulo}): ${c.regente.corte} Subordinados: ${c.regente.servidores.map((x) => `${x.nombre} ×${x.cuantos}${x.plantilla ? ` [plantilla «${x.plantilla}»]` : ""} — ${x.nota}`).join(" | ")}. ${c.regente.politica ? ` POLÍTICA (inciden fuera de su dominio para imponerse; sus relaciones con los otros regentes cambian con la conveniencia y la situación): objetivo: ${c.regente.politica.objetivo} Medios: ${c.regente.politica.medios.join(" | ")}. Agentes: ${c.regente.politica.agentes.join(", ")}.` : ""} Puede enviarlos a cumplir su voluntad sin estar presente (llegan como emisarios o como fuerza armada) y, si da la cara, su séquito lo acompaña: no lo pongas nunca solo.`
       : "",
     c.habilidades.length
       ? `Habilidades especiales (resuélvelas con habilidad_criatura): ${c.habilidades

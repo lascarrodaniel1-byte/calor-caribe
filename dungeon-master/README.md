@@ -259,6 +259,12 @@ Cada jefe puede llevar un **trasfondo** en su ficha (`consultar_reglas criatura`
 
 - **Misión semilla de Vaskar** (propuesta, pendiente de tu aprobación): «El hueso que brilla con la luna» resuelve dónde está la Falange. Mirel, una buhonera humana, contrata al grupo para hallar «un hueso de dedo que brilla con la luna llena» (Vaskar retiene a su hijo, un Varg, como rehén); la Falange está en Aldenmar, en manos de Odrec, un vendedor de huesos que la usa como amuleto sin saberlo; la Inquisición, los saqueadores y Kuru van tras ella. Cuatro desenlaces (dársela a Vaskar, quedársela, entregársela al Juez o destruirla). Confirmado: **la Falange no tiene poder para romper nada**, así que Vaskar solo cree que lo libera; si se la dan, no rompe su maldición (y él ni siquiera puede usarla), y su reacción queda a criterio del DM. Sale en el resultado de `encuentro` cuando el jefe forzado es Vaskar.
 
+### Regentes: política en segundo plano
+
+El Juez Sin Ojos, Ysolde y la Madre de los Hambrientos no solo mandan monstruos: **maniobran para imponerse** en otras regiones. Cada uno tiene su objetivo, sus medios y sus agentes (en el bestiario) y la herramienta `regente` registra sus jugadas: comprar voluntades, espiar, sabotaje, chantaje, propaganda, emisario, alianza y traición. Las jugadas suben su **influencia por región** (0-5), añaden espías o bajan la influencia del rival saboteado, y esa influencia empuja la tabla de encuentros (más corte pálida donde manda Ysolde, etc.).
+
+Sus **relaciones no son fijas**: parten de una base (Juez–Ysolde rivalidad, Juez–Madre guerra, Ysolde–Madre neutral) y varían con la situación: regiones disputadas, jugadas hostiles recientes, alianzas y amenazas grandes (reloj ≥ 4) que obligan a tregua. El DM también puede fijar una relación (`accion: relacion`) y esa manda. Si pasan 10 turnos sin jugadas, el DM recibe un aviso para mover ficha y hacer llegar el eco a los protagonistas.
+
 ### Variedad de enemigos
 
 - **Antes:** el DM elegía los enemigos él solo, sin azar, y tendía a repetir los que más pesan en la ambientación (Hambrientos, Inquisición de la Llama Gris). Los dados de combate sí eran aleatorios, pero **qué** aparecía no.
