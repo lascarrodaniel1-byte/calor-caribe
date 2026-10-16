@@ -513,15 +513,16 @@ export const BESTIARIO: Criatura[] = [
     descripcion: "Una masa de cadáveres cosidos por la Podre, grande como una casa, que pare Hambrientos sin parar.",
     trasfondo: {
       origen:
-        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin.",
+        "Fue una masa de cadáveres en un antiguo campo de guerra que empezaron a devorarse unos a otros. Ese campo acabó siendo las Ciénagas de Hollín. De aquel festín de muertos nace el hambre que no se sacia, y por eso su cría, los Hambrientos, devora sin fin. Los muertos no descansaron porque a ninguno se le hizo el rito de la sal. Se devoraron entre sí porque no quedaban vivos que comer. DEBILIDAD: la sal y el fuego la dañan, pero solo en grandes cantidades o con un arma muy poderosa capaz de destruirla hasta el punto de que no pueda regenerarse; un poco de sal o una antorcha no basta.",
+      propuesto: ["Cifras mías: vulnerable a fuego y a daño de sal (esparcida, a puñados o en carga), con regeneración de unos 10 PV por ronda que solo se detiene bajo fuego o sal masivos; un arma poderosa (p. ej. el Rayo de luz solar primigenia) puede dañarla sin que regenere"],
       abierto: [
-        "¿Qué guerra fue, quién luchó en ella y por qué sus muertos no descansaron?",
-        "¿Qué los hizo empezar a devorarse entre sí (la Podre, un dios, un rito)?",
+        "¿Qué guerra fue y quién luchó en ella?",
         "¿Qué relación tiene con el Dios Hambriento de los Devotos y con el «dios nuevo» que promete?",
-        "¿Qué la frena o la destruye (sal, fuego, el Rayo de luz solar primigenia)?",
+        "¿Cuánta sal y fuego hacen falta, y qué arma «muy poderosa» podría destruirla del todo? (ver cifras propuestas)",
       ],
       pistas: [
         "Huesos de armas y armaduras de ejércitos distintos, mezclados y mordidos, bajo el fango de Hollín",
+        "Una fosa cuyos muertos nunca recibieron sal, y un olor a carne vieja que ni el fuego quita",
         "Los más viejos de las Ciénagas hablan de «el campo donde los muertos se comieron»",
         "Los Hambrientos mastican incluso metal y cuero de uniformes que nadie reconoce",
       ],
