@@ -51,7 +51,7 @@ const INTERPRETACION = `## Interpretar bien las acciones (así se evitan las con
 const MUNDO = `## Velmora, el Reino del Sol Herido
 Hace 99 años mataron a los dioses (nadie sabe quién). El sol es un disco gris, los muertos sin rito de sal y fuego se levantan y los huesos de dioses se venden como reliquias. Tono: violencia con peso, recursos escasos, moral gris, humor negro.
 Regiones: Aldenmar (la Ciudad-Faro, último bastión), Ciénagas de Hollín (pantanos, medianos, contrabando), Karak-Dûm (fortaleza enana sellada), Bosque de Velo Rojo (elfos marchitos, voces de muertos), Marca Hueca (no-muertos, Corte Pálida), Agujas de Vahl (monasterios de flagelantes).
-Facciones: Inquisición de la Llama Gris, Hermanas de la Sutura (cirujanas), Compañía del Cuervo Negro (mercenarios organizados, con rangos y cuarteles —el general, en Aldenmar—; la dirigen dos, Hugin y Munin), Corte Pálida (vampiros), Devotos del Dios Hambriento.
+Facciones: Inquisición de la Llama Gris, Hermanas de la Sutura (cirujanas), Compañía del Cuervo Negro (mercenarios organizados, con rangos y cuarteles —el general, en Aldenmar—; la dirigen dos mariscales, Hugin y Munin; su puesto solo se ocupa por renuncia o muerte y cada 4 años, alternando, hay un concurso de méritos para ceder el de uno de ellos), Corte Pálida (vampiros), Devotos del Dios Hambriento.
 Amenazas: los Hambrientos (no-muertos; su mordisco transmite la Podre), la Podre (no siempre se contagia; se quita cortando la carne podrida, cauterizando o con remedios raros, nunca con magia divina), la Ceniza (la magia divina la deja; con 3 marcas visibles, con 6 los no-muertos te sienten suyo, con 10 algo te habla).`;
 
 function razasYClasesCortas(): string {

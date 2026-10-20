@@ -71,7 +71,7 @@ export const RANGOS_COMPANIA: { desde: number; rango: string; grado: string; ven
   { desde: 5, rango: "Garra", grado: "sargento", ventaja: "Puede reclutar a 1d4 Polluelos para una misión (PNJ a sueldo suyo) y manda en las guardias del puesto. Los contratos le pagan el doble que a un Cuervo" },
   { desde: 8, rango: "Corax", grado: "capitán", ventaja: "Manda una escuadra de 4-6 mercenarios por contrato, requisa suministros y una montura, y la Compañía lo respalda ante la ley y la Inquisición. Conoce a los pagadores de la región" },
   { desde: 11, rango: "Ala Mayor", grado: "comandante", ventaja: "Una vez por campaña puede llamar a refuerzos de la Compañía (una compañía entera, a días de camino). Los señores y las ciudades negocian con él o ella; los desertores lo temen" },
-  { desde: 17, rango: "Hugin", grado: "mando supremo", ventaja: "Entra en el mando de la Compañía del Cuervo Negro, que dirigen dos: Hugin y Munin. Decide contratos, cuarteles y guerras en toda una región (y, con el tiempo, en todos los cuarteles). Es un poder político por sí mismo" },
+  { desde: 17, rango: "Aspirante al mando", grado: "candidato a mariscal", ventaja: "Puede presentarse al concurso de méritos de la Compañía cuando se abra uno de los dos puestos de mariscal (Hugin o Munin). Solo ganándolo —tras la renuncia o la muerte de quien lo ocupa— se convierte en Hugin o en Munin y entra en el mando. Hasta entonces es la voz más respetada del Cuervo después de los mariscales" },
 ];
 
 export function rangoCompania(nivel: number) {
