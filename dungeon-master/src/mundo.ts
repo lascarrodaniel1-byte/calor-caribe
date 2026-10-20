@@ -118,8 +118,8 @@ export const CLASES: Clase[] = [
       "Estilo de combate (oficio de la Compañía): +1 a todo ataque con armas",
       "Segundo aliento (1 por descanso corto o largo): acción adicional; recupera 1d10 + nivel PV (no cierra heridas)",
       "Competencia con todas las armas, armaduras y escudos",
-      "Rango en la Compañía: empieza de Polluelo (recluta) y asciende al subir de nivel: Cuervo (nv. 3), Garra (5), Pico (8), Ala Mayor (11) y Graznido (17); cada rango trae ventajas y mando",
-      "Pluma del Cuervo Negro: pertenece a la Compañía del Cuervo Negro y la lleva en el sombrero o el hombro. En cualquier campamento o puesto de la Compañía tiene cama, comida y rumores de contratos; los demás mercenarios y desertores lo tratan como a uno de los suyos (ventaja en Persuasión e Intimidación con ellos)",
+      "Rango en la Compañía: empieza de Polluelo (recluta) y asciende al subir de nivel: Cuervo (nv. 3), Garra (5), Corax (8), Ala Mayor (11) y Hugin (17, el mando supremo); cada rango trae ventajas y mando",
+      "Pluma del Cuervo Negro: pertenece a la Compañía del Cuervo Negro y la lleva en el sombrero o el hombro. En cualquier cuartel, campamento o puesto de la Compañía (su cuartel general está en Aldenmar) tiene cama, comida y rumores de contratos; los demás mercenarios y desertores lo tratan como a uno de los suyos (ventaja en Persuasión e Intimidación con ellos)",
       "Código del Cuervo: la Compañía no pregunta por la raza ni por el pasado, y cobra a quien rompe un contrato o alza la mano contra otro cuervo; a cambio, de vez en cuando la Compañía reclama un servicio",
     ],
     equipo: "Cota de mallas, espada larga, escudo, ballesta ligera y 20 virotes, petate, 10 po",
@@ -256,7 +256,7 @@ Dark fantasy: violencia con peso, recursos escasos, moral gris, esperanza difíc
 ## Facciones
 - **La Inquisición de la Llama Gris**: purifican con fuego. Persiguen la brujería, a los varg y a los nacidos pálidos. Necesarios y temidos.
 - **Las Hermanas de la Sutura**: orden de cirujanas y sanadoras. Sus enfermerías son las únicas fiables del reino; cobran caro, en dinero o en favores.
-- **La Compañía del Cuervo Negro**: mercenarios que luchan por quien pague, sin preguntas sobre la raza ni el pasado.
+- **La Compañía del Cuervo Negro**: mercenarios que luchan por quien pague, sin preguntas sobre la raza ni el pasado. Funciona como una organización, con rangos (Polluelo, Cuervo, Garra, Corax, Ala Mayor) y cuarteles en varios lugares, todos de la misma Compañía; su cuartel general está en Aldenmar. La dirigen dos, **Hugin y Munin**, juntos.
 - **La Corte Pálida**: nobleza vampírica que trata a las aldeas de la Marca como ganado… y, a su manera, las protege de cosas peores. (Secreto del DM: la unificó Dracone, el «Primus Imperatus», el primer regente pálido; hoy los pálidos forman parte de la orden de su hija, Ysolde, que lo mató con su propia mano, tras una fiera pelea y absorbiendo su esencia vital, en un golpe de estado después de la Caída: lo veía poco ambicioso y contrario a una idea imperialista que Dracone rechazaba por ética (su raza era demasiado civilizada y podía desatar barbarie). Ysolde quiere someter primero la Marca Hueca y después Velmora, con Aldenmar como premio.)
 - **Los Devotos del Dios Hambriento**: un culto que cree que de la Podre nacerá un dios nuevo, y quiere ayudarlo a nacer.
 
