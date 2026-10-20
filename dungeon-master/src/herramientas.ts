@@ -525,7 +525,7 @@ const descripciones: Record<Nombre, string> = {
   tratar_herida:
     "Intenta tratar una herida: detener hemorragia, medicina/cirugía, cauterizar, magia divina o remedio raro. El programa tira y aplica el resultado.",
   pasar_tiempo:
-    "Hace avanzar días: convalecencia, infecciones, agravamientos, recuperación de PV y secuelas al cerrar las heridas.",
+    "Hace avanzar días: convalecencia, infecciones, agravamientos, recuperación de PV y secuelas al cerrar las heridas. También mueve el reloj del mundo 24 h por día: no avances el tiempo otra vez con tiempo por lo mismo, y cuida los plazos de la trama.",
   avanzar_asaltos:
     "Hace avanzar las hemorragias asalto a asalto: PV perdidos y riesgo creciente de perder FUE por anemia. Llámala al final de cada asalto si alguien sangra.",
   usar_vial:
@@ -544,9 +544,9 @@ const descripciones: Record<Nombre, string> = {
   behelit:
     "Behelits: crear el Behelit Carmesí (único), intentar despertarlos en la desesperación y resolver la oferta del Coro (aceptar o rechazar).",
   lanzar_hechizo:
-    "Lanza un hechizo de un personaje jugador: tirada de lanzamiento, efecto y el precio que paga (calor, aliento, sangre, cordura o años), con catalizadores.",
+    "Lanza un hechizo de un personaje jugador: tirada de lanzamiento, efecto y el precio que paga (calor, aliento, sangre, cordura o años), con catalizadores. «objetivo» es solo un personaje jugador al que cura. NO aplica daño a enemigos: el daño del hechizo lo aplicas tú después con danar_criatura (criaturas) o atacar/daño de PNJ.",
   ubicacion:
-    "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso. Crea los lugares nuevos, con su direccion (el norte es arriba del mapa); con direccion recoloca uno mal puesto.",
+    "Mueve al grupo en el mapa que ven los jugadores: el lugar donde están, o el viaje en curso con su destino y progreso (de 0 a 1). Un lugar nuevo se crea y el grupo se coloca ahí al instante: si solo quieres anotarlo, vuelve a llamar con el lugar donde siguen. Crea los lugares nuevos con su direccion (el norte es arriba del mapa); con direccion recoloca uno mal puesto.",
   encuentro:
     "Tira un encuentro aleatorio de verdad (tabla por región, hora, nivel y dificultad) que evita repetir lo reciente: enemigos de varias familias, peligros, escenas sociales y hallazgos. Úsalo siempre que necesites un encuentro que no esté ya decidido por la historia.",
   regente:

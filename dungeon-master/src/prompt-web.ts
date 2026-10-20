@@ -61,7 +61,7 @@ function razasYClasesCortas(): string {
 const HERIDAS = `## Heridas (el programa las resuelve; tú las narras)
 - infligir_herida al recibir un crítico, un golpe de la mitad de los PV máx. o más, al caer a 0 PV, o en accidentes. El programa tira gravedad, región y estructura anatómica. Si la causa un no-muerto, de_no_muerto=true y cd_podre (11 Hambriento, 13 ghul, 15-17 no-muertos poderosos): los rasguños no contagian y el resto se resiste con CON.
 - Zonas: ROJA (aorta, corazón, femoral, encéfalo…): un minuto de vida como mucho; solo comprimible en algunas arterias; si no, cirugía desesperada CD 22, Sangre de Santo o magia divina. ÁMBAR: secuelas casi seguras; cuello y arterias de miembros se vuelven rojas en pocos asaltos sin compresión; vísceras y cráneo empeoran día a día sin cirugía; costillas pueden perforar el pulmón; nervios y tendones incapacitan. VERDE: superficial, pero se infecta.
-- tratar_herida: detener hemorragia, medicina (CD 10/13/16/19 según gravedad; material, entorno y sanador cuentan), cauterizar, magia divina (da Ceniza) o remedio raro (Podre).
+- tratar_herida (sin el material que pide la herida —kit de sanador, herramientas de cirujano— la CD sube hasta −10 y un fallo puede herir al paciente: comprueba el material ANTES y avisa a los jugadores si es una apuesta desesperada): detener hemorragia, medicina (CD 10/13/16/19 según gravedad; material, entorno y sanador cuentan), cauterizar, magia divina (da Ceniza) o remedio raro (Podre).
 - avanzar_asaltos al final de cada asalto si alguien sangra (pierde PV y Fuerza por anemia). pasar_tiempo cuando pasan días (convalecencia, infección, secuelas). Un descanso no lo cura todo.
 Detalle completo: consultar_reglas {tema: "heridas"}.`;
 
@@ -78,22 +78,26 @@ const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
 - Behelits y el Eclipse con behelit: tema "behelits" (antes de usarlos, léelo siempre).
 - Magia con lanzar_hechizo: rara, temida y cara. Cada hechizo se cobra calor, aliento, sangre, cordura o años de vida según escuela y círculo; los catalizadores absorben el precio; las razas tienen afinidades; el Hechicero es el único mago de verdad; un guerrero solo la usa si nació con el don (raro) o si es de élite y la aprendió con un maestro. Casi ningún PNJ sabe magia. Antes del primer hechizo de la partida, lee tema "magia".
 - Mapa: los jugadores ven siempre dónde está el grupo. Llama a ubicacion al empezar, al llegar a otro sitio y durante los viajes (con viajando_hacia y progreso). Reutiliza los nombres de los lugares.
-- Ambientación completa: tema "ambientacion".`;
+- Ambientación completa: tema "ambientacion".
+- Ojo con estos detalles de las herramientas: pasar_tiempo ya mueve el reloj del mundo (24 h por día), no lo avances otra vez con tiempo; lanzar_hechizo NO hace daño a enemigos (objetivo es solo un PJ al que cura): aplica tú el daño con danar_criatura; ubicacion con un lugar nuevo también coloca ahí al grupo al instante; los booleanos son true/false; en iniciativa, tactica.bando es una LISTA de nombres y alerta es dormidos|distraidos|normal|en_guardia; los PNJ y criaturas caídos (0 PV) ya no atacan ni reaccionan: no los hagas actuar. Si dudas del esquema de una acción, consultar_reglas {tema: "accion", nombre}.`;
 
 /** Firma compacta de una acción a partir de su esquema JSON. */
 function tipo(s: Record<string, unknown> | undefined): string {
   if (!s) return "?";
   if (Array.isArray(s.enum)) {
     const v = s.enum as string[];
-    return v.length > 9 ? `${v.slice(0, 8).join("|")}|…` : v.join("|");
+    return v.length > 14 ? `${v.slice(0, 13).join("|")}|…` : v.join("|");
   }
   if (s.type === "array") return `[${tipo(s.items as Record<string, unknown>)}]`;
   if (s.type === "object" && s.properties) {
     const req = new Set((s.required as string[]) ?? []);
     return `{${Object.keys(s.properties as object).map((k) => k + (req.has(k) ? "" : "?")).join(", ")}}`;
   }
-  if (s.type === "integer" || s.type === "number") return "n";
-  if (s.type === "boolean") return "sí/no";
+  if (s.type === "integer" || s.type === "number") {
+    const mn = s.minimum, mx = s.maximum;
+    return mn !== undefined && mx !== undefined ? `n ${mn}-${mx}` : mn !== undefined ? `n≥${mn}` : "n";
+  }
+  if (s.type === "boolean") return "true/false";
   if (Array.isArray(s.anyOf)) return (s.anyOf as Record<string, unknown>[]).map(tipo).join("|");
   return "texto";
 }

@@ -11,7 +11,7 @@ export const PX_NIVEL = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64
 export const NIVEL_MAX = 20;
 export const NIVELES_AUMENTO = [4, 8, 12, 16, 19];
 /** PX por peligro de la criatura (1-5), como el valor de desafío de 5e. */
-export const PX_PELIGRO: Record<number, number> = { 1: 200, 2: 450, 3: 700, 4: 1100, 5: 1800 };
+export const PX_PELIGRO: Record<number, number> = { 1: 50, 2: 200, 3: 450, 4: 700, 5: 1100 };
 
 export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   "Mercenario del Cuervo": {
@@ -163,7 +163,7 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   }
   p.nivel = nuevo;
   p.pv_max += ganado;
-  p.pv += ganado;
+  if (p.pv > 0) p.pv += ganado; // subir de nivel no cura a quien está a 0 PV
   if (p.px === undefined || p.px < PX_NIVEL[nuevo - 1]) p.px = PX_NIVEL[nuevo - 1];
   const rasgos = RASGOS_NIVEL[p.clase]?.[nuevo] ?? [];
   p.rasgos = [...(p.rasgos ?? []), ...rasgos.map((r) => `nv. ${nuevo}: ${r}`)];

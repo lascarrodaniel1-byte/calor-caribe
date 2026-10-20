@@ -19,6 +19,7 @@ function puedeActuar(c: Combatiente): string | null {
   if (e.incapacitado) return `${c.nombre} está ${e.motivos.join(", ")}: no puede actuar ni reaccionar`;
   if (c.tipo === "pj" && (c.p.pv <= 0 || c.p.condiciones.includes("muerto"))) return `${c.nombre} está a 0 PV o muerto`;
   if (c.tipo === "criatura" && c.j.pv <= 0) return `${c.nombre} ha caído`;
+  if (c.tipo === "pnj" && c.n.pv !== undefined && c.n.pv <= 0) return `${c.nombre} ha caído`;
   return null;
 }
 

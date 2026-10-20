@@ -525,6 +525,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const efAt = efectos(condsDe(at));
   if (cobBono) motivos.push(`${ob.nombre} tiene cobertura ${d.cobertura === "media" ? "media (+2 CA)" : "de tres cuartos (+5 CA)"}`);
   const efOb = efectos(condsDe(ob));
+  if ((at.tipo === "pnj" && at.n.pv !== undefined && at.n.pv <= 0) || (at.tipo === "criatura" && at.j.pv <= 0)) throw new Error(`${at.nombre} ha caído: no puede atacar.`);
   if (efAt.incapacitado) throw new Error(`${at.nombre} está ${efAt.motivos.join(", ")}: incapacitado, no puede atacar.`);
   if (efAt.agotamiento >= 6) throw new Error(`${at.nombre} ha muerto de agotamiento.`);
   if (efAt.ataca === "desventaja") { desventaja = true; motivos.push(`desventaja por ${efAt.motivos.join(", ")}`); }
