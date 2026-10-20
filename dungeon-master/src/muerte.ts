@@ -28,9 +28,11 @@ export function caerA0(p: Personaje): string {
     marcarMuerto(p);
     return `☠ ${p.nombre} cae a 0 PV atrapado en el Eclipse: muere sin salvaciones.`;
   }
+  const eraFuria = !!p.furia?.activa;
+  if (eraFuria) p.furia = undefined;
   p.muerte = { exitos: 0, fallos: 0, estable: false, ...(p.muerte?.desventaja ? { desventaja: true } : {}) };
   if (!p.condiciones.includes("inconsciente")) p.condiciones.push("inconsciente");
-  return `⚠ ${p.nombre} cae a 0 PV: inconsciente. Cada asalto, en su turno, salvación contra muerte (herramienta salvacion_muerte); un compañero puede estabilizarlo (herramienta estabilizar). Mientras no sea estable, cada golpe que reciba es un fallo (dos si es crítico).`;
+  return `⚠ ${p.nombre} cae a 0 PV${eraFuria ? " (la furia se apaga de golpe)" : ""}: inconsciente. Cada asalto, en su turno, salvación contra muerte (herramienta salvacion_muerte); un compañero puede estabilizarlo (herramienta estabilizar). Mientras no sea estable, cada golpe que reciba es un fallo (dos si es crítico).`;
 }
 
 /** Recupera PV (curación): sale del suelo. */

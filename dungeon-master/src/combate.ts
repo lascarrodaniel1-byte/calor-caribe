@@ -693,7 +693,10 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let dano = 0;
   let muerto: string | undefined;
   if (d.dano && (resultado === "impacto" || resultado === "critico" || resultado === "roce")) {
-    const r = tirarDano(resultado === "critico" ? doblarDados(d.dano) : d.dano);
+    // En furia, +2 al daño cuerpo a cuerpo.
+    const furiaMas = at.tipo === "pj" && at.p.furia?.activa && !distancia ? 2 : 0;
+    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano) : d.dano) + (furiaMas ? `+${furiaMas}` : ""));
+    if (furiaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
     lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
 
@@ -727,6 +730,11 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       lineas.push(`(Sin tipo de daño: no sé si es corte, punta o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
     }
     dano = Math.max(0, bruto - reduccion);
+    if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipo || ["corte", "punta", "contundente"].includes(tipo as string))) {
+      const antes = dano;
+      dano = Math.floor(dano / 2);
+      lineas.push(`🔥 Furia: resiste el daño físico (${antes} → ${dano}).`);
+    }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
 
     if (ob.tipo === "criatura") {
@@ -771,9 +779,18 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
   const icono = resultado === "critico" ? "💥" : resultado === "impacto" ? "⚔️" : resultado === "roce" ? "🗡️" : "💨";
   const estadoObj = ob.tipo === "criatura" ? ` (${estadoTexto(ob.j)})` : ob.tipo === "pj" && dano ? ` (${ob.p.pv}/${ob.p.pv_max} PV)` : "";
-  const aviso =
+  let aviso =
     `${icono} ${at.nombre} → ${ob.nombre}: ${resultado === "critico" ? "¡crítico!" : resultado === "torpeza" ? "torpeza" : resultado}` +
     `${ob.tipo === "criatura" ? "" : ` (${t.total} vs CA ${ca})`}${dano ? `, ${dano} de daño` : d.dano && (resultado === "impacto" || resultado === "critico") ? ", la armadura aguanta" : ""}${estadoObj}`;
+  // Senda de la Ceniza (nivel 3+): quien golpea cuerpo a cuerpo a un berserker en furia se quema.
+  if (ob.tipo === "pj" && ob.p.furia?.activa && ob.p.nivel >= 3 && !distancia && (resultado === "impacto" || resultado === "critico")) {
+    const f = tirar("1d4").total;
+    if (at.tipo === "pj") at.p.pv = Math.max(0, at.p.pv - f);
+    else if (at.tipo === "criatura") { danar(at.j, f); if (at.j.pv <= 0 && !muerto) muerto = at.j.nombre; }
+    else if (at.n.pv !== undefined) at.n.pv = Math.max(0, at.n.pv - f);
+    lineas.push(`🔥 Senda de la Ceniza: la ceniza de ${ob.nombre} arde y quema a ${at.nombre} (${f} de fuego).`);
+    aviso += `\n🔥 ${at.nombre} se quema (${f}).`;
+  }
   return { texto: lineas.join("\n"), aviso, muerto };
 }
 

@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
 import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
@@ -285,7 +286,7 @@ const esquemas = {
   usar_recurso: z.object({
     quien: z.string(),
     recurso: z.string().optional().describe("Segundo aliento, Acción súbita… (omítelo con accion ver para listar)"),
-    accion: z.enum(["usar", "ver"]).optional(),
+    accion: z.enum(["usar", "ver", "terminar"]).optional().describe("terminar: acaba la furia en curso"),
   }),
   descanso: z.object({
     tipo: z.enum(["corto", "largo"]).describe("corto: 1 hora; largo: 8 horas"),
@@ -681,7 +682,14 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
   }
+  // En trance de furia (nivel 1-2) el berserker no distingue aliados de enemigos.
+  let aviso0 = "";
+  if (!e.reaccion) {
+    const red = redirigirTrance(partida, e.atacante, e.objetivo);
+    if (red.aviso) { e = { ...e, objetivo: red.objetivo }; aviso0 = red.aviso; }
+  }
   const r = atacar(partida, e);
+  if (aviso0) { r.texto = `${aviso0}\n${r.texto}`; r.aviso = `${aviso0}\n${r.aviso}`; }
   if (r.muerto) {
     const devueltos = retirarCaido(partida, enEscena(partida, r.muerto));
     if (devueltos.length) {
@@ -838,9 +846,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "pasar_tiempo": {
         const e = validado.data as z.infer<typeof esquemas.pasar_tiempo>;
         const ps = e.personajes?.length ? e.personajes.map((n) => buscar(partida, n)) : Object.values(partida.personajes);
+        const furias = terminarTodas(partida, "se apaga con el paso del tiempo");
         for (const p of ps) descansar(p, e.dias, e.calidad);
         avanzarSiHay(partida, e.dias * 86400);
-        const texto = ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`).join("\n\n");
+        const texto = [...furias, ...ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`)].join("\n\n");
         return { contenido: texto, aviso: `⏳ ${e.dias} día(s), ${e.calidad}\n${texto}` };
       }
       case "avanzar_asaltos": {
@@ -999,12 +1008,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "usar_recurso": {
         const e = validado.data as z.infer<typeof esquemas.usar_recurso>;
-        const texto = usarRecurso(partida, { ...e, recurso: e.recurso ?? "" });
+        const texto = usarRecurso(partida, { ...e, recurso: e.recurso ?? "", alTerminar: (p) => terminarFuria(p, "se apaga por decisión suya") });
         return { contenido: texto, aviso: e.accion === "ver" ? null : `💪 ${texto.split("\n")[0]}` };
       }
       case "descanso": {
         const e = validado.data as z.infer<typeof esquemas.descanso>;
-        const texto = descanso(partida, e);
+        const furias = terminarTodas(partida, "se apaga con el descanso");
+        const texto = [...furias, descanso(partida, e)].join("\n");
         return { contenido: texto, aviso: `🛏 Descanso ${e.tipo}: se recuperan fuerzas y rasgos.` };
       }
       case "caida": {
@@ -1090,13 +1100,14 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
-        const texto = siguienteAsalto(partida);
+        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "terminar_combate": {
+        const furias = terminarTodas(partida, "se apaga al acabar el combate");
         limpiarTrasCombate(partida);
         delete partida.combate;
-        return { contenido: "Combate cerrado. Caducan las condiciones pasajeras (agarrado, derribado, aturdido…).", aviso: null };
+        return { contenido: `Combate cerrado. Caducan las condiciones pasajeras (agarrado, derribado, aturdido…).${furias.length ? "\n" + furias.join("\n") : ""}`, aviso: furias.length ? `🔥 ${furias.join("\n")}` : null };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;

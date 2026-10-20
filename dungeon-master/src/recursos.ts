@@ -17,6 +17,7 @@ export interface DefRecurso {
   efecto: (p: Personaje) => string;
 }
 
+// Otros módulos (furia.ts) añaden aquí los suyos al cargarse, para no crear ciclos de importación.
 export const RECURSOS_CLASE: Record<string, DefRecurso[]> = {
   "Mercenario del Cuervo": [
     {
@@ -71,17 +72,23 @@ function personaje(partida: Partida, quien: string): Personaje {
   return p;
 }
 
-export function usarRecurso(partida: Partida, d: { quien: string; recurso: string; accion?: "usar" | "ver" }): string {
+export function usarRecurso(partida: Partida, d: { quien: string; recurso: string; accion?: "usar" | "ver" | "terminar"; alTerminar?: (p: Personaje) => string }): string {
   const p = personaje(partida, d.quien);
   const lista = recursosDe(p);
+  if (d.accion === "terminar") {
+    const t = d.alTerminar?.(p) ?? "";
+    if (!t) throw new Error(`${p.nombre} no tiene nada en curso que terminar.`);
+    return t;
+  }
   if (d.accion === "ver" || !d.recurso) return lista.length ? textoRecursos(p).trim() : `${p.nombre} no tiene rasgos con usos limitados.`;
   const r = lista.find((x) => norm(x.def.nombre) === norm(d.recurso)) ?? lista.find((x) => norm(x.def.nombre).includes(norm(d.recurso)));
   if (!r) throw new Error(`${p.nombre} no tiene «${d.recurso}». Tiene: ${lista.map((x) => x.def.nombre).join(", ") || "ningún rasgo con usos"}.`);
   if (p.condiciones.includes("muerto") || p.pv <= 0) throw new Error(`${p.nombre} está a 0 PV o muerto: no puede usar ${r.def.nombre}.`);
   if (efectos(p.condiciones).incapacitado) throw new Error(`${p.nombre} está incapacitado: no puede usar ${r.def.nombre}.`);
   if (r.gastados >= r.max) throw new Error(`${p.nombre} ya gastó ${r.def.nombre} (0/${r.max}); lo recupera con un ${r.def.recarga === "corto" ? "descanso corto o largo" : "descanso largo"}.`);
+  const efecto = r.def.efecto(p); // si falla (p. ej. ya está en furia), no se gasta el uso
   (p.gastados ??= {})[r.def.nombre] = r.gastados + 1;
-  return `${r.def.efecto(p)} Quedan ${r.max - r.gastados - 1}/${r.max}.`;
+  return `${efecto} Quedan ${r.max - r.gastados - 1}/${r.max}.`;
 }
 
 export function descanso(partida: Partida, d: { tipo: "corto" | "largo"; quienes?: string[] }): string {

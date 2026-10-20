@@ -214,6 +214,7 @@ export function bajarZona(h: Herida) {
 }
 
 export function pvMaxEfectivo(p: Personaje): number {
+  if (p.furia?.activa) return p.pv_max; // en furia, las heridas no restan
   const penal = (p.heridas ?? []).reduce((s, h) => s + REGLAS[h.gravedad].penalPV, 0);
   return Math.max(1, p.pv_max - penal);
 }
@@ -629,7 +630,9 @@ export function avanzarAsaltos(p: Personaje, asaltos: number, esfuerzo = true): 
     }
   }
 
-  const sangran = p.heridas.filter((h) => h.sangrando && h.gravedad !== "leve");
+  // La furia (nivel 5) cierra las heridas rojas mientras dura: no sangran ni gastan su reloj.
+  const cerradasPorFuria = p.furia?.activa && p.nivel >= 5;
+  const sangran = p.heridas.filter((h) => h.sangrando && h.gravedad !== "leve" && !(cerradasPorFuria && h.zona_vital === "roja"));
   if (!sangran.length) return log.join("\n") || `${p.nombre} no tiene hemorragias activas.`;
   let pv = 0;
   let sangre = 0;

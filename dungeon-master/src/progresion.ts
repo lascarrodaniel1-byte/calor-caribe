@@ -23,8 +23,9 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   },
   "Berserker de Ceniza": {
     2: ["Ataque temerario: ventaja en sus ataques cuerpo a cuerpo de FUE, pero los ataques contra él tienen ventaja", "Sentido del peligro: ventaja en salvaciones de DES contra efectos que pueda ver"],
-    3: ["Furia (3/descanso largo)", "Senda de la Ceniza: en furia, la ceniza de su piel arde: los atacantes cuerpo a cuerpo que lo golpean sufren 1d4 de fuego"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Movimiento rápido: +3 m de velocidad sin armadura pesada"],
+    3: ["Furia lúcida: el trance de la furia se aclara; ya distingue aliados de enemigos", "Furia (3 usos por descanso largo)", "Senda de la Ceniza: en furia, la ceniza de su piel arde: los atacantes cuerpo a cuerpo que lo golpean sufren 1d4 de fuego"],
+    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Movimiento rápido: +3 m de velocidad sin armadura pesada", "Furia que cierra las heridas: mientras dura la furia, sus heridas rojas dejan de sangrar (se reabren al terminar)"],
+    6: ["Furia (4 usos por descanso largo)"],
   },
   "Caballero Juramentado": {
     2: ["Estilo de combate", "Castigo divino: al impactar, gasta 5 PV de su imposición de manos para +2d8 de daño radiante (+1d8 contra no-muertos y malditos); es magia divina: da Ceniza"],

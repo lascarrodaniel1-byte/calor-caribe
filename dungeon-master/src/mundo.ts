@@ -131,9 +131,10 @@ export const CLASES: Clase[] = [
     principal: "FUE",
     salvaciones: "FUE, CON",
     rasgos: [
-      "Furia (2/descanso largo): +2 al daño cuerpo a cuerpo y resistencia a daño contundente, cortante y perforante",
-      "En furia ignora las penalizaciones de sus heridas; al terminar, salvación de CON CD 10 o una herida moderada sin tratar se agrava",
+      "Furia del fuego viejo (acción adicional; 2 usos por descanso largo, 3 desde el nivel 3, 4 desde el 6): es un vestigio de la conexión de su linaje con el dios más antiguo. Dura 1 minuto: el pelo se vuelve del color de la ceniza, +2 al daño cuerpo a cuerpo, resistencia al daño contundente, cortante y perforante, y las penalizaciones de sus heridas no cuentan. Al terminar, salvación de CON CD 10 o una herida moderada sin tratar se agrava",
+      "Trance (niveles 1-2): en furia entra en trance y no distingue aliados de enemigos; su golpe cae sobre quien tenga a su alcance. Desde el nivel 3 la furia se aclara. En el nivel 5 la furia cierra temporalmente las heridas rojas mientras dura (se reabren al terminar)",
       "Defensa sin armadura: CA 10 + DES + CON",
+      "Hijo de la Ceniza (propuesto, pendiente de confirmar): se reconoce a un Berserker por la mecha gris que le nace en el pelo tras su primera furia (el «Primer Humo», un rito de paso junto a una pira); en las aldeas lo tratan como bendecido o como maldito. Cada vez que su trance hiere a un aliado, el compañero se queda con una marca de ceniza en la piel, y el Berserker lo recuerda siempre",
     ],
     equipo: "Hacha a dos manos, 2 hachas de mano, pieles, 4 jabalinas, 5 po",
   },
