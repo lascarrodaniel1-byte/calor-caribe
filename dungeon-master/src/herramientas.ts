@@ -34,7 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
-import { maniobra } from "./maniobras.js";
+import { caida, maniobra } from "./maniobras.js";
 import { darExperiencia, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
@@ -45,7 +45,7 @@ import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
-import { aplicarCondicion, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
+import { agregarAlCombate, aplicarCondicion, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
@@ -255,6 +255,11 @@ const esquemas = {
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
   }),
+  caida: z.object({
+    quien: z.string(),
+    metros: z.number().min(1).max(500),
+    blando: z.boolean().optional().describe("Cae sobre agua, paja, nieve…: un dado de daño menos"),
+  }),
   experiencia: z.object({
     accion: z.enum(["dar", "por_criatura", "ver"]),
     px: z.number().int().min(1).max(100000).optional().describe("PX totales a repartir (accion dar)"),
@@ -387,6 +392,7 @@ const esquemas = {
       )
       .optional()
       .describe("PNJ sin ficha que luchan (aliados o enemigos): un capitán, unos bandidos…"),
+    sumar: z.boolean().optional().describe("true para añadir refuerzos o recién llegados a un combate EN CURSO sin reiniciarlo: solo tiran su iniciativa y entran en el orden"),
     tactica: z
       .object({
         bando: z.array(z.string()).min(1).describe("Quienes tienden la emboscada o siguen el plan (participantes); los demás son sus rivales"),
@@ -557,6 +563,8 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  caida:
+    "Una caída desde cierta altura: 1d6 de daño contundente por cada 3 m (máx. 20d6), derriba y puede herir.",
   experiencia:
     "Reparte puntos de experiencia al grupo (a partes iguales) por un combate, un desafío o un hito, o consulta cuántos lleva cada uno.",
   subir_nivel:
@@ -622,7 +630,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   if (r.error || nombre === "salvacion_muerte") return r;
   const avisos = revisarCaidas(partida, antes);
   if (!avisos.length) return r;
-  return { ...r, contenido: `${r.contenido}\n${avisos.join("\n")}`, aviso: [r.aviso, ...avisos].filter(Boolean).join("\n") };
+  return { ...r, contenido: `${r.contenido}\n${avisos.join("\n")}`, aviso: [r.aviso, ...avisos.map((a) => a.split(/\.\s/)[0].replace(/\.?$/, "."))].filter(Boolean).join("\n") };
 }
 
 function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Resultado {
@@ -812,7 +820,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         if (rep)
           throw new Error(`Llevas dos encuentros seguidos con enemigos de la familia «${rep}»: este sería el tercero. Varía: llama a encuentro (tira de verdad según región, hora y nivel y evita lo reciente). Si la trama exige repetir, vuelve a llamar con repetir=true.`);
         registrarEnemigo(partida, def.nombre);
-        const texto = aparecer(partida, def, e.nombre);
+        let texto = aparecer(partida, def, e.nombre);
+        // Si ya hay un combate en marcha, la criatura tira su iniciativa y entra en el orden.
+        if (partida.combate) {
+          try { texto += "\n" + agregarAlCombate(partida, [e.nombre]); } catch { /* sin datos suficientes para tirar: lo hará el DM con iniciativa {sumar:true} */ }
+        }
         return { contenido: texto, aviso: `⚠️  ${e.nombre}${def.categoria === "jefe" ? " (JEFE)" : ""}` };
       }
       case "danar_criatura": {
@@ -827,6 +839,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
             aviso += `\n${devueltos.join("\n")}`;
           }
           delete partida.jefes[j.nombre];
+          if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => o.nombre.toLowerCase() !== j.nombre.toLowerCase());
         }
         return { contenido: texto, aviso };
       }
@@ -899,6 +912,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
       }
+      case "caida": {
+        const e = validado.data as z.infer<typeof esquemas.caida>;
+        const texto = caida(partida, e);
+        return { contenido: texto, aviso: `⬇ ${texto.split("\n")[0]}` };
+      }
       case "experiencia": {
         const e = validado.data as z.infer<typeof esquemas.experiencia>;
         const texto = darExperiencia(partida, e);
@@ -953,7 +971,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "iniciativa": {
         const e = validado.data as z.infer<typeof esquemas.iniciativa>;
-        const texto = tirarIniciativa(partida, e.participantes, e.pnj ?? [], e.tactica as Parameters<typeof tirarIniciativa>[3]);
+        const texto = e.sumar && partida.combate
+          ? agregarAlCombate(partida, e.participantes, e.pnj ?? [])
+          : tirarIniciativa(partida, e.participantes, e.pnj ?? [], e.tactica as Parameters<typeof tirarIniciativa>[3]);
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "atacar": {
@@ -971,6 +991,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           const j = enEscena(partida, r.muerto);
           const devueltos = devolverRobos(partida, j);
           delete partida.jefes[j.nombre];
+          if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => o.nombre.toLowerCase() !== j.nombre.toLowerCase());
           if (devueltos.length) {
             r.texto += `\nAl morir, lo robado vuelve a sus dueños:\n${devueltos.join("\n")}`;
             r.aviso += `\n${devueltos.join("\n")}`;

@@ -331,6 +331,25 @@ export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCom
   return `Iniciativa:\n${lineas.join("\n")}\nOrden: ${combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}${sorpr}`;
 }
 
+/** Suma combatientes a un combate en curso (refuerzos, una criatura que aparece): tiran su iniciativa y entran en el orden. */
+export function agregarAlCombate(partida: Partida, nombres: string[], pnj: PnjCombate[] = []): string {
+  const combate = partida.combate;
+  if (!combate) throw new Error("No hay ningún combate en curso: empieza con iniciativa.");
+  for (const n of pnj) combate.pnj[n.nombre] = { ...n, pv_max: n.pv_max ?? n.pv };
+  const nuevos = [...nombres, ...pnj.map((n) => n.nombre)].filter((n) => !combate.orden.some((o) => igual(o.nombre, n)));
+  const lineas: string[] = [];
+  for (const n of nuevos) {
+    const cb = localizar(partida, n);
+    const b = bonoIniciativa(cb);
+    const t = tirar(`1d20${signo(b.bono)}`, b.modo);
+    lineas.push(`${cb.nombre}: ${describir(t)} [${b.detalle}]`);
+    const pos = combate.orden.findIndex((o) => o.total < t.total);
+    combate.orden.splice(pos < 0 ? combate.orden.length : pos, 0, { nombre: cb.nombre, total: t.total });
+  }
+  if (!nuevos.length) return "Todos ya estaban en el orden de iniciativa.";
+  return `Se suma al combate:\n${lineas.join("\n")}\nOrden: ${combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}`;
+}
+
 /** Pasa al siguiente asalto: la sorpresa y el efecto del plan solo duran el primero. */
 export function siguienteAsalto(partida: Partida): string {
   const c = partida.combate;

@@ -7,7 +7,9 @@ import { aplicarCondicion, condsDe, igual, localizar, type Combatiente } from ".
 import { efectos, reconocer } from "./condiciones.js";
 import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { COMPETENCIAS_CLASE } from "./pruebas.js";
-import { competencia, mod, signo, valor } from "./reglas.js";
+import { infligir } from "./heridas.js";
+import { danar } from "./bestiario.js";
+import { competencia, marcarMuerto, mod, signo, valor } from "./reglas.js";
 
 export const COBERTURA = {
   media: { ca: 2, nombre: "cobertura media (muro bajo, mueble grande, otra criatura)" },
@@ -107,6 +109,36 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   return `${cabecera} → ¡LO APARTA! ${ob.nombre} retrocede 1,5 m.${plano}`;
 }
 
+/** Una caída: 1d6 de contundente por cada 3 m (máximo 20d6). Derriba y, si el golpe es fuerte, hiere. */
+export function caida(partida: Partida, d: { quien: string; metros: number; blando?: boolean }): string {
+  const c = localizar(partida, d.quien);
+  if (d.metros < 1) throw new Error("Una caída es de al menos 1 m.");
+  const dados = Math.min(20, Math.floor(d.metros / 3)) - (d.blando ? 1 : 0);
+  if (dados < 1) return `${c.nombre} cae ${d.metros} m${d.blando ? " sobre algo blando" : ""} y se levanta sin daño.`;
+  const t = tirar(`${dados}d6`);
+  const lineas = [`${c.nombre} cae ${d.metros} m${d.blando ? " (aterriza sobre algo blando: un dado menos)" : ""}: ${dados}d6 → ${t.total} de daño contundente.`];
+  if (c.tipo === "pj") {
+    const p = c.p;
+    const antes = p.pv;
+    p.pv = Math.max(0, p.pv - t.total);
+    lineas.push(`${p.nombre}: PV ${p.pv}/${p.pv_max}.`);
+    if (t.total - antes >= p.pv_max) {
+      marcarMuerto(p);
+      lineas.push(`☠ El golpe sobrante (${t.total - antes}) iguala o supera sus PV máximos (${p.pv_max}): muerte instantánea.`);
+      return lineas.join("\n");
+    }
+    if (t.total >= Math.ceil(p.pv_max / 2) || t.total >= 10) lineas.push("Herida:\n" + infligir(p, { causa: t.total >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : "menor", tipo: "contusion", descripcion: "caída" }));
+    else if (t.total >= 3) lineas.push("Herida:\n" + infligir(p, { causa: "menor", tipo: "contusion", descripcion: "caída" }));
+  } else if (c.tipo === "criatura") lineas.push(danar(c.j, t.total));
+  else if (c.n.pv !== undefined) {
+    c.n.pv = Math.max(0, c.n.pv - t.total);
+    lineas.push(`${c.nombre}: −${t.total} PV → ${c.n.pv}/${c.n.pv_max ?? "?"}${c.n.pv === 0 ? " — CAE." : ""}`);
+  } else lineas.push(`${c.nombre} recibe ${t.total} de daño (lleva tú sus PV).`);
+  if (!condsDe(c).some((x) => reconocer(x)?.id === "derribado")) lineas.push(aplicarCondicion(partida, { objetivo: c.nombre, accion: "aplicar", condicion: "derribado" }).split("\n")[0]);
+  return lineas.join("\n");
+}
+
 export const REGLAS_MANIOBRAS = `## Agarrar, empujar, escapar y cobertura
 - Agarrar o empujar sustituye a un ataque y usa la herramienta maniobra: prueba enfrentada de Atletismo del atacante contra Atletismo o Acrobacias del objetivo (la mejor). Si gana, agarrar deja al objetivo agarrado (velocidad 0) y empujar lo derriba o lo aparta 1,5 m. No vale contra un objetivo más de un tamaño mayor. Empate: sigue igual. El agarrado se zafa con maniobra {tipo: escapar} (su acción).
+- Caídas y colgarse: quien cae usa la herramienta caida (1d6 por cada 3 m, derriba y puede herir). Quien se agarra a un borde o cornisa mantiene el agarre con Atletismo (FUE) CD 10 + 2 cada 3 m de altura; si falla, cae. Los compañeros pueden agarrarlo con maniobra (agarrar) si lo alcanzan.
 - Cobertura: pásala en atacar (cobertura): media da +2 a la CA y a las salvaciones de DES, tres cuartos +5; la cobertura total impide apuntar al objetivo. Para una salvación de DES a cubierto usa el parámetro cobertura de prueba.`;
