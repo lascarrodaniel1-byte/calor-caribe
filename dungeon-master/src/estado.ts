@@ -193,7 +193,7 @@ export function fichaTexto(p: Personaje): string {
     textoProgresion(p),
     textoRecursos(p),
     textoLeyenda(p),
-    p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s))${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
+    p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, FUE +2${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

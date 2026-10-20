@@ -689,7 +689,20 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
     if (red.aviso) { e = { ...e, objetivo: red.objetivo }; aviso0 = red.aviso; }
   }
   const r = atacar(partida, e);
-  if (aviso0) { r.texto = `${aviso0}\n${r.texto}`; r.aviso = `${aviso0}\n${r.aviso}`; }
+  if (aviso0) {
+    r.texto = `${aviso0}\n${r.texto}`;
+    r.aviso = `${aviso0}\n${r.aviso}`;
+    // Herir en trance a un compañero deja marcas de Ceniza: en su piel y en la de quien lo hirió.
+    const victima = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.objetivo.toLowerCase());
+    const atacante = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase());
+    if (victima && atacante && victima !== atacante && /IMPACTO|CRÍTICO/i.test(r.texto)) {
+      victima.ceniza += 1;
+      atacante.ceniza += 1;
+      const marca = `🩶 Marca de Ceniza: el golpe en trance deja ceniza en la piel de ${victima.nombre} (${victima.ceniza}) y en la de ${atacante.nombre} (${atacante.ceniza}).`;
+      r.texto += `\n${marca}`;
+      r.aviso += `\n${marca}`;
+    }
+  }
   if (r.muerto) {
     const devueltos = retirarCaido(partida, enEscena(partida, r.muerto));
     if (devueltos.length) {

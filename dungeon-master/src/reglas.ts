@@ -12,7 +12,13 @@ export const mod = (v: number) => Math.floor((v - 10) / 2);
 
 /** Atributo efectivo: la anemia resta Fuerza y algunas criaturas roban atributos. */
 export function valor(p: Personaje, a: Atributo): number {
-  return p.atributos[a] - (a === "fue" ? (p.anemia ?? 0) : 0) - (p.robado?.[a] ?? 0);
+  const base = p.atributos[a] - (a === "fue" ? (p.anemia ?? 0) : 0) - (p.robado?.[a] ?? 0);
+  // La furia del Berserker: la mitad de INT y CAR a cambio de +2 a FUE mientras dura.
+  if (p.furia?.activa) {
+    if (a === "int" || a === "car") return Math.floor(base / 2);
+    if (a === "fue") return base + 2;
+  }
+  return base;
 }
 
 export const competencia = (p: Personaje) => 2 + Math.floor((p.nivel - 1) / 4) + (p.leyenda?.coronada ? 1 : 0);
@@ -42,7 +48,9 @@ export function salvacion(
     return { exito: false, total: 0, natural: 0, margen: -99, texto: `salvación de ${a.toUpperCase()}: fallo automático (${ef.motivos.join(", ")})` };
   const bono = mod(valor(p, a)) + (salvacionCompetente(p, a) ? competencia(p) : 0) + (opciones.extra ?? 0);
   const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv);
-  const modo = opciones.ventaja && !desv ? "ventaja" : desv && !opciones.ventaja ? "desventaja" : "normal";
+  // La fortaleza del Berserker de Ceniza: ventaja en las salvaciones de CON.
+  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza");
+  const modo = vent && !desv ? "ventaja" : desv && !vent ? "desventaja" : "normal";
   const t = tirar(`1d20${signo(bono)}`, modo);
   const natural = t.dados[0];
   const exito = natural === 20 || (natural !== 1 && t.total >= cd);

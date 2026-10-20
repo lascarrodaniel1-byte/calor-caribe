@@ -168,16 +168,17 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   } else if (d.aumento && Object.keys(d.aumento).length) throw new Error(`El nivel ${nuevo} no da aumento de característica (solo en ${NIVELES_AUMENTO.join(", ")}).`);
   const c = CLASES.find((x) => x.nombre === p.clase);
   const dado = c?.dadoGolpe ?? 8;
+  const fortaleza = p.clase === "Berserker de Ceniza" ? 1 : 0; // +1 PV por nivel
   const m = mod(valor(p, "con"));
   let ganado: number;
   let detalle: string;
   if (d.pv === "tirar") {
     const t = tirar(`1d${dado}`);
-    ganado = Math.max(1, t.total + m);
-    detalle = `1d${dado} → ${t.total} ${m >= 0 ? "+" : "−"} ${Math.abs(m)} (CON)`;
+    ganado = Math.max(1, t.total + m + fortaleza);
+    detalle = `1d${dado} → ${t.total} ${m >= 0 ? "+" : "−"} ${Math.abs(m)} (CON)${fortaleza ? " + 1 (fortaleza)" : ""}`;
   } else {
-    ganado = Math.max(1, Math.floor(dado / 2) + 1 + m);
-    detalle = `promedio ${Math.floor(dado / 2) + 1} ${m >= 0 ? "+" : "−"} ${Math.abs(m)} (CON)`;
+    ganado = Math.max(1, Math.floor(dado / 2) + 1 + m + fortaleza);
+    detalle = `promedio ${Math.floor(dado / 2) + 1} ${m >= 0 ? "+" : "−"} ${Math.abs(m)} (CON)${fortaleza ? " + 1 (fortaleza)" : ""}`;
   }
   p.nivel = nuevo;
   p.pv_max += ganado;

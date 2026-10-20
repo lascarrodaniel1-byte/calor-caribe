@@ -40,6 +40,8 @@ export interface Hechizo {
   tributo?: Tributo;
   /** Solo con nivel 9 o más, maestría de adepto o afinidad racial con la magia. */
   requiere_alto?: boolean;
+  /** Tema de un hechizo elemental (el Berserker solo domina rayo y hielo). */
+  tema?: "fuego" | "rayo" | "hielo" | "viento";
   efecto: string;
   /** Dados de daño o efecto que el programa tira al lanzarlo. */
   dados?: string;
@@ -53,14 +55,20 @@ export interface Hechizo {
 
 export const HECHIZOS: Hechizo[] = [
   // Elemental
-  { nombre: "Chispa", escuela: "elemental", circulo: 0, efecto: "Enciende una llama pequeña, calienta las manos o hace 1d6 de fuego a un objetivo", dados: "1d6" },
-  { nombre: "Sangre hirviente", escuela: "elemental", circulo: 1, efecto: "Durante 1 minuto, los golpes del lanzador hacen +1d6 de fuego" },
-  { nombre: "Saeta de fuego", escuela: "elemental", circulo: 1, efecto: "Ataque de hechizo a distancia (36 m): 2d10 de fuego", dados: "2d10" },
-  { nombre: "Ráfaga", escuela: "elemental", circulo: 1, tributo: "aliento", efecto: "Un cono de viento de 4,5 m empuja 3 m y derriba", salvacion: "FUE" },
-  { nombre: "Asfixiar", escuela: "elemental", circulo: 3, tributo: "aliento", efecto: "Le roba el aire a un objetivo: sin respirar 1 minuto (repite la salvación cada asalto)", salvacion: "CON" },
-  { nombre: "Bola de fuego", escuela: "elemental", circulo: 3, efecto: "Esfera de 6 m de radio: 8d6 de fuego, mitad si supera la salvación", dados: "8d6", salvacion: "DES" },
-  { nombre: "Cadena de relámpagos", escuela: "elemental", circulo: 4, efecto: "Un rayo salta entre hasta 4 objetivos: 10d8 de relámpago, mitad si supera", dados: "10d8", salvacion: "DES" },
-  { nombre: "Tormenta de ceniza", escuela: "elemental", circulo: 5, efecto: "Una tormenta de fuego y ceniza de 30 m durante 1 minuto: 12d6 por asalto", dados: "12d6", salvacion: "DES" },
+  { nombre: "Chispa", escuela: "elemental", tema: "fuego", circulo: 0, efecto: "Enciende una llama pequeña, calienta las manos o hace 1d6 de fuego a un objetivo", dados: "1d6" },
+  { nombre: "Sangre hirviente", escuela: "elemental", tema: "fuego", circulo: 1, efecto: "Durante 1 minuto, los golpes del lanzador hacen +1d6 de fuego" },
+  { nombre: "Chispazo", escuela: "elemental", tema: "rayo", circulo: 0, efecto: "Una descarga pequeña salta a un objetivo a 9 m: 1d6 de relámpago", dados: "1d6" },
+  { nombre: "Escarcha", escuela: "elemental", tema: "hielo", circulo: 0, efecto: "Un aliento de escarcha a un objetivo a 9 m: 1d6 de frío, y su velocidad baja a la mitad hasta su siguiente turno", dados: "1d6" },
+  { nombre: "Rayo", escuela: "elemental", tema: "rayo", circulo: 1, efecto: "Un rayo en línea recta de 18 m: 3d6 de relámpago, mitad si supera la salvación", dados: "3d6", salvacion: "DES" },
+  { nombre: "Lanza de hielo", escuela: "elemental", tema: "hielo", circulo: 1, efecto: "Ataque de hechizo a distancia (36 m): 2d10 de frío", dados: "2d10" },
+  { nombre: "Puño de trueno", escuela: "elemental", tema: "rayo", circulo: 2, efecto: "El siguiente golpe cuerpo a cuerpo del lanzador hace +3d6 de relámpago y empuja 3 m al objetivo", dados: "3d6" },
+  { nombre: "Muro de escarcha", escuela: "elemental", tema: "hielo", circulo: 2, efecto: "Un muro de hielo de 9 m de largo y 3 m de alto durante 1 minuto: bloquea el paso y la vista, y quien lo atraviesa sufre 2d6 de frío", dados: "2d6" },
+  { nombre: "Saeta de fuego", escuela: "elemental", tema: "fuego", circulo: 1, efecto: "Ataque de hechizo a distancia (36 m): 2d10 de fuego", dados: "2d10" },
+  { nombre: "Ráfaga", escuela: "elemental", tema: "viento", circulo: 1, tributo: "aliento", efecto: "Un cono de viento de 4,5 m empuja 3 m y derriba", salvacion: "FUE" },
+  { nombre: "Asfixiar", escuela: "elemental", tema: "viento", circulo: 3, tributo: "aliento", efecto: "Le roba el aire a un objetivo: sin respirar 1 minuto (repite la salvación cada asalto)", salvacion: "CON" },
+  { nombre: "Bola de fuego", escuela: "elemental", tema: "fuego", circulo: 3, efecto: "Esfera de 6 m de radio: 8d6 de fuego, mitad si supera la salvación", dados: "8d6", salvacion: "DES" },
+  { nombre: "Cadena de relámpagos", escuela: "elemental", tema: "rayo", circulo: 4, efecto: "Un rayo salta entre hasta 4 objetivos: 10d8 de relámpago, mitad si supera", dados: "10d8", salvacion: "DES" },
+  { nombre: "Tormenta de ceniza", escuela: "elemental", tema: "fuego", circulo: 5, efecto: "Una tormenta de fuego y ceniza de 30 m durante 1 minuto: 12d6 por asalto", dados: "12d6", salvacion: "DES" },
   // Curación
   { nombre: "Cerrar la carne", escuela: "curacion", circulo: 1, efecto: "Toque: el objetivo recupera 2d8 + mod. del lanzador PV", cura: "2d8" },
   { nombre: "Sutura arcana", escuela: "curacion", circulo: 2, efecto: "Toque: baja una herida un nivel de gravedad y detiene su hemorragia", cierra_heridas: 1 },
@@ -80,7 +88,6 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Romper la mente", escuela: "mente", circulo: 5, efecto: "Destroza la mente de un objetivo: 10d10 psíquico y, si falla por 5, queda en estado vegetativo", dados: "10d10", salvacion: "INT" },
   // Protección
   { nombre: "Vigor de ceniza", escuela: "proteccion", circulo: 1, efecto: "Durante 1 minuto, +2 a las pruebas y salvaciones de FUE y ventaja en agarrar y empujar (refuerzo)" },
-  { nombre: "Puño de brasa", escuela: "elemental", circulo: 2, efecto: "El siguiente golpe cuerpo a cuerpo del lanzador hace +3d6 de fuego y empuja 3 m al objetivo", dados: "3d6" },
   { nombre: "Arma que regresa", escuela: "proteccion", circulo: 3, efecto: "Encanta un arma arrojadiza o de mano durante 1 hora: tras lanzarla vuelve a la mano del lanzador al final del turno. Exige nivel 9 o más, maestría de adepto o afinidad con la magia", requiere_alto: true },
   { nombre: "Piel de hierro", escuela: "proteccion", circulo: 1, efecto: "+2 a la CA del lanzador o de un aliado durante 10 minutos" },
   { nombre: "Escudo de sal", escuela: "proteccion", circulo: 2, efecto: "Durante 1 minuto, los no-muertos no pueden tocar al objetivo sin superar SAB" },
@@ -128,7 +135,7 @@ export const AFINIDAD: Record<string, AfinidadRaza> = {
 /** Magia con la que empieza cada clase. */
 export const MAGIA_CLASE: Record<string, { maestria: Maestria; escuelas: Escuela[]; hechizos: string[]; atributo: "int" | "sab" | "car" }> = {
   "Mercenario del Cuervo": { maestria: "iniciado", escuelas: ["proteccion"], hechizos: ["Piel de hierro"], atributo: "sab" },
-  "Berserker de Ceniza": { maestria: "iniciado", escuelas: ["elemental", "proteccion"], hechizos: ["Sangre hirviente"], atributo: "car" },
+  "Berserker de Ceniza": { maestria: "iniciado", escuelas: ["elemental", "proteccion"], hechizos: ["Chispazo", "Escarcha"], atributo: "car" },
   "Caballero Juramentado": { maestria: "iniciado", escuelas: ["curacion", "proteccion"], hechizos: ["Cerrar la carne", "Escudo de sal"], atributo: "car" },
   "Cazador de Brujas": { maestria: "iniciado", escuelas: ["adivinacion"], hechizos: ["Ojo de bruja", "Leer el rastro"], atributo: "sab" },
   Degollador: { maestria: "iniciado", escuelas: ["sombra"], hechizos: ["Paso de sombra"], atributo: "int" },
@@ -261,6 +268,8 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   const h = d.hechizo_nuevo ?? (d.hechizo ? buscarHechizo(d.hechizo) : undefined);
   if (!h) throw new Error(`No conozco el hechizo "${d.hechizo}". Usa uno de la lista (consultar_reglas magia) o descríbelo con hechizo_nuevo.`);
   if (!m.escuelas.includes(h.escuela)) throw new Error(`${p.nombre} no domina la escuela de ${h.escuela} (domina: ${m.escuelas.join(", ") || "ninguna"}).`);
+  if (p.clase === "Berserker de Ceniza" && h.escuela === "elemental" && !(h.tema && ["rayo", "hielo"].includes(h.tema) && h.circulo <= 2))
+    throw new Error(`Un Berserker de Ceniza solo domina de la magia elemental los rayos y el hielo básicos (hasta círculo 2): ${h.nombre} queda fuera.`);
   if (h.requiere_alto && p.nivel < 9 && MAESTRIAS.indexOf(m.maestria) < MAESTRIAS.indexOf("adepto") && !((AFINIDAD[p.raza]?.bono ?? 0) > 0))
     throw new Error(`${h.nombre} exige nivel 9 o más, maestría de adepto o afinidad racial con la magia: ${p.nombre} (nivel ${p.nivel}, ${m.maestria}) aún no puede.`);
   const conocido = d.hechizo_nuevo || m.hechizos.some((x) => x.toLowerCase() === h.nombre.toLowerCase());
