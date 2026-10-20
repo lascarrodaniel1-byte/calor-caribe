@@ -60,6 +60,8 @@ export interface DatosPrueba {
   bono?: number;
   /** Salvación de DES a cubierto: +2 (media) o +5 (tres cuartos). */
   cobertura?: "media" | "tres_cuartos";
+  /** Quien oye conoce el nombre del personaje: una leyenda tiene ventaja social (Persuasión si es de gloria, Intimidación si es de infamia). */
+  conoce_su_nombre?: boolean;
   motivo: string;
 }
 
@@ -110,7 +112,8 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   }
   const efP = efectos(pj.condiciones);
   const hayD = !!d.desventaja || efP.pruebas === "desventaja";
-  const modoP = d.ventaja && !hayD ? "ventaja" : hayD && !d.ventaja ? "desventaja" : "normal";
+  const ley = pj.leyenda?.coronada && d.conoce_su_nombre && ((hab === "persuasion" && pj.leyenda.tono !== "infamia") || (hab === "intimidacion" && pj.leyenda.tono !== "gloria"));
+  const modoP = (d.ventaja || ley) && !hayD ? "ventaja" : hayD && !(d.ventaja || ley) ? "desventaja" : "normal";
   const m = mod(valor(pj, attr!));
   const comp = competencia(pj);
   const deClase = hab ? (COMPETENCIAS_CLASE[pj.clase] ?? []).includes(hab) : false;

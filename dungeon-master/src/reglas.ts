@@ -15,7 +15,7 @@ export function valor(p: Personaje, a: Atributo): number {
   return p.atributos[a] - (a === "fue" ? (p.anemia ?? 0) : 0) - (p.robado?.[a] ?? 0);
 }
 
-export const competencia = (p: Personaje) => 2 + Math.floor((p.nivel - 1) / 4);
+export const competencia = (p: Personaje) => 2 + Math.floor((p.nivel - 1) / 4) + (p.leyenda?.coronada ? 1 : 0);
 
 /** ¿Tiene competencia en esa salvación según su clase? */
 export function salvacionCompetente(p: Personaje, a: Atributo): boolean {

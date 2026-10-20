@@ -1,4 +1,6 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
+import type { Leyenda } from "./leyenda.js";
+import { textoLeyenda } from "./leyenda.js";
 import { textoRecursos } from "./recursos.js";
 import { textoProgresion } from "./progresion.js";
 import { textoMuerte } from "./muerte.js";
@@ -61,6 +63,8 @@ export interface Personaje {
   px?: number;
   /** Usos gastados de rasgos con usos limitados (ver recursos.ts). */
   gastados?: Record<string, number>;
+  /** Hazañas, fama y, si la hay, la Leyenda (ver leyenda.ts). */
+  leyenda?: Leyenda;
   /** Rasgos de clase ganados al subir de nivel. */
   rasgos?: string[];
   muerte?: { exitos: number; fallos: number; estable: boolean; desventaja?: boolean };
@@ -184,6 +188,7 @@ export function fichaTexto(p: Personaje): string {
     textoMuerte(p) ? `  ${textoMuerte(p)}` : "",
     textoProgresion(p),
     textoRecursos(p),
+    textoLeyenda(p),
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { darExperiencia, subirNivel } from "./progresion.js";
@@ -255,6 +256,19 @@ const esquemas = {
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
+  }),
+  hazana: z.object({
+    quienes: z.array(z.string()).min(1).describe("Los personajes que la hicieron"),
+    descripcion: z.string().describe("Qué hicieron y qué cambió (concreto)"),
+    magnitud: z.number().int().min(1).max(5).describe("1 la cuenta el pueblo · 2 la región · 3 el reino · 4 ÉPICA (jefe, ejército, ciudad) · 5 cambia el reino (matar a un regente, romper una maldición del mundo). Sé muy tacaño"),
+    tono: z.enum(["gloria", "infamia"]),
+  }),
+  coronar_leyenda: z.object({
+    quien: z.string(),
+    titulo: z.string().describe("El título por el que se le conocerá"),
+    tono: z.enum(["gloria", "infamia", "ambigua"]),
+    razon: z.string().describe("Las hazañas que lo justifican, en una frase"),
+    atributo: z.enum(["fue", "des", "con", "int", "sab", "car"]).describe("Característica que sube +2 (máx. 22)"),
   }),
   usar_recurso: z.object({
     quien: z.string(),
@@ -506,6 +520,7 @@ const esquemas = {
     desventaja: z.boolean().optional(),
     bono: z.number().int().optional().describe("PNJ: su bonificador total. PJ: ajuste por situación (herramientas…)"),
     cobertura: z.enum(["media", "tres_cuartos"]).optional().describe("Salvación de DES a cubierto: +2 o +5"),
+    conoce_su_nombre: z.boolean().optional().describe("Una leyenda: quien la oye conoce su nombre (ventaja en Persuasión si es de gloria, Intimidación si es de infamia)"),
     motivo: z.string().describe("Qué intenta, en pocas palabras"),
   }),
   siguiente_asalto: z.object({}),
@@ -574,6 +589,10 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  hazana:
+    "Anota una hazaña (una gesta concreta con su magnitud 1-5 y su tono, gloria o infamia) de uno o varios personajes: construye su fama. Sé muy tacaño con las magnitudes altas.",
+  coronar_leyenda:
+    "Convierte en LEYENDA a un personaje (nivel extra para cualquier clase o raza) si tiene nivel 5 y hazañas enormes: da título, fama, competencia +1, PV, +2 a una característica y el Aliento de leyenda. Muy difícil.",
   usar_recurso:
     "Gasta un uso de un rasgo de clase con usos limitados (Segundo aliento y Acción súbita del Mercenario…) y aplica su efecto; con accion ver lista los usos que quedan.",
   descanso:
@@ -948,6 +967,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
+      }
+      case "hazana": {
+        const e = validado.data as z.infer<typeof esquemas.hazana>;
+        const texto = registrarHazana(partida, e);
+        return { contenido: texto, aviso: e.magnitud >= 3 ? `📜 ${texto.split("\n")[0]}` : null };
+      }
+      case "coronar_leyenda": {
+        const e = validado.data as z.infer<typeof esquemas.coronar_leyenda>;
+        const texto = coronarLeyenda(partida, e);
+        return { contenido: texto, aviso: `★ ${texto.split("\n")[0].replace(/^★ /, "")}` };
       }
       case "usar_recurso": {
         const e = validado.data as z.infer<typeof esquemas.usar_recurso>;

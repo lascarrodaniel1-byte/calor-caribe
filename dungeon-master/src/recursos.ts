@@ -44,8 +44,16 @@ export const RECURSOS_CLASE: Record<string, DefRecurso[]> = {
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
+const ALIENTO_LEYENDA: DefRecurso = {
+  nombre: "Aliento de leyenda",
+  desde: 1,
+  max: () => 1,
+  recarga: "largo",
+  efecto: (p) => `${p.nombre} invoca su leyenda: la tirada de ataque, prueba o salvación que acaba de fallar cuenta como ÉXITO (en un ataque, como un impacto normal). Narra cómo su nombre pesa.`,
+};
+
 export function recursosDe(p: Personaje): { def: DefRecurso; max: number; gastados: number }[] {
-  return (RECURSOS_CLASE[p.clase] ?? [])
+  return [...(RECURSOS_CLASE[p.clase] ?? []), ...(p.leyenda?.coronada ? [ALIENTO_LEYENDA] : [])]
     .filter((d) => p.nivel >= d.desde)
     .map((def) => ({ def, max: def.max(p), gastados: Math.min(def.max(p), p.gastados?.[def.nombre] ?? 0) }));
 }
