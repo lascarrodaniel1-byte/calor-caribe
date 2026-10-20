@@ -89,6 +89,7 @@ function sangreDeSanto(p: Personaje, heridaId: string | undefined, log: string[]
     log.push(`Infarto leve: pierde ${dano} PV (PV ${p.pv}) y queda aturdido 1d4 asaltos (${tirar("1d4").total}).`);
   } else {
     p.pv = 0;
+    p.muerte = { exitos: 0, fallos: 0, estable: false, desventaja: true };
     p.secuelas.push("corazón dañado por un coágulo: desventaja en salvaciones de CON contra el agotamiento");
     log.push(
       "Paro cardíaco: cae a 0 PV y hace salvaciones contra muerte con desventaja. Un aliado puede estabilizarlo con Medicina CD 15 (acción). Si sobrevive, le queda el corazón dañado (secuela añadida).",

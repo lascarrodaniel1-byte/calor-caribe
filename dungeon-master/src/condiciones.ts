@@ -32,10 +32,10 @@ export const CATALOGO: Condicion[] = [
   { id: "incapacitado", nombre: "incapacitado", patron: /incapacitad/i, regla: "no puede realizar acciones ni reacciones", incapacitado: true },
   { id: "invisible", nombre: "invisible", patron: /invisible/i, regla: "no se le ve sin magia o sentidos especiales; sus ataques tienen ventaja y los ataques contra él, desventaja", ataca: "ventaja", contraCuerpo: "desventaja", contraDistancia: "desventaja" },
   { id: "paralizado", nombre: "paralizado", patron: /paralizad|paralítico/i, regla: "incapacitado y sin moverse ni hablar; falla las salvaciones de FUE y DES; los ataques contra él tienen ventaja y los cuerpo a cuerpo a quemarropa son críticos", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja", critCuerpo: true },
-  { id: "petrificado", nombre: "petrificado", patron: /petrific/i, regla: "convertido en piedra: incapacitado, sin moverse, falla las salvaciones de FUE y DES, los ataques contra él tienen ventaja y resiste todo el daño", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja" },
+  { id: "petrificado", nombre: "petrificado", patron: /petrificad[oa]/i, regla: "convertido en piedra: incapacitado, sin moverse, falla las salvaciones de FUE y DES, los ataques contra él tienen ventaja y resiste todo el daño", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja" },
   { id: "envenenado", nombre: "envenenado", patron: /envenenad/i, regla: "desventaja en tiradas de ataque y pruebas de característica", ataca: "desventaja", pruebas: "desventaja" },
   { id: "derribado", nombre: "derribado", patron: /derribad|tumbad|caíd[oa]\b/i, regla: "solo puede arrastrarse (o levantarse gastando la mitad de su movimiento); sus ataques tienen desventaja; los ataques cuerpo a cuerpo contra él tienen ventaja y los de distancia, desventaja", ataca: "desventaja", contraCuerpo: "ventaja", contraDistancia: "desventaja" },
-  { id: "retenido", nombre: "retenido", patron: /retenid|inmovilizad|atrapad[oa]\b|enredad/i, regla: "velocidad 0; desventaja en sus ataques y en las salvaciones de DES; los ataques contra él tienen ventaja", ataca: "desventaja", contraCuerpo: "ventaja", contraDistancia: "ventaja", velocidad0: true, salvDesDesv: true },
+  { id: "retenido", nombre: "retenido", patron: /retenid|inmovilizad|^atrapad[oa]\s*(\(|$)|enredad/i, regla: "velocidad 0; desventaja en sus ataques y en las salvaciones de DES; los ataques contra él tienen ventaja", ataca: "desventaja", contraCuerpo: "ventaja", contraDistancia: "ventaja", velocidad0: true, salvDesDesv: true },
   { id: "aturdido", nombre: "aturdido", patron: /aturdid/i, regla: "incapacitado, sin moverse y hablando a duras penas; falla las salvaciones de FUE y DES; los ataques contra él tienen ventaja", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja" },
   { id: "inconsciente", nombre: "inconsciente", patron: /inconsciente|dormid[oa]\b|en coma/i, regla: "incapacitado, tirado, sin moverse ni enterarse; suelta lo que sostiene; falla las salvaciones de FUE y DES; los ataques contra él tienen ventaja y los cuerpo a cuerpo a quemarropa son críticos", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja", critCuerpo: true },
 ];
@@ -129,6 +129,21 @@ export function textoEfectos(conds: string[]): string {
   });
   if (e.agotamiento) lineas.push(`agotamiento ${e.agotamiento}: ${REGLA_AGOTAMIENTO.slice(0, e.agotamiento).join("; ")}`);
   return lineas.join(" | ");
+}
+
+/** Añade una condición a una lista sin duplicarla; el agotamiento solo sube de nivel, nunca baja por añadir. */
+export function agregarCondicion(lista: string[], texto: string): boolean {
+  const nuevoAg = AGOTAMIENTO.exec(texto);
+  if (nuevoAg) {
+    const actual = nivelAgotamiento(lista);
+    if (Number(nuevoAg[1]) <= actual) return false;
+    const resto = lista.filter((x) => !AGOTAMIENTO.test(x));
+    lista.splice(0, lista.length, ...resto, texto);
+    return true;
+  }
+  if (lista.some((x) => mismaCondicion(x, texto))) return false;
+  lista.push(texto);
+  return true;
 }
 
 /** Quita de una lista las condiciones que corresponden al mismo nombre del catálogo (para no duplicar). */

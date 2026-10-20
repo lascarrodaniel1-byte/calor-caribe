@@ -244,16 +244,21 @@ export function actualizarTrama(partida: Partida, d: DatosTrama): string {
     log.push(`Pista revelada: ${d.revelar_pista}`);
     avanza = true;
   }
-  if (d.proximo_paso !== undefined && !igual(d.proximo_paso, t.paso ?? "")) {
-    t.paso = d.proximo_paso;
-    t.paso_turnos = 0;
-    log.push(`Próximo paso: ${d.proximo_paso}`);
+  if (d.proximo_paso !== undefined) {
+    t.paso_turnos = 0; // reafirmarlo también cuenta como revisado
+    if (!igual(d.proximo_paso, t.paso ?? "")) {
+      t.paso = d.proximo_paso;
+      log.push(`Próximo paso: ${d.proximo_paso}`);
+    } else log.push("Próximo paso revisado: sigue vigente.");
   }
-  if (d.objetivo !== undefined && !igual(d.objetivo, t.objetivo)) {
-    t.objetivo = d.objetivo;
+  if (d.objetivo !== undefined) {
     t.paso_turnos = 0;
-    log.push(`Objetivo: ${d.objetivo}`);
-    avanza = true;
+    if (!igual(d.objetivo, t.objetivo)) {
+      t.objetivo = d.objetivo;
+      if (d.proximo_paso === undefined && t.paso) log.push("⚠ El objetivo cambió: ¿sigue valiendo el próximo paso de antes? Actualízalo con proximo_paso (se ve en la barra de los jugadores).");
+      log.push(`Objetivo: ${d.objetivo}`);
+      avanza = true;
+    } else log.push("Objetivo revisado: sigue vigente.");
   }
   if (d.amenaza !== undefined) {
     t.amenaza = d.amenaza;

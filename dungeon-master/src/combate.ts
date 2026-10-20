@@ -6,7 +6,7 @@
 // estar malherido) y pesan mucho más en los novatos. Las emboscadas y los planes
 // dan ventaja, pero a un veterano cuesta más sorprenderlo, y la personalidad
 // (arrogancia, prudencia, impulsividad…) cambia lo fácil que es engañar a alguien.
-import { danar, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
+import { danar, devolverRobos, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
@@ -156,6 +156,8 @@ export interface PnjCombate {
   personalidad?: string[];
   /** Piezas de armadura que lleva (ver PIEZAS en armadura.ts). */
   armadura?: string[];
+  /** Lucha del lado de los jugadores (un guardia que los acompaña). */
+  aliado?: boolean;
   /** Si se da, el programa lleva sus PV. */
   pv?: number;
   pv_max?: number;
@@ -201,11 +203,14 @@ export function localizar(partida: Partida, nombre: string): Combatiente {
   const p = partida.personajes[nombre] ?? Object.values(partida.personajes).find((x) => igual(x.nombre, nombre));
   if (p) return { tipo: "pj", nombre: p.nombre, p };
   const jefes = Object.values(partida.jefes);
-  const j = partida.jefes[nombre] ?? jefes.find((x) => igual(x.nombre, nombre)) ?? jefes.find((x) => x.nombre.toLowerCase().includes(nombre.toLowerCase()));
-  if (j) return { tipo: "criatura", nombre: j.nombre, j };
   const pnjs = Object.values(partida.combate?.pnj ?? {});
+  // Primero los nombres exactos (de criaturas y de PNJ); la coincidencia parcial, al final.
+  const j = partida.jefes[nombre] ?? jefes.find((x) => igual(x.nombre, nombre));
+  if (j) return { tipo: "criatura", nombre: j.nombre, j };
   const n = pnjs.find((x) => igual(x.nombre, nombre));
   if (n) return { tipo: "pnj", nombre: n.nombre, n };
+  const parcial = jefes.find((x) => x.nombre.toLowerCase().includes(nombre.toLowerCase()));
+  if (parcial) return { tipo: "criatura", nombre: parcial.nombre, j: parcial };
   throw new Error(
     `"${nombre}" no es un personaje, ni una criatura en escena, ni un PNJ del combate. Registra a los PNJ sin ficha en iniciativa (pnj) y a las criaturas con aparecer_criatura.`,
   );
@@ -335,7 +340,7 @@ export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCom
 export function agregarAlCombate(partida: Partida, nombres: string[], pnj: PnjCombate[] = []): string {
   const combate = partida.combate;
   if (!combate) throw new Error("No hay ningún combate en curso: empieza con iniciativa.");
-  for (const n of pnj) combate.pnj[n.nombre] = { ...n, pv_max: n.pv_max ?? n.pv };
+  for (const n of pnj) combate.pnj[n.nombre] ??= { ...n, pv_max: n.pv_max ?? n.pv };
   const nuevos = [...nombres, ...pnj.map((n) => n.nombre)].filter((n) => !combate.orden.some((o) => igual(o.nombre, n)));
   const lineas: string[] = [];
   for (const n of nuevos) {
@@ -357,7 +362,8 @@ export function siguienteAsalto(partida: Partida): string {
   c.ronda += 1;
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
-  for (const t of Object.values(c.turnos ?? {})) delete t.reaccion; // la reacción se recupera con el nuevo asalto
+  // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -371,6 +377,33 @@ function actuaAntes(partida: Partida, a: string, b: string): boolean {
 }
 
 const CONDICIONES_DESVENTAJA = /jadeando/i; // condición propia de la magia; el resto vive en condiciones.ts
+
+/** Al acabar el combate caducan las condiciones pasajeras (agarrado, derribado, aturdido…); las que duran (veneno, petrificado, agotamiento…) se quedan. */
+export function limpiarTrasCombate(partida: Partida): void {
+  const pasajeras = new Set(["agarrado", "derribado", "retenido", "aturdido", "incapacitado", "asustado", "cegado", "ensordecido", "invisible", "hechizado"]);
+  for (const p of Object.values(partida.personajes)) p.condiciones = p.condiciones.filter((x) => !pasajeras.has(reconocer(x)?.id ?? ""));
+  for (const j of Object.values(partida.jefes)) j.condiciones = [];
+}
+
+/** Por qué un combatiente no puede actuar ni reaccionar (null = puede). */
+export function puedeActuar(c: Combatiente): string | null {
+  const e = efectos(condsDe(c));
+  if (c.tipo === "pj" && c.p.condiciones.includes("muerto")) return `${c.nombre} está muerto`;
+  if (c.tipo === "pj" && c.p.pv <= 0) return `${c.nombre} está a 0 PV`;
+  if (c.tipo === "criatura" && c.j.pv <= 0) return `${c.nombre} ha caído`;
+  if (c.tipo === "pnj" && c.n.pv !== undefined && c.n.pv <= 0) return `${c.nombre} ha caído`;
+  if (e.incapacitado) return `${c.nombre} está ${e.motivos.join(", ")}: no puede actuar ni reaccionar`;
+  if (e.agotamiento >= 6) return `${c.nombre} ha muerto de agotamiento`;
+  return null;
+}
+
+/** Una criatura que ha muerto sale de escena: se devuelve lo que robó y se quita del orden de iniciativa. */
+export function retirarCaido(partida: Partida, j: EstadoJefe): string[] {
+  const devueltos = devolverRobos(partida, j);
+  delete partida.jefes[j.nombre];
+  if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => !igual(o.nombre, j.nombre));
+  return devueltos;
+}
 
 export function condsDe(c: Combatiente): string[] {
   return c.tipo === "pj" ? c.p.condiciones : c.tipo === "criatura" ? (c.j.condiciones ??= []) : (c.n.condiciones ??= []);
@@ -412,7 +445,7 @@ export function aplicarCondicion(
     texto = `agotamiento ${nuevo}`;
     if (nuevo >= 6) {
       if (c.tipo === "pj") { c.p.pv = 0; if (!c.p.condiciones.includes("muerto")) c.p.condiciones.push("muerto"); }
-      else if (c.tipo === "criatura") c.j.pv = 0;
+      else if (c.tipo === "criatura") { c.j.pv = 0; retirarCaido(partida, c.j); }
     }
   } else if (lista.some((x) => mismaCondicion(x, d.condicion!))) {
     return `${c.nombre} ya está ${cat?.nombre ?? d.condicion}.`;
@@ -456,6 +489,8 @@ export interface DatosAtaque {
   apuntar?: Ubicacion | "hueco";
   /** Cobertura del objetivo: media (+2 CA), tres_cuartos (+5) o total (no se le puede atacar). */
   cobertura?: "media" | "tres_cuartos" | "total";
+  /** Es un ataque hecho como reacción (en turno ajeno): no cuenta como su turno. */
+  reaccion?: boolean;
 }
 
 export interface ResultadoAtaque {
@@ -541,12 +576,16 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let ventaja = !!d.ventaja;
   let desventaja = !!d.desventaja;
   const motivos: string[] = [];
+  const combate = partida.combate;
+  const primerAsalto = combate?.ronda === 1;
+  const sorprendido = (n: string) => primerAsalto && !!combate?.sorprendidos?.some((x) => igual(x, n));
+  // Primero las validaciones: si el ataque no puede hacerse, no se gasta nada (ni la ayuda ni la esquiva).
+  const noPuede = puedeActuar(at);
+  if (noPuede) throw new Error(`${noPuede}: no puede atacar.`);
+  if (sorprendido(at.nombre)) throw new Error(`${at.nombre} está sorprendido: no puede actuar en el primer asalto. Cuando empiece el siguiente, usa siguiente_asalto.`);
   const efAt = efectos(condsDe(at));
   if (cobBono) motivos.push(`${ob.nombre} tiene cobertura ${d.cobertura === "media" ? "media (+2 CA)" : "de tres cuartos (+5 CA)"}`);
   const efOb = efectos(condsDe(ob));
-  if ((at.tipo === "pnj" && at.n.pv !== undefined && at.n.pv <= 0) || (at.tipo === "criatura" && at.j.pv <= 0)) throw new Error(`${at.nombre} ha caído: no puede atacar.`);
-  if (efAt.incapacitado) throw new Error(`${at.nombre} está ${efAt.motivos.join(", ")}: incapacitado, no puede atacar.`);
-  if (efAt.agotamiento >= 6) throw new Error(`${at.nombre} ha muerto de agotamiento.`);
   if (efAt.ataca === "desventaja") { desventaja = true; motivos.push(`desventaja por ${efAt.motivos.join(", ")}`); }
   if (efAt.ataca === "ventaja") { ventaja = true; motivos.push(`ventaja: ${efAt.motivos.join(", ")}`); }
   if (at.tipo === "pj" && at.p.condiciones.some((c) => CONDICIONES_DESVENTAJA.test(c))) {
@@ -556,7 +595,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const tAt = turnoDe(partida, at.nombre);
   const tOb = turnoDe(partida, ob.nombre);
   // Empieza su turno: lo que hizo en el anterior (esquivar, retirarse, correr) ya no vale.
-  tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false;
+  if (!d.reaccion) { tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; }
   if (tAt.ayuda && (!tAt.ayuda.contra || igual(tAt.ayuda.contra, ob.nombre))) {
     ventaja = true;
     motivos.push(`ventaja: lo ayuda ${tAt.ayuda.por}`);
@@ -569,10 +608,6 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const contra = distancia ? efOb.contraDistancia : efOb.contraCuerpo;
   if (contra === "ventaja") { ventaja = true; motivos.push(`ventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
   if (contra === "desventaja") { desventaja = true; motivos.push(`desventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
-  const combate = partida.combate;
-  const primerAsalto = combate?.ronda === 1;
-  const sorprendido = (n: string) => primerAsalto && !!combate?.sorprendidos?.some((x) => igual(x, n));
-  if (sorprendido(at.nombre)) throw new Error(`${at.nombre} está sorprendido: no puede actuar en el primer asalto. Cuando empiece el siguiente, usa siguiente_asalto.`);
   if (sorprendido(ob.nombre)) {
     ventaja = true;
     motivos.push(`ventaja: ${ob.nombre} está sorprendido`);
@@ -632,7 +667,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
   let resultado: "torpeza" | "fallo" | "roce" | "impacto" | "critico";
   if (natural >= umbralCritico) resultado = "critico";
-  else if (efOb.critCuerpo && !distancia && t.total >= ca) resultado = "critico"; // paralizado o inconsciente, a quemarropa
+  else if (efOb.critCuerpo && !distancia && natural > torpeza && t.total >= ca) resultado = "critico"; // paralizado o inconsciente, a quemarropa
   else if (natural <= torpeza) resultado = "torpeza";
   else if (margen >= 0) resultado = "impacto";
   else if (at.tipo !== "criatura" && -margen <= of.roce) resultado = "roce";
@@ -702,13 +737,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       const estabaEnSuelo = p.pv <= 0;
       p.pv = Math.max(0, p.pv - dano);
       if (dano) lineas.push(`${p.nombre}: −${dano} PV → ${p.pv}/${p.pv_max}.`);
-      if (estabaEnSuelo) {
-        const t = danoEnSuelo(p, Math.max(dano, 1), resultado === "critico");
+      if (estabaEnSuelo && dano > 0) {
+        const t = danoEnSuelo(p, dano, resultado === "critico");
         if (t) lineas.push(t);
       }
       const causa =
         dano === 0 || resultado === "roce" ? (p.pv === 0 ? "cero_pv" : null) : resultado === "critico" ? "critico" : p.pv === 0 ? "cero_pv" : dano >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : null;
-      if (causa) {
+      if (causa && !p.condiciones.includes("muerto")) {
         const tipoHerida = tipo === "contundente" ? "contusion" : tipo === "corte" ? "corte" : arma?.nombre === "colmillos" ? "mordedura" : "perforacion";
         const podre = /podre/i.test(lineaAtaque) || (at.tipo === "criatura" && /no-muerto/.test(at.j.definicion.temple ?? "") && arma?.nombre === "colmillos");
         const cdPodre = Number(/cd_podre\s*(\d+)/i.exec(lineaAtaque)?.[1]) || undefined;

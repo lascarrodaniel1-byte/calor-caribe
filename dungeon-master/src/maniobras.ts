@@ -3,11 +3,12 @@
 // Un empate deja las cosas como estaban. El objetivo no puede ser más de un tamaño mayor que el atacante.
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
-import { aplicarCondicion, condsDe, igual, localizar, type Combatiente } from "./combate.js";
+import { aplicarCondicion, condsDe, igual, localizar, puedeActuar, retirarCaido, type Combatiente } from "./combate.js";
 import { efectos, reconocer } from "./condiciones.js";
 import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
+import { danoEnSuelo } from "./muerte.js";
 import { danar } from "./bestiario.js";
 import { competencia, marcarMuerto, mod, signo, valor } from "./reglas.js";
 
@@ -39,10 +40,7 @@ function bono(c: Combatiente, habilidad: "atletismo" | "acrobacias", extra?: num
   return { bono: m, desglose: `${habilidad === "atletismo" ? "sin dato de FUE (pasa bono_atacante/bono_objetivo)" : `DES ${signo(m)}`}` };
 }
 
-function sinAccion(c: Combatiente): string | null {
-  const e = efectos(condsDe(c));
-  return e.incapacitado ? `${c.nombre} está ${e.motivos.join(", ")}: no puede actuar` : null;
-}
+const sinAccion = (c: Combatiente): string | null => puedeActuar(c);
 
 export interface DatosManiobra {
   atacante: string;
@@ -79,7 +77,8 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   })() : { ...a, hab: "Atletismo" };
   const atl = bono(ob, "atletismo", d.bono_objetivo), acr = bono(ob, "acrobacias", d.bono_objetivo);
   const def = d.tipo === "escapar" ? { ...atl, hab: "Atletismo" } : atl.bono >= acr.bono ? { ...atl, hab: "Atletismo" } : { ...acr, hab: "Acrobacias" };
-  const modoA = (d.ventaja && !d.desventaja) ? "ventaja" : (d.desventaja && !d.ventaja) ? "desventaja" : ea.pruebas === "desventaja" ? "desventaja" : "normal";
+  const hayV = !!d.ventaja, hayD = !!d.desventaja || ea.pruebas === "desventaja";
+  const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";
   const ta = tirar(`1d20${signo(aA.bono)}`, modoA);
   const incapObjetivo = efO.incapacitado;
   const modoD = efO.pruebas === "desventaja" ? "desventaja" : "normal";
@@ -121,6 +120,7 @@ export function caida(partida: Partida, d: { quien: string; metros: number; blan
     const p = c.p;
     const antes = p.pv;
     p.pv = Math.max(0, p.pv - t.total);
+    if (antes <= 0) { const s = danoEnSuelo(p, t.total, false); if (s) lineas.push(s); if (p.condiciones.includes("muerto")) return lineas.join("\n"); }
     lineas.push(`${p.nombre}: PV ${p.pv}/${p.pv_max}.`);
     if (t.total - antes >= p.pv_max) {
       marcarMuerto(p);
@@ -129,7 +129,10 @@ export function caida(partida: Partida, d: { quien: string; metros: number; blan
     }
     if (t.total >= Math.ceil(p.pv_max / 2) || t.total >= 10) lineas.push("Herida:\n" + infligir(p, { causa: t.total >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : "menor", tipo: "contusion", descripcion: "caída" }));
     else if (t.total >= 3) lineas.push("Herida:\n" + infligir(p, { causa: "menor", tipo: "contusion", descripcion: "caída" }));
-  } else if (c.tipo === "criatura") lineas.push(danar(c.j, t.total));
+  } else if (c.tipo === "criatura") {
+    lineas.push(danar(c.j, t.total));
+    if (c.j.pv <= 0) retirarCaido(partida, c.j);
+  }
   else if (c.n.pv !== undefined) {
     c.n.pv = Math.max(0, c.n.pv - t.total);
     lineas.push(`${c.nombre}: −${t.total} PV → ${c.n.pv}/${c.n.pv_max ?? "?"}${c.n.pv === 0 ? " — CAE." : ""}`);

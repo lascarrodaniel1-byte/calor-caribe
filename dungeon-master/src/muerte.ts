@@ -11,6 +11,8 @@ export interface Muerte {
   exitos: number;
   fallos: number;
   estable: boolean;
+  /** Tira las salvaciones con desventaja (p. ej. tras un paro cardíaco). */
+  desventaja?: boolean;
 }
 
 const quitarInconsciente = (p: Personaje) => {
@@ -22,7 +24,11 @@ const vivo = (p: Personaje) => !p.condiciones.includes("muerto");
 /** Un personaje acaba de caer a 0 PV: inconsciente y con la cuenta a cero. */
 export function caerA0(p: Personaje): string {
   if (!vivo(p)) return "";
-  p.muerte = { exitos: 0, fallos: 0, estable: false };
+  if (p.condiciones.some((c) => /atrapado en el Eclipse/i.test(c))) {
+    marcarMuerto(p);
+    return `☠ ${p.nombre} cae a 0 PV atrapado en el Eclipse: muere sin salvaciones.`;
+  }
+  p.muerte = { exitos: 0, fallos: 0, estable: false, ...(p.muerte?.desventaja ? { desventaja: true } : {}) };
   if (!p.condiciones.includes("inconsciente")) p.condiciones.push("inconsciente");
   return `⚠ ${p.nombre} cae a 0 PV: inconsciente. Cada asalto, en su turno, salvación contra muerte (herramienta salvacion_muerte); un compañero puede estabilizarlo (herramienta estabilizar). Mientras no sea estable, cada golpe que reciba es un fallo (dos si es crítico).`;
 }
@@ -59,7 +65,12 @@ export function salvacionMuerte(partida: Partida, nombre: string): string {
   if (p.pv > 0) throw new Error(`${p.nombre} tiene ${p.pv} PV: no hace salvaciones contra muerte.`);
   const m = (p.muerte ??= { exitos: 0, fallos: 0, estable: false });
   if (m.estable) return `${p.nombre} está estable (inconsciente pero sin riesgo): no necesita más salvaciones. Con 1 PV de cualquier curación despierta; si no, recupera 1 PV en 1d4 horas.`;
-  const t = tirar("1d20");
+  // Objetos que dan ventaja o desventaja en estas salvaciones (los que lleva puestos o consigo).
+  const propios = (p.inventario ?? []).map((nom) => Object.values(partida.objetos ?? {}).find((o) => o.nombre.toLowerCase() === nom.toLowerCase())?.verdad ?? "").join(" | ");
+  const ventaja = /ventaja en (las )?salvaciones contra muerte/i.test(propios.replace(/desventaja/gi, ""));
+  const desventaja = !!m.desventaja || /desventaja en las salvaciones contra muerte/i.test(propios);
+  const modo = ventaja && !desventaja ? "ventaja" : desventaja && !ventaja ? "desventaja" : "normal";
+  const t = tirar("1d20", modo);
   const n = t.dados[0];
   let r: string;
   if (n === 20) {
@@ -81,7 +92,7 @@ export function salvacionMuerte(partida: Partida, nombre: string): string {
     m.fallos = 0;
     fin = ` Tres éxitos: ${p.nombre} queda ESTABLE (inconsciente, sin más riesgo; recupera 1 PV en 1d4 horas).`;
   }
-  return `🎲 Salvación contra muerte de ${p.nombre}: ${describir(t)} → ${r} (éxitos ${m.exitos}/3, fallos ${m.fallos}/3).${fin}`;
+  return `🎲 Salvación contra muerte de ${p.nombre}: ${describir(t)} → ${r}${modo !== "normal" ? ` (${modo})` : ""} (éxitos ${m.exitos}/3, fallos ${m.fallos}/3).${fin}`;
 }
 
 /** Estabilizar a un compañero a 0 PV: prueba de Sabiduría (Medicina) CD 10 (o un botiquín que lo haga sin tirar). */

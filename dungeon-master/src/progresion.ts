@@ -4,7 +4,7 @@
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { CLASES } from "./mundo.js";
-import { mod, valor, type Atributo } from "./reglas.js";
+import { ATRIBUTOS, mod, valor, type Atributo } from "./reglas.js";
 
 /** PX necesarios para llegar a cada nivel (índice = nivel − 1). */
 export const PX_NIVEL = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
@@ -137,6 +137,8 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   const cambioAtr: string[] = [];
   if (NIVELES_AUMENTO.includes(nuevo)) {
     const a = Object.entries(d.aumento ?? {}).filter(([, v]) => v);
+    const malas = a.filter(([k]) => !(ATRIBUTOS as readonly string[]).includes(k)).map(([k]) => k);
+    if (malas.length) throw new Error(`Característica no válida: ${malas.join(", ")}. Usa fue, des, con, int, sab o car.`);
     const suma = a.reduce((s, [, v]) => s + (v as number), 0);
     if (!a.length) throw new Error(`El nivel ${nuevo} da un aumento de característica: pasa aumento (+2 a una, o +1 a dos).`);
     if (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2)) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");

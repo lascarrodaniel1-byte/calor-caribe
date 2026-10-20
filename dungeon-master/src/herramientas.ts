@@ -38,14 +38,14 @@ import { caida, maniobra } from "./maniobras.js";
 import { darExperiencia, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
-import { mismaCondicion } from "./condiciones.js";
+import { agregarCondicion, mismaCondicion } from "./condiciones.js";
 import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
 import { registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
 import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
-import { agregarAlCombate, aplicarCondicion, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
+import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
@@ -382,6 +382,7 @@ const esquemas = {
           bono_ataque: z.number().int().describe("Bonificador de ataque base (sin veteranía)"),
           ca: z.number().int(),
           des: z.number().int().optional().describe("Destreza (10 por defecto)"),
+          aliado: z.boolean().optional().describe("true si lucha del lado de los jugadores"),
           veterania: z.enum(VETERANIAS).optional().describe("Por defecto curtido"),
           temple: z.enum(NOMBRES_TEMPLES).optional().describe("Su raza o naturaleza"),
           sab: z.number().int().optional().describe("Sabiduría (10 por defecto): para notar emboscadas y leer planes"),
@@ -623,6 +624,27 @@ function enEscena(partida: Partida, nombre: string): EstadoJefe {
   return j;
 }
 
+/** Un ataque completo: comprueba el alcance real en el plano, lo resuelve y, si la criatura cae, la retira de escena. */
+function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; aviso: string } {
+  // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
+  const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
+  if (dist) {
+    const asta = /alabarda|guada|lanza|pica|jabalina larga|estacas?/i.test(e.arma ?? "");
+    const alcance = e.a_distancia ? 120 : asta ? 3 : 2;
+    if (dist.metros > alcance)
+      throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
+  }
+  const r = atacar(partida, e);
+  if (r.muerto) {
+    const devueltos = retirarCaido(partida, enEscena(partida, r.muerto));
+    if (devueltos.length) {
+      r.texto += `\nAl morir, lo robado vuelve a sus dueños:\n${devueltos.join("\n")}`;
+      r.aviso += `\n${devueltos.join("\n")}`;
+    }
+  }
+  return r;
+}
+
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
@@ -666,10 +688,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         }
         const p: Personaje = normalizar({
           ...e,
-          pv: e.pv ?? e.pv_max,
+          pv: e.pv ?? (previo ? Math.min(previo.pv, e.pv_max) : e.pv_max), // volver a guardar una ficha no cura
           inventario: e.inventario ?? [],
           oro: e.oro ?? 0,
-          condiciones: [],
+          condiciones: previo?.condiciones ?? [],
+          px: previo?.px,
+          rasgos: previo?.rasgos,
+          muerte: previo?.muerte,
           notas: e.notas ?? "",
           heridas: partida.personajes[e.nombre]?.heridas ?? [],
           secuelas: partida.personajes[e.nombre]?.secuelas ?? [],
@@ -721,8 +746,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
             cambios.push(`- ${o}`);
           }
         }
-        for (const c of e.agregar_condiciones ?? []) if (!p.condiciones.some((x) => mismaCondicion(x, c))) p.condiciones.push(c);
-        if (e.quitar_condiciones) p.condiciones = p.condiciones.filter((c) => !e.quitar_condiciones!.includes(c));
+        for (const c of e.agregar_condiciones ?? []) agregarCondicion(p.condiciones, c);
+        if (e.quitar_condiciones) p.condiciones = p.condiciones.filter((c) => !e.quitar_condiciones!.some((q) => c === q || mismaCondicion(c, q) || c.toLowerCase().startsWith(q.toLowerCase())));
         for (const x of e.agregar_secuelas ?? []) p.secuelas.push(x);
         if (e.quitar_secuelas) p.secuelas = p.secuelas.filter((x) => !e.quitar_secuelas!.includes(x));
         if (e.ceniza_cambio) {
@@ -833,13 +858,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         let texto = danar(j, e.cantidad);
         let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}`;
         if (j.pv <= 0) {
-          const devueltos = devolverRobos(partida, j);
+          const devueltos = retirarCaido(partida, j);
           if (devueltos.length) {
             texto += `\nAl morir, lo robado vuelve a sus dueños:\n${devueltos.join("\n")}`;
             aviso += `\n${devueltos.join("\n")}`;
           }
-          delete partida.jefes[j.nombre];
-          if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => o.nombre.toLowerCase() !== j.nombre.toLowerCase());
         }
         return { contenido: texto, aviso };
       }
@@ -904,8 +927,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "reaccion": {
         const e = validado.data as z.infer<typeof esquemas.reaccion>;
-        const texto = reaccion(partida, e);
-        return { contenido: texto, aviso: `⚔ ${texto.split("\n")[0]}` };
+        const r = reaccion(partida, e, (d) => ataqueCompleto(partida, d));
+        return { contenido: r.texto, aviso: r.aviso };
       }
       case "maniobra": {
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
@@ -978,25 +1001,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "atacar": {
         const e = validado.data as z.infer<typeof esquemas.atacar>;
-        // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
-        const dist = distanciaPlano(partida, e.atacante, e.objetivo);
-        if (dist) {
-          const asta = /alabarda|guada|lanza|pica|jabalina larga|estacas?/i.test(e.arma ?? "");
-          const alcance = e.a_distancia ? 120 : asta ? 3 : 2;
-          if (dist.metros > alcance)
-            throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
-        }
-        const r = atacar(partida, e);
-        if (r.muerto) {
-          const j = enEscena(partida, r.muerto);
-          const devueltos = devolverRobos(partida, j);
-          delete partida.jefes[j.nombre];
-          if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => o.nombre.toLowerCase() !== j.nombre.toLowerCase());
-          if (devueltos.length) {
-            r.texto += `\nAl morir, lo robado vuelve a sus dueños:\n${devueltos.join("\n")}`;
-            r.aviso += `\n${devueltos.join("\n")}`;
-          }
-        }
+        const r = ataqueCompleto(partida, e);
         return { contenido: r.texto, aviso: r.aviso };
       }
       case "pnj": {
@@ -1017,8 +1022,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "terminar_combate": {
+        limpiarTrasCombate(partida);
         delete partida.combate;
-        return { contenido: "Combate cerrado.", aviso: null };
+        return { contenido: "Combate cerrado. Caducan las condiciones pasajeras (agarrado, derribado, aturdido…).", aviso: null };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;

@@ -1624,6 +1624,7 @@
     } catch (e) {
       clearTimeout(pendienteEscritura);
       turnoVivo = null;
+      try { pintarFichas(); } catch { /* la barra de objetivo y el mapa vuelven a lo guardado */ }
       if (e?.code === "conflicto") {
         privados.push("Otro jugador guardó cambios mientras el DM narraba: se repite el turno con la partida al día.");
         pintar();

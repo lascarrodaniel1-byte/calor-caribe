@@ -2,8 +2,7 @@
 // reglas básicas de D&D 5e. El programa lleva quién ha usado su reacción este asalto, quién esquiva o se retiró y quién
 // ayuda a quién, y avisa cuando un movimiento sobre el plano provoca un ataque de oportunidad.
 import type { Partida } from "./estado.js";
-import { atacar, condsDe, igual, localizar, turnoDe, type Combatiente } from "./combate.js";
-import { efectos } from "./condiciones.js";
+import { condsDe, igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
 
 export const ACCIONES = ["esquivar", "correr", "retirarse", "ayudar", "preparar", "esconderse", "usar_objeto", "otra"] as const;
 export type AccionCombate = (typeof ACCIONES)[number];
@@ -12,15 +11,6 @@ const ALCANCE = 2; // metros: el cuerpo a cuerpo normal llega a 1,5 m
 
 function exigirCombate(partida: Partida) {
   if (!partida.combate) throw new Error("No hay ningún combate en curso: empieza con iniciativa.");
-}
-
-function puedeActuar(c: Combatiente): string | null {
-  const e = efectos(condsDe(c));
-  if (e.incapacitado) return `${c.nombre} está ${e.motivos.join(", ")}: no puede actuar ni reaccionar`;
-  if (c.tipo === "pj" && (c.p.pv <= 0 || c.p.condiciones.includes("muerto"))) return `${c.nombre} está a 0 PV o muerto`;
-  if (c.tipo === "criatura" && c.j.pv <= 0) return `${c.nombre} ha caído`;
-  if (c.tipo === "pnj" && c.n.pv !== undefined && c.n.pv <= 0) return `${c.nombre} ha caído`;
-  return null;
 }
 
 export interface DatosAccionCombate {
@@ -84,7 +74,9 @@ export interface DatosReaccion {
   detalle?: string;
 }
 
-export function reaccion(partida: Partida, d: DatosReaccion): string {
+export type AtacarFn = (d: DatosAtaque) => { texto: string; aviso: string };
+
+export function reaccion(partida: Partida, d: DatosReaccion, atacarFn: AtacarFn): { texto: string; aviso: string } {
   exigirCombate(partida);
   const c = localizar(partida, d.quien);
   const motivo = puedeActuar(c);
@@ -92,23 +84,23 @@ export function reaccion(partida: Partida, d: DatosReaccion): string {
   const t = turnoDe(partida, c.nombre);
   if (t.reaccion) throw new Error(`${c.nombre} ya usó su reacción este asalto (solo tiene una por asalto; la recupera en el siguiente_asalto).`);
   if (d.tipo === "preparada" && !t.preparada) throw new Error(`${c.nombre} no tiene ninguna acción preparada: usa accion_combate {accion: "preparar"} en su turno.`);
+  let cabecera: string;
+  let ataque: { texto: string; aviso: string } | null = null;
   if (d.tipo === "ataque_oportunidad") {
     if (!d.objetivo) throw new Error("ataque_oportunidad: di contra quién (objetivo), el que sale de su alcance.");
     const o = localizar(partida, d.objetivo);
     if (turnoDe(partida, o.nombre).retirada) throw new Error(`${o.nombre} se retiró este turno: su movimiento no provoca ataques de oportunidad.`);
-  }
+    if (d.dano) ataque = atacarFn({ atacante: c.nombre, objetivo: d.objetivo, arma: d.arma, dano: d.dano, reaccion: true });
+    cabecera = `⚔ Ataque de oportunidad de ${c.nombre} contra ${d.objetivo}. Reacción gastada.`;
+  } else if (d.tipo === "preparada") {
+    if (d.objetivo && d.dano) ataque = atacarFn({ atacante: c.nombre, objetivo: d.objetivo, arma: d.arma, dano: d.dano, reaccion: true });
+    cabecera = `${c.nombre} ejecuta su acción preparada (${t.preparada!.accion}, al ocurrir «${t.preparada!.disparador}»). Reacción gastada.`;
+  } else cabecera = `${c.nombre} usa su reacción${d.detalle ? `: ${d.detalle}` : ""}. Gastada hasta el siguiente asalto.`;
+  // Solo si todo salió bien se gasta la reacción (y la acción preparada).
   t.reaccion = true;
-  if (d.tipo === "preparada") {
-    const p = t.preparada!;
-    delete t.preparada;
-    const extra = d.objetivo && d.dano ? `\n${atacar(partida, { atacante: c.nombre, objetivo: d.objetivo, arma: d.arma, dano: d.dano }).texto}` : "";
-    return `${c.nombre} ejecuta su acción preparada (${p.accion}, al ocurrir «${p.disparador}»). Reacción gastada.${extra}`;
-  }
-  if (d.tipo === "ataque_oportunidad") {
-    const r = d.dano ? `\n${atacar(partida, { atacante: c.nombre, objetivo: d.objetivo!, arma: d.arma, dano: d.dano }).texto}` : "\n(Resuélvelo con atacar: un solo ataque cuerpo a cuerpo.)";
-    return `⚔ Ataque de oportunidad de ${c.nombre} contra ${d.objetivo}. Reacción gastada.${r}`;
-  }
-  return `${c.nombre} usa su reacción${d.detalle ? `: ${d.detalle}` : ""}. Gastada hasta el siguiente asalto.`;
+  if (d.tipo === "preparada") delete t.preparada;
+  const resto = ataque ? `\n${ataque.texto}` : d.tipo === "ataque_oportunidad" ? "\n(Resuélvelo con atacar: un solo ataque cuerpo a cuerpo.)" : "";
+  return { texto: cabecera + resto, aviso: ataque ? `${cabecera}\n${ataque.aviso}` : cabecera };
 }
 
 /** Posiciones en el plano de los combatientes, para detectar quién sale del alcance de quién. */
@@ -118,7 +110,7 @@ export function instantanea(partida: Partida): Record<string, { x: number; y: nu
   return out;
 }
 
-const bando = (c: Combatiente) => (c.tipo === "pj" ? "jugadores" : "enemigos");
+const bando = (c: Combatiente) => (c.tipo === "pj" || (c.tipo === "pnj" && c.n.aliado) ? "jugadores" : "enemigos");
 
 /** Tras mover en el plano durante un combate: ¿quién provoca un ataque de oportunidad y a quién? */
 export function provocados(partida: Partida, antes: Record<string, { x: number; y: number }>): string[] {

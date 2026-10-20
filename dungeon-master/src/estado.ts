@@ -60,7 +60,7 @@ export interface Personaje {
   px?: number;
   /** Rasgos de clase ganados al subir de nivel. */
   rasgos?: string[];
-  muerte?: { exitos: number; fallos: number; estable: boolean };
+  muerte?: { exitos: number; fallos: number; estable: boolean; desventaja?: boolean };
 }
 
 export interface Partida {

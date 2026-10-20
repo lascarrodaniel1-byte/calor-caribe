@@ -109,7 +109,8 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
     return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
   const efP = efectos(pj.condiciones);
-  const modoP = efP.pruebas === "desventaja" && !d.ventaja ? "desventaja" : modo;
+  const hayD = !!d.desventaja || efP.pruebas === "desventaja";
+  const modoP = d.ventaja && !hayD ? "ventaja" : hayD && !d.ventaja ? "desventaja" : "normal";
   const m = mod(valor(pj, attr!));
   const comp = competencia(pj);
   const deClase = hab ? (COMPETENCIAS_CLASE[pj.clase] ?? []).includes(hab) : false;

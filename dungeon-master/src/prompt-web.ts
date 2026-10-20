@@ -94,7 +94,8 @@ function tipo(s: Record<string, unknown> | undefined): string {
     return `{${Object.keys(s.properties as object).map((k) => k + (req.has(k) ? "" : "?")).join(", ")}}`;
   }
   if (s.type === "integer" || s.type === "number") {
-    const mn = s.minimum, mx = s.maximum;
+    const cota = (x: unknown) => (typeof x === "number" && Math.abs(x) < Number.MAX_SAFE_INTEGER ? x : undefined);
+    const mn = cota(s.minimum), mx = cota(s.maximum);
     return mn !== undefined && mx !== undefined ? `n ${mn}-${mx}` : mn !== undefined ? `n≥${mn}` : "n";
   }
   if (s.type === "boolean") return "true/false";
