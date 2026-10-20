@@ -52,6 +52,10 @@ export interface ArcoCerrado {
 
 export interface Trama {
   objetivo: string;
+  /** El siguiente paso concreto que el grupo puede dar ahora (quién, dónde, qué). */
+  paso?: string;
+  /** Turnos desde que se actualizó el objetivo o el paso. */
+  paso_turnos?: number;
   pistas: string[];
   /** Nombres de los arcos abiertos (los detalles están en `arcos`). */
   hilos: string[];
@@ -152,6 +156,7 @@ export function textoPnj(p: Pnj, corto = false): string {
 
 export interface DatosTrama {
   objetivo?: string;
+  proximo_paso?: string;
   revelar_pista?: string;
   retirar_pista?: string;
   /** Alias antiguo de abrir_arco (el texto es la premisa). */
@@ -197,6 +202,9 @@ export function actualizarTrama(partida: Partida, d: DatosTrama): string {
     const huerfanos = a.pnjs.filter((n) => Object.values(partida.pnjs ?? {}).some((p) => igual(p.nombre, n) && !MUERTO.test(p.estado ?? "")));
     if (huerfanos.length) log.push(`Con este final, ${huerfanos.join(", ")} ya no ${huerfanos.length > 1 ? "tienen" : "tiene"} su asunto: dales una nueva agenda o un nuevo arco (pnj).`);
     avanza = true;
+    // Cerrar un arco sin decir qué viene después es lo que enreda la historia: el siguiente objetivo, claro, en el mismo acto.
+    if (d.objetivo === undefined && d.proximo_paso === undefined)
+      log.push(`⚠ Al cerrar «${a.nombre}» la historia no puede quedarse sin rumbo: en este mismo turno fija el NUEVO objetivo y el próximo paso (trama {objetivo, proximo_paso}), que nazcan de lo que acaba de pasar, y abre su arco (abrir_arco) si hace falta. Sin personajes ni facciones nuevos que no vengan ya de este arco.`);
   }
   const abrir = d.abrir_arco ?? d.abrir_hilo;
   if (abrir) {
@@ -236,8 +244,14 @@ export function actualizarTrama(partida: Partida, d: DatosTrama): string {
     log.push(`Pista revelada: ${d.revelar_pista}`);
     avanza = true;
   }
+  if (d.proximo_paso !== undefined && !igual(d.proximo_paso, t.paso ?? "")) {
+    t.paso = d.proximo_paso;
+    t.paso_turnos = 0;
+    log.push(`Próximo paso: ${d.proximo_paso}`);
+  }
   if (d.objetivo !== undefined && !igual(d.objetivo, t.objetivo)) {
     t.objetivo = d.objetivo;
+    t.paso_turnos = 0;
     log.push(`Objetivo: ${d.objetivo}`);
     avanza = true;
   }
@@ -257,12 +271,15 @@ export function actualizarTrama(partida: Partida, d: DatosTrama): string {
     t.sin_avance = 0;
   }
   if (!log.length) throw new Error("No hay nada que actualizar en la trama.");
+  if (!t.objetivo) log.push("⚠ Falta el OBJETIVO del grupo: una frase clara y concreta (qué hay que lograr, con quién o dónde, por qué importa y qué pasa si no). Fíjalo con trama {objetivo}.");
+  else if (!t.paso) log.push("⚠ Falta el PRÓXIMO PASO: lo siguiente que el grupo puede hacer ahora, concreto (a quién ir a ver, adónde ir, qué hacer). Fíjalo con trama {proximo_paso}.");
   return log.join("\n");
 }
 
 /** Cuenta un turno más: los arcos envejecen en su fase y los PNJ fuera de escena llevan un turno más sin moverse. */
 export function contarTurno(partida: Partida): void {
   const t = partida.trama ? normalizarTrama(partida.trama) : null;
+  if (t) t.paso_turnos = (t.paso_turnos ?? 0) + 1;
   for (const a of t?.arcos ?? []) {
     a.turnos += 1;
     a.turnos_fase += 1;
@@ -287,7 +304,9 @@ export function textoTrama(t: Trama): string {
   normalizarTrama(t);
   const arcos = t.arcos ?? [];
   return [
-    `Objetivo del grupo: ${t.objetivo || "(sin fijar)"}`,
+    `Objetivo del grupo: ${t.objetivo || "(sin fijar) ⚠ fija ya un objetivo claro con trama {objetivo}"}`,
+    `Próximo paso concreto: ${t.paso || "(sin fijar) ⚠ dile al grupo qué puede hacer ahora y apúntalo con trama {proximo_paso}"}`,
+    (t.paso_turnos ?? 0) >= 5 && (t.objetivo || t.paso) ? `⚠ Hace ${t.paso_turnos} turnos que no revisas el objetivo y el próximo paso: ¿siguen vigentes? Si cambiaron, actualízalos (trama) y que los jugadores lo noten en la narración.` : "",
     `Arcos abiertos (${arcos.length}/${MAX_ARCOS}; cada uno debe llegar a su desenlace):`,
     ...(arcos.length
       ? arcos.map(
@@ -337,6 +356,9 @@ export const REGLAS_NARRATIVA = `## Voces y trama (que no se repita, no dé vuel
 - Hay arcos grandes (el objetivo de la campaña) y pequeños (un encargo, un misterio, un enemigo, una escena). Como mucho ${MAX_ARCOS} abiertos a la vez: antes de abrir otro, lleva uno a su final. Cada escena es un mini-arco: entra con un gancho, tensa algo y SALE cerrando o pasando el testigo a otro arco; nunca termines una escena dejando algo flotando.
 - Respeta el ritmo (el programa te avisa con ⚠ si un arco se alarga): inicio 1-3 turnos, nudo 4-7, desenlace 1-3. Las respuestas que se ganan con una buena tirada o una buena idea se dan claras, no con más enigmas.
 - Nada queda en el aire: toda promesa, pregunta, misterio, deuda, amenaza u objeto que introduzcas tiene que resolverse (en su arco) o descartarse de forma explícita («el rumor era falso», «el cerrajero se cansó de esperar y abrió la puerta él mismo»). No abras un misterio nuevo sin cerrar otro ni escondas otra vez lo que ya se supo. Los pendientes de la marca de secuencia tienen que ir vaciándose: cada uno acaba en un desenlace.
+- CLARIDAD (muy importante): el misterio puede estar en el quién y el porqué, NUNCA en qué hay que hacer. Los jugadores deben saber en todo momento (1) su OBJETIVO en una frase concreta —qué lograr, con quién o dónde, por qué importa y qué pasa si fallan o tardan—, (2) su PRÓXIMO PASO —a quién ver, adónde ir, qué hacer ahora— y (3) qué saben ya y qué solo sospechan. Fija el objetivo y el próximo paso con trama {objetivo, proximo_paso} al abrir cada arco y cada vez que cambien (se ven siempre en una barra de la página). Quien encarga una misión lo dice claro (qué quiere, dónde, para cuándo, qué paga); las pistas apuntan a un lugar, una persona o un objeto concretos, no a augurios vagos; las profecías y símbolos acompañan, no sustituyen, una indicación clara. Máximo UN enigma sin resolver a la vez. Si los jugadores preguntan «¿y ahora qué?», responde con claridad (un PNJ, un recordatorio de lo sabido, una pista evidente). Cada 3 o 4 turnos, y siempre al cerrar un arco, deja caer en la narración un breve resumen de lo que está en juego y lo que toca hacer.
+- TÚ MARCAS EL RITMO: el DM conduce la historia; los jugadores deciden cómo, tú decides adónde va. A través de la trama (trama: objetivo, proximo_paso, arcos) fijas hacia dónde se mueve la historia y haces que los personajes lleguen a los sitios y a las personas que importan: un encargo, una citación, un mensajero, una huida, una consecuencia que los obliga a moverse, un camino que solo lleva ahí. Cada turno pregúntate «¿qué beat toca ahora y cómo les llega?» y empuja hacia él con una ocasión concreta; no esperes a que lo deduzcan solos ni los dejes dar vueltas. Si se desvían, déjales hacerlo un rato pero ata la desviación al hilo (el desvío cobra su precio o descubre algo que los devuelve) y retoma el rumbo.
+- LA HISTORIA NO SE ENREDA DESPUÉS DEL PRIMER OBJETIVO: tras lograr (o perder) un objetivo, el siguiente nace de sus CONSECUENCIAS —lo que el grupo consiguió, lo que reveló, a quién enfadó—, no de un tema nuevo sin relación. Hay una línea principal (la amenaza grande de la campaña) y todo arco pequeño debe empujarla o tocarla de algún modo; si un arco no se conecta con ella, ciérralo. Al cerrar un arco, en el mismo turno: dilo claro («esto se resolvió así»), fija el nuevo objetivo y próximo paso, y deja que la narración muestre el vínculo («y esto os lleva a…»). Presenta como mucho UN personaje o facción nuevo con peso por arco; reutiliza a los que ya conocen. Una revelación responde una pregunta antes de plantear otra. Si los pendientes superan 5 o los arcos abiertos son 3, no añadas nada nuevo: simplifica y cierra.
 - Al empezar una campaña abre el primer arco (con su premisa) y al menos un PNJ con agenda propia que choque con el grupo.
 
 ## PNJ vivos: nadie se queda parado porque el grupo se vaya

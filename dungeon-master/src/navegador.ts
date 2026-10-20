@@ -57,7 +57,11 @@ export function estadoParaDM(p: Partida, foco?: string): string {
   );
   const seq = secuencia.textoSecuencia(p.secuencia);
   if (seq) partes.push(seq);
-  if (p.trama) partes.push(`## Trama\n${textoTrama(p.trama)}`);
+  if (p.trama) {
+    const pend = p.secuencia?.pendientes?.length ?? 0;
+    const enredo = pend > 5 ? `\n⚠ La historia se está enredando (${pend} asuntos pendientes): no abras nada nuevo; resuelve o descarta pendientes antes y recuerda a los jugadores el objetivo y el próximo paso.` : "";
+    partes.push(`## Trama\n${textoTrama(p.trama)}${enredo}`);
+  }
   const pnjs = Object.values(p.pnjs ?? {});
   if (pnjs.length) {
     const escena = pnjs.filter((x) => x.en_escena);

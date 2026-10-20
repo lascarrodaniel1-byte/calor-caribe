@@ -238,6 +238,12 @@
   @keyframes onda { 0% { opacity: .8; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.2); } }
   @media (prefers-reduced-motion: reduce) { .lienzo .onda { animation: none; opacity: .4; } }
   .franja { display: none; }
+  .objetivo-barra {
+    padding: 7px 16px; border-bottom: 1px solid var(--nogal); background: linear-gradient(180deg, #2a1d10, #22160c); font: 14px/1.35 var(--f-ui); color: var(--texto);
+  }
+  .objetivo-barra[hidden] { display: none; }
+  .objetivo-barra b { color: var(--lumbre); font-weight: 700; }
+  .objetivo-barra .paso { display: block; margin-top: 2px; opacity: .92; }
 
   @media (max-width: 999px) {
     .fichas { display: none; }
@@ -334,6 +340,8 @@
   </header>
 
   <button class="franja" id="franja-mapa" type="button"><span id="franja-texto">📍 Sin ubicación todavía</span><span>Ver mapa</span></button>
+
+  <div class="objetivo-barra" id="objetivo-barra" role="status" aria-live="polite" hidden></div>
 
   <div class="cuerpo">
     <main class="cronica" id="cronica">
@@ -967,7 +975,18 @@
     $("plano").innerHTML = `<svg viewBox="0 0 ${W} ${H}">${partes.join("")}</svg>`;
   }
 
+  function pintarObjetivo(p) {
+    const el = $("objetivo-barra");
+    const t = p && p.trama;
+    if (!t || (!t.objetivo && !t.paso)) { el.hidden = true; el.textContent = ""; return; }
+    el.hidden = false;
+    el.innerHTML = "";
+    if (t.objetivo) { const b = document.createElement("b"); b.textContent = "🎯 Objetivo: "; el.append(b, document.createTextNode(t.objetivo)); }
+    if (t.paso) { const s = document.createElement("span"); s.className = "paso"; const b = document.createElement("b"); b.textContent = "➡ Ahora: "; s.append(b, document.createTextNode(t.paso)); el.append(s); }
+  }
+
   function pintarFichas() {
+    pintarObjetivo(partida);
     pintarMapa(partida);
     pintarPlano(partida);
     pintarSecuencia();
@@ -1528,6 +1547,7 @@
           if (accion === "guardar_personaje" && datos && !datos.jugador) datos.jugador = infoTurno?.actuante || nombre; // la ficha queda ligada a quien la juega
           const r = V.ejecutar(String(accion), datos ?? {}, copia);
           if (accion === "ubicacion") pintarMapa(copia);
+          if (accion === "trama") pintarObjetivo(copia);
           if (r.aviso) {
             avisos.push({ pos: texto.length, texto: r.aviso });
             turnoVivo.avisos = avisos;

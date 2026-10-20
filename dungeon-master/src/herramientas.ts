@@ -426,7 +426,8 @@ const esquemas = {
     estado: z.string().optional().describe("Cómo está ahora: vivo, herido, muerto, capturado, huido, traidor… Cámbialo cuando cambie"),
   }),
   trama: z.object({
-    objetivo: z.string().optional().describe("Objetivo actual del grupo"),
+    objetivo: z.string().optional().describe("Objetivo actual del grupo, en una frase CLARA y concreta: qué lograr, con quién o dónde, por qué importa y qué pasa si falla. Los jugadores lo ven siempre en la página"),
+    proximo_paso: z.string().optional().describe("Lo siguiente concreto que el grupo puede hacer ahora (a quién ver, adónde ir, qué hacer). Se ve siempre en la página"),
     revelar_pista: z.string().optional().describe("Algo que los jugadores acaban de descubrir"),
     retirar_pista: z.string().optional().describe("Un trozo del texto de una pista que resultó falsa o que ya no vale; se borra (si hay una versión corregida, pásala en revelar_pista)"),
     abrir_arco: z.string().optional().describe("Nombre de un arco nuevo (empieza en INICIO; como mucho 3 abiertos). Requiere premisa"),
