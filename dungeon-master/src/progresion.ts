@@ -64,6 +64,20 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   },
 };
 
+/** Los rangos de la Compañía del Cuervo Negro: el Mercenario asciende al subir de nivel. */
+export const RANGOS_COMPANIA: { desde: number; rango: string; grado: string; ventaja: string }[] = [
+  { desde: 1, rango: "Polluelo", grado: "recluta", ventaja: "Cama, comida y rumores de contratos en cualquier puesto de la Compañía. Cobra la paga mínima y las peores guardias" },
+  { desde: 3, rango: "Cuervo", grado: "mercenario hecho", ventaja: "Contratos propios: el DM le ofrece encargos mejor pagados. Puede pedir prestadas armas comunes y armaduras ligeras del arsenal del puesto" },
+  { desde: 5, rango: "Garra", grado: "sargento", ventaja: "Puede reclutar a 1d4 Polluelos para una misión (PNJ a sueldo suyo) y manda en las guardias del puesto. Los contratos le pagan el doble que a un Cuervo" },
+  { desde: 8, rango: "Pico", grado: "capitán", ventaja: "Manda una escuadra de 4-6 mercenarios por contrato, requisa suministros y una montura, y la Compañía lo respalda ante la ley y la Inquisición. Conoce a los pagadores de la región" },
+  { desde: 11, rango: "Ala Mayor", grado: "comandante", ventaja: "Una vez por campaña puede llamar a refuerzos de la Compañía (una compañía entera, a días de camino). Los señores y las ciudades negocian con él o ella; los desertores lo temen" },
+  { desde: 17, rango: "Graznido", grado: "mariscal negro", ventaja: "Dirige la Compañía del Cuervo Negro en toda una región: sus ejércitos, sus contratos y sus enemigos. Es un poder político por sí mismo" },
+];
+
+export function rangoCompania(nivel: number) {
+  return [...RANGOS_COMPANIA].reverse().find((r) => nivel >= r.desde) ?? RANGOS_COMPANIA[0];
+}
+
 export const pxActual = (p: Personaje) => p.px ?? PX_NIVEL[Math.max(0, p.nivel - 1)];
 
 export function pxSiguiente(p: Personaje): number | null {
@@ -77,8 +91,9 @@ export function puedeSubir(p: Personaje): boolean {
 
 export function textoProgresion(p: Personaje): string {
   const s = pxSiguiente(p);
+  const rango = p.clase === "Mercenario del Cuervo" ? `\n  Compañía del Cuervo Negro: ${rangoCompania(p.nivel).rango} (${rangoCompania(p.nivel).grado})` : "";
   const rasgos = p.rasgos?.length ? ` | Rasgos de nivel: ${p.rasgos.join("; ")}` : "";
-  return `  Experiencia: ${pxActual(p)}${s !== null ? `/${s} PX` : " PX (nivel máximo)"}${puedeSubir(p) ? " ⬆ PUEDE SUBIR DE NIVEL (subir_nivel)" : ""}${rasgos}`;
+  return `${rango ? rango.slice(1) + "\n" : ""}  Experiencia: ${pxActual(p)}${s !== null ? `/${s} PX` : " PX (nivel máximo)"}${puedeSubir(p) ? " ⬆ PUEDE SUBIR DE NIVEL (subir_nivel)" : ""}${rasgos}`;
 }
 
 export interface DatosExperiencia {
@@ -169,6 +184,10 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   if (p.pv > 0) p.pv += ganado; // subir de nivel no cura a quien está a 0 PV
   if (p.px === undefined || p.px < PX_NIVEL[nuevo - 1]) p.px = PX_NIVEL[nuevo - 1];
   const rasgos = [...(RASGOS_NIVEL[p.clase]?.[nuevo] ?? [])];
+  if (p.clase === "Mercenario del Cuervo") {
+    const antes = rangoCompania(nuevo - 1), ahora = rangoCompania(nuevo);
+    if (antes.rango !== ahora.rango) rasgos.push(`ASCENSO en la Compañía del Cuervo Negro: ${ahora.rango} (${ahora.grado}). ${ahora.ventaja}`);
+  }
   // El Mercenario con don arcano lo despierta al subir de nivel (antes dormía).
   if (p.clase === "Mercenario del Cuervo" && nuevo === 2 && p.magia?.don && p.magia.maestria === "profano") {
     p.magia.maestria = "iniciado";
@@ -184,6 +203,7 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
     cambioAtr.length ? `Aumento de característica: ${cambioAtr.join(", ")}.` : "",
     rasgos.length ? `Rasgos nuevos:\n- ${rasgos.join("\n- ")}` : nuevo > 5 ? "Sin rasgos de clase predefinidos para este nivel: el DM puede concederle uno acorde a su clase (anótalo en notas)." : "",
     puedeSubir(p) ? "Aún tiene PX para otro nivel." : "",
+    p.clase === "Mercenario del Cuervo" && rangoCompania(p.nivel - 1).rango !== rangoCompania(p.nivel).rango ? "Haz que el ascenso se viva en la historia: una ceremonia, un oficial que le entrega la insignia, un contrato nuevo acorde a su rango." : "",
   ]
     .filter(Boolean)
     .join("\n");
