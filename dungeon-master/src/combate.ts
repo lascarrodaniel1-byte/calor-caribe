@@ -162,8 +162,26 @@ export interface PnjCombate {
   condiciones?: string[];
 }
 
+/** Lo que cada combatiente ha hecho este asalto (acciones de combate y reacción). */
+export interface EstadoTurno {
+  /** Ya usó su reacción este asalto. */
+  reaccion?: boolean;
+  /** Esquivando: los ataques contra él tienen desventaja y tiene ventaja en salvaciones de DES. */
+  esquiva?: boolean;
+  /** Se retiró: su movimiento no provoca ataques de oportunidad. */
+  retirada?: boolean;
+  /** Corrió: movimiento doble (sin acción para atacar). */
+  corrio?: boolean;
+  /** Alguien lo ayudó: su próximo ataque (contra `contra`, si se dice) tiene ventaja. */
+  ayuda?: { por: string; contra?: string };
+  /** Acción preparada: qué hará cuando ocurra el disparador (gasta su reacción). */
+  preparada?: { disparador: string; accion: string };
+}
+
 export interface EstadoCombate {
   ronda: number;
+  /** Acciones y reacciones por combatiente. */
+  turnos?: Record<string, EstadoTurno>;
   orden: { nombre: string; total: number }[];
   pnj: Record<string, PnjCombate>;
   /** Sorprendidos: no actúan en el primer asalto y se les ataca con ventaja. */
@@ -171,14 +189,14 @@ export interface EstadoCombate {
   plan?: { bando: string[]; calidad: CalidadPlan; leido_por: string[] };
 }
 
-type Combatiente =
+export type Combatiente =
   | { tipo: "pj"; nombre: string; p: Personaje }
   | { tipo: "criatura"; nombre: string; j: EstadoJefe }
   | { tipo: "pnj"; nombre: string; n: PnjCombate };
 
-const igual = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+export const igual = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
-function localizar(partida: Partida, nombre: string): Combatiente {
+export function localizar(partida: Partida, nombre: string): Combatiente {
   const p = partida.personajes[nombre] ?? Object.values(partida.personajes).find((x) => igual(x.nombre, nombre));
   if (p) return { tipo: "pj", nombre: p.nombre, p };
   const jefes = Object.values(partida.jefes);
@@ -319,6 +337,7 @@ export function siguienteAsalto(partida: Partida): string {
   c.ronda += 1;
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
+  for (const t of Object.values(c.turnos ?? {})) delete t.reaccion; // la reacción se recupera con el nuevo asalto
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -333,11 +352,19 @@ function actuaAntes(partida: Partida, a: string, b: string): boolean {
 
 const CONDICIONES_DESVENTAJA = /jadeando/i; // condición propia de la magia; el resto vive en condiciones.ts
 
-function condsDe(c: Combatiente): string[] {
+export function condsDe(c: Combatiente): string[] {
   return c.tipo === "pj" ? c.p.condiciones : c.tipo === "criatura" ? (c.j.condiciones ??= []) : (c.n.condiciones ??= []);
 }
 
 /** Aplica, quita o consulta una condición de un personaje, criatura o PNJ en combate. */
+export function turnoDe(partida: Partida, nombre: string): EstadoTurno {
+  const c = partida.combate;
+  if (!c) return {};
+  c.turnos ??= {};
+  const clave = Object.keys(c.turnos).find((k) => igual(k, nombre)) ?? nombre;
+  return (c.turnos[clave] ??= {});
+}
+
 export function aplicarCondicion(
   partida: Partida,
   d: { objetivo: string; accion: "aplicar" | "quitar" | "ver"; condicion?: string; nota?: string; nivel?: number },
@@ -499,6 +526,19 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (at.tipo === "pj" && at.p.condiciones.some((c) => CONDICIONES_DESVENTAJA.test(c))) {
     desventaja = true;
     motivos.push(`desventaja por ${at.p.condiciones.filter((c) => CONDICIONES_DESVENTAJA.test(c)).join(", ")}`);
+  }
+  const tAt = turnoDe(partida, at.nombre);
+  const tOb = turnoDe(partida, ob.nombre);
+  // Empieza su turno: lo que hizo en el anterior (esquivar, retirarse, correr) ya no vale.
+  tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false;
+  if (tAt.ayuda && (!tAt.ayuda.contra || igual(tAt.ayuda.contra, ob.nombre))) {
+    ventaja = true;
+    motivos.push(`ventaja: lo ayuda ${tAt.ayuda.por}`);
+    delete tAt.ayuda;
+  }
+  if (tOb.esquiva && !efOb.incapacitado && efAt.ids.indexOf("cegado") < 0) {
+    desventaja = true;
+    motivos.push(`desventaja: ${ob.nombre} esquiva`);
   }
   const contra = distancia ? efOb.contraDistancia : efOb.contraCuerpo;
   if (contra === "ventaja") { ventaja = true; motivos.push(`ventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }

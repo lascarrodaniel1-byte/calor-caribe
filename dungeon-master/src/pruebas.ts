@@ -102,7 +102,8 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
     throw new Error(`${pj.nombre} está ${pj.condiciones.includes("muerto") ? "muerto" : "inconsciente o a 0 PV"}: no puede intentar ${salv ? "esa salvación" : "una prueba"} (en una salvación contra muerte usa la regla de muerte, no esta herramienta).`);
 
   if (salv) {
-    const s = salvacion(pj, attr!, d.cd, { extra: d.bono, ventaja: d.ventaja, desventaja: d.desventaja });
+    const esquiva = attr === "des" && !!partida.combate?.turnos && Object.entries(partida.combate.turnos).some(([k, t]) => t.esquiva && k.toLowerCase() === pj.nombre.toLowerCase());
+    const s = salvacion(pj, attr!, d.cd, { extra: d.bono, ventaja: d.ventaja || esquiva, desventaja: d.desventaja });
     return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
   const efP = efectos(pj.condiciones);

@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
 import { mismaCondicion } from "./condiciones.js";
 import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
 import { registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
@@ -224,6 +225,22 @@ const esquemas = {
     con: z.string().optional().describe("Para relacion: el otro regente"),
     valor: z.number().int().min(-3).max(3).optional().describe("Para relacion: -3 guerra … +3 alianza"),
     motivo: z.string().optional(),
+  }),
+  accion_combate: z.object({
+    quien: z.string(),
+    accion: z.enum(ACCIONES),
+    objetivo: z.string().optional().describe("ayudar: a quién ayuda"),
+    contra: z.string().optional().describe("ayudar: contra quién (opcional)"),
+    disparador: z.string().optional().describe("preparar: «cuando…»"),
+    detalle: z.string().optional().describe("preparar: qué hará; otras: descripción"),
+  }),
+  reaccion: z.object({
+    quien: z.string(),
+    tipo: z.enum(["ataque_oportunidad", "preparada", "otra"]),
+    objetivo: z.string().optional().describe("Contra quién ataca"),
+    arma: z.string().optional(),
+    dano: z.string().optional().describe("Daño del ataque, p. ej. 1d8+3: si se da, el ataque se resuelve aquí mismo"),
+    detalle: z.string().optional(),
   }),
   condicion: z.object({
     objetivo: z.string().describe("Personaje, criatura en escena o PNJ del combate"),
@@ -498,6 +515,10 @@ const descripciones: Record<Nombre, string> = {
     "Tira un encuentro aleatorio de verdad (tabla por región, hora, nivel y dificultad) que evita repetir lo reciente: enemigos de varias familias, peligros, escenas sociales y hallazgos. Úsalo siempre que necesites un encuentro que no esté ya decidido por la historia.",
   regente:
     "Política de los regentes (Juez Sin Ojos, Ysolde, Madre de los Hambrientos) en segundo plano: comprar voluntades, espías, sabotajes, chantaje, propaganda, emisarios, alianzas y traiciones; y la relación entre ellos, que cambia por conveniencia y situación.",
+  accion_combate:
+    "Acción de combate que no es un ataque: esquivar, correr, retirarse (evita ataques de oportunidad), ayudar a un aliado (ventaja), preparar una acción, esconderse o usar un objeto. El programa recuerda sus efectos.",
+  reaccion:
+    "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   condicion:
     "Aplica, quita o consulta una condición (cegado, asustado, paralizado, derribado, envenenado, aturdido, inconsciente, agotamiento…) de un personaje, criatura o PNJ. El programa aplica sus efectos reales en ataques, salvaciones y pruebas.",
   plano:
@@ -807,6 +828,16 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.regente>;
         return { contenido: actualizarRegentes(partida, e), aviso: null };
       }
+      case "accion_combate": {
+        const e = validado.data as z.infer<typeof esquemas.accion_combate>;
+        const texto = accionCombate(partida, e);
+        return { contenido: texto, aviso: null };
+      }
+      case "reaccion": {
+        const e = validado.data as z.infer<typeof esquemas.reaccion>;
+        const texto = reaccion(partida, e);
+        return { contenido: texto, aviso: `⚔ ${texto.split("\n")[0]}` };
+      }
       case "condicion": {
         const e = validado.data as z.infer<typeof esquemas.condicion>;
         const texto = aplicarCondicion(partida, e);
@@ -818,7 +849,10 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "plano": {
         const e = validado.data as z.infer<typeof esquemas.plano>;
-        const texto = actualizarPlano(partida, e);
+        const antes = instantanea(partida);
+        const base = actualizarPlano(partida, e);
+        const avisos = e.mover?.length ? provocados(partida, antes) : [];
+        const texto = avisos.length ? `${base}\n${avisos.join("\n")}` : base;
         return { contenido: texto, aviso: `🗺️ ${texto.split("\n").filter((l) => !l.startsWith("-") && !l.startsWith("##")).join("\n")}` };
       }
       case "tiempo": {

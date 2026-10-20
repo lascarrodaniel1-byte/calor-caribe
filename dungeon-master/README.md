@@ -270,6 +270,7 @@ Sus **relaciones no son fijas**: parten de una base (Juez–Ysolde rivalidad, Ju
 Se van incorporando las reglas del documento «Reglas Básicas D&D 5ª» que faltaban, una a una y con pruebas:
 
 1. **Condiciones con efectos reales** (`condicion`): cegado, hechizado, ensordecido, asustado, agarrado, incapacitado, invisible, paralizado, petrificado, envenenado, derribado, retenido, aturdido, inconsciente y agotamiento 1-6. Dan ventaja o desventaja en ataques y pruebas, hacen fallar solas las salvaciones de FUE/DES, vuelven críticos los impactos a quemarropa sobre paralizados e inconscientes, impiden atacar al incapacitado y se recuerdan al empezar cada asalto. Valen para personajes, criaturas y PNJ.
+2. **Acciones, reacciones y ataques de oportunidad** (`accion_combate`, `reaccion`): esquivar (desventaja a los ataques contra quien esquiva y ventaja en sus salvaciones de DES), correr, retirarse, ayudar (el aliado ataca con ventaja, una vez), preparar una acción y esconderse. Cada combatiente tiene una reacción por asalto, que se recupera en `siguiente_asalto`. Al mover en el plano durante un combate, el programa avisa de quién sale del alcance de un enemigo sin retirarse y puede recibir un ataque de oportunidad.
 
 ### Variedad de enemigos
 
