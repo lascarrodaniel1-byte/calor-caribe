@@ -1,5 +1,6 @@
 // Bestiario: criaturas de referencia y jefes. Es una BASE: el DM puede crear
 // criaturas y habilidades nuevas con la misma estructura en cualquier momento.
+import { danoEnSuelo } from "./muerte.js";
 import { mismaCondicion, textoEfectos } from "./condiciones.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -887,7 +888,9 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
     if (danoTotal) {
       const d = falla || !h.mitad_si_exito ? danoTotal.total : Math.floor(danoTotal.total / 2);
       if (falla || h.mitad_si_exito) {
+        const estabaEnSuelo = p.pv <= 0;
         p.pv = Math.max(0, p.pv - d);
+        if (estabaEnSuelo && d > 0) { const t = danoEnSuelo(p, d, false); if (t) log.push("  " + t); }
         log.push(`  Recibe ${d} de daño (PV ${p.pv}).${p.pv === 0 ? " ¡Cae a 0 PV!" : ""}`);
       }
     }

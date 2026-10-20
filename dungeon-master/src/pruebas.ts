@@ -99,7 +99,7 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
     return { texto: `🎲 ${nombrePrueba} de ${d.quien} (PNJ, bono ${signo(bono)}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modo !== "normal" ? ` (${modo})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito };
   }
   if (pj.pv <= 0 || pj.condiciones.includes("inconsciente") || pj.condiciones.includes("muerto"))
-    throw new Error(`${pj.nombre} está ${pj.condiciones.includes("muerto") ? "muerto" : "inconsciente o a 0 PV"}: no puede intentar ${salv ? "esa salvación" : "una prueba"} (en una salvación contra muerte usa la regla de muerte, no esta herramienta).`);
+    throw new Error(`${pj.nombre} está ${pj.condiciones.includes("muerto") ? "muerto" : "inconsciente o a 0 PV"}: no puede intentar ${salv ? "esa salvación" : "una prueba"} (en una salvación contra muerte usa salvacion_muerte, no esta herramienta).`);
 
   if (salv) {
     const esquiva = attr === "des" && !!partida.combate?.turnos && Object.entries(partida.combate.turnos).some(([k, t]) => t.esquiva && k.toLowerCase() === pj.nombre.toLowerCase());

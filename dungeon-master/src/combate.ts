@@ -12,6 +12,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
 import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
+import { danoEnSuelo } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -673,8 +674,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       if (ob.j.pv <= 0) muerto = ob.j.nombre;
     } else if (ob.tipo === "pj") {
       const p = ob.p;
+      const estabaEnSuelo = p.pv <= 0;
       p.pv = Math.max(0, p.pv - dano);
       if (dano) lineas.push(`${p.nombre}: −${dano} PV → ${p.pv}/${p.pv_max}.`);
+      if (estabaEnSuelo) {
+        const t = danoEnSuelo(p, Math.max(dano, 1), resultado === "critico");
+        if (t) lineas.push(t);
+      }
       const causa =
         dano === 0 || resultado === "roce" ? (p.pv === 0 ? "cero_pv" : null) : resultado === "critico" ? "critico" : p.pv === 0 ? "cero_pv" : dano >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : null;
       if (causa) {

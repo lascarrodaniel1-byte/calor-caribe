@@ -1,4 +1,5 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
+import { textoMuerte } from "./muerte.js";
 import { textoEfectos } from "./condiciones.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoRegentes } from "./regentes.js";
@@ -53,6 +54,8 @@ export interface Personaje {
   magia: MagiaPersonaje;
   /** Viales tomados en las últimas 24 h (se reinician con pasar_tiempo). */
   dosis: { curacion: number; sueno: number };
+  /** Salvaciones contra muerte mientras está a 0 PV (ver muerte.ts). */
+  muerte?: { exitos: number; fallos: number; estable: boolean };
 }
 
 export interface Partida {
@@ -170,6 +173,7 @@ export function fichaTexto(p: Personaje): string {
       const a = armaduraDe(p);
       return `  Armadura: ${a.piezas.length ? textoArmadura(a.piezas) : "ninguna"}${a.deducida && a.piezas.length ? " (deducida del inventario)" : ""}`;
     })(),
+    textoMuerte(p) ? `  ${textoMuerte(p)}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

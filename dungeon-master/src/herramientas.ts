@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
 import { mismaCondicion } from "./condiciones.js";
 import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
@@ -241,6 +242,12 @@ const esquemas = {
     arma: z.string().optional(),
     dano: z.string().optional().describe("Daño del ataque, p. ej. 1d8+3: si se da, el ataque se resuelve aquí mismo"),
     detalle: z.string().optional(),
+  }),
+  salvacion_muerte: z.object({ quien: z.string().describe("Personaje a 0 PV que tira la salvación") }),
+  estabilizar: z.object({
+    objetivo: z.string().describe("Personaje a 0 PV"),
+    quien: z.string().describe("Personaje que intenta estabilizarlo"),
+    automatico: z.boolean().optional().describe("true si un objeto o un hechizo lo estabiliza sin tirada"),
   }),
   condicion: z.object({
     objetivo: z.string().describe("Personaje, criatura en escena o PNJ del combate"),
@@ -519,6 +526,10 @@ const descripciones: Record<Nombre, string> = {
     "Acción de combate que no es un ataque: esquivar, correr, retirarse (evita ataques de oportunidad), ayudar a un aliado (ventaja), preparar una acción, esconderse o usar un objeto. El programa recuerda sus efectos.",
   reaccion:
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
+  salvacion_muerte:
+    "Tira la salvación contra muerte de un personaje a 0 PV y lleva la cuenta de éxitos y fallos (3 éxitos: estable; 3 fallos: muerto; 1 natural: dos fallos; 20: se levanta con 1 PV).",
+  estabilizar:
+    "Un compañero intenta estabilizar a un personaje a 0 PV (prueba de Medicina CD 10): deja de hacer salvaciones contra muerte.",
   condicion:
     "Aplica, quita o consulta una condición (cegado, asustado, paralizado, derribado, envenenado, aturdido, inconsciente, agotamiento…) de un personaje, criatura o PNJ. El programa aplica sus efectos reales en ataques, salvaciones y pruebas.",
   plano:
@@ -570,6 +581,16 @@ function enEscena(partida: Partida, nombre: string): EstadoJefe {
 }
 
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
+  // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
+  const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
+  const r = ejecutarInterno(nombre, entrada, partida);
+  if (r.error || nombre === "salvacion_muerte") return r;
+  const avisos = revisarCaidas(partida, antes);
+  if (!avisos.length) return r;
+  return { ...r, contenido: `${r.contenido}\n${avisos.join("\n")}`, aviso: [r.aviso, ...avisos].filter(Boolean).join("\n") };
+}
+
+function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Resultado {
   if (!(nombre in esquemas)) return { contenido: `Herramienta desconocida: ${nombre}`, aviso: null, error: true };
   const validado = esquemas[nombre as Nombre].safeParse(entrada);
   if (!validado.success) {
@@ -837,6 +858,16 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.reaccion>;
         const texto = reaccion(partida, e);
         return { contenido: texto, aviso: `⚔ ${texto.split("\n")[0]}` };
+      }
+      case "salvacion_muerte": {
+        const e = validado.data as z.infer<typeof esquemas.salvacion_muerte>;
+        const texto = salvacionMuerte(partida, e.quien);
+        return { contenido: texto, aviso: texto };
+      }
+      case "estabilizar": {
+        const e = validado.data as z.infer<typeof esquemas.estabilizar>;
+        const texto = estabilizar(partida, e);
+        return { contenido: texto, aviso: `🩹 ${texto.split("\n").slice(-1)[0]}` };
       }
       case "condicion": {
         const e = validado.data as z.infer<typeof esquemas.condicion>;
