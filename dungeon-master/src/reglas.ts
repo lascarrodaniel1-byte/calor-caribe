@@ -2,6 +2,7 @@
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
 import { clase } from "./mundo.js";
+import { efectos } from "./condiciones.js";
 
 export type Atributo = "fue" | "des" | "con" | "int" | "sab" | "car";
 export const ATRIBUTOS = ["fue", "des", "con", "int", "sab", "car"] as const;
@@ -36,8 +37,12 @@ export function salvacion(
   cd: number,
   opciones: { extra?: number; ventaja?: boolean; desventaja?: boolean } = {},
 ): Salvacion {
+  const ef = efectos(p.condiciones);
+  if (ef.falla.has(a))
+    return { exito: false, total: 0, natural: 0, margen: -99, texto: `salvación de ${a.toUpperCase()}: fallo automático (${ef.motivos.join(", ")})` };
   const bono = mod(valor(p, a)) + (salvacionCompetente(p, a) ? competencia(p) : 0) + (opciones.extra ?? 0);
-  const modo = opciones.ventaja && !opciones.desventaja ? "ventaja" : opciones.desventaja && !opciones.ventaja ? "desventaja" : "normal";
+  const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv);
+  const modo = opciones.ventaja && !desv ? "ventaja" : desv && !opciones.ventaja ? "desventaja" : "normal";
   const t = tirar(`1d20${signo(bono)}`, modo);
   const natural = t.dados[0];
   const exito = natural === 20 || (natural !== 1 && t.total >= cd);

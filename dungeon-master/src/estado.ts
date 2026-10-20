@@ -1,4 +1,5 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
+import { textoEfectos } from "./condiciones.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoRegentes } from "./regentes.js";
 import type { EstadoJefe } from "./bestiario.js";
@@ -169,7 +170,7 @@ export function fichaTexto(p: Personaje): string {
       const a = armaduraDe(p);
       return `  Armadura: ${a.piezas.length ? textoArmadura(a.piezas) : "ninguna"}${a.deducida && a.piezas.length ? " (deducida del inventario)" : ""}`;
     })(),
-    p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}` : "",
+    p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",
     p.ceniza ? `  Ceniza: ${p.ceniza}` : "",

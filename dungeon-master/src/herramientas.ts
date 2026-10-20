@@ -34,13 +34,14 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { mismaCondicion } from "./condiciones.js";
 import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
 import { registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
 import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
-import { ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
+import { aplicarCondicion, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
@@ -223,6 +224,13 @@ const esquemas = {
     con: z.string().optional().describe("Para relacion: el otro regente"),
     valor: z.number().int().min(-3).max(3).optional().describe("Para relacion: -3 guerra … +3 alianza"),
     motivo: z.string().optional(),
+  }),
+  condicion: z.object({
+    objetivo: z.string().describe("Personaje, criatura en escena o PNJ del combate"),
+    accion: z.enum(["aplicar", "quitar", "ver"]),
+    condicion: z.string().optional().describe("cegado, hechizado, ensordecido, asustado, agarrado, incapacitado, invisible, paralizado, petrificado, envenenado, derribado, retenido, aturdido, inconsciente o agotamiento"),
+    nota: z.string().optional().describe("Duración o causa, p. ej. «1 minuto»"),
+    nivel: z.number().int().min(1).max(6).optional().describe("Solo para agotamiento: el nivel (por defecto, +1)"),
   }),
   encuentro: z.object({
     jefe: z.string().optional().describe('"azar" o el nombre de un jefe (Kuru, Vaerth, Ilvara, Vaskar, El Juez, Ysolde, La Madre de los Hambrientos): fuerza que la causa sea un jefe fuera de su zona; sirve para que una misión sea consecuencia de su plan'),
@@ -490,6 +498,8 @@ const descripciones: Record<Nombre, string> = {
     "Tira un encuentro aleatorio de verdad (tabla por región, hora, nivel y dificultad) que evita repetir lo reciente: enemigos de varias familias, peligros, escenas sociales y hallazgos. Úsalo siempre que necesites un encuentro que no esté ya decidido por la historia.",
   regente:
     "Política de los regentes (Juez Sin Ojos, Ysolde, Madre de los Hambrientos) en segundo plano: comprar voluntades, espías, sabotajes, chantaje, propaganda, emisarios, alianzas y traiciones; y la relación entre ellos, que cambia por conveniencia y situación.",
+  condicion:
+    "Aplica, quita o consulta una condición (cegado, asustado, paralizado, derribado, envenenado, aturdido, inconsciente, agotamiento…) de un personaje, criatura o PNJ. El programa aplica sus efectos reales en ataques, salvaciones y pruebas.",
   plano:
     "Plano de la escena en metros (norte arriba): coloca y mueve a personajes, PNJ, criaturas y puntos de referencia (el fuego, el carro, la puerta). El programa calcula distancias y rumbos y te los devuelve como verdad espacial; los ataques cuerpo a cuerpo comprueban el alcance.",
   tiempo:
@@ -626,7 +636,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
             cambios.push(`- ${o}`);
           }
         }
-        for (const c of e.agregar_condiciones ?? []) if (!p.condiciones.includes(c)) p.condiciones.push(c);
+        for (const c of e.agregar_condiciones ?? []) if (!p.condiciones.some((x) => mismaCondicion(x, c))) p.condiciones.push(c);
         if (e.quitar_condiciones) p.condiciones = p.condiciones.filter((c) => !e.quitar_condiciones!.includes(c));
         for (const x of e.agregar_secuelas ?? []) p.secuelas.push(x);
         if (e.quitar_secuelas) p.secuelas = p.secuelas.filter((x) => !e.quitar_secuelas!.includes(x));
@@ -796,6 +806,11 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
       case "regente": {
         const e = validado.data as z.infer<typeof esquemas.regente>;
         return { contenido: actualizarRegentes(partida, e), aviso: null };
+      }
+      case "condicion": {
+        const e = validado.data as z.infer<typeof esquemas.condicion>;
+        const texto = aplicarCondicion(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `🩸 ${texto.split("\n")[0]}` };
       }
       case "encuentro": {
         const e = validado.data as z.infer<typeof esquemas.encuentro>;

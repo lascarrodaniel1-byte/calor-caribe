@@ -1,5 +1,6 @@
 // Bestiario: criaturas de referencia y jefes. Es una BASE: el DM puede crear
 // criaturas y habilidades nuevas con la misma estructura en cualquier momento.
+import { mismaCondicion, textoEfectos } from "./condiciones.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { infligir, perderSangre, type Causa } from "./heridas.js";
@@ -117,6 +118,8 @@ export interface EstadoJefe {
   /** Resultados de d20 ya "vistos" que puede usar en lugar de cualquier tirada. */
   presagios: number[];
   robos: Robo[];
+  /** Condiciones que sufre ahora (ver condiciones.ts). */
+  condiciones?: string[];
 }
 
 export const BESTIARIO: Criatura[] = [
@@ -890,8 +893,8 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
     }
     if (falla) {
       if (h.condicion) {
-        p.condiciones.push(h.condicion);
-        log.push(`  Condición: ${h.condicion}.`);
+        if (!p.condiciones.some((x) => mismaCondicion(x, h.condicion!))) p.condiciones.push(h.condicion);
+        log.push(`  Condición: ${h.condicion}.${textoEfectos([h.condicion]) ? ` Efecto: ${textoEfectos([h.condicion])}` : ""}`);
       }
       if (h.herida) log.push("  " + infligir(p, { causa: h.herida, tipo: tipoHerida(h.tipo_dano), descripcion: h.nombre }).replace(/\n/g, "\n  "));
       if (h.sangre) {

@@ -4,6 +4,7 @@
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
 import { clase } from "./mundo.js";
+import { efectos } from "./condiciones.js";
 import { ATRIBUTOS, competencia, mod, salvacion, salvacionCompetente, signo, valor, type Atributo } from "./reglas.js";
 
 export const HABILIDADES: Record<string, { nombre: string; atributo: Atributo }> = {
@@ -104,6 +105,8 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
     const s = salvacion(pj, attr!, d.cd, { extra: d.bono, ventaja: d.ventaja, desventaja: d.desventaja });
     return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
+  const efP = efectos(pj.condiciones);
+  const modoP = efP.pruebas === "desventaja" && !d.ventaja ? "desventaja" : modo;
   const m = mod(valor(pj, attr!));
   const comp = competencia(pj);
   const deClase = hab ? (COMPETENCIAS_CLASE[pj.clase] ?? []).includes(hab) : false;
@@ -112,11 +115,11 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   const bonoComp = hab && competente ? comp * (pericia ? 2 : 1) : 0;
   const extra = d.bono ?? 0;
   const bono = m + bonoComp + extra;
-  const t = tirar(`1d20${signo(bono)}`, modo);
+  const t = tirar(`1d20${signo(bono)}`, modoP);
   const natural = t.dados[0];
   const exito = natural === 20 || (natural !== 1 && t.total >= d.cd);
   const desglose = [`${ATR_CORTO[attr!]} ${signo(m)}`, bonoComp ? `competencia ${signo(bonoComp)}${pericia ? " (pericia)" : ""}` : hab ? "sin competencia" : "", extra ? `ajuste ${signo(extra)}` : ""].filter(Boolean).join(", ");
-  return { texto: `🎲 ${nombrePrueba} de ${pj.nombre} (${desglose}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modo !== "normal" ? ` (${modo})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito };
+  return { texto: `🎲 ${nombrePrueba} de ${pj.nombre} (${desglose}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modoP !== "normal" ? ` (${modoP})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito };
 }
 
 /** ¿La tirada genérica parece una prueba de característica de un PJ? (para dirigirla a la herramienta `prueba`) */

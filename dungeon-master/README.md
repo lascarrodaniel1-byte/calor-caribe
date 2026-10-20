@@ -265,6 +265,12 @@ El Juez Sin Ojos, Ysolde y la Madre de los Hambrientos no solo mandan monstruos:
 
 Sus **relaciones no son fijas**: parten de una base (Juez–Ysolde rivalidad, Juez–Madre guerra, Ysolde–Madre neutral) y varían con la situación: regiones disputadas, jugadas hostiles recientes, alianzas y amenazas grandes (reloj ≥ 4) que obligan a tregua. El DM también puede fijar una relación (`accion: relacion`) y esa manda. Si pasan 10 turnos sin jugadas, el DM recibe un aviso para mover ficha y hacer llegar el eco a los protagonistas.
 
+### Reglas básicas de D&D 5e (en curso)
+
+Se van incorporando las reglas del documento «Reglas Básicas D&D 5ª» que faltaban, una a una y con pruebas:
+
+1. **Condiciones con efectos reales** (`condicion`): cegado, hechizado, ensordecido, asustado, agarrado, incapacitado, invisible, paralizado, petrificado, envenenado, derribado, retenido, aturdido, inconsciente y agotamiento 1-6. Dan ventaja o desventaja en ataques y pruebas, hacen fallar solas las salvaciones de FUE/DES, vuelven críticos los impactos a quemarropa sobre paralizados e inconscientes, impiden atacar al incapacitado y se recuerdan al empezar cada asalto. Valen para personajes, criaturas y PNJ.
+
 ### Variedad de enemigos
 
 - **Antes:** el DM elegía los enemigos él solo, sin azar, y tendía a repetir los que más pesan en la ambientación (Hambrientos, Inquisición de la Llama Gris). Los dados de combate sí eran aleatorios, pero **qué** aparecía no.

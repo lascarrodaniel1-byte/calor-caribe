@@ -12,6 +12,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
 import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
+import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
@@ -157,6 +158,8 @@ export interface PnjCombate {
   /** Si se da, el programa lleva sus PV. */
   pv?: number;
   pv_max?: number;
+  /** Condiciones que sufre ahora (ver condiciones.ts). */
+  condiciones?: string[];
 }
 
 export interface EstadoCombate {
@@ -316,7 +319,8 @@ export function siguienteAsalto(partida: Partida): string {
   c.ronda += 1;
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
-  return `Asalto ${c.ronda}.${fin}`;
+  const activas = condicionesActivas(partida);
+  return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
 
 /** ¿Actúa el atacante antes que el objetivo en este combate? */
@@ -327,7 +331,66 @@ function actuaAntes(partida: Partida, a: string, b: string): boolean {
   return ia >= 0 && ib >= 0 && ia < ib;
 }
 
-const CONDICIONES_DESVENTAJA = /envenenad|asustad|cegad|jadeando|agotad|apresad/i;
+const CONDICIONES_DESVENTAJA = /jadeando/i; // condición propia de la magia; el resto vive en condiciones.ts
+
+function condsDe(c: Combatiente): string[] {
+  return c.tipo === "pj" ? c.p.condiciones : c.tipo === "criatura" ? (c.j.condiciones ??= []) : (c.n.condiciones ??= []);
+}
+
+/** Aplica, quita o consulta una condición de un personaje, criatura o PNJ en combate. */
+export function aplicarCondicion(
+  partida: Partida,
+  d: { objetivo: string; accion: "aplicar" | "quitar" | "ver"; condicion?: string; nota?: string; nivel?: number },
+): string {
+  const c = localizar(partida, d.objetivo);
+  const lista = condsDe(c);
+  if (d.accion === "ver") {
+    const t = textoEfectos(lista);
+    return `${c.nombre}: ${lista.length ? lista.join(", ") : "sin condiciones"}${t ? `\n${t}` : ""}`;
+  }
+  if (!d.condicion) throw new Error("Di qué condición (p. ej. paralizado, derribado, agotamiento).");
+  if (d.accion === "quitar") {
+    const antes = lista.length;
+    const resto = lista.filter((x) => !mismaCondicion(x, d.condicion!) && !x.toLowerCase().includes(d.condicion!.toLowerCase()));
+    lista.splice(0, lista.length, ...resto);
+    return lista.length === antes ? `${c.nombre} no tenía «${d.condicion}».` : `${c.nombre} ya no está ${d.condicion}.`;
+  }
+  const cat = reconocer(d.condicion);
+  const esAgot = /agotamiento/i.test(d.condicion);
+  let texto = d.condicion;
+  if (esAgot) {
+    const nuevo = Math.min(6, d.nivel ?? (nivelAgotamiento(lista) + 1));
+    const resto = lista.filter((x) => !/agotamiento/i.test(x));
+    lista.splice(0, lista.length, ...resto);
+    texto = `agotamiento ${nuevo}`;
+    if (nuevo >= 6) {
+      if (c.tipo === "pj") { c.p.pv = 0; if (!c.p.condiciones.includes("muerto")) c.p.condiciones.push("muerto"); }
+      else if (c.tipo === "criatura") c.j.pv = 0;
+    }
+  } else if (lista.some((x) => mismaCondicion(x, d.condicion!))) {
+    return `${c.nombre} ya está ${cat?.nombre ?? d.condicion}.`;
+  }
+  if (d.nota) texto += ` (${d.nota})`;
+  lista.push(texto);
+  const t = textoEfectos([texto]);
+  return `${c.nombre}: ${texto}.${t ? `\nEfecto: ${t}` : cat ? "" : "\n(No está en el catálogo: es texto libre, sin efecto automático.)"}${esAgot && nivelAgotamiento(lista) >= 6 ? "\n☠ Agotamiento 6: muere." : ""}`;
+}
+
+/** Condiciones activas de todos los presentes en el combate (para recordarlas al empezar cada asalto). */
+export function condicionesActivas(partida: Partida): string[] {
+  const out: string[] = [];
+  const vistos = new Set<string>();
+  const poner = (nombre: string, conds: string[]) => {
+    const e = efectos(conds);
+    if (!conds.length || vistos.has(nombre)) return;
+    vistos.add(nombre);
+    out.push(`${nombre}: ${conds.join(", ")}${e.incapacitado ? " (no actúa)" : ""}`);
+  };
+  for (const p of Object.values(partida.personajes)) poner(p.nombre, p.condiciones.filter((x) => x !== "muerto"));
+  for (const j of Object.values(partida.jefes)) if (j.pv > 0) poner(j.nombre, j.condiciones ?? []);
+  for (const n of Object.values(partida.combate?.pnj ?? {})) poner(n.nombre, n.condiciones ?? []);
+  return out;
+}
 
 export interface DatosAtaque {
   atacante: string;
@@ -427,14 +490,19 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let ventaja = !!d.ventaja;
   let desventaja = !!d.desventaja;
   const motivos: string[] = [];
+  const efAt = efectos(condsDe(at));
+  const efOb = efectos(condsDe(ob));
+  if (efAt.incapacitado) throw new Error(`${at.nombre} está ${efAt.motivos.join(", ")}: incapacitado, no puede atacar.`);
+  if (efAt.agotamiento >= 6) throw new Error(`${at.nombre} ha muerto de agotamiento.`);
+  if (efAt.ataca === "desventaja") { desventaja = true; motivos.push(`desventaja por ${efAt.motivos.join(", ")}`); }
+  if (efAt.ataca === "ventaja") { ventaja = true; motivos.push(`ventaja: ${efAt.motivos.join(", ")}`); }
   if (at.tipo === "pj" && at.p.condiciones.some((c) => CONDICIONES_DESVENTAJA.test(c))) {
     desventaja = true;
     motivos.push(`desventaja por ${at.p.condiciones.filter((c) => CONDICIONES_DESVENTAJA.test(c)).join(", ")}`);
   }
-  if (ob.tipo === "pj" && ob.p.condiciones.some((c) => /inconsciente|paralizad|derribad/i.test(c)) && !distancia) {
-    ventaja = true;
-    motivos.push("ventaja: el objetivo está en el suelo o indefenso");
-  }
+  const contra = distancia ? efOb.contraDistancia : efOb.contraCuerpo;
+  if (contra === "ventaja") { ventaja = true; motivos.push(`ventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
+  if (contra === "desventaja") { desventaja = true; motivos.push(`desventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
   const combate = partida.combate;
   const primerAsalto = combate?.ronda === 1;
   const sorprendido = (n: string) => primerAsalto && !!combate?.sorprendidos?.some((x) => igual(x, n));
@@ -498,6 +566,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
   let resultado: "torpeza" | "fallo" | "roce" | "impacto" | "critico";
   if (natural >= umbralCritico) resultado = "critico";
+  else if (efOb.critCuerpo && !distancia && t.total >= ca) resultado = "critico"; // paralizado o inconsciente, a quemarropa
   else if (natural <= torpeza) resultado = "torpeza";
   else if (margen >= 0) resultado = "impacto";
   else if (at.tipo !== "criatura" && -margen <= of.roce) resultado = "roce";
