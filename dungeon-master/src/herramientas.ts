@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { maniobra } from "./maniobras.js";
 import { darExperiencia, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
@@ -244,6 +245,16 @@ const esquemas = {
     dano: z.string().optional().describe("Daño del ataque, p. ej. 1d8+3: si se da, el ataque se resuelve aquí mismo"),
     detalle: z.string().optional(),
   }),
+  maniobra: z.object({
+    atacante: z.string(),
+    objetivo: z.string(),
+    tipo: z.enum(["agarrar", "empujar", "escapar"]),
+    efecto: z.enum(["derribar", "alejar"]).optional().describe("empujar: derribarlo o apartarlo 1,5 m"),
+    bono_atacante: z.number().int().optional().describe("Atletismo total del atacante (obligatorio solo para PNJ sin datos)"),
+    bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
+    ventaja: z.boolean().optional(),
+    desventaja: z.boolean().optional(),
+  }),
   experiencia: z.object({
     accion: z.enum(["dar", "por_criatura", "ver"]),
     px: z.number().int().min(1).max(100000).optional().describe("PX totales a repartir (accion dar)"),
@@ -394,6 +405,7 @@ const esquemas = {
     a_distancia: z.boolean().optional(),
     atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
     bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
+    cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
@@ -474,7 +486,8 @@ const esquemas = {
     competente: z.boolean().optional().describe("Fuerza la competencia en la habilidad si su trasfondo la justifica (true) o la quita (false); por defecto, la de su clase"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
-    bono: z.number().int().optional().describe("PNJ: su bonificador total. PJ: ajuste por situación (herramientas, cobertura…)"),
+    bono: z.number().int().optional().describe("PNJ: su bonificador total. PJ: ajuste por situación (herramientas…)"),
+    cobertura: z.enum(["media", "tres_cuartos"]).optional().describe("Salvación de DES a cubierto: +2 o +5"),
     motivo: z.string().describe("Qué intenta, en pocas palabras"),
   }),
   siguiente_asalto: z.object({}),
@@ -541,6 +554,8 @@ const descripciones: Record<Nombre, string> = {
     "Acción de combate que no es un ataque: esquivar, correr, retirarse (evita ataques de oportunidad), ayudar a un aliado (ventaja), preparar una acción, esconderse o usar un objeto. El programa recuerda sus efectos.",
   reaccion:
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
+  maniobra:
+    "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
   experiencia:
     "Reparte puntos de experiencia al grupo (a partes iguales) por un combate, un desafío o un hito, o consulta cuántos lleva cada uno.",
   subir_nivel:
@@ -877,6 +892,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.reaccion>;
         const texto = reaccion(partida, e);
         return { contenido: texto, aviso: `⚔ ${texto.split("\n")[0]}` };
+      }
+      case "maniobra": {
+        const e = validado.data as z.infer<typeof esquemas.maniobra>;
+        const texto = maniobra(partida, e);
+        return { contenido: texto, aviso: `🤼 ${texto}` };
       }
       case "experiencia": {
         const e = validado.data as z.infer<typeof esquemas.experiencia>;

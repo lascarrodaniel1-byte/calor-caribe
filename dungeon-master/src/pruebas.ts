@@ -58,6 +58,8 @@ export interface DatosPrueba {
   desventaja?: boolean;
   /** PNJ o ajuste de situación: bonificador total (PNJ) o extra (PJ). */
   bono?: number;
+  /** Salvación de DES a cubierto: +2 (media) o +5 (tres cuartos). */
+  cobertura?: "media" | "tres_cuartos";
   motivo: string;
 }
 
@@ -103,7 +105,7 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
 
   if (salv) {
     const esquiva = attr === "des" && !!partida.combate?.turnos && Object.entries(partida.combate.turnos).some(([k, t]) => t.esquiva && k.toLowerCase() === pj.nombre.toLowerCase());
-    const s = salvacion(pj, attr!, d.cd, { extra: d.bono, ventaja: d.ventaja || esquiva, desventaja: d.desventaja });
+    const s = salvacion(pj, attr!, d.cd, { extra: (d.bono ?? 0) + (attr === "des" ? (d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0) : 0), ventaja: d.ventaja || esquiva, desventaja: d.desventaja });
     return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
   const efP = efectos(pj.condiciones);

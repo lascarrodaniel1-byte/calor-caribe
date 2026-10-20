@@ -435,6 +435,8 @@ export interface DatosAtaque {
   tipo_dano?: TipoDano;
   /** Región a la que apunta, o "hueco" para buscar las juntas de la armadura. */
   apuntar?: Ubicacion | "hueco";
+  /** Cobertura del objetivo: media (+2 CA), tres_cuartos (+5) o total (no se le puede atacar). */
+  cobertura?: "media" | "tres_cuartos" | "total";
 }
 
 export interface ResultadoAtaque {
@@ -512,13 +514,16 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   }
 
   // Defensa
-  const ca = d.ca ?? (ob.tipo === "pj" ? ob.p.ca : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca);
+  if (d.cobertura === "total") throw new Error(`${ob.nombre} tiene cobertura total: no se le puede atacar directamente (rodéalo, destruye la cobertura o usa un efecto de área).`);
+  const cobBono = d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0;
+  const ca = cobBono + (d.ca ?? (ob.tipo === "pj" ? ob.p.ca : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
 
   // Ventaja y desventaja
   let ventaja = !!d.ventaja;
   let desventaja = !!d.desventaja;
   const motivos: string[] = [];
   const efAt = efectos(condsDe(at));
+  if (cobBono) motivos.push(`${ob.nombre} tiene cobertura ${d.cobertura === "media" ? "media (+2 CA)" : "de tres cuartos (+5 CA)"}`);
   const efOb = efectos(condsDe(ob));
   if (efAt.incapacitado) throw new Error(`${at.nombre} está ${efAt.motivos.join(", ")}: incapacitado, no puede atacar.`);
   if (efAt.agotamiento >= 6) throw new Error(`${at.nombre} ha muerto de agotamiento.`);
