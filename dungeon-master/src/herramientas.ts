@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { darExperiencia, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
 import { mismaCondicion } from "./condiciones.js";
@@ -242,6 +243,20 @@ const esquemas = {
     arma: z.string().optional(),
     dano: z.string().optional().describe("Daño del ataque, p. ej. 1d8+3: si se da, el ataque se resuelve aquí mismo"),
     detalle: z.string().optional(),
+  }),
+  experiencia: z.object({
+    accion: z.enum(["dar", "por_criatura", "ver"]),
+    px: z.number().int().min(1).max(100000).optional().describe("PX totales a repartir (accion dar)"),
+    peligro: z.number().int().min(1).max(5).optional().describe("por_criatura: peligro de lo derrotado"),
+    cantidad: z.number().int().min(1).max(50).optional().describe("por_criatura: cuántas"),
+    motivo: z.string().optional(),
+    quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
+  }),
+  subir_nivel: z.object({
+    quien: z.string(),
+    pv: z.enum(["promedio", "tirar"]).describe("Cómo se calculan los PV ganados"),
+    aumento: z.record(z.string(), z.number().int()).optional().describe("Solo en los niveles 4, 8, 12, 16 y 19: {fue: 2} o {des: 1, con: 1}"),
+    por_hito: z.boolean().optional().describe("Sube sin los PX, por un hito de la historia"),
   }),
   salvacion_muerte: z.object({ quien: z.string().describe("Personaje a 0 PV que tira la salvación") }),
   estabilizar: z.object({
@@ -526,6 +541,10 @@ const descripciones: Record<Nombre, string> = {
     "Acción de combate que no es un ataque: esquivar, correr, retirarse (evita ataques de oportunidad), ayudar a un aliado (ventaja), preparar una acción, esconderse o usar un objeto. El programa recuerda sus efectos.",
   reaccion:
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
+  experiencia:
+    "Reparte puntos de experiencia al grupo (a partes iguales) por un combate, un desafío o un hito, o consulta cuántos lleva cada uno.",
+  subir_nivel:
+    "Sube de nivel a un personaje que ya tiene los PX (o por hito): suma PV, competencia, rasgos de clase y, en los niveles 4, 8, 12, 16 y 19, un aumento de característica.",
   salvacion_muerte:
     "Tira la salvación contra muerte de un personaje a 0 PV y lleva la cuenta de éxitos y fallos (3 éxitos: estable; 3 fallos: muerto; 1 natural: dos fallos; 20: se levanta con 1 PV).",
   estabilizar:
@@ -858,6 +877,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.reaccion>;
         const texto = reaccion(partida, e);
         return { contenido: texto, aviso: `⚔ ${texto.split("\n")[0]}` };
+      }
+      case "experiencia": {
+        const e = validado.data as z.infer<typeof esquemas.experiencia>;
+        const texto = darExperiencia(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `✨ ${texto.split("\n")[0]}` };
+      }
+      case "subir_nivel": {
+        const e = validado.data as z.infer<typeof esquemas.subir_nivel>;
+        const texto = subirNivel(partida, e as Parameters<typeof subirNivel>[1]);
+        return { contenido: texto, aviso: `⬆ ${texto.split("\n")[0]}` };
       }
       case "salvacion_muerte": {
         const e = validado.data as z.infer<typeof esquemas.salvacion_muerte>;
