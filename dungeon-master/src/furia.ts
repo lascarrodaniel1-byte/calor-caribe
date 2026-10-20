@@ -18,6 +18,8 @@ RECURSOS_CLASE["Berserker de Ceniza"] = [
 
 export interface Furia {
   activa: boolean;
+  /** A quién ya ha marcado con Ceniza en esta furia (una marca por individuo y furia). */
+  marcados?: string[];
   /** Asaltos que le quedan (1 minuto = 10). */
   asaltos: number;
 }
@@ -34,7 +36,7 @@ export const usosFuria = (nivel: number) => (nivel >= 12 ? 5 : nivel >= 6 ? 4 : 
 export function entrarFuria(p: Personaje): string {
   if (enFuria(p)) throw new Error(`${p.nombre} ya está en furia.`);
   p.furia = { activa: true, asaltos: ASALTOS_FURIA };
-  const base = `${p.nombre} invoca la furia: su pelo se vuelve del color de la ceniza y los ojos le arden como brasas. Durante 1 minuto: +2 a FUE (a cambio, INT y CAR a la mitad), +2 al daño cuerpo a cuerpo, resistencia al daño contundente, cortante y perforante, y las penalizaciones de sus heridas no cuentan.`;
+  const base = `${p.nombre} invoca la furia: su pelo se vuelve del color de la ceniza y los ojos le arden como brasas. Durante 1 minuto: +2 al modificador de FUE (a cambio, INT y CAR a la mitad), +2 al daño cuerpo a cuerpo, resistencia al daño contundente, cortante y perforante, y las penalizaciones de sus heridas no cuentan.`;
   if (p.nivel < 3)
     return `${base}\nEN TRANCE: a este nivel la furia lo ciega. No distingue aliados de enemigos: cada ataque suyo cae sobre quien tenga a su alcance, amigo o enemigo (el programa lo decide al atacar). Narra su mirada vacía y los gritos de sus compañeros intentando que vuelva en sí.`;
   if (p.nivel >= 5) {
@@ -118,6 +120,6 @@ export function textoFuria(p: Personaje): string {
 }
 
 export const REGLAS_FURIA = `## Furia del Berserker de Ceniza
-- Se invoca con usar_recurso {recurso: "Furia"} (acción adicional; se acaba sola a los 10 asaltos o con usar_recurso {accion: terminar}). Mientras dura: el pelo se vuelve del color de la ceniza; INT y CAR a la mitad y +2 a FUE (lo aplica el programa en todas las tiradas); +2 al daño cuerpo a cuerpo (lo suma atacar); resistencia al daño contundente, cortante y perforante (lo aplica atacar); las penalizaciones de las heridas no cuentan.
+- Se invoca con usar_recurso {recurso: "Furia"} (acción adicional; se acaba sola a los 10 asaltos o con usar_recurso {accion: terminar}). Mientras dura: el pelo se vuelve del color de la ceniza; INT y CAR a la mitad y +2 al modificador de FUE (se suma al bono base) (lo aplica el programa en todas las tiradas); +2 al daño cuerpo a cuerpo (lo suma atacar); resistencia al daño contundente, cortante y perforante (lo aplica atacar); las penalizaciones de las heridas no cuentan.
 - Niveles 1-2: es un TRANCE. No distingue aliados de enemigos: al atacar, el programa hace caer el golpe sobre cualquiera a su alcance. Narra su mirada vacía y a los compañeros intentando contenerlo. Desde el nivel 3 el trance se aclara. En el nivel 5 la furia cierra las heridas rojas mientras dura; al terminar se reabren.
 - Al acabar la furia, el programa pide salvación de CON: si falla, una herida moderada sin tratar se agrava (y, en nivel 5, las rojas reabiertas empeoran).`;

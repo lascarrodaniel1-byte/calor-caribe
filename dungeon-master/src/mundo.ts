@@ -131,7 +131,7 @@ export const CLASES: Clase[] = [
     principal: "FUE",
     salvaciones: "FUE, CON",
     rasgos: [
-      "Furia del fuego viejo (acción adicional; 2 usos por descanso largo, 3 desde el nivel 3, 4 desde el 6): es un vestigio de la conexión con Æsir, el dios más antiguo. Cobra su precio: mientras dura, INT y CAR a la mitad y +2 a FUE. Dura 1 minuto: el pelo se vuelve del color de la ceniza, +2 al daño cuerpo a cuerpo, resistencia al daño contundente, cortante y perforante, y las penalizaciones de sus heridas no cuentan. Al terminar, salvación de CON CD 10 o una herida moderada sin tratar se agrava",
+      "Furia del fuego viejo (acción adicional; 2 usos por descanso largo, 3 desde el nivel 3, 4 desde el 6): es un vestigio de la conexión con Æsir, el dios más antiguo. Cobra su precio: mientras dura, INT y CAR a la mitad y +2 al modificador de FUE (se suma al bono base). Dura 1 minuto: el pelo se vuelve del color de la ceniza, +2 al daño cuerpo a cuerpo, resistencia al daño contundente, cortante y perforante, y las penalizaciones de sus heridas no cuentan. Al terminar, salvación de CON CD 10 o una herida moderada sin tratar se agrava",
       "Trance (niveles 1-2): en furia entra en trance y no distingue aliados de enemigos; su golpe cae sobre quien tenga a su alcance. Desde el nivel 3 la furia se aclara. En el nivel 5 la furia cierra temporalmente las heridas rojas mientras dura (se reabren al terminar)",
       "Defensa sin armadura: CA 10 + DES + CON",
       "Elegido de Æsir: los Berserkers de Ceniza se eligen desde niños mediante un rito de elección y se les enseña a sobrevivir y a luchar. Se reconocen por la mecha gris que les nace en el pelo; con la furia, el pelo entero se vuelve cenizo",

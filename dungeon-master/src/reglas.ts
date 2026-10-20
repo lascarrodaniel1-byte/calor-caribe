@@ -13,10 +13,10 @@ export const mod = (v: number) => Math.floor((v - 10) / 2);
 /** Atributo efectivo: la anemia resta Fuerza y algunas criaturas roban atributos. */
 export function valor(p: Personaje, a: Atributo): number {
   const base = p.atributos[a] - (a === "fue" ? (p.anemia ?? 0) : 0) - (p.robado?.[a] ?? 0);
-  // La furia del Berserker: la mitad de INT y CAR a cambio de +2 a FUE mientras dura.
+  // La furia del Berserker: la mitad de INT y CAR a cambio de +2 al modificador de FUE mientras dura.
   if (p.furia?.activa) {
     if (a === "int" || a === "car") return Math.floor(base / 2);
-    if (a === "fue") return base + 2;
+    if (a === "fue") return base + 4; // +2 al MODIFICADOR de FUE (se suma al bono base)
   }
   return base;
 }

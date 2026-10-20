@@ -66,7 +66,9 @@ export interface Personaje {
   /** Hazañas, fama y, si la hay, la Leyenda (ver leyenda.ts). */
   leyenda?: Leyenda;
   /** Furia del Berserker (ver furia.ts). */
-  furia?: { activa: boolean; asaltos: number };
+  furia?: { activa: boolean; asaltos: number; marcados?: string[] };
+  /** Marcas de Ceniza que no se pueden quitar (las de la furia). */
+  ceniza_fija?: number;
   /** Mariscal de la Compañía del Cuervo Negro (si ganó el concurso). */
   mariscal?: "Hugin" | "Munin";
   /** Rasgos de clase ganados al subir de nivel. */
@@ -193,7 +195,7 @@ export function fichaTexto(p: Personaje): string {
     textoProgresion(p),
     textoRecursos(p),
     textoLeyenda(p),
-    p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, FUE +2${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
+    p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

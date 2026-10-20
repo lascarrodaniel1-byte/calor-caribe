@@ -692,16 +692,6 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   if (aviso0) {
     r.texto = `${aviso0}\n${r.texto}`;
     r.aviso = `${aviso0}\n${r.aviso}`;
-    // Herir en trance a un compañero deja marcas de Ceniza: en su piel y en la de quien lo hirió.
-    const victima = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.objetivo.toLowerCase());
-    const atacante = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase());
-    if (victima && atacante && victima !== atacante && /IMPACTO|CRÍTICO/i.test(r.texto)) {
-      victima.ceniza += 1;
-      atacante.ceniza += 1;
-      const marca = `🩶 Marca de Ceniza: el golpe en trance deja ceniza en la piel de ${victima.nombre} (${victima.ceniza}) y en la de ${atacante.nombre} (${atacante.ceniza}).`;
-      r.texto += `\n${marca}`;
-      r.aviso += `\n${marca}`;
-    }
   }
   if (r.muerto) {
     const devueltos = retirarCaido(partida, enEscena(partida, r.muerto));
@@ -767,6 +757,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           heridas: partida.personajes[e.nombre]?.heridas ?? [],
           secuelas: partida.personajes[e.nombre]?.secuelas ?? [],
           ceniza: partida.personajes[e.nombre]?.ceniza ?? 0,
+          ceniza_fija: partida.personajes[e.nombre]?.ceniza_fija,
+          furia: partida.personajes[e.nombre]?.furia,
           anemia: partida.personajes[e.nombre]?.anemia ?? 0,
           sangrado: partida.personajes[e.nombre]?.sangrado ?? 0,
           anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
@@ -819,7 +811,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         for (const x of e.agregar_secuelas ?? []) p.secuelas.push(x);
         if (e.quitar_secuelas) p.secuelas = p.secuelas.filter((x) => !e.quitar_secuelas!.includes(x));
         if (e.ceniza_cambio) {
-          p.ceniza = Math.max(0, p.ceniza + e.ceniza_cambio);
+          p.ceniza = Math.max(p.ceniza_fija ?? 0, p.ceniza + e.ceniza_cambio); // las marcas de la furia no se quitan
           cambios.push(`Ceniza ${p.ceniza}`);
         }
         if (e.maestria) {

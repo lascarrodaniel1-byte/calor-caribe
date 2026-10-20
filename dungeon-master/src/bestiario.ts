@@ -121,6 +121,8 @@ export interface EstadoJefe {
   robos: Robo[];
   /** Condiciones que sufre ahora (ver condiciones.ts). */
   condiciones?: string[];
+  /** Marcas de Ceniza permanentes (las que deja la furia de un Berserker). */
+  ceniza?: number;
 }
 
 export const BESTIARIO: Criatura[] = [

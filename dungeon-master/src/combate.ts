@@ -163,6 +163,8 @@ export interface PnjCombate {
   pv_max?: number;
   /** Condiciones que sufre ahora (ver condiciones.ts). */
   condiciones?: string[];
+  /** Marcas de Ceniza permanentes (las que deja la furia de un Berserker). */
+  ceniza?: number;
 }
 
 /** Lo que cada combatiente ha hecho este asalto (acciones de combate y reacción). */
@@ -782,6 +784,26 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let aviso =
     `${icono} ${at.nombre} → ${ob.nombre}: ${resultado === "critico" ? "¡crítico!" : resultado === "torpeza" ? "torpeza" : resultado}` +
     `${ob.tipo === "criatura" ? "" : ` (${t.total} vs CA ${ca})`}${dano ? `, ${dano} de daño` : d.dano && (resultado === "impacto" || resultado === "critico") ? ", la armadura aguanta" : ""}${estadoObj}`;
+  // La furia deja marcas de Ceniza —permanentes— en todo el que hiere (una por individuo y furia); si el herido es otro
+  // personaje, el propio Berserker carga también con una.
+  if (at.tipo === "pj" && at.p.furia?.activa && dano > 0 && ob.nombre !== at.nombre) {
+    const f = (at.p.furia.marcados ??= []);
+    if (!f.some((x) => igual(x, ob.nombre))) {
+      f.push(ob.nombre);
+      let cuenta: number;
+      if (ob.tipo === "pj") { ob.p.ceniza += 1; ob.p.ceniza_fija = (ob.p.ceniza_fija ?? 0) + 1; cuenta = ob.p.ceniza; }
+      else if (ob.tipo === "criatura") cuenta = ob.j.ceniza = (ob.j.ceniza ?? 0) + 1;
+      else cuenta = ob.n.ceniza = (ob.n.ceniza ?? 0) + 1;
+      let m = `🩶 Marca de Ceniza: la furia deja ceniza en la piel de ${ob.nombre} (${cuenta}); no se quita.`;
+      if (ob.tipo === "pj") {
+        at.p.ceniza += 1;
+        at.p.ceniza_fija = (at.p.ceniza_fija ?? 0) + 1;
+        m += ` ${at.nombre} carga también con una (${at.p.ceniza}).`;
+      }
+      lineas.push(m);
+      aviso += `\n${m}`;
+    }
+  }
   // Senda de la Ceniza (nivel 3+): quien golpea cuerpo a cuerpo a un berserker en furia se quema.
   if (ob.tipo === "pj" && ob.p.furia?.activa && ob.p.nivel >= 3 && !distancia && (resultado === "impacto" || resultado === "critico")) {
     const f = tirar("1d4").total;
