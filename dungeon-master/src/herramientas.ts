@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
@@ -256,6 +257,17 @@ const esquemas = {
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
+  }),
+  concurso_compania: z.object({
+    puesto: z.enum(["Hugin", "Munin"]).describe("El puesto de mariscal que se disputa (primero Hugin, cuatro años después Munin)"),
+    candidatos: z.array(z.object({
+      nombre: z.string(),
+      hazanas: z.number().min(0).max(10).optional().describe("0-10; en un PJ se calcula de su fama"),
+      clamor: z.number().min(0).max(10).optional().describe("Votos de la tropa 0-10; en un PJ, si falta, se tira"),
+      combate: z.number().min(0).max(10).describe("Resultado del combate de prueba, 0-10 (llévalo con atacar)"),
+      decision: z.number().min(0).max(10).describe("Decisión de los mariscales, 0-10"),
+    })).min(1),
+    aplicar: z.boolean().optional().describe("true para dejar al ganador (si es PJ) como mariscal en su ficha"),
   }),
   hazana: z.object({
     quienes: z.array(z.string()).min(1).describe("Los personajes que la hicieron"),
@@ -589,6 +601,8 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  concurso_compania:
+    "Puntúa el concurso de méritos de la Compañía del Cuervo Negro (hazañas, clamor de la tropa, combate de prueba y decisión de los mariscales, 0-10 cada uno; mínimo 24 de 40) y dice quién cede el puesto a quién.",
   hazana:
     "Anota una hazaña (una gesta concreta con su magnitud 1-5 y su tono, gloria o infamia) de uno o varios personajes: construye su fama. Sé muy tacaño con las magnitudes altas.",
   coronar_leyenda:
@@ -967,6 +981,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
+      }
+      case "concurso_compania": {
+        const e = validado.data as z.infer<typeof esquemas.concurso_compania>;
+        const texto = concurso(partida, e);
+        return { contenido: texto, aviso: `🪶 ${texto.split("\n").slice(-2)[0]}` };
       }
       case "hazana": {
         const e = validado.data as z.infer<typeof esquemas.hazana>;

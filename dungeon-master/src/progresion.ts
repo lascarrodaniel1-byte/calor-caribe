@@ -70,8 +70,7 @@ export const RANGOS_COMPANIA: { desde: number; rango: string; grado: string; ven
   { desde: 3, rango: "Cuervo", grado: "mercenario hecho", ventaja: "Contratos propios: el DM le ofrece encargos mejor pagados. Puede pedir prestadas armas comunes y armaduras ligeras del arsenal del puesto" },
   { desde: 5, rango: "Garra", grado: "sargento", ventaja: "Puede reclutar a 1d4 Polluelos para una misión (PNJ a sueldo suyo) y manda en las guardias del puesto. Los contratos le pagan el doble que a un Cuervo" },
   { desde: 8, rango: "Corax", grado: "capitán", ventaja: "Manda una escuadra de 4-6 mercenarios por contrato, requisa suministros y una montura, y la Compañía lo respalda ante la ley y la Inquisición. Conoce a los pagadores de la región" },
-  { desde: 11, rango: "Ala Mayor", grado: "comandante", ventaja: "Una vez por campaña puede llamar a refuerzos de la Compañía (una compañía entera, a días de camino). Los señores y las ciudades negocian con él o ella; los desertores lo temen" },
-  { desde: 17, rango: "Aspirante al mando", grado: "candidato a mariscal", ventaja: "Puede presentarse al concurso de méritos de la Compañía cuando se abra uno de los dos puestos de mariscal (Hugin o Munin). Solo ganándolo —tras la renuncia o la muerte de quien lo ocupa— se convierte en Hugin o en Munin y entra en el mando. Hasta entonces es la voz más respetada del Cuervo después de los mariscales" },
+  { desde: 11, rango: "Ala Mayor", grado: "comandante", ventaja: "Una vez por campaña puede llamar a refuerzos de la Compañía (una compañía entera, a días de camino). Los señores y las ciudades negocian con él o ella; los desertores lo temen. Puede concursar por el puesto de mariscal (Hugin o Munin) cuando toque" },
 ];
 
 export function rangoCompania(nivel: number) {
@@ -91,7 +90,7 @@ export function puedeSubir(p: Personaje): boolean {
 
 export function textoProgresion(p: Personaje): string {
   const s = pxSiguiente(p);
-  const rango = p.clase === "Mercenario del Cuervo" ? `\n  Compañía del Cuervo Negro: ${rangoCompania(p.nivel).rango} (${rangoCompania(p.nivel).grado})` : "";
+  const rango = p.clase === "Mercenario del Cuervo" ? `\n  Compañía del Cuervo Negro: ${p.mariscal ? `MARISCAL ${p.mariscal}` : `${rangoCompania(p.nivel).rango} (${rangoCompania(p.nivel).grado})`}` : "";
   const rasgos = p.rasgos?.length ? ` | Rasgos de nivel: ${p.rasgos.join("; ")}` : "";
   return `${rango ? rango.slice(1) + "\n" : ""}  Experiencia: ${pxActual(p)}${s !== null ? `/${s} PX` : " PX (nivel máximo)"}${puedeSubir(p) ? " ⬆ PUEDE SUBIR DE NIVEL (subir_nivel)" : ""}${rasgos}`;
 }

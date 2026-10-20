@@ -65,6 +65,8 @@ export interface Personaje {
   gastados?: Record<string, number>;
   /** Hazañas, fama y, si la hay, la Leyenda (ver leyenda.ts). */
   leyenda?: Leyenda;
+  /** Mariscal de la Compañía del Cuervo Negro (si ganó el concurso). */
+  mariscal?: "Hugin" | "Munin";
   /** Rasgos de clase ganados al subir de nivel. */
   rasgos?: string[];
   muerte?: { exitos: number; fallos: number; estable: boolean; desventaja?: boolean };

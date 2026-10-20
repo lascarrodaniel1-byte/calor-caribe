@@ -744,6 +744,87 @@ export const BESTIARIO: Criatura[] = [
     ],
     botin: "Colmillo de wyverno engarzado en su lanza (arma encantada, +2); el diario donde apunta cómo mató a cada leyenda y a quién busca ahora",
   },
+  {
+    nombre: "Hugin, el Pensamiento",
+    temple: "Humano del Faro",
+    personalidad: ["calculador", "prudente"],
+    blindaje: ["cota_malla", "coraza", "yelmo", "gorjal"],
+    categoria: "jefe",
+    peligro: 4,
+    region: "Aldenmar (cuartel general de la Compañía del Cuervo Negro)",
+    descripcion:
+      "Mariscal de la Compañía del Cuervo Negro. Un hombre de pelo gris cortado al rape y mirada de contable, con una pluma negra en la gorguera y las manos siempre quietas. Nunca levanta la voz. Ve la guerra como un tablero.",
+    trasfondo: {
+      origen:
+        "Es uno de los dos mariscales que dirigen la Compañía del Cuervo Negro (el otro es Munin). Canon: el puesto solo se ocupa por renuncia o muerte, pero está obligado a ceder el cargo en un concurso de méritos cada 8 años (le toca ceder primero a él; cuándo lo decide el DM). Si ningún aspirante está a la altura, puede seguir o elegir a alguien capaz; si se negara a ceder, Munin debe deponerlo por la fuerza.",
+      propuesto: [
+        "Carácter (mío): el PENSAMIENTO. Estratega frío y paciente: piensa tres jugadas por delante, no actúa sin un plan y no se enfada nunca (la ira es un lujo). Trata los contratos como piezas de ajedrez y a los mercenarios como la máquina que hace girar la Compañía, y por eso los cuida: un cuervo que muere sin sentido es un error de cálculo",
+        "Su defecto (mío): subestima lo que no se puede calcular —el afecto, el rencor, la fe—, y le cuesta perdonar a quien rompe un plan suyo aunque tenga razón",
+        "Con Munin (mío): se respetan y discuten sin parar. Hugin dice «qué conviene»; Munin dice «qué nos debemos». Cada uno cree que el otro es lo que le falta a la Compañía",
+        "Cómo gana (mío): no presenta combate si puede evitarlo; cuando lo hace, ya ha decidido el resultado antes de empezar (terreno, refuerzos, un arquero escondido). Los aspirantes que lo impresionan son los que le sorprenden con un plan mejor que el suyo",
+        "Ante el concurso (mío): cederá el puesto sin dramatismo si el aspirante le gana limpiamente en méritos; si se siente traicionado por un plan, pondrá a prueba a los candidatos con una trampa antes de votar",
+      ],
+      abierto: ["¿Cómo se llamaba antes de ser Hugin?", "¿Cuántos años lleva en el puesto y quién fue su antecesor?"],
+      pistas: ["Un tablero de piedra tallado en la mesa de su despacho, con fichas de cuervos negros", "Los mercenarios dicen: «Hugin ya lo había pensado»"],
+    },
+    ca: 19,
+    pv: "135",
+    velocidad: "9 m",
+    atributos: "FUE 16 DES 14 CON 16 INT 20 SAB 16 CAR 16",
+    ataques: ["Espada larga: +10, 2d8+5 cortante (x2 con la acción de atacar)", "Ballesta pesada (24/96 m): +8, 2d10+2 perforante"],
+    rasgos: [
+      "Estratega: al empezar el combate, él y sus aliados a 9 m tienen +2 a la iniciativa; su bando no puede ser sorprendido",
+      "Plan trazado (acción adicional, 1/combate): elige un rival; los ataques de sus aliados contra él tienen ventaja hasta el final del siguiente asalto",
+      "Ya lo había pensado: reacción, 2/combate; convierte en fallo un ataque que le impacta (su plan lo había previsto)",
+      "Resistencia legendaria (1/día)",
+      "Nunca pierde la calma: inmune a asustado",
+    ],
+    habilidades: [
+      { nombre: "Orden de retirada", descripcion: "Grita una orden: hasta 6 aliados se desenganchan y se mueven sin provocar ataques de oportunidad." },
+      { nombre: "Golpe calculado", descripcion: "Un único golpe contra un rival que haya estudiado un asalto entero.", salvacion: "con", cd: 17, dano: "4d10+5", tipo_dano: "cortante", mitad_si_exito: true },
+    ],
+    botin: "El sello de mariscal de la Compañía (abre cualquier cuartel); el cuaderno donde apunta cada contrato y su plan de reserva",
+  },
+  {
+    nombre: "Munin, la Memoria",
+    temple: "Humano del Faro",
+    personalidad: ["sereno", "paranoico"],
+    blindaje: ["gambeson", "cota_malla", "almofar"],
+    categoria: "jefe",
+    peligro: 4,
+    region: "Aldenmar (cuartel general de la Compañía del Cuervo Negro)",
+    descripcion:
+      "Mariscal de la Compañía del Cuervo Negro. Una mujer ancha de hombros, de pelo trenzado con plumas negras, que lleva siempre un libro de cuentas colgado del cinto. Saluda a cada mercenario por su nombre y por el nombre de su último contrato.",
+    trasfondo: {
+      origen:
+        "Es una de las dos mariscales que dirigen la Compañía del Cuervo Negro (el otro es Hugin). Canon: el puesto solo se ocupa por renuncia o muerte, pero está obligada a ceder el cargo en un concurso de méritos cada 8 años (le toca ceder cuatro años después de Hugin). Si ningún aspirante está a la altura, puede seguir o elegir a alguien capaz; si se negara a ceder, Hugin debe deponerla por la fuerza.",
+      propuesto: [
+        "Carácter (mío): la MEMORIA. Guarda el libro de la Compañía: cada nombre, cada deuda, cada contrato cumplido o roto, cada cuervo caído. Es cálida con la tropa (se acuerda de sus cumpleaños y de sus muertos) e implacable con quien rompe un contrato o traiciona al Código: nunca olvida y nunca perdona del todo",
+        "Su defecto (mío): vive en el pasado y desconfía del cambio y de los desconocidos; le cuesta ceder poder porque teme que se pierda la memoria de la Compañía",
+        "Con Hugin (mío): se respetan y discuten sin parar. Munin dice «qué nos debemos»; Hugin dice «qué conviene». Cada uno cree que el otro es lo que le falta a la Compañía",
+        "Cómo gana (mío): en combate es de las que aguantan; no pierde un duelo porque se acuerda de cada golpe del rival. Los aspirantes que la convencen son los que honran a los caídos y cumplen su palabra",
+        "Ante el concurso (mío): su voto pesa por el clamor de la tropa, que la quiere; pondrá a prueba si el aspirante recuerda a quienes sirvieron antes que él",
+      ],
+      abierto: ["¿Cómo se llamaba antes de ser Munin?", "¿Cuántos años lleva en el puesto y quién fue su antecesora?"],
+      pistas: ["Un libro de cuentas con las esquinas quemadas, lleno de nombres tachados y de nombres con una pluma dibujada al lado", "Los mercenarios dicen: «Munin se acuerda»"],
+    },
+    ca: 18,
+    pv: "125",
+    velocidad: "9 m",
+    atributos: "FUE 18 DES 12 CON 18 INT 16 SAB 18 CAR 18",
+    ataques: ["Hacha de batalla: +9, 2d8+6 cortante (x2 con la acción de atacar)", "Hachas de mano arrojadizas (6/18 m): +9, 1d6+6 cortante"],
+    rasgos: [
+      "Memoria de cuervo: ventaja en cualquier prueba para reconocer o recordar a una persona, un contrato o un trato; no se olvida de quien la agravió",
+      "Presente la tropa: sus aliados a 9 m tienen ventaja en salvaciones contra asustado y hechizado (los muertos y las deudas los sostienen)",
+      "Aguante: reacción, 2/combate; reduce a la mitad el daño de un ataque que ve",
+      "Resistencia legendaria (1/día)",
+    ],
+    habilidades: [
+      { nombre: "Cuentas pendientes", descripcion: "Marca a un rival que haya herido a un aliado de la Compañía: sus ataques contra él tienen ventaja hasta que caiga o ella lo haga.", condicion: "marcado por la memoria de Munin" },
+      { nombre: "Golpe de balance", descripcion: "Un único golpe que cobra todo lo que le deben.", salvacion: "fue", cd: 17, dano: "4d10+6", tipo_dano: "cortante", mitad_si_exito: true },
+    ],
+    botin: "El libro de cuentas de la Compañía (cada nombre, cada deuda: vale mucho para quien lo quiera, y para quien lo quiera destruir); el hacha de batalla",
+  },
 ];
 
 export function buscarCriatura(nombre: string): Criatura | undefined {
