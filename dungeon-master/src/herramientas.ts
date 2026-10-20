@@ -34,6 +34,7 @@ import {
 import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { darExperiencia, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
@@ -254,6 +255,15 @@ const esquemas = {
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
+  }),
+  usar_recurso: z.object({
+    quien: z.string(),
+    recurso: z.string().optional().describe("Segundo aliento, Acción súbita… (omítelo con accion ver para listar)"),
+    accion: z.enum(["usar", "ver"]).optional(),
+  }),
+  descanso: z.object({
+    tipo: z.enum(["corto", "largo"]).describe("corto: 1 hora; largo: 8 horas"),
+    quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
   }),
   caida: z.object({
     quien: z.string(),
@@ -564,6 +574,10 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  usar_recurso:
+    "Gasta un uso de un rasgo de clase con usos limitados (Segundo aliento y Acción súbita del Mercenario…) y aplica su efecto; con accion ver lista los usos que quedan.",
+  descanso:
+    "Descanso corto (1 h) o largo (8 h) del grupo: recuperan los usos de los rasgos de clase y bajan el calor y el aliento. No curan heridas ni PV.",
   caida:
     "Una caída desde cierta altura: 1d6 de daño contundente por cada 3 m (máx. 20d6), derriba y puede herir.",
   experiencia:
@@ -707,7 +721,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           magia: previo?.magia ?? magiaInicial(e.clase, e.escuelas_magia, don),
         });
         partida.personajes[p.nombre] = p;
-        const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." : ""}` : "";
+        const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." + (e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : "") : ""}` : "";
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
       }
       case "modificar_personaje": {
@@ -934,6 +948,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
+      }
+      case "usar_recurso": {
+        const e = validado.data as z.infer<typeof esquemas.usar_recurso>;
+        const texto = usarRecurso(partida, { ...e, recurso: e.recurso ?? "" });
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `💪 ${texto.split("\n")[0]}` };
+      }
+      case "descanso": {
+        const e = validado.data as z.infer<typeof esquemas.descanso>;
+        const texto = descanso(partida, e);
+        return { contenido: texto, aviso: `🛏 Descanso ${e.tipo}: se recuperan fuerzas y rasgos.` };
       }
       case "caida": {
         const e = validado.data as z.infer<typeof esquemas.caida>;

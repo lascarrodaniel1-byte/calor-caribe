@@ -144,6 +144,8 @@ export interface MagiaPersonaje {
   anios_perdidos: number;
   /** Tramos de 10 años ya descontados de FUE y DES. */
   tramos_vejez: number;
+  /** Nació con don arcano que aún duerme (el Mercenario lo despierta al subir de nivel). */
+  don?: boolean;
 }
 
 /**
@@ -178,6 +180,8 @@ export function magiaInicial(clase: string, escuelasElegidas?: Escuela[], don = 
     const hechizos = HECHIZOS.filter((h) => escuelas.includes(h.escuela) && h.circulo <= 1).map((h) => h.nombre);
     return { maestria: "adepto", escuelas, hechizos, atributo: "int", ...vacia };
   }
+  // El Mercenario es la clase más corriente: aunque tenga el don, la magia no despierta hasta que suba de nivel.
+  if (base && don && clase === "Mercenario del Cuervo") return { maestria: "profano", escuelas: [], hechizos: [], atributo: base.atributo, don: true, ...vacia };
   if (base && don) return { maestria: base.maestria, escuelas: [...base.escuelas], hechizos: [...base.hechizos], atributo: base.atributo, ...vacia };
   return { maestria: "profano", escuelas: [], hechizos: [], atributo: base?.atributo ?? "int", ...vacia };
 }

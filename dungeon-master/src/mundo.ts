@@ -114,7 +114,13 @@ export const CLASES: Clase[] = [
     dadoGolpe: 10,
     principal: "FUE o DES",
     salvaciones: "FUE, CON",
-    rasgos: ["Estilo de combate", "Segundo aliento: acción adicional para recuperar 1d10 + nivel PV (no cierra heridas)", "Competencia con todas las armas, armaduras y escudos"],
+    rasgos: [
+      "Estilo de combate (oficio de la Compañía): +1 a todo ataque con armas",
+      "Segundo aliento (1 por descanso corto o largo): acción adicional; recupera 1d10 + nivel PV (no cierra heridas)",
+      "Competencia con todas las armas, armaduras y escudos",
+      "Pluma del Cuervo Negro (propuesto, pendiente de confirmar): pertenece a la Compañía del Cuervo Negro y la lleva en el sombrero o el hombro. En cualquier campamento o puesto de la Compañía tiene cama, comida y rumores de contratos; los demás mercenarios y desertores lo tratan como a uno de los suyos (ventaja en Persuasión e Intimidación con ellos)",
+      "Código del Cuervo (propuesto, pendiente de confirmar): la Compañía no pregunta por la raza ni por el pasado, y cobra a quien rompe un contrato o alza la mano contra otro cuervo; a cambio, de vez en cuando la Compañía reclama un servicio",
+    ],
     equipo: "Cota de mallas, espada larga, escudo, ballesta ligera y 20 virotes, petate, 10 po",
   },
   {

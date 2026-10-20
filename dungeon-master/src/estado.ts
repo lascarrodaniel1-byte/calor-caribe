@@ -1,4 +1,5 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
+import { textoRecursos } from "./recursos.js";
 import { textoProgresion } from "./progresion.js";
 import { textoMuerte } from "./muerte.js";
 import { textoEfectos } from "./condiciones.js";
@@ -58,6 +59,8 @@ export interface Personaje {
   /** Salvaciones contra muerte mientras está a 0 PV (ver muerte.ts). */
   /** Puntos de experiencia (si falta, los del umbral de su nivel). */
   px?: number;
+  /** Usos gastados de rasgos con usos limitados (ver recursos.ts). */
+  gastados?: Record<string, number>;
   /** Rasgos de clase ganados al subir de nivel. */
   rasgos?: string[];
   muerte?: { exitos: number; fallos: number; estable: boolean; desventaja?: boolean };
@@ -180,6 +183,7 @@ export function fichaTexto(p: Personaje): string {
     })(),
     textoMuerte(p) ? `  ${textoMuerte(p)}` : "",
     textoProgresion(p),
+    textoRecursos(p),
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

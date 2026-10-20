@@ -2,6 +2,7 @@
 // los rasgos de clase hasta el nivel 5. Más allá del 5 el programa sigue dando PV, competencia y aumentos, y el DM
 // diseña los rasgos de clase nuevos.
 import { tirar } from "./dados.js";
+import { despertarMagia } from "./magia.js";
 import type { Partida, Personaje } from "./estado.js";
 import { CLASES } from "./mundo.js";
 import { ATRIBUTOS, mod, valor, type Atributo } from "./reglas.js";
@@ -15,7 +16,7 @@ export const PX_PELIGRO: Record<number, number> = { 1: 50, 2: 200, 3: 450, 4: 70
 
 export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   "Mercenario del Cuervo": {
-    2: ["Acción súbita: una vez por descanso corto, una acción adicional en su turno"],
+    2: ["Acción súbita (1 por descanso corto): una acción adicional en su turno"],
     3: ["Veterano de compañía: los críticos con 19-20 en el d20"],
     4: [],
     5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"],
@@ -167,7 +168,13 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   p.pv_max += ganado;
   if (p.pv > 0) p.pv += ganado; // subir de nivel no cura a quien está a 0 PV
   if (p.px === undefined || p.px < PX_NIVEL[nuevo - 1]) p.px = PX_NIVEL[nuevo - 1];
-  const rasgos = RASGOS_NIVEL[p.clase]?.[nuevo] ?? [];
+  const rasgos = [...(RASGOS_NIVEL[p.clase]?.[nuevo] ?? [])];
+  // El Mercenario con don arcano lo despierta al subir de nivel (antes dormía).
+  if (p.clase === "Mercenario del Cuervo" && nuevo === 2 && p.magia?.don && p.magia.maestria === "profano") {
+    p.magia.maestria = "iniciado";
+    despertarMagia(p.clase, p.magia);
+    rasgos.push("Don despierto: nació con talento arcano y ahora despierta. Es iniciado en Protección con Piel de hierro (SAB). Su magia, como siempre, cobra un precio");
+  }
   p.rasgos = [...(p.rasgos ?? []), ...rasgos.map((r) => `nv. ${nuevo}: ${r}`)];
   const comp = 2 + Math.floor((nuevo - 1) / 4);
   return [
