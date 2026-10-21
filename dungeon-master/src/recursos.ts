@@ -14,10 +14,13 @@ export interface DefRecurso {
   max: (p: Personaje) => number;
   recarga: "corto" | "largo";
   /** Qué ocurre al usarlo (además de gastar el uso). */
-  efecto: (p: Personaje) => string;
+  efecto: (p: Personaje, partida?: Partida) => string;
 }
 
 // Otros módulos (furia.ts) añaden aquí los suyos al cargarse, para no crear ciclos de importación.
+/** Ganchos de otros módulos al descansar (p. ej. rellenar la reserva de imposición de manos). */
+export const ALDESCANSAR: ((p: Personaje, tipo: "corto" | "largo") => void)[] = [];
+
 export const RECURSOS_CLASE: Record<string, DefRecurso[]> = {
   "Mercenario del Cuervo": [
     {
@@ -86,7 +89,7 @@ export function usarRecurso(partida: Partida, d: { quien: string; recurso: strin
   if (p.condiciones.includes("muerto") || p.pv <= 0) throw new Error(`${p.nombre} está a 0 PV o muerto: no puede usar ${r.def.nombre}.`);
   if (efectos(p.condiciones).incapacitado) throw new Error(`${p.nombre} está incapacitado: no puede usar ${r.def.nombre}.`);
   if (r.gastados >= r.max) throw new Error(`${p.nombre} ya gastó ${r.def.nombre} (0/${r.max}); lo recupera con un ${r.def.recarga === "corto" ? "descanso corto o largo" : "descanso largo"}.`);
-  const efecto = r.def.efecto(p); // si falla (p. ej. ya está en furia), no se gasta el uso
+  const efecto = r.def.efecto(p, partida); // si falla (p. ej. ya está en furia), no se gasta el uso
   (p.gastados ??= {})[r.def.nombre] = r.gastados + 1;
   return `${efecto} Quedan ${r.max - r.gastados - 1}/${r.max}.`;
 }
@@ -101,6 +104,7 @@ export function descanso(partida: Partida, d: { tipo: "corto" | "largo"; quienes
     if (p.pv <= 0) { lineas.push(`${p.nombre}: está a 0 PV; no descansa (necesita ser estabilizado y atendido).`); continue; }
     const rec = recursosDe(p).filter((x) => d.tipo === "largo" || x.def.recarga === "corto");
     for (const x of rec) if (x.gastados) delete p.gastados![x.def.nombre];
+    for (const g of ALDESCANSAR) g(p, d.tipo);
     descansarMagia(p, 0, "normal"); // el calor y el aliento bajan con la calma
     lineas.push(`${p.nombre}: ${rec.filter((x) => x.gastados).map((x) => x.def.nombre).join(", ") || "sin usos que recuperar"} recuperado${rec.some((x) => x.gastados) ? "s" : ""}; calor y aliento a cero.`);
   }

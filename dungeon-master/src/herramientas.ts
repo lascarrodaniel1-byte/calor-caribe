@@ -35,6 +35,7 @@ import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaI
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
+import { gastarReserva, imponerManos, juramento, romperJuramento } from "./juramento.js";
 import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
@@ -259,6 +260,21 @@ const esquemas = {
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
   }),
+  juramento: z.object({
+    quien: z.string(),
+    accion: z.enum(["jurar", "añadir_voto", "ver", "expiar"]),
+    votos: z.array(z.string()).optional().describe("Verdad, Amparo, Lealtad, Luz, Descanso, Merced (hasta 5 en total)"),
+  }),
+  romper_juramento: z.object({
+    quien: z.string(),
+    voto: z.string().describe("El voto que viola"),
+    motivo: z.string().describe("Qué hizo, en una frase"),
+  }),
+  imposicion_manos: z.object({
+    quien: z.string().describe("El Caballero"),
+    objetivo: z.string().describe("A quién cura (puede ser él mismo)"),
+    pv: z.number().int().min(1).max(500).describe("PV que gasta de su reserva y devuelve"),
+  }),
   concurso_compania: z.object({
     puesto: z.enum(["Hugin", "Munin"]).describe("El puesto de mariscal que se disputa (primero Hugin, cuatro años después Munin)"),
     candidatos: z.array(z.object({
@@ -450,6 +466,7 @@ const esquemas = {
     atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
     bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
+    castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y suma dados de daño radiante"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
@@ -602,6 +619,12 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  juramento:
+    "Caballero Juramentado: jura (1-3 votos de Ka'i al crear la ficha), añade votos (hasta 5), consulta o expía un juramento roto. El juramento le da su poder mágico: más votos, más poder... y más duele romperlo.",
+  romper_juramento:
+    "Un Caballero viola uno de sus votos: consecuencias según cuántos votos tenía jurados, de la debilidad a que su propio poder lo queme y pierda la magia para siempre.",
+  imposicion_manos:
+    "Imposición de manos: el Caballero gasta PV de su reserva para curar PV a alguien (sin Ceniza). Para cerrar una herida usa tratar_herida con magia divina (5 PV de la reserva).",
   concurso_compania:
     "Puntúa el concurso de méritos de la Compañía del Cuervo Negro (hazañas, clamor de la tropa, combate de prueba y decisión de los mariscales, 0-10 cada uno; mínimo 24 de 40) y dice quién cede el puesto a quién.",
   hazana:
@@ -845,6 +868,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`${p.nombre} no tiene la herida ${e.herida}. Heridas abiertas: ${hay}`);
         }
         const sanador = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.sanador.toLowerCase());
+        if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, 5); // cerrar una herida cuesta 5 PV de su reserva
         const texto = tratar(p, h, { ...e, sanador, nombre_sanador: e.sanador });
         return { contenido: `${texto}\n\nFicha actual:\n${fichaTexto(p)}`, aviso: `🩹 ${texto}` };
       }
@@ -995,6 +1019,21 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
+      }
+      case "juramento": {
+        const e = validado.data as z.infer<typeof esquemas.juramento>;
+        const texto = juramento(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `☀ ${texto.split("\n")[0]}` };
+      }
+      case "romper_juramento": {
+        const e = validado.data as z.infer<typeof esquemas.romper_juramento>;
+        const texto = romperJuramento(partida, e);
+        return { contenido: texto, aviso: `⛓ ${texto.split("\n").slice(0, 2).join("\n")}` };
+      }
+      case "imposicion_manos": {
+        const e = validado.data as z.infer<typeof esquemas.imposicion_manos>;
+        const texto = imponerManos(partida, e);
+        return { contenido: texto, aviso: `🙌 ${texto.split("\n")[0]}` };
       }
       case "concurso_compania": {
         const e = validado.data as z.infer<typeof esquemas.concurso_compania>;

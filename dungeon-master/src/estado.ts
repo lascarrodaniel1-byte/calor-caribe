@@ -1,6 +1,8 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
 import type { Leyenda } from "./leyenda.js";
 import { textoLeyenda } from "./leyenda.js";
+import type { Juramento } from "./juramento_base.js";
+import { textoJuramento } from "./juramento_base.js";
 import { textoRecursos } from "./recursos.js";
 import { textoProgresion } from "./progresion.js";
 import { textoMuerte } from "./muerte.js";
@@ -69,6 +71,8 @@ export interface Personaje {
   furia?: { activa: boolean; asaltos: number; marcados?: string[] };
   /** Marcas de Ceniza que no se pueden quitar (las de la furia). */
   ceniza_fija?: number;
+  /** Juramento del Caballero Juramentado (ver juramento_base.ts). */
+  juramento?: Juramento;
   /** Mariscal de la Compañía del Cuervo Negro (si ganó el concurso). */
   mariscal?: "Hugin" | "Munin";
   /** Rasgos de clase ganados al subir de nivel. */
@@ -195,6 +199,7 @@ export function fichaTexto(p: Personaje): string {
     textoProgresion(p),
     textoRecursos(p),
     textoLeyenda(p),
+    textoJuramento(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",

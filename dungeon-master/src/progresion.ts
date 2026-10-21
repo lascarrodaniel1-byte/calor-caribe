@@ -28,8 +28,9 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     6: ["Furia (4 usos por descanso largo)"],
   },
   "Caballero Juramentado": {
-    2: ["Estilo de combate", "Castigo divino: al impactar, gasta 5 PV de su imposición de manos para +2d8 de daño radiante (+1d8 contra no-muertos y malditos); es magia divina: da Ceniza"],
-    3: ["Salud divina: inmune a las enfermedades comunes (no a la Podre)", "Voto del juramento: su voto concede una ventaja concreta mientras lo cumple (el DM la fija según el dios muerto)"],
+    2: ["Estilo de combate", "Castigo divino (atacar {castigo: true}): al impactar, gasta 5 PV de su reserva para +2d8 de daño radiante (3d8 con 3 votos, 4d8 con 5; un dado más contra no-muertos y malditos)"],
+    3: ["Salud divina: casi inmune a las infecciones comunes (+5 a esas salvaciones; no a la Podre)", "Ventaja de cada voto: mientras cumple un voto jurado, obtiene su ventaja concreta (la ficha la muestra)"],
+    4: ["Sentido divino mayor: su alcance sube a 36 m"],
     5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"],
   },
   "Cazador de Brujas": {

@@ -148,11 +148,12 @@ export const CLASES: Clase[] = [
     principal: "FUE y CAR",
     salvaciones: "SAB, CAR",
     rasgos: [
-      "Sentido divino: detecta no-muertos y corruptos a 18 m",
-      "Imposición de manos: reserva de 5 × nivel PV. Restaurar PV es libre; usarla para tratar una herida cuenta como magia divina (genera Ceniza)",
-      "Juramento a un dios muerto: debe nombrarlo y elegir un voto que no puede romper",
+      "Juramento a Ka'i (honor y fe): le da su poder mágico. Jura de 1 a 5 votos de Ka'i (Verdad, Amparo, Lealtad, Luz, Descanso, Merced); cuantos más, más fuerte su magia —y más grave romperlos, como una liga estirada—: de la debilidad a que su propio poder lo queme y pierda la magia para siempre. Sin juramento no tiene poder",
+      "Sentido divino (CAR+1 usos por descanso largo): detecta no-muertos y corruptos a 18 m (36 m desde el nivel 4)",
+      "Imposición de manos: reserva de PV de nivel × (3 + 2 × votos). Curar PV es libre y no deja Ceniza; cerrar una herida cuesta 5 PV de la reserva y cuenta como magia divina",
+      "Ceniza menor: gracias al juramento, su magia deja una marca de Ceniza de cada cuatro usos",
     ],
-    equipo: "Cota de mallas, espada larga, escudo, símbolo de un dios muerto, 5 jabalinas, 8 po",
+    equipo: "Cota de mallas, espada larga, escudo, símbolo de Ka'i (un sol de hierro), 5 jabalinas, 8 po",
   },
   {
     nombre: "Cazador de Brujas",
@@ -260,6 +261,7 @@ Dark fantasy: violencia con peso, recursos escasos, moral gris, esperanza difíc
 ## Facciones
 - **La Inquisición de la Llama Gris**: purifican con fuego. Persiguen la brujería, a los varg y a los nacidos pálidos. Necesarios y temidos.
 - **Las Hermanas de la Sutura**: orden de cirujanas y sanadoras. Sus enfermerías son las únicas fiables del reino; cobran caro, en dinero o en favores.
+- **Los Caballeros Juramentados** juran ante Ka'i, el dios del sol (muerto): honor y fe. Su poder viene del juramento y se rompe si violan un voto.
 - **Æsir** (secreto del DM): el dios más antiguo. Su fuego sobrevive como vestigio en los Berserkers de Ceniza, elegidos desde niños, que lo invocan en su furia.
 - **La Compañía del Cuervo Negro**: mercenarios que luchan por quien pague, sin preguntas sobre la raza ni el pasado. Funciona como una organización, con rangos (Polluelo, Cuervo, Garra, Corax, Ala Mayor) y cuarteles en varios lugares, todos de la misma Compañía; su cuartel general está en Aldenmar. La dirigen dos mariscales, **Hugin y Munin**, juntos. Su puesto solo se ocupa por renuncia o muerte del mariscal, pero ambos están obligados a ceder el cargo mediante un **concurso de méritos** que se celebra cada 4 años, alternando: un concurso para el puesto de Hugin, cuatro años después para el de Munin, y así (cada puesto se disputa cada 8 años). Concursa cualquier Ala Mayor; el mérito se mide por las hazañas, el clamor de la tropa (votos), la fuerza en combate (un combate de prueba) y la decisión de los mariscales. Si los aspirantes no están a la altura, Hugin o Munin siguen o eligen a quien consideren capaz; si un mariscal se niega a ceder, el otro debe deponerlo ahí mismo por la fuerza.
 - **La Corte Pálida**: nobleza vampírica que trata a las aldeas de la Marca como ganado… y, a su manera, las protege de cosas peores. (Secreto del DM: la unificó Dracone, el «Primus Imperatus», el primer regente pálido; hoy los pálidos forman parte de la orden de su hija, Ysolde, que lo mató con su propia mano, tras una fiera pelea y absorbiendo su esencia vital, en un golpe de estado después de la Caída: lo veía poco ambicioso y contrario a una idea imperialista que Dracone rechazaba por ética (su raza era demasiado civilizada y podía desatar barbarie). Ysolde quiere someter primero la Marca Hueca y después Velmora, con Aldenmar como premio.)

@@ -12,6 +12,8 @@ import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
 import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
+import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js";
+import { gastarReserva, usoDivino } from "./juramento.js";
 import { danoEnSuelo } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
@@ -491,6 +493,8 @@ export interface DatosAtaque {
   apuntar?: Ubicacion | "hueco";
   /** Cobertura del objetivo: media (+2 CA), tres_cuartos (+5) o total (no se le puede atacar). */
   cobertura?: "media" | "tres_cuartos" | "total";
+  /** Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y añade dados de daño radiante. */
+  castigo?: boolean;
   /** Es un ataque hecho como reacción (en turno ajeno): no cuenta como su turno. */
   reaccion?: boolean;
 }
@@ -582,6 +586,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const primerAsalto = combate?.ronda === 1;
   const sorprendido = (n: string) => primerAsalto && !!combate?.sorprendidos?.some((x) => igual(x, n));
   // Primero las validaciones: si el ataque no puede hacerse, no se gasta nada (ni la ayuda ni la esquiva).
+  if (d.castigo) {
+    if (at.tipo !== "pj" || !esCaballero(at.p)) throw new Error("El castigo divino es solo del Caballero Juramentado.");
+    if (at.p.nivel < 2) throw new Error(`${at.nombre} aún no tiene el castigo divino (nivel 2).`);
+    if (!d.dano) throw new Error("El castigo divino suma dados al daño del ataque: pasa dano.");
+    if (!juramentoActivo(at.p)) throw new Error(`${at.nombre} no tiene poder: ${at.p.juramento ? "su juramento está roto o perdido" : "aún no ha jurado"}.`);
+    if ((at.p.juramento?.reserva ?? 0) < 5) throw new Error(`${at.nombre} no tiene 5 PV en su reserva de imposición de manos para el castigo divino.`);
+  }
   const noPuede = puedeActuar(at);
   if (noPuede) throw new Error(`${noPuede}: no puede atacar.`);
   if (sorprendido(at.nombre)) throw new Error(`${at.nombre} está sorprendido: no puede actuar en el primer asalto. Cuando empiece el siguiente, usa siguiente_asalto.`);
@@ -697,7 +708,17 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (d.dano && (resultado === "impacto" || resultado === "critico" || resultado === "roce")) {
     // En furia, +2 al daño cuerpo a cuerpo.
     const furiaMas = at.tipo === "pj" && at.p.furia?.activa && !distancia ? 2 : 0;
-    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano) : d.dano) + (furiaMas ? `+${furiaMas}` : ""));
+    // Castigo divino: dados de daño radiante (más contra no-muertos y malditos); gasta 5 PV de la reserva al impactar.
+    let castigoStr = "";
+    if (d.castigo && at.tipo === "pj") {
+      const maldito = ob.tipo === "criatura" && /no-muerto|vampiro|espectro/i.test(`${ob.j.definicion.temple ?? ""} ${ob.j.definicion.nombre}`);
+      const descanso = maldito && at.p.nivel >= 3 && at.p.juramento?.votos.includes("descanso");
+      castigoStr = `+${dadosCastigo(at.p) + (maldito ? 1 : 0)}d8${descanso ? "+1d6" : ""}`;
+      gastarReserva(at.p, 5);
+      const uso = usoDivino(at.p);
+      lineas.push(`☀ Castigo divino: +${castigoStr.slice(1)} de daño radiante${maldito ? " (contra lo maldito, un dado más)" : ""}; gasta 5 PV de su reserva (${at.p.juramento!.reserva}). ${uso}`);
+    }
+    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr) : d.dano + castigoStr) + (furiaMas ? `+${furiaMas}` : ""));
     if (furiaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
     lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);

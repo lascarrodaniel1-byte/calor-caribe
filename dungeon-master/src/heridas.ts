@@ -174,7 +174,12 @@ const SECUELAS: Record<Zona, { menor: string[]; permanente: string[] }> = {
 };
 
 const NORMAL: RasgosCuracion = { infeccion: 0, recuperacion: 0, inmunePodre: false, magia: "normal", levesRapidas: false };
-const rasgos = (p: Personaje) => raza(p.raza)?.curacion ?? NORMAL;
+const rasgos = (p: Personaje) => {
+  const base = raza(p.raza)?.curacion ?? NORMAL;
+  // Salud divina (Caballero Juramentado, nivel 3+, con el juramento en pie): casi inmune a las infecciones comunes (no a la Podre).
+  const j = p.juramento;
+  return p.clase === "Caballero Juramentado" && p.nivel >= 3 && j && !j.roto && !j.perdido ? { ...base, infeccion: base.infeccion + 5 } : base;
+};
 const modCON = (p: Personaje) => Math.floor((valor(p, "con") - 10) / 2);
 const signo = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 const esBarbero = (p?: Personaje) => p?.clase === "Barbero-Cirujano";
@@ -415,9 +420,18 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
     case "magia divina": {
       if (r.magia === "no_funciona") return `La magia divina no tiene efecto sobre ${p.nombre} (${p.raza}). No se gasta Ceniza.`;
       if (h.magia_usada) return `La herida ${h.id} ya recibió magia divina; no responde una segunda vez.`;
-      const ceniza = r.magia === "doble" ? 2 : 1;
+      let ceniza = r.magia === "doble" ? 2 : 1;
+      // Un Caballero con el juramento en pie deja solo una marca de Ceniza de cada cuatro usos.
+      const cj = d.sanador?.juramento;
+      if (d.sanador?.clase === "Caballero Juramentado" && cj && !cj.roto && !cj.perdido) {
+        cj.carga = (cj.carga ?? 0) + 1;
+        if (cj.carga % 4 !== 0) {
+          log.push(`La luz de Ka'i protege: esta vez no deja Ceniza (${cj.carga % 4}/4 hasta la próxima marca).`);
+          ceniza = 0;
+        } else cj.carga = 0;
+      }
       p.ceniza += ceniza;
-      log.push(`${p.nombre} gana ${ceniza} de Ceniza (total ${p.ceniza}).`);
+      if (ceniza) log.push(`${p.nombre} gana ${ceniza} de Ceniza (total ${p.ceniza}).`);
       if (h.podre) {
         h.sangrando = false;
         h.magia_usada = true;

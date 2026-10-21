@@ -265,6 +265,11 @@ function aniosDe(circulo: number, escuela: Escuela): number {
 export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   const m = p.magia;
   if (!m || m.maestria === "profano") return `${p.nombre} no sabe magia: necesita un maestro, un grimorio o un objeto que la contenga.`;
+  if (p.clase === "Caballero Juramentado") {
+    if (!p.juramento) return `${p.nombre} aún no ha jurado: su poder viene del juramento.`;
+    if (p.juramento.perdido) return `${p.nombre} perdió su juramento para siempre: no puede usar magia divina.`;
+    if (p.juramento.roto) return `${p.nombre} tiene el juramento roto (${p.juramento.roto.voto}): su poder calla hasta que expíe.`;
+  }
   const h = d.hechizo_nuevo ?? (d.hechizo ? buscarHechizo(d.hechizo) : undefined);
   if (!h) throw new Error(`No conozco el hechizo "${d.hechizo}". Usa uno de la lista (consultar_reglas magia) o descríbelo con hechizo_nuevo.`);
   if (!m.escuelas.includes(h.escuela)) throw new Error(`${p.nombre} no domina la escuela de ${h.escuela} (domina: ${m.escuelas.join(", ") || "ninguna"}).`);
