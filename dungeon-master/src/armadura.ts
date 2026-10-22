@@ -72,7 +72,7 @@ export const ARMAS: Arma[] = [
   { nombre: "espadón", patron: /espad[oó]n|mandoble|espada a dos manos|montante/i, tipo: "corte", penetracion: 1 },
   { nombre: "espada", patron: /espada|sable|alfanje|falcata|cimitarra|filo/i, tipo: "corte", penetracion: 0 },
   { nombre: "lanza", patron: /lanza|pica|jabalina|venablo|tridente|horca/i, tipo: "punta", penetracion: 1 },
-  { nombre: "flecha", patron: /flecha|arco|dardo/i, tipo: "punta", penetracion: 0 },
+  { nombre: "flecha", patron: /flecha|arco|dardo|cerbatana/i, tipo: "punta", penetracion: 0 },
   { nombre: "colmillos", patron: /mordisco|colmillo|picotazo|aguij/i, tipo: "punta", penetracion: 0 },
   { nombre: "garras", patron: /garra|zarpa|u[ñn]as|flagelo|l[aá]tigo/i, tipo: "corte", penetracion: 0 },
 ];

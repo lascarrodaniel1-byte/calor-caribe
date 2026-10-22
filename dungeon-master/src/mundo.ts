@@ -180,8 +180,16 @@ export const CLASES: Clase[] = [
     dadoGolpe: 8,
     principal: "DES",
     salvaciones: "DES, INT",
-    rasgos: ["Ataque furtivo: +1d6 daño con ventaja o un aliado adyacente al objetivo", "Pericia en dos habilidades", "Jerga de ladrones de Aldenmar"],
-    equipo: "Armadura de cuero, espada corta, 2 dagas, herramientas de ladrón, capa oscura, 12 po",
+    rasgos: [
+      "Ataque furtivo: +1d6 daño con ventaja o un aliado adyacente al objetivo",
+      "Pericia en dos habilidades",
+      "Jerga de ladrones de Aldenmar: asesino a sueldo de la organización criminal de la ciudad (sin nombre ni ritos) o por su cuenta",
+      "Estudiar a la presa (estudiar_presa, 1 uso por descanso corto): observa a un objetivo fuera de combate; su primer ataque contra él tiene ventaja y suma el furtivo",
+      "Cerbatana y dardos impregnables (dardos): sopla dardos (1 de daño, 30 m) impregnados con viales de veneno o de sueño; si hieren, la víctima los resiste con CON como los viales (CD 13 la hiel, 12 la amapola)",
+      "Entrar y salir (forzar_acceso): abre ventanas, puertas atrancadas, cerraduras, rejas y ataduras con ventaja en Juego de manos",
+      "Esquiva: ventaja en las salvaciones de DES",
+    ],
+    equipo: "Armadura de cuero, 2 dagas, cerbatana con 20 dardos, 1 vial de Leche de Amapola Negra, herramientas de ladrón, capa oscura, 12 po",
   },
   {
     nombre: "Flagelante",

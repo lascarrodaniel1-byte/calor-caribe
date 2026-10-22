@@ -15,6 +15,7 @@ import { competencia, mod, signo, valor } from "./reglas.js";
 import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js";
 import { gastarReserva, usoDivino } from "./juramento.js";
 import { autoManos, caEfectiva } from "./manos.js";
+import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
 import { danoEnSuelo } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
@@ -257,8 +258,9 @@ function bonoAlerta(c: Combatiente, que: "deteccion" | "lectura"): { bono: numbe
   const vet = c.tipo === "criatura" ? 0 : OFICIO[veteraniaCombatiente(c)].deteccion;
   const tp = que === "deteccion" ? (temple(templeDe(c)).deteccion ?? 0) : 0;
   const pers = suma(personalidadDe(c), que);
-  const partes = [`SAB ${signo(mod(sab))}`, vet ? `oficio ${signo(vet)}` : "", tp ? `temple ${signo(tp)}` : "", pers ? `carácter ${signo(pers)}` : ""];
-  return { bono: mod(sab) + vet + tp + pers, detalle: partes.filter(Boolean).join(", ") };
+  const ojos = que === "deteccion" && c.tipo === "pj" && ojosEnLaEspalda(c.p) ? 5 : 0; // Degollador nivel 8
+  const partes = [`SAB ${signo(mod(sab))}`, vet ? `oficio ${signo(vet)}` : "", tp ? `temple ${signo(tp)}` : "", pers ? `carácter ${signo(pers)}` : "", ojos ? `ojos en la espalda ${signo(ojos)}` : ""];
+  return { bono: mod(sab) + vet + tp + pers + ojos, detalle: partes.filter(Boolean).join(", ") };
 }
 
 const nuncaSorprendido = (c: Combatiente) =>
@@ -269,7 +271,7 @@ function bonoIniciativa(c: Combatiente): { bono: number; modo: Modo; detalle: st
   const of = c.tipo === "criatura" ? 0 : OFICIO[veteraniaCombatiente(c)].iniciativa;
   const estilo = c.tipo === "pj" ? (ESTILO_CLASE[c.p.clase] ?? SIN_ESTILO).iniciativa : 0;
   const des = c.tipo === "pj" ? valor(c.p, "des") : c.tipo === "criatura" ? desDeCriatura(c.j.definicion) : (c.n.des ?? 10);
-  const presciencia = c.tipo === "criatura" && c.j.definicion.rasgos.some((r) => /ventaja en iniciativa/i.test(r));
+  const presciencia = (c.tipo === "criatura" && c.j.definicion.rasgos.some((r) => /ventaja en iniciativa/i.test(r))) || (c.tipo === "pj" && esDegollador(c.p) && c.p.nivel >= 3); // Filo del asesino
   const pers = suma(personalidadDe(c), "iniciativa");
   const partes = [`DES ${signo(mod(des))}`, of ? `oficio ${signo(of)}` : "", t.iniciativa ? `temple ${signo(t.iniciativa)}` : "", estilo ? `clase ${signo(estilo)}` : "", pers ? `carácter ${signo(pers)}` : ""];
   return { bono: mod(des) + of + t.iniciativa + estilo + pers, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
@@ -509,6 +511,8 @@ export interface DatosAtaque {
   mano_secundaria?: boolean;
   /** Estilo de lucha con arma a dos manos: repite los 1 y 2 de los dados de daño. */
   repetir_bajos?: boolean;
+  /** Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene). */
+  dardo?: "sano" | "impregnado";
 }
 
 export interface ResultadoAtaque {
@@ -516,6 +520,9 @@ export interface ResultadoAtaque {
   aviso: string;
   /** Criatura que ha caído con este ataque (para devolver lo que robó y sacarla de escena). */
   muerto?: string;
+  /** Cómo salió la tirada y cuánto daño pasó la armadura (para efectos que dependen de herir: dardos con veneno). */
+  resultado?: "torpeza" | "fallo" | "roce" | "impacto" | "critico";
+  dano?: number;
 }
 
 /** Bonificador de ataque de una criatura: el que se pasa o el del ataque nombrado (o el primero) de su ficha. */
@@ -851,7 +858,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     lineas.push(`🔥 Senda de la Ceniza: la ceniza de ${ob.nombre} arde y quema a ${at.nombre} (${f} de fuego).`);
     aviso += `\n🔥 ${at.nombre} se quema (${f}).`;
   }
-  return { texto: lineas.join("\n"), aviso, muerto };
+  return { texto: lineas.join("\n"), aviso, muerto, resultado, dano };
 }
 
 export const REGLAS_COMBATE = `## Combate (iniciativa y ataques los resuelve el programa)

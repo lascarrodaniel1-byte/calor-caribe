@@ -56,6 +56,7 @@ const TABLA: { patron: RegExp; p: Propiedades }[] = [
   { patron: /bast[oó]n|cayado/i, p: { nombre: "bastón", versatil: "1d8" } },
   { patron: /jabalina/i, p: { nombre: "jabalina", arrojadiza: { normal: 9, largo: 36 } } },
   { patron: /tridente|lanza/i, p: { nombre: "lanza", versatil: "1d8", arrojadiza: { normal: 6, largo: 18 } } },
+  { patron: /cerbatana/i, p: { nombre: "cerbatana", municion: true } },
   { patron: /ballesta pesada/i, p: { nombre: "ballesta pesada", municion: true, dosManos: true, pesada: true } },
   { patron: /ballesta ligera|ballesta/i, p: { nombre: "ballesta ligera", municion: true, dosManos: true } },
   { patron: /arco largo|arco/i, p: { nombre: "arco", municion: true, dosManos: true, pesada: true } },

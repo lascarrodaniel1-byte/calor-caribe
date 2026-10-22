@@ -41,7 +41,7 @@ export interface Hechizo {
   /** Solo con nivel 9 o más, maestría de adepto o afinidad racial con la magia. */
   requiere_alto?: boolean;
   /** Tema de un hechizo elemental (el Berserker solo domina rayo y hielo). */
-  tema?: "fuego" | "rayo" | "hielo" | "viento";
+  tema?: "fuego" | "rayo" | "hielo" | "viento" | "oscuridad";
   efecto: string;
   /** Dados de daño o efecto que el programa tira al lanzarlo. */
   dados?: string;
@@ -56,6 +56,8 @@ export interface Hechizo {
 export const HECHIZOS: Hechizo[] = [
   // Elemental
   { nombre: "Chispa", escuela: "elemental", tema: "fuego", circulo: 0, efecto: "Enciende una llama pequeña, calienta las manos o hace 1d6 de fuego a un objetivo", dados: "1d6" },
+  { nombre: "Velo de penumbra", escuela: "elemental", tema: "oscuridad", circulo: 0, efecto: "Una nube de sombra de 3 m de radio durante 1 minuto: dentro hay penumbra, con ventaja en Sigilo para esconderse y desventaja en Percepción para quien mira desde fuera" },
+  { nombre: "Tinta negra", escuela: "elemental", tema: "oscuridad", circulo: 0, efecto: "Un chorro de oscuridad a la cara de un objetivo a 9 m: salvación de CON o queda cegado hasta el final de su siguiente turno (aplícalo con condicion)", salvacion: "CON" },
   { nombre: "Sangre hirviente", escuela: "elemental", tema: "fuego", circulo: 1, efecto: "Durante 1 minuto, los golpes del lanzador hacen +1d6 de fuego" },
   { nombre: "Chispazo", escuela: "elemental", tema: "rayo", circulo: 0, efecto: "Una descarga pequeña salta a un objetivo a 9 m: 1d6 de relámpago", dados: "1d6" },
   { nombre: "Escarcha", escuela: "elemental", tema: "hielo", circulo: 0, efecto: "Un aliento de escarcha a un objetivo a 9 m: 1d6 de frío, y su velocidad baja a la mitad hasta su siguiente turno", dados: "1d6" },
@@ -97,6 +99,7 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Paso de sombra", escuela: "sombra", circulo: 1, efecto: "Se teletransporta hasta 9 m de una sombra a otra" },
   { nombre: "Manto de noche", escuela: "sombra", circulo: 2, efecto: "Invisible en penumbra u oscuridad durante 10 minutos" },
   { nombre: "Robar la sombra", escuela: "sombra", circulo: 3, efecto: "Arranca la sombra de un objetivo: queda aturdido y con desventaja 1 minuto", salvacion: "CAR" },
+  { nombre: "Camuflaje de sombra", escuela: "sombra", circulo: 3, requiere_alto: true, efecto: "Se funde con lo que lo rodea 10 minutos, también a plena luz: queda invisible y muy difícil de ver (quien lo busca necesita Percepción CD 20, y los ataques contra él tienen desventaja si lo adivinan). Se rompe si ataca o lanza un hechizo ofensivo. Exige nivel 9 o más, maestría de adepto o afinidad racial con la magia" },
   { nombre: "Puerta negra", escuela: "sombra", circulo: 5, efecto: "Abre un paso entre dos sombras cualesquiera de Velmora durante 1 minuto" },
   // Adivinación
   { nombre: "Ojo de bruja", escuela: "adivinacion", circulo: 1, efecto: "Durante 10 minutos ve magia, no-muertos y malditos a 9 m" },
@@ -138,7 +141,7 @@ export const MAGIA_CLASE: Record<string, { maestria: Maestria; escuelas: Escuela
   "Berserker de Ceniza": { maestria: "iniciado", escuelas: ["elemental", "proteccion"], hechizos: ["Chispazo", "Escarcha"], atributo: "car" },
   "Caballero Juramentado": { maestria: "iniciado", escuelas: ["curacion", "proteccion"], hechizos: ["Cerrar la carne", "Escudo de sal"], atributo: "car" },
   "Cazador de Brujas": { maestria: "iniciado", escuelas: ["adivinacion"], hechizos: ["Ojo de bruja", "Leer el rastro"], atributo: "sab" },
-  Degollador: { maestria: "iniciado", escuelas: ["sombra"], hechizos: ["Paso de sombra"], atributo: "int" },
+  Degollador: { maestria: "iniciado", escuelas: ["sombra", "elemental"], hechizos: ["Paso de sombra"], atributo: "int" },
   Flagelante: { maestria: "iniciado", escuelas: ["mente"], hechizos: ["Susurro"], atributo: "sab" },
   Segador: { maestria: "adepto", escuelas: ["necromancia"], hechizos: ["Toque de la tumba", "Drenar vida"], atributo: "car" },
   "Barbero-Cirujano": { maestria: "iniciado", escuelas: ["curacion"], hechizos: ["Cerrar la carne"], atributo: "sab" },
@@ -275,6 +278,8 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   if (!m.escuelas.includes(h.escuela)) throw new Error(`${p.nombre} no domina la escuela de ${h.escuela} (domina: ${m.escuelas.join(", ") || "ninguna"}).`);
   if (p.clase === "Berserker de Ceniza" && h.escuela === "elemental" && !(h.tema && ["rayo", "hielo"].includes(h.tema) && h.circulo <= 2))
     throw new Error(`Un Berserker de Ceniza solo domina de la magia elemental los rayos y el hielo básicos (hasta círculo 2): ${h.nombre} queda fuera.`);
+  if (p.clase === "Degollador" && h.escuela === "elemental" && h.tema !== "oscuridad")
+    throw new Error(`Un Degollador solo domina de la magia elemental la oscuridad menor (esconderse y cegar): ${h.nombre} queda fuera.`);
   if (h.requiere_alto && p.nivel < 9 && MAESTRIAS.indexOf(m.maestria) < MAESTRIAS.indexOf("adepto") && !((AFINIDAD[p.raza]?.bono ?? 0) > 0))
     throw new Error(`${h.nombre} exige nivel 9 o más, maestría de adepto o afinidad racial con la magia: ${p.nombre} (nivel ${p.nivel}, ${m.maestria}) aún no puede.`);
   const conocido = d.hechizo_nuevo || m.hechizos.some((x) => x.toLowerCase() === h.nombre.toLowerCase());

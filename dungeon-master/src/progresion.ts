@@ -46,9 +46,10 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     12: ["Runas de potencia 5 (dominan hasta a los jefes de peligro 5)"],
   },
   Degollador: {
-    2: ["Acción astuta: acción adicional para Correr, Retirarse o Esconderse"],
-    3: ["Ataque furtivo 2d6", "Filo del asesino: ventaja en la iniciativa y crítico automático al impactar a un sorprendido"],
+    2: ["Acción astuta: acción adicional para Correr, Retirarse, Esconderse o forzar un acceso (Entrar y salir)"],
+    3: ["Ataque furtivo 2d6", "Filo del asesino: ventaja en la iniciativa y crítico automático al impactar a un sorprendido", "Entrar y salir: no falla al abrir nada de CD 15 o menos"],
     5: ["Esquiva asombrosa: reacción para reducir a la mitad el daño de un ataque que ve", "Ataque furtivo 3d6"],
+    8: ["Ojos en la espalda: +5 para notar emboscadas, reacciona aunque lo hayan sorprendido y los ataques por la espalda o el flanco no dan ventaja al atacante"],
   },
   Flagelante: {
     2: ["Puntos de dolor (igual a su nivel, se recuperan en descanso corto): ráfaga de golpes, defensa paciente, paso del viento", "Movimiento sin armadura: +3 m"],

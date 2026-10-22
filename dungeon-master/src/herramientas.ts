@@ -3,6 +3,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
+import { aplicarPresa, dardos, estudiarPresa, forzarAcceso, NOMBRES_OBSTACULOS, prepararSoplo, resolverSoplo } from "./degollador.js";
+import { ALCANCE_CERBATANA } from "./degollador_base.js";
 import {
   aparecer,
   buscarCriatura,
@@ -269,6 +271,23 @@ const esquemas = {
     a_dos_manos: z.boolean().optional().describe("Empuña con las dos manos un arma versátil (más daño, sin escudo)"),
     usa_accion: z.boolean().optional().describe("En combate, confirma que gasta su acción (segundo cambio de objeto del asalto, o ponerse/quitarse el escudo)"),
   }),
+  estudiar_presa: z.object({
+    quien: z.string().describe("El Degollador"),
+    objetivo: z.string().describe("A quién estudia (criatura, PNJ o personaje)"),
+  }),
+  dardos: z.object({
+    quien: z.string().describe("El Degollador"),
+    accion: z.enum(["ver", "impregnar", "reponer"]),
+    sustancia: z.string().optional().describe("Impregnar: Hiel de Víbora Gris o Leche de Amapola Negra (gasta un vial; cubre 3 dardos)"),
+    cantidad: z.number().int().min(1).max(50).optional().describe("Reponer: dardos nuevos"),
+    usa_accion: z.boolean().optional().describe("En combate, confirma que impregnar gasta su acción"),
+  }),
+  forzar_acceso: z.object({
+    quien: z.string().describe("El Degollador"),
+    obstaculo: z.enum(NOMBRES_OBSTACULOS),
+    cd: z.number().int().min(1).max(30).optional().describe("Sustituye la dificultad por defecto del obstáculo"),
+    sellado_magico: z.boolean().optional().describe("true si lo sella magia o runas: no se abre con maña"),
+  }),
   reabrir_tiradas: z.object({
     motivo: z.string().describe("Qué dato corregido es clave para la acción que se tiró, y por qué cambia la tirada"),
   }),
@@ -507,6 +526,7 @@ const esquemas = {
     atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
     bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
+    dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
     castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y suma dados de daño radiante"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
@@ -663,6 +683,12 @@ const descripciones: Record<Nombre, string> = {
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
   empunar:
     "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
+  estudiar_presa:
+    "Degollador: estudia a un objetivo (fuera de combate, al menos un minuto): su primer ataque contra él tiene ventaja y suma el ataque furtivo, y conoce su rutina. 1 uso por descanso corto.",
+  dardos:
+    "Degollador: ver, reponer o impregnar los dardos de su cerbatana con un vial de Hiel de Víbora Gris o de Leche de Amapola Negra (3 dardos por vial). Se sopla con atacar {arma: «cerbatana»}.",
+  forzar_acceso:
+    "Degollador (Entrar y salir): abre una ventana, puerta atrancada, cerradura, reja, cadenas o ataduras con ventaja en Juego de manos; desde el nivel 3 no falla hasta CD 15; desde el 2, en combate es acción adicional.",
   reabrir_tiradas:
     "SOLO al repetir un turno corregido por los jugadores: los dados que ya salieron se repiten igual. Llámala únicamente si el dato corregido es CLAVE para la acción que se tiró (se tiró contra el objetivo equivocado, sin una circunstancia que cambiaba la ventaja o la dificultad…); desde entonces los dados salen nuevos. Un error de narración, de consecuencia o de resultado no la justifica.",
   estilo_combate:
@@ -751,11 +777,14 @@ function enEscena(partida: Partida, nombre: string): EstadoJefe {
 
 /** Un ataque completo: comprueba el alcance real en el plano, lo resuelve y, si la criatura cae, la retira de escena. */
 function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; aviso: string } {
+  // Cerbatana del Degollador: a distancia (30 m), 1 de daño y un dardo de la reserva.
+  const soplo = /cerbatana/i.test(e.arma ?? "") ? prepararSoplo(partida, e) : null;
+  if (soplo) e = soplo.e;
   // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
   const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
   if (dist) {
     const asta = /alabarda|guada|lanza|pica|jabalina larga|l[aá]tigo|urumi/i.test(e.arma ?? "");
-    const alcance = e.a_distancia ? 120 : asta ? 3 : 2;
+    const alcance = soplo ? ALCANCE_CERBATANA : e.a_distancia ? 120 : asta ? 3 : 2;
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
   }
@@ -770,7 +799,17 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   if (e.mano_secundaria) e = { ...e, arma: Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase())?.manos?.secundaria ?? e.arma };
   if (aj.dano || aj.bono_arma || aj.desventaja || aj.repetirBajos) e = { ...e, dano: aj.dano ?? e.dano, bono_arma: (e.bono_arma ?? 0) + (aj.bono_arma ?? 0), desventaja: e.desventaja || aj.desventaja, repetir_bajos: aj.repetirBajos };
   if (aj.notas.length) aviso0 = [aviso0, ...aj.notas].filter(Boolean).join("\n");
-  const r = atacar(partida, e);
+  // Degollador: su presa estudiada recibe el primer ataque con ventaja y furtivo.
+  const presa = aplicarPresa(partida, e);
+  e = presa.e;
+  if (presa.nota) aviso0 = [aviso0, presa.nota].filter(Boolean).join("\n");
+  let r: ReturnType<typeof atacar>;
+  try { r = atacar(partida, e); } catch (err) { presa.deshacer(); throw err; }
+  if (soplo) {
+    const s = resolverSoplo(partida, e, r, soplo);
+    if (s.texto) { r.texto += `\n${s.texto}`; r.aviso += `\n${s.texto}`; }
+    if (s.muerto && !r.muerto) r.muerto = s.muerto;
+  }
   if (aviso0) {
     r.texto = `${aviso0}\n${r.texto}`;
     r.aviso = `${aviso0}\n${r.aviso}`;
@@ -1088,6 +1127,21 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.empunar>;
         const texto = empunar(partida, e);
         return { contenido: texto, aviso: `✋ ${texto}` };
+      }
+      case "estudiar_presa": {
+        const e = validado.data as z.infer<typeof esquemas.estudiar_presa>;
+        const texto = estudiarPresa(partida, e);
+        return { contenido: texto, aviso: `🎯 ${texto}` };
+      }
+      case "dardos": {
+        const e = validado.data as z.infer<typeof esquemas.dardos>;
+        const texto = dardos(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `🗡 ${texto}` };
+      }
+      case "forzar_acceso": {
+        const e = validado.data as z.infer<typeof esquemas.forzar_acceso>;
+        const texto = forzarAcceso(partida, e);
+        return { contenido: texto, aviso: `🗝 ${texto}` };
       }
       case "reabrir_tiradas": {
         const e = validado.data as z.infer<typeof esquemas.reabrir_tiradas>;

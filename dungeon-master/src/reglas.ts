@@ -48,8 +48,8 @@ export function salvacion(
     return { exito: false, total: 0, natural: 0, margen: -99, texto: `salvación de ${a.toUpperCase()}: fallo automático (${ef.motivos.join(", ")})` };
   const bono = mod(valor(p, a)) + (salvacionCompetente(p, a) ? competencia(p) : 0) + (opciones.extra ?? 0);
   const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv);
-  // La fortaleza del Berserker de Ceniza: ventaja en las salvaciones de CON.
-  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza");
+  // La fortaleza del Berserker (CON) y la esquiva del Degollador (DES): ventaja en esas salvaciones.
+  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza") || (a === "des" && p.clase === "Degollador");
   const modo = vent && !desv ? "ventaja" : desv && !vent ? "desventaja" : "normal";
   const t = tirar(`1d20${signo(bono)}`, modo);
   const natural = t.dados[0];
