@@ -632,7 +632,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const tAt = turnoDe(partida, at.nombre);
   const tOb = turnoDe(partida, ob.nombre);
   // Empieza su turno: lo que hizo en el anterior (esquivar, retirarse, correr) ya no vale.
-  if (!d.reaccion) { tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; }
+  if (!d.reaccion) { if (tAt.adicional !== "esquivar") tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; } // la esquiva del Degollador (acción adicional) no se pierde al atacar
   if (tAt.ayuda && (!tAt.ayuda.contra || igual(tAt.ayuda.contra, ob.nombre))) {
     ventaja = true;
     motivos.push(`ventaja: lo ayuda ${tAt.ayuda.por}`);

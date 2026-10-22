@@ -2,6 +2,7 @@
 // reglas básicas de D&D 5e. El programa lleva quién ha usado su reacción este asalto, quién esquiva o se retiró y quién
 // ayuda a quién, y avisa cuando un movimiento sobre el plano provoca un ataque de oportunidad.
 import type { Partida } from "./estado.js";
+import { esDegollador } from "./degollador_base.js";
 import { condsDe, igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
 
 export const ACCIONES = ["esquivar", "correr", "retirarse", "ayudar", "preparar", "esconderse", "usar_objeto", "otra"] as const;
@@ -34,9 +35,15 @@ export function accionCombate(partida: Partida, d: DatosAccionCombate): string {
   // Empieza su turno: lo que hizo en el turno anterior caduca.
   t.esquiva = false; t.retirada = false; t.corrio = false;
   switch (d.accion) {
-    case "esquivar":
+    case "esquivar": {
       t.esquiva = true;
+      // Degollador: esquivar le resulta fácil; lo hace como acción adicional si aún la tiene libre.
+      if (c.tipo === "pj" && esDegollador(c.p) && !t.adicional) {
+        t.adicional = "esquivar";
+        return `${c.nombre} esquiva con la soltura de su oficio, como acción adicional (puede además atacar con su acción): hasta su próximo turno los ataques contra él tienen desventaja (si ve al atacante) y tiene ventaja en las salvaciones de DES.`;
+      }
       return `${c.nombre} esquiva: hasta su próximo turno los ataques contra él tienen desventaja (si ve al atacante) y tiene ventaja en las salvaciones de DES. Pierde el efecto si queda incapacitado.`;
+    }
     case "correr":
       t.corrio = true;
       return `${c.nombre} corre: mueve el doble de su velocidad este turno (suele ser 18 m en vez de 9) y no ataca con esta acción. Muévelo con plano.`;
