@@ -8,6 +8,8 @@ import { infligirSecuela, REGLAS, resumenHerida } from "./heridas.js";
 import { resolverPrueba } from "./pruebas.js";
 import { competencia, mod, salvacion, signo, valor } from "./reglas.js";
 import { RECURSOS_CLASE, usarRecurso } from "./recursos.js";
+import { exigirLibre } from "./segador_base.js";
+import { motivoNoActua } from "./condiciones.js";
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const SIN_NERVIOS = /no-muerto|no muerto|ghul|espectro|vampiro|esqueleto|aut[oó]mata|constructo|hambriento|elemental|planta|vegetal/i;
@@ -106,9 +108,13 @@ export function diagnosticar(partida: Partida, d: { quien: string; paciente: str
 
 export function amputar(partida: Partida, d: { quien: string; paciente: string; herida: string; anestesia?: boolean }): string {
   const b = barbero(partida, d.quien);
+  exigirLibre(b, "Cirugía");
+  const quieto = motivoNoActua(b);
+  if (quieto) throw new Error(`${quieto}: no puede operar.`);
   const p = paciente(partida, d.paciente);
   const h = p.heridas.find((x) => x.id.toLowerCase() === d.herida.toLowerCase());
   if (!h) throw new Error(`${p.nombre} no tiene la herida ${d.herida}.`);
+  if (p.secuelas.some((s) => s === `miembro amputado (${h.ubicacion})`)) throw new Error(`A ${p.nombre} ya le falta ${h.ubicacion}.`);
   if (!/brazo|pierna/.test(h.ubicacion)) throw new Error(`Solo se amputa un brazo o una pierna: la herida ${h.id} está en ${h.ubicacion}.`);
   if (h.gravedad === "leve") throw new Error(`La herida ${h.id} es leve: no hay que cortar nada.`);
   if (!b.inventario.some((x) => /sierra de huesos|herramientas de cirujano/i.test(x))) throw new Error(`${b.nombre} necesita su sierra de huesos o sus herramientas de cirujano.`);

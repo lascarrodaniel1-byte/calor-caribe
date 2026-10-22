@@ -65,7 +65,7 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     9: ["Cuarta invocación; la Deuda de Neter pesa ×3"],
   },
   Hechicero: {
-    2: ["Recuperación arcana (usar_recurso, 1 vez al día; 2 desde el nivel 9): tras un descanso corto, recupera calor o aliento gastado igual a la mitad de su nivel (redondeando arriba)"],
+    2: ["Recuperación arcana (usar_recurso, 1 vez al día; 2 desde el nivel 9): en cualquier momento, sin necesidad de descansar, recupera calor o aliento gastado igual a la mitad de su nivel (redondeando arriba); se recarga con el descanso largo"],
     3: ["Dominio de lo menor: sin catalizador, los hechizos dos círculos por debajo de su máximo no le cuestan nada y los de un círculo por debajo, la mitad. Su bastón sirve de catalizador (calor, aliento o cordura)"],
     5: ["Maestro: lanza hasta el círculo 3 con +4 al lanzamiento", "Segundo tipo de magia: puede estudiar otro tipo en una escuela (aprender_tipo); el del don arcano ya los domina todos"],
     9: ["Archimago: lanza hasta el círculo 4 con +6; Recuperación arcana dos veces al día", "Tercer tipo de magia (el máximo para quien estudió en escuela)"],

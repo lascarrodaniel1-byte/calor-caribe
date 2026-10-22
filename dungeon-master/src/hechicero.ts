@@ -13,11 +13,12 @@ RECURSOS_CLASE["Hechicero"] = [
     efecto: (p) => {
       const m = p.magia;
       if (!m) return `${p.nombre} no tiene magia de la que recuperarse.`;
+      if (!m.calor && !m.aliento) throw new Error(`${p.nombre} no tiene calor ni aliento gastados: no hay nada que recuperar (no se gasta el uso).`);
       let resto = Math.ceil(p.nivel / 2);
       const partes: string[] = [];
       const calor = Math.min(m.calor, resto); m.calor -= calor; resto -= calor; if (calor) partes.push(`${calor} de calor`);
       const aliento = Math.min(m.aliento, resto); m.aliento -= aliento; resto -= aliento; if (aliento) partes.push(`${aliento} de aliento`);
-      return `${p.nombre} respira hondo tras un descanso corto y recompone su cuerpo: recupera ${partes.join(" y ") || "nada (no tenía calor ni aliento gastados)"}.`;
+      return `${p.nombre} respira hondo y recompone su cuerpo: recupera ${partes.join(" y ") || "nada (no tenía calor ni aliento gastados)"}.`;
     },
   },
 ];

@@ -17,6 +17,7 @@ import { gastarReserva, usoDivino } from "./juramento.js";
 import { autoManos, caEfectiva } from "./manos.js";
 import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
 import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
+import { selloDe } from "./segador_base.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
@@ -661,6 +662,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (d.castigo) {
     if (at.tipo !== "pj" || !esCaballero(at.p)) throw new Error("El castigo divino es solo del Caballero Juramentado.");
     if (at.p.nivel < 2) throw new Error(`${at.nombre} aún no tiene el castigo divino (nivel 2).`);
+    if (selloDe(at.p.sellos, "Castigo divino")) throw new Error(`${at.nombre} tiene sellado su castigo divino (su alma está en manos de un Segador): no puede usarlo.`);
     if (!d.dano) throw new Error("El castigo divino suma dados al daño del ataque: pasa dano.");
     if (!juramentoActivo(at.p)) throw new Error(`${at.nombre} no tiene poder: ${at.p.juramento ? "su juramento está roto o perdido" : "aún no ha jurado"}.`);
     if ((at.p.juramento?.reserva ?? 0) < 5) throw new Error(`${at.nombre} no tiene 5 PV en su reserva de imposición de manos para el castigo divino.`);

@@ -2,6 +2,8 @@
 // o la mente de quien lo lanza (calor, aliento, sangre, cordura o años de vida),
 // mayor cuanto más alto es su círculo. Los catalizadores absorben ese precio.
 import { exigirLibre } from "./segador_base.js";
+import { motivoNoActua } from "./condiciones.js";
+import { levantarse } from "./muerte.js";
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
 import { bajarZona, cauterizarHerida, infligir, perderSangre, pvMaxEfectivo, REGLAS } from "./heridas.js";
@@ -34,9 +36,9 @@ export function maestriaHechicero(nivel: number, don = true): Maestria {
 export function ajustarMaestriaHechicero(p: Personaje): Maestria | null {
   if (p.clase !== "Hechicero" || !p.magia) return null;
   const nueva = maestriaHechicero(p.nivel, !!p.magia.don);
-  sincronizarGrimorio(p);
-  if (MAESTRIAS.indexOf(nueva) <= MAESTRIAS.indexOf(p.magia.maestria)) return null;
-  p.magia.maestria = nueva;
+  if (nueva === p.magia.maestria) { sincronizarGrimorio(p); return null; }
+  p.magia.maestria = nueva; // sube o baja con el nivel (el DM puede corregir el nivel)
+  recortarTipos(p);
   sincronizarGrimorio(p);
   return nueva;
 }
@@ -225,6 +227,14 @@ export function hechizosDeTipos(tipos: string[], circuloMax: number): string[] {
 /** Los tipos de magia que usa un personaje con escuelas heredadas (partidas antiguas): todos los de esas escuelas. */
 export const tiposDeEscuelas = (escuelas: Escuela[]): string[] => TIPOS_MAGIA.filter((t) => escuelas.includes(t.escuela)).map((t) => t.id);
 
+/** Si el nivel baja, no puede dominar más tipos de los que le tocan a su nivel. */
+function recortarTipos(p: Personaje): void {
+  const m = p.magia;
+  if (!m || p.clase !== "Hechicero" || m.don || !m.tipos) return;
+  const max = tiposMax(p.nivel, false);
+  if (m.tipos.length > max) { m.tipos = m.tipos.slice(0, max); m.licencias = (m.licencias ?? []).filter((t) => m.tipos!.includes(t)); m.escuelas = [...new Set(m.tipos.map((t) => buscarTipo(t)!.escuela))] as Escuela[]; }
+}
+
 /** El grimorio de un Hechicero de escuela: sabe todos los hechizos de sus tipos hasta el círculo que domina; cuanto más nivel, más hechizos. */
 export function sincronizarGrimorio(p: Personaje): void {
   const m = p.magia;
@@ -271,7 +281,7 @@ export const MAGIA_CLASE: Record<string, { maestria: Maestria; escuelas: Escuela
   Degollador: { maestria: "iniciado", escuelas: ["sombra", "elemental"], hechizos: ["Paso de sombra"], atributo: "int" },
   Flagelante: { maestria: "iniciado", escuelas: ["curacion"], hechizos: ["Cerrar la carne", "Sangre de Haema"], atributo: "sab" },
   Segador: { maestria: "adepto", escuelas: ["necromancia"], hechizos: ["Toque de la tumba", "Drenar vida"], atributo: "car" },
-  "Barbero-Cirujano": { maestria: "iniciado", escuelas: ["mente", "elemental"], hechizos: ["Adormecer el dolor", "Brasa cauterizadora"], atributo: "sab" },
+  "Barbero-Cirujano": { maestria: "iniciado", escuelas: ["mente", "elemental"], hechizos: ["Adormecer el dolor", "Brasa cauterizadora", "Anestesia profunda", "Frío de quirófano"], atributo: "sab" },
   Hechicero: { maestria: "adepto", escuelas: [], hechizos: [], atributo: "int" },
 };
 
@@ -327,7 +337,7 @@ export function magiaInicial(clase: string, escuelasElegidas?: Escuela[], don = 
     // Escuela de hechicería: empieza con UN tipo de magia (el que enseña su escuela), con licencia de la Inquisición si es de los licenciados.
     // Con el don arcano domina todos los tipos y su magia cuenta igual (mismas reglas y precios).
     const validos = (tiposElegidos ?? []).filter((t) => buscarTipo(t)).map((t) => buscarTipo(t)!.id);
-    const tipos = validos.length ? [...new Set(validos)].slice(0, 1) : escuelasElegidas?.length ? tiposDeEscuelas(escuelasElegidas.slice(0, 2)) : ["fuego"];
+    const tipos = validos.length ? [...new Set(validos)].slice(0, 1) : escuelasElegidas?.length ? tiposDeEscuelas(escuelasElegidas.slice(0, 1)).slice(0, 1) : ["fuego"];
     const escuelas = don ? [...ESCUELAS] : ([...new Set(tipos.map((t) => buscarTipo(t)!.escuela))] as Escuela[]);
     const hechizos = hechizosDeTipos(tipos, 1);
     return { maestria: "adepto", escuelas, hechizos, atributo: "int", don, tipos, licencias: don ? TIPOS_MAGIA.filter((t) => t.licenciado).map((t) => t.id) : tipos.filter((t) => buscarTipo(t)?.licenciado), ...vacia };
@@ -411,6 +421,9 @@ function aniosDe(circulo: number, escuela: Escuela): number {
 export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   const m = p.magia;
   exigirLibre(p, "Magia");
+  const quieto = motivoNoActua(p);
+  if (quieto) throw new Error(`${quieto}: no puede lanzar hechizos.`);
+  if (p.condiciones.some((c) => /^sin voz/i.test(c))) throw new Error(`${p.nombre} se ha quedado sin voz (el aliento): no puede lanzar hechizos durante un minuto.`);
   if (!m || m.maestria === "profano") return `${p.nombre} no sabe magia: necesita un maestro, un grimorio o un objeto que la contenga.`;
   if (p.clase === "Caballero Juramentado") {
     if (!p.juramento) return `${p.nombre} aún no ha jurado: su poder viene del juramento.`;
@@ -454,7 +467,7 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
     const t = tirar(`1d20${signo(bono)}`);
     const nat = t.dados[0];
     exito = nat === 20 || (nat !== 1 && t.total >= cd);
-    pifia = nat === 1 || t.total <= cd - 5;
+    pifia = nat !== 20 && (nat === 1 || t.total <= cd - 5); // un 20 natural nunca es pifia
     log.push(`Lanzamiento: ${describir(t)} vs CD ${cd} → ${exito ? "ÉXITO" : pifia ? "PIFIA" : "fallo"}.`);
   }
 
@@ -481,11 +494,14 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
         log.push(`La herida ${her.id} de ${o.nombre} se entumece y se enfría: gana tres asaltos de hemorragia y +1 al tratamiento.`);
       } else log.push(cauterizarHerida(o, her, "brasa", p.nombre));
     }
-    if (o && h.cura) {
+    if (o && h.cura && o.condiciones.includes("muerto")) log.push(`${o.nombre} está muerto: la curación no lo devuelve (solo lo hacen Devolver el aliento o la Ceniza Viva).`);
+    else if (o && h.cura) {
       const c = tirar(h.cura);
       const curado = c.total + Math.max(0, mod(valor(p, m.atributo)));
+      const enSuelo = o.pv <= 0;
       o.pv = Math.min(pvMaxEfectivo(o), o.pv + curado);
       log.push(`${o.nombre} recupera ${curado} PV (PV ${o.pv}).`);
+      if (enSuelo && o.pv > 0) { const l = levantarse(o); if (l) log.push(l); }
     }
     if (o && h.cierra_heridas) {
       const her = d.herida ? o.heridas.find((x) => x.id.toLowerCase() === d.herida!.toLowerCase()) : o.heridas[0];
@@ -515,29 +531,30 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
     coste = Math.max(0, coste - (af.descuento?.[tributo] ?? 0));
     let aniosPagados = Math.round(aniosDe(circulo, h.escuela) * (af.anios ?? 1) * (forzado ? 2 : 1) * (pifia ? 2 : 1) * 10) / 10;
 
-    // Hechicero: los hechizos de círculo bajo le cuestan menos cuanto más poder tiene (sin catalizador): dos círculos por debajo de su máximo, nada; uno, la mitad.
-    if (p.clase === "Hechicero" && !d.catalizador && !forzado) {
-      const bajo = max - circulo;
-      if (bajo >= 2) { coste = 0; aniosPagados = 0; log.push(`Dominio: ${h.nombre} le sale ya de memoria (dos círculos por debajo de su máximo): no le cuesta nada.`); }
-      else if (bajo === 1) { coste = Math.ceil(coste / 2); aniosPagados = Math.round((aniosPagados / 2) * 10) / 10; log.push(`Dominio: ${h.nombre} está un círculo por debajo de su máximo: cuesta la mitad.`); }
+    // Catalizador: solo cuenta si lo lleva, existe y absorbe de verdad este precio (si no, no se gasta).
+    const cat = d.catalizador ? buscarCatalizador(d.catalizador) : undefined;
+    const idxCat = cat ? p.inventario.findIndex((x) => x.toLowerCase().includes(cat.nombre.toLowerCase())) : -1;
+    const absorbe = !!cat && idxCat >= 0 && (cat.tributo === "cualquiera" ? coste > 0 || aniosPagados > 0 : cat.tributo === "anios" ? aniosPagados > 0 : (cat.tributos ?? [cat.tributo]).includes(tributo) && coste > 0);
+    if (d.catalizador && !absorbe) {
+      if (!cat) log.push(`"${d.catalizador}" no es un catalizador conocido.`);
+      else if (idxCat < 0) log.push(`${p.nombre} no lleva ${cat.nombre}.`);
+      else log.push(`${cat.nombre} no absorbe este precio (${tributo === "anios" ? "años" : tributo}${coste === 0 && aniosPagados === 0 ? ", que además es nulo" : ""}): no se gasta.`);
     }
 
-    // Catalizador
-    if (d.catalizador) {
-      const c = buscarCatalizador(d.catalizador);
-      const idx = p.inventario.findIndex((x) => c && x.toLowerCase().includes(c.nombre.toLowerCase()));
-      if (!c) log.push(`"${d.catalizador}" no es un catalizador conocido.`);
-      else if (idx < 0) log.push(`${p.nombre} no lleva ${c.nombre}.`);
-      else {
-        if (c.tributo === "cualquiera") {
-          coste = 0;
-          aniosPagados = 0;
-        } else if (c.tributo === "anios") aniosPagados = Math.max(0, aniosPagados - c.absorbe);
-        else if ((c.tributos ?? [c.tributo]).includes(tributo)) coste = Math.max(0, coste - (c.escala ? 1 + Math.floor(p.nivel / 4) : c.absorbe));
-        else log.push(`${c.nombre} no absorbe este precio (${tributo}).`);
-        if (c.consumible) p.inventario.splice(idx, 1);
-        log.push(`${c.nombre} absorbe parte del precio${c.consumible ? " y se consume" : ""}.`);
-      }
+    // Hechicero: los hechizos de círculo bajo le cuestan menos cuanto más poder tiene (sin catalizador que se use de verdad):
+    // dos círculos por debajo de su máximo, nada; uno por debajo, la mitad.
+    if (p.clase === "Hechicero" && !absorbe && !forzado) {
+      const bajo = max - circulo;
+      if (bajo >= 2) { coste = 0; aniosPagados = 0; log.push(`Dominio: ${h.nombre} le sale ya de memoria (dos círculos por debajo de su máximo): no le cuesta nada.`); }
+      else if (bajo === 1) { coste = Math.ceil(coste / 2); aniosPagados = Math.round((aniosPagados / 2) * 10) / 10; log.push(`Dominio: ${h.nombre} está un círculo por debajo de su máximo: cuesta la mitad (redondeando hacia arriba).`); }
+    }
+
+    if (absorbe && cat) {
+      if (cat.tributo === "cualquiera") { coste = 0; aniosPagados = 0; }
+      else if (cat.tributo === "anios") aniosPagados = Math.max(0, aniosPagados - cat.absorbe);
+      else coste = Math.max(0, coste - (cat.escala ? 1 + Math.floor(p.nivel / 4) : cat.absorbe));
+      if (cat.consumible) p.inventario.splice(idxCat, 1);
+      log.push(`${cat.nombre} absorbe parte del precio${cat.consumible ? " y se consume" : ""}.`);
     }
 
     if (coste > 0) {
@@ -671,6 +688,8 @@ export function descansar(p: Personaje, dias: number, calidad: string) {
   const alivio = calidad === "esfuerzo" ? 0 : calidad === "enfermeria" ? 2 : 1;
   m.cordura = Math.max(0, m.cordura - alivio * dias);
   p.condiciones = p.condiciones.filter((c) => !/^(jadeando|sin voz|inconsciente \(sin aire\)|sobrecalentado|agotamiento por calor|oye voces)/.test(c));
+  p.anestesia = undefined; // la anestesia mágica no sobrevive a un descanso
+  if (dias >= 1) { delete p.pielHueso; p.condiciones = p.condiciones.filter((c) => !/^guadaña fría/.test(c)); } // lo que dura una hora o un día
 }
 
 export const REGLAS_HECHICERO = `## Hechicero (el sujeto más poderoso posible)
@@ -679,7 +698,7 @@ export const REGLAS_HECHICERO = `## Hechicero (el sujeto más poderoso posible)
 - El don arcano (se tira al crear al personaje; el Hechicero que lo tiene es la excepción de linaje) hace del Hechicero el sujeto más poderoso posible, en potencia desde el primer día y en acto con los niveles: domina TODOS los tipos de magia con las mismas reglas y los mismos precios que los demás, comprende cómo se canaliza cada hechizo solo con verlo (comprender_magia con visto=true: lo aprende al instante hasta el círculo que domina), su maestría llega a ascendido (círculo 5, +8) en el nivel 13 y su INT, a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. El Hechicero de escuela es poderoso pero tiene techo (archimago, tres tipos).
 - Dominio de lo menor: sin catalizador, un hechizo dos círculos por debajo de su círculo máximo no le cuesta nada y uno de un círculo por debajo cuesta la mitad. El programa lo aplica solo. Con catalizador no hay descuento (el catalizador ya absorbe el precio).
 - Su bastón es catalizador permanente (pásalo en catalizador: «Bastón»): absorbe calor, aliento o cordura (1 + 1 cada 4 niveles); no sirve contra la sangre ni los años de vida.
-- Recuperación arcana (usar_recurso): tras un descanso corto recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 9).`;
+- Recuperación arcana (usar_recurso): en cualquier momento (sin descansar) recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 9).`;
 
 export const REGLAS_MAGIA = `## Magia (usa lanzar_hechizo; el programa tira y cobra el precio)
 La magia es rara y temida. La Inquisición persigue a los magos sin licencia y la gente corriente no la ha visto nunca. Nunca es gratis: cada hechizo se cobra un tributo en quien lo lanza, mayor cuanto más alto es su círculo (0 = truco gratuito, 5 = prohibido).

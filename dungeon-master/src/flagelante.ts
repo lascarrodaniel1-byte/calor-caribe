@@ -7,7 +7,7 @@ import { aplicarCondicion, condsDe, localizar, puedeActuar, turnoDe, type DatosA
 import { describir, tirar } from "./dados.js";
 import { bonoDolor, esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
 import { bajarZona, pvMaxEfectivo, REGLAS } from "./heridas.js";
-import { reconocer } from "./condiciones.js";
+import { motivoNoActua, reconocer } from "./condiciones.js";
 import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { bonoManiobra } from "./maniobras.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
@@ -48,20 +48,20 @@ export function aplicarDolor(partida: Partida, e: DatosAtaque): { e: DatosAtaque
 /** Tras un golpe cuerpo a cuerpo que lo hiere, el Flagelante lo devuelve: (nivel de dolor)d4, una vez por asalto (nivel 2+). */
 export function devolverDolor(partida: Partida, e: DatosAtaque, r: ResultadoAtaque): string {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(e.objetivo));
-  if (!p || !esFlagelante(p) || p.nivel < 2 || e.a_distancia) return "";
+  if (!p || !esFlagelante(p) || p.nivel < 2 || e.a_distancia || motivoNoActua(p) || selloDe(p.sellos, "Comunión del dolor")) return "";
   if ((r.resultado !== "impacto" && r.resultado !== "critico") || !((r.dano ?? 0) > 0) || p.pv <= 0) return "";
   if (norm(e.atacante) === norm(p.nombre)) return "";
   const t = turnoDe(partida, p.nombre);
   if (t.reaccion) return "";
   const at = localizar(partida, e.atacante);
+  if (at.tipo === "pj" || (at.tipo === "pnj" && at.n.aliado)) return ""; // no devuelve el golpe a sus compañeros
   const dist = distanciaPlano(partida, p.nombre, at.nombre);
   if (dist && dist.metros > 2) return "";
   t.reaccion = true;
   const n = nivelDolor(p);
   const d = tirar(`${n}d4`);
   let extra = "";
-  if (at.tipo === "pj") { at.p.pv = Math.max(0, at.p.pv - d.total); extra = ` (PV ${at.p.pv}/${at.p.pv_max})`; }
-  else if (at.tipo === "criatura") { extra = ` (${danar(at.j, d.total)})`; if (at.j.pv <= 0 && !r.muerto) r.muerto = at.j.nombre; }
+  if (at.tipo === "criatura") { extra = ` (${danar(at.j, d.total)})`; if (at.j.pv <= 0 && !r.muerto) r.muerto = at.j.nombre; }
   else if (at.n.pv !== undefined) { at.n.pv = Math.max(0, at.n.pv - d.total); extra = ` (${at.n.pv}/${at.n.pv_max ?? "?"} PV)`; }
   return `🩸 Devolver el dolor: ${p.nombre} (dolor ${n}/4) le devuelve el golpe a ${at.nombre}: ${n}d4 ${describir(d)} = ${d.total}${extra}. Gasta su reacción.`;
 }
@@ -116,6 +116,9 @@ function curarConSangre(p: Personaje, de: string, dados: string): string[] {
 
 /** ¿Es sangre viva que sirve (no no-muertos ni criaturas sin sangre)? */
 function sangreViva(c: ReturnType<typeof localizar>): boolean {
+  if (c.tipo === "pj" && (c.p.condiciones.includes("muerto") || c.p.pv <= 0)) return false;
+  if (c.tipo === "criatura" && c.j.pv <= 0) return false;
+  if (c.tipo === "pnj" && c.n.pv !== undefined && c.n.pv <= 0) return false;
   const naturaleza = c.tipo === "criatura" ? `${c.j.definicion.temple ?? ""} ${c.j.definicion.nombre} ${c.j.definicion.descripcion}` : c.tipo === "pnj" ? c.n.temple ?? "" : c.p.condiciones.join(" ");
   return !SIN_SANGRE.test(naturaleza);
 }
@@ -123,7 +126,7 @@ function sangreViva(c: ReturnType<typeof localizar>): boolean {
 /** Nivel 3+: el mero contacto con la sangre de un enemigo al que hiere cuerpo a cuerpo lo cura (una vez por asalto, sin acción). */
 export function curacionPasiva(partida: Partida, e: DatosAtaque, r: ResultadoAtaque): string {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(e.atacante));
-  if (!p || !esFlagelante(p) || p.nivel < 3 || e.a_distancia || p.pv <= 0 || selloDe(p.sellos, "Sangre ajena")) return "";
+  if (!p || !esFlagelante(p) || p.nivel < 3 || e.a_distancia || p.pv <= 0 || !partida.combate || selloDe(p.sellos, "Sangre ajena")) return "";
   if (!((r.dano ?? 0) > 0) || (r.resultado !== "impacto" && r.resultado !== "critico" && r.resultado !== "roce")) return "";
   const c = localizar(partida, e.objetivo);
   if (c.nombre === p.nombre || !sangreViva(c)) return "";
@@ -147,7 +150,7 @@ export function cadenas(partida: Partida, d: { quien: string; objetivo: string; 
   const motivo = puedeActuar(at);
   if (motivo) throw new Error(motivo + ".");
   const ob = localizar(partida, d.objetivo);
-  const atado = (c: typeof ob) => condsDe(c).find((x) => reconocer(x)?.id === "agarrado" && new RegExp(`cadenas de ${p.nombre}`, "i").test(x));
+  const atado = (c: typeof ob) => condsDe(c).find((x) => reconocer(x)?.id === "agarrado" && x.toLowerCase().includes(`cadenas de ${p.nombre}`.toLowerCase()));
   if (d.accion === "soltar") {
     const x = atado(ob);
     if (!x) throw new Error(`${ob.nombre} no está atado con las cadenas de ${p.nombre}.`);

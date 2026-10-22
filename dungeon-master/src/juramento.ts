@@ -1,6 +1,7 @@
 // El juramento del Caballero Juramentado: lo que le da su poder mágico. Cuanto más jura, más fuerte es su magia y más
 // duele romperlo (como una liga estirada): desde la debilidad hasta que su propio poder lo queme y no vuelva a usar magia.
 import { exigirLibre } from "./segador_base.js";
+import { motivoNoActua } from "./condiciones.js";
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { infligir, pvMaxEfectivo } from "./heridas.js";
@@ -70,7 +71,9 @@ export function juramento(partida: Partida, d: { quien: string; accion: "jurar" 
   if (j.perdido) throw new Error(`${p.nombre} rompió su juramento sin remedio: no hay expiación posible.`);
   if (!j.roto) throw new Error(`${p.nombre} no tiene el juramento roto.`);
   const era = j.roto.voto;
+  const ag = j.roto.agotamiento ?? 0;
   delete j.roto;
+  if (ag && nivelAgotamiento(p.condiciones) <= ag) p.condiciones = p.condiciones.filter((c) => !/^agotamiento/i.test(c)); // la debilidad de la ruptura se va con la expiación
   j.reserva = 0; // la recupera con un descanso largo
   ajustarMagia(p);
   return `${p.nombre} expía su falta (${era}) y vuelve a jurar ante ${DIOS}: sus poderes responden otra vez. La reserva de imposición de manos vuelve a llenarse con el próximo descanso largo. (Haz que la expiación se viva: un rito, una penitencia, una misión.)`;
@@ -98,7 +101,7 @@ export function romperJuramento(partida: Partida, d: { quien: string; voto: stri
   else { agregarCondicion(p.condiciones, `agotamiento ${Math.max(3, nivelAgotamiento(p.condiciones))}`); consecuencia = `La liga estalla: ${dano} de daño radiante, una herida crítica y pierde para siempre el juramento y toda su magia divina.`; }
   p.pv = Math.max(0, p.pv - dano);
   if (n >= 4) lineas.push(infligir(p, { causa: n === 4 ? "golpe_masivo" : "critico", tipo: "quemadura", descripcion: "su propio poder lo abrasa" }));
-  j.roto = { voto: v.nombre, motivo: d.motivo, consecuencia };
+  j.roto = { voto: v.nombre, motivo: d.motivo, consecuencia, agotamiento: nivelAgotamiento(p.condiciones) };
   j.reserva = 0;
   if (n >= 5) {
     j.perdido = true;
@@ -134,7 +137,8 @@ export function usoDivino(p: Personaje): string {
 
 export function imponerManos(partida: Partida, d: { quien: string; objetivo: string; pv: number }): string {
   const p = caballero(partida, d.quien);
-  if (p.pv <= 0) throw new Error(`${p.nombre} está a 0 PV: no puede imponer las manos.`);
+  const quieto = motivoNoActua(p);
+  if (quieto) throw new Error(`${quieto}: no puede imponer las manos.`);
   const o = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(d.objetivo) || (x.jugador && norm(x.jugador) === norm(d.objetivo)));
   if (!o) throw new Error(`No hay ningún personaje llamado «${d.objetivo}».`);
   if (o.condiciones.includes("muerto")) throw new Error(`${o.nombre} está muerto: la imposición de manos no devuelve a los muertos.`);

@@ -10,7 +10,8 @@ import { resolverPrueba } from "./pruebas.js";
 import { ALDESCANSAR, RECURSOS_CLASE, usarRecurso } from "./recursos.js";
 import { mod, signo } from "./reglas.js";
 import { usarVial, type NombreVial } from "./viales.js";
-import { exigirLibre } from "./segador_base.js";
+import { exigirLibre, selloDe } from "./segador_base.js";
+import { motivoNoActua } from "./condiciones.js";
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
@@ -75,8 +76,8 @@ export function aplicarPresa(partida: Partida, e: DatosAtaque): { e: DatosAtaque
   const presa = p.presa;
   presa.usada = true;
   return {
-    e: { ...e, ventaja: true, dano: e.dano ? `${e.dano}+${dados}d6` : e.dano },
-    nota: `🎯 Presa estudiada: ${p.nombre} golpea a ${presa.objetivo} sabiendo por dónde entrarle — ventaja${e.dano ? ` y ataque furtivo (+${dados}d6)` : ""}.`,
+    e: { ...e, ventaja: true, dano: e.dano && !selloDe(p.sellos, "Ataque furtivo") ? `${e.dano}+${dados}d6` : e.dano },
+    nota: `🎯 Presa estudiada: ${p.nombre} golpea a ${presa.objetivo} sabiendo por dónde entrarle — ventaja${e.dano && !selloDe(p.sellos, "Ataque furtivo") ? ` y ataque furtivo (+${dados}d6)` : ""}.`,
     confirmar: () => {},
     deshacer: () => { presa.usada = false; },
   };
@@ -193,7 +194,8 @@ export const NOMBRES_OBSTACULOS = Object.keys(OBSTACULOS) as [keyof typeof OBSTA
 export function forzarAcceso(partida: Partida, d: { quien: string; obstaculo: keyof typeof OBSTACULOS; cd?: number; sellado_magico?: boolean }): string {
   const p = degollador(partida, d.quien);
   exigirLibre(p, "Entrar y salir");
-  if (p.condiciones.includes("muerto") || p.pv <= 0) throw new Error(`${p.nombre} no está en condiciones de forzar nada.`);
+  const quieto = motivoNoActua(p);
+  if (quieto) throw new Error(`${quieto}: no puede forzar nada.`);
   const o = OBSTACULOS[d.obstaculo];
   if (d.sellado_magico) throw new Error(`${o.nombre[0].toUpperCase() + o.nombre.slice(1)} está sellado por magia: ni la maña ni las ganzúas lo abren.`);
   if (o.herramientas && !p.inventario.some((x) => /herramientas? de ladr[oó]n|ganz[uú]a/i.test(x))) throw new Error(`${p.nombre} necesita sus herramientas de ladrón para ${o.nombre}.`);
@@ -219,7 +221,8 @@ export function forzarAcceso(partida: Partida, d: { quien: string; obstaculo: ke
   }
   if (exito) {
     if (d.obstaculo === "ataduras" || d.obstaculo === "cadenas") {
-      try { aplicarCondicion(partida, { objetivo: p.nombre, accion: "quitar", condicion: "retenido" }); } catch { /* sin condición que quitar */ }
+      // Se libera de lo que lo ata: retenido y agarrado por cadenas.
+      p.condiciones = p.condiciones.filter((c) => !(/retenid|inmovilizad|enredad/i.test(c) || (/agarrad/i.test(c) && /cadenas de/i.test(c))));
       lineas.push(`${p.nombre} se libera de ${o.nombre}.`);
     } else lineas.push(`${p.nombre} abre ${o.nombre} sin ruido: puede entrar o salir.`);
   } else lineas.push(`${o.nombre[0].toUpperCase() + o.nombre.slice(1)} no cede. Puede reintentarlo (cada intento lleva cerca de un minuto y se puede oír).`);

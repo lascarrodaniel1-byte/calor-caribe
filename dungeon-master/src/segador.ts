@@ -6,10 +6,11 @@ import type { Partida, Personaje } from "./estado.js";
 import { localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque, type ResultadoAtaque } from "./combate.js";
 import { describir, tirar } from "./dados.js";
 import { terminarFuria } from "./furia.js";
+import { motivoNoActua } from "./condiciones.js";
 import { infligir } from "./heridas.js";
 import { envejecer } from "./magia.js";
 import { competencia, mod, salvacion, signo, valor } from "./reglas.js";
-import { ALDESCANSAR, RECURSOS_CLASE, usarRecurso } from "./recursos.js";
+import { ALDESCANSAR, RECURSOS_CLASE, recursosDe, usarRecurso } from "./recursos.js";
 import { capacidadAlmas, DEUDA_COBRO, esSegador, etapaDeuda, exigirLibre, FIRMAS, INVOCACIONES, multiplicadorDeuda, selloDe, type AlmaSellada } from "./segador_base.js";
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -86,6 +87,7 @@ ALDESCANSAR.push((p, tipo) => {
 export function guadana(partida: Partida, d: { quien: string; accion: "invocar" | "despedir" }): string {
   const p = segador(partida, d.quien);
   vivo(p);
+  if (d.accion === "invocar") exigirLibre(p, "Guadaña");
   const tiene = p.inventario.some((x) => new RegExp(GUADANA, "i").test(x));
   if (d.accion === "despedir") {
     if (!tiene) throw new Error(`${p.nombre} no tiene la guadaña invocada.`);
@@ -106,16 +108,20 @@ export function guadana(partida: Partida, d: { quien: string; accion: "invocar" 
 }
 
 /** Gasta un uso de la descarga y prepara los rayos (uno; dos desde el nivel 5). */
-export function prepararDescarga(partida: Partida, d: { quien: string; objetivo: string; objetivo2?: string }): { ataques: DatosAtaque[]; nota: string; deuda: () => string } {
+export function prepararDescarga(partida: Partida, d: { quien: string; objetivo: string; objetivo2?: string }): { ataques: DatosAtaque[]; gastar: () => string; deuda: () => string } {
   const p = segador(partida, d.quien);
-  vivo(p);
-  const r = usarRecurso(partida, { quien: p.nombre, recurso: "Descarga sobrenatural" });
+  const quieto = motivoNoActua(p);
+  if (quieto) throw new Error(`${quieto}: no puede descargar.`);
+  exigirLibre(p, "Descarga sobrenatural");
+  const uso = recursosDe(p).find((x) => x.def.nombre === "Descarga sobrenatural");
+  if (!uso || uso.gastados >= uso.max) throw new Error(`${p.nombre} ya gastó la descarga sobrenatural (0/${uso?.max ?? 1}); la recupera con un descanso corto.`);
   const rayos = p.nivel >= 5 ? 2 : 1;
   const base = { atacante: p.nombre, arma: "Descarga sobrenatural", dano: "1d10", a_distancia: true, atributo: "car" as const, tipo_dano: "contundente" as const };
   const ataques: DatosAtaque[] = [{ ...base, objetivo: d.objetivo }];
   if (rayos === 2) ataques.push({ ...base, objetivo: d.objetivo2 ?? d.objetivo });
   // La Deuda se suma después de los rayos: si Neter cobra, no le quita la descarga a medias.
-  return { ataques, nota: r.replace(/ Quedan.*/, ""), deuda: () => sumarDeuda(p, 1, "la descarga") };
+  // El uso y la Deuda se cobran después de lanzar los rayos: si el primero falla, no se gasta nada.
+  return { ataques, gastar: () => usarRecurso(partida, { quien: p.nombre, recurso: "Descarga sobrenatural" }).replace(/ Quedan.*/, ""), deuda: () => sumarDeuda(p, 1, "la descarga") };
 }
 
 /** Una criatura muerta bajo la guadaña o la descarga paga la Deuda (su peligro). */
@@ -145,11 +151,14 @@ function cdSello(p: Personaje) {
 
 export function sellarAlma(partida: Partida, d: { quien: string; objetivo: string; habilidad?: string; con_sangre?: boolean }): string {
   const p = segador(partida, d.quien);
-  vivo(p);
+  const quieto = motivoNoActua(p);
+  if (quieto) throw new Error(`${quieto}: no puede sellar un alma.`);
   if (p.nivel < 2) throw new Error(`${p.nombre} aún no sabe sellar almas (nivel 2).`);
   if ((p.almas ?? []).length >= capacidadAlmas(p.nivel)) throw new Error(`${p.nombre} ya sostiene ${capacidadAlmas(p.nivel)} alma(s) selladas (su límite): libera una con liberar_alma o entrégala a Neter.`);
   const c = localizar(partida, d.objetivo);
   if (c.nombre === p.nombre) throw new Error("No puede sellar su propia alma.");
+  const caido = c.tipo === "pj" ? c.p.pv <= 0 || c.p.condiciones.includes("muerto") : c.tipo === "criatura" ? c.j.pv <= 0 : c.n.pv !== undefined && c.n.pv <= 0;
+  if (caido) throw new Error(`${c.nombre} ya ha caído: solo se sella el alma de un vivo.`);
   // La sangre tiene que ser fresca: lo hirió con la guadaña este mismo turno.
   if (partida.combate) {
     const t = turnoDe(partida, p.nombre);
@@ -220,9 +229,27 @@ export function liberarAlma(partida: Partida, d: { quien: string; nombre?: strin
 export function liberarSiMuere(partida: Partida): string[] {
   const out: string[] = [];
   for (const p of Object.values(partida.personajes)) {
-    if (esSegador(p) && p.condiciones.includes("muerto") && p.almas?.length) {
-      out.push(`${p.nombre} ha muerto: sus almas selladas quedan libres y la guadaña vuelve a los huesos de Neter.`);
-      try { out.push(liberarAlma(partida, { quien: p.nombre })); } catch { /* nada */ }
+    if (esSegador(p) && p.condiciones.includes("muerto")) {
+      if (p.almas?.length) {
+        out.push(`${p.nombre} ha muerto: sus almas selladas quedan libres y la guadaña vuelve a los huesos de Neter.`);
+        try { out.push(liberarAlma(partida, { quien: p.nombre })); } catch { /* nada */ }
+      }
+      if (p.inventario.some((x) => new RegExp(GUADANA, "i").test(x))) {
+        p.inventario = p.inventario.filter((x) => !new RegExp(GUADANA, "i").test(x));
+        if (p.manos?.principal && new RegExp(GUADANA, "i").test(p.manos.principal)) p.manos = {};
+        out.push(`La guadaña de ${p.nombre} se deshace y vuelve a los huesos de Neter.`);
+      }
+    }
+    // Un alma sellada cuyo dueño ya cayó (murió la criatura, cayó el PNJ) deja de ocupar sitio.
+    if (esSegador(p) && p.almas?.length) {
+      for (const a of [...p.almas]) {
+        let caido = false;
+        try {
+          const c = localizar(partida, a.nombre);
+          caido = c.tipo === "pj" ? c.p.condiciones.includes("muerto") : c.tipo === "criatura" ? c.j.pv <= 0 : c.n.pv !== undefined && c.n.pv <= 0;
+        } catch { caido = true; }
+        if (caido) { p.almas = p.almas.filter((x) => x !== a); out.push(`El alma sellada de ${a.nombre} se pierde con su muerte: ${p.nombre} ya no la sostiene.`); }
+      }
     }
   }
   return out;
@@ -259,6 +286,7 @@ export function hablarConMuertos(partida: Partida, d: { quien: string; objetivo:
 
 export function invocacion(partida: Partida, d: { quien: string; accion: "ver" | "elegir" | "usar"; nombre?: string }): string {
   const p = segador(partida, d.quien);
+  if (d.accion !== "ver") { const quieto = motivoNoActua(p); if (quieto) throw new Error(`${quieto}: no puede invocar.`); }
   const elegidas = (p.invocaciones ??= []);
   const todas = INVOCACIONES.join(", ");
   if (d.accion === "ver") return `${p.nombre}: invocaciones ${elegidas.join(", ") || "ninguna"} (elegibles: ${todas}).`;

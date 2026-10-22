@@ -6,7 +6,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { curaConRunas, esCazador, MAX_HOJAS, papelesDe, potenciaDe, type RegistroMagia } from "./cazador_base.js";
 import type { EstadoJefe, Criatura } from "./bestiario.js";
 import { tirar } from "./dados.js";
-import { aplicarCondicion } from "./combate.js";
+import { aplicarCondicion, localizar } from "./combate.js";
 import { bajarHerida } from "./heridas.js";
 import { buscarLugar, rumboEntre } from "./mapa.js";
 import { distanciaPlano } from "./espacio.js";
@@ -135,6 +135,7 @@ export function papeles(partida: Partida, d: DatosPapeles, atacarFn: AtacarFn): 
       const i = (p.muestras ?? []).findIndex((m) => norm(m) === norm(d.objetivo!));
       if (i < 0) throw new Error(`${p.nombre} no tiene sangre de ${d.objetivo}: primero tomar_sangre (hay que herirlo).`);
       if (pa.hojas < 1) throw new Error(`${p.nombre} no tiene hojas de runas.`);
+      try { localizar(partida, p.muestras![i]); } catch { throw new Error(`${p.muestras![i]} ya no está en escena: la muestra de sangre se queda guardada y la hoja, sin gastar.`); }
       pa.hojas -= 1;
       const nombre = p.muestras![i];
       p.muestras!.splice(i, 1);
@@ -259,6 +260,7 @@ export function rastroMagico(partida: Partida, d: DatosRastro): string {
     return `Anotado en secreto (${r.id}): ${r.lanzador} lanzó «${r.hechizo}»${r.victima ? ` sobre ${r.victima}` : ""}${r.objeto ? ` en ${r.objeto}` : ""}${r.negra ? " (magia negra)" : ""}.`;
   }
   const p = cazador(partida, d.quien);
+  exigirLibre(p, "Rastro de la magia");
   const recientes = (partida.hechizos ?? []).slice(-10);
   if (d.accion === "detectar") {
     const g = GRADO(p.nivel);

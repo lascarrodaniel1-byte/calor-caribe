@@ -29,7 +29,7 @@ export interface Juramento {
   /** Ids de los votos jurados (1-5). */
   votos: string[];
   /** Roto y sin expiar: sus poderes callan. */
-  roto?: { voto: string; motivo: string; consecuencia: string };
+  roto?: { voto: string; motivo: string; consecuencia: string; agotamiento?: number };
   /** Roto sin remedio: no vuelve a usar magia divina. */
   perdido?: boolean;
   /** PV que le quedan en la reserva de imposición de manos. */

@@ -8,7 +8,8 @@ import { ALCANCE_CERBATANA } from "./degollador_base.js";
 import { amputar, diagnosticar, golpeNervio, gastarKit, gastarManoFirme, kitSanador, usosKit } from "./barbero.js";
 import { esBarberoC } from "./barbero_base.js";
 import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablarConMuertos, invocacion, liberarAlma, liberarSiMuere, prepararDescarga, sellarAlma } from "./segador.js";
-import { esSegador } from "./segador_base.js";
+import { esSegador, exigirLibre } from "./segador_base.js";
+import { motivoNoActua } from "./condiciones.js";
 import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
@@ -1010,7 +1011,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const previo = partida.personajes[e.nombre];
         let don = e.don_arcano ?? false;
         let tiradaDon = "";
-        if (!previo?.magia && e.don_arcano === undefined) {
+        const nuevoEnClase = !previo || previo.clase !== e.clase; // volver a guardar la ficha de siempre no vuelve a tirar el don ni a comprobar el linaje
+        if (nuevoEnClase && e.don_arcano === undefined) {
           const clave = `${e.nombre.toLowerCase()}|${e.raza}`;
           const dones = (partida.dones ??= {});
           const t = (dones[clave] ??= tirarDon(e.raza)); // el dado se tira una vez por personaje: un intento fallido no lo repite
@@ -1018,7 +1020,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           tiradaDon = t.texto;
         }
         // Las escuelas de hechicería solo admiten a nobles y ricos; el don arcano lo incluye por fuerza mayor.
-        if (e.clase === "Hechicero" && !previo?.magia && !don && e.linaje !== "noble" && e.linaje !== "rico")
+        if (e.clase === "Hechicero" && nuevoEnClase && !don && e.linaje !== "noble" && e.linaje !== "rico")
           throw new Error(`Solo los nobles o los ricos entran en las escuelas de hechicería, y ${e.nombre} no nació con el don arcano (${tiradaDon || "sin don"}). Indica linaje «noble» o «rico» en su trasfondo, o cambia de clase: sin dinero ni título no hay escuela.`);
         const p: Personaje = normalizar({
           ...e,
@@ -1040,10 +1042,15 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
           dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
           robado: partida.personajes[e.nombre]?.robado ?? {},
-          magia: previo?.magia ?? magiaInicial(e.clase, e.escuelas_magia, don, e.tipos_magia),
+          magia: !nuevoEnClase && previo?.magia ? previo.magia : magiaInicial(e.clase, e.escuelas_magia, don, e.tipos_magia),
         });
+        // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
+        if (!nuevoEnClase && previo) {
+          const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+        }
         partida.personajes[p.nombre] = p;
-        if (e.clase === "Hechicero" && p.magia && !previo?.magia) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
+        if (e.clase === "Hechicero" && p.magia && nuevoEnClase) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
         ajustarMaestriaHechicero(p); // un Hechicero de nivel alto ya tiene la maestría de su nivel
         const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." + (e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : "") : ""}` : "";
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
@@ -1096,6 +1103,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         }
         if (e.maestria) {
           if (p.magia.maestria === "profano" && e.maestria !== "profano") despertarMagia(p.clase, p.magia);
+          if (p.clase === "Hechicero" && e.maestria === "ascendido" && !p.magia.don) throw new Error(`${p.nombre} no tiene el don arcano: sin él no pasa de archimago.`);
           p.magia.maestria = e.maestria;
           cambios.push(`maestría ${e.maestria}`);
         }
@@ -1125,11 +1133,21 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`${p.nombre} no tiene la herida ${e.herida}. Heridas abiertas: ${hay}`);
         }
         const sanador = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.sanador.toLowerCase());
-        if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, h.podre && sanador.nivel >= 5 ? 10 : 5); // cerrar una herida cuesta 5 PV de su reserva (10 si además expulsa la Podre)
+        if (sanador) {
+          const quieto = motivoNoActua(sanador);
+          if (quieto) throw new Error(`${quieto}: no puede tratar heridas.`);
+          if (esBarberoC(sanador)) exigirLibre(sanador, "Cirugía");
+        }
+        const costeReserva = h.podre && (sanador?.nivel ?? 0) >= 5 ? 10 : 5;
+        const reservaAntes = sanador?.juramento?.reserva;
+        if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, costeReserva); // cerrar una herida cuesta 5 PV de su reserva (10 si además expulsa la Podre)
         const conKit = !!sanador && esBarberoC(sanador) && e.recursos.includes("kit de sanador");
         if (conKit && usosKit(sanador!) <= 0) throw new Error("El kit de sanador se ha quedado sin usos: repónlo antes de tratar con él.");
         const texto = tratar(p, h, { ...e, sanador, nombre_sanador: e.sanador, gastar_mano_firme: sanador ? () => gastarManoFirme(partida, sanador) : undefined });
-        if (conKit) gastarKit(sanador!); // el uso se gasta cuando el tratamiento se hizo, no si falló por una orden mal dada
+        // Lo que no llegó a hacerse (la herida ya tenía magia, no sangraba, faltaba el hierro…) no gasta ni reserva ni kit.
+        const sinEfecto = /no responde una segunda vez|no tiene efecto|no sangra|Para cauterizar hace falta|No se puede cauterizar|No hay Podre que curar|no se puede|no puede/i.test(texto.split("\n")[0]) || /La herida .* ya recibió magia divina/.test(texto);
+        if (sinEfecto && reservaAntes !== undefined && sanador?.juramento) sanador.juramento.reserva = reservaAntes;
+        if (conKit && !sinEfecto) gastarKit(sanador!); // el uso se gasta cuando el tratamiento se hizo, no si falló por una orden mal dada
         return { contenido: `${texto}\n\nFicha actual:\n${fichaTexto(p)}`, aviso: `🩹 ${texto}` };
       }
       case "pasar_tiempo": {
@@ -1324,9 +1342,14 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "descarga": {
         const e = validado.data as z.infer<typeof esquemas.descarga>;
         const pre = prepararDescarga(partida, e);
-        const rs = pre.ataques.map((a) => ataqueCompleto(partida, a));
+        const rs: { texto: string; aviso: string }[] = [];
+        for (const a of pre.ataques) {
+          try { rs.push(ataqueCompleto(partida, a)); }
+          catch (err) { if (!rs.length) throw err; rs.push({ texto: `(El segundo rayo no se lanzó: ${(err as Error).message})`, aviso: `(El segundo rayo no se lanzó: ${(err as Error).message})` }); }
+        }
+        const nota = pre.gastar();
         const deuda = pre.deuda();
-        return { contenido: `${pre.nota}\n${rs.map((r) => r.texto).join("\n")}\n${deuda}`, aviso: `💀 ${pre.nota}\n${rs.map((r) => r.aviso).join("\n")}\n${deuda}` };
+        return { contenido: `${nota}\n${rs.map((r) => r.texto).join("\n")}\n${deuda}`, aviso: `💀 ${nota}\n${rs.map((r) => r.aviso).join("\n")}\n${deuda}` };
       }
       case "sellar_alma": {
         const e = validado.data as z.infer<typeof esquemas.sellar_alma>;

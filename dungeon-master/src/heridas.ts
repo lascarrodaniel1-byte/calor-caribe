@@ -584,7 +584,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
         }
       }
       const anestesiado = p.anestesia ?? 0;
-      p.anestesia = undefined; // la anestesia dura lo que dura la operación
+      if (!hemorragia) p.anestesia = undefined; // la anestesia dura lo que dura la operación (detener una hemorragia no la gasta)
       const natural = t.dados[0];
 
       if (t.total >= cd || natural === 20) {

@@ -139,6 +139,15 @@ export function textoEfectos(conds: string[]): string {
   return lineas.join(" | ");
 }
 
+/** Por qué un personaje no puede usar un poder ahora (muerto, a 0 PV o incapacitado); null si puede. */
+export function motivoNoActua(p: { nombre: string; pv: number; condiciones: string[] }): string | null {
+  if (p.condiciones.includes("muerto")) return `${p.nombre} está muerto`;
+  if (p.pv <= 0) return `${p.nombre} está a 0 PV`;
+  const e = efectos(p.condiciones);
+  if (e.incapacitado) return `${p.nombre} está ${e.motivos.join(", ")}: no puede actuar`;
+  return null;
+}
+
 /** Añade una condición a una lista sin duplicarla; el agotamiento solo sube de nivel, nunca baja por añadir. */
 export function agregarCondicion(lista: string[], texto: string): boolean {
   const nuevoAg = AGOTAMIENTO.exec(texto);
