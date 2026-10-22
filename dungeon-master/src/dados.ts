@@ -1,6 +1,42 @@
 // Tiradas de dados con notación estándar de D&D: "1d20+5", "2d6", "4d6kh3", "d100-1".
+/** Un dado tirado: sus caras y lo que salió. */
+export interface DadoTirado { caras: number; valor: number }
+
+// Registro de los dados de un turno y, al repetir un turno corregido, los dados que ya habían salido (por caras, en orden).
+let registro: DadoTirado[] = [];
+let fijos: Map<number, number[]> | null = null;
+
+/** Empieza a anotar los dados de un turno. Con `fijas`, esos mismos dados vuelven a salir (por caras y en orden) hasta que se liberen. */
+export function iniciarRegistroDados(fijas?: DadoTirado[]): void {
+  registro = [];
+  fijos = null;
+  if (fijas?.length) {
+    fijos = new Map();
+    for (const d of fijas) {
+      if (!Number.isInteger(d.caras) || !Number.isInteger(d.valor) || d.valor < 1 || d.valor > d.caras) continue;
+      const cola = fijos.get(d.caras) ?? [];
+      cola.push(d.valor);
+      fijos.set(d.caras, cola);
+    }
+    if (!fijos.size) fijos = null;
+  }
+}
+export const registroDados = (): DadoTirado[] => registro.map((d) => ({ ...d }));
+/** ¿Están fijados los dados de un turno anterior? */
+export const dadosFijados = (): boolean => fijos !== null;
+/** Los dados dejan de repetirse: desde aquí, tiradas nuevas. */
+export function liberarDados(): void { fijos = null; }
+
 /** Entero aleatorio en [min, max) con el generador criptográfico (Node 20+ y navegadores). */
 function randomInt(min: number, max: number): number {
+  const caras = max - 1;
+  const fijo = min === 1 ? fijos?.get(caras)?.shift() : undefined;
+  const valor = fijo ?? aleatorio(min, max);
+  if (min === 1) registro.push({ caras, valor });
+  return valor;
+}
+
+function aleatorio(min: number, max: number): number {
   const rango = max - min;
   const limite = Math.floor(0x100000000 / rango) * rango;
   const buf = new Uint32Array(1);

@@ -475,7 +475,7 @@
       <li><strong>Escribe la acción ya pensada.</strong> Sin autocorrecciones a mitad de frase («no, mejor…») ni mayúsculas o insultos que no aportan; la urgencia se expresa con «rápido, sin detenerme a mirar».</li>
       <li><strong>Cada habilidad usa su característica.</strong> Persuadir, engañar o intimidar es Carisma; percibir o curar, Sabiduría; saber o investigar, Inteligencia; sigilo y acrobacias, Destreza; trepar o forzar, Fuerza. Si propones otra («uso mi inteligencia para convencerle»), el DM te dirá que no influye y tirarás con la correcta. Tampoco se puede hacer lo que no tienes (un objeto que no llevas, un hechizo que no conoces) ni lo que queda fuera de alcance.</li>
       <li><strong>Dónde y cuándo:</strong> el norte es siempre <em>arriba</em>, en el mapa y en el <strong>plano de la escena</strong> (a la derecha, bajo el mapa), que muestra en metros dónde está cada uno. La hora del mundo aparece con el mapa (🕒). Si el DM te sitúa mal («detrás del fuego» cuando estás delante), corrígele con el plano en la mano.</li>
-      <li><strong>Si el DM se equivoca</strong> (te confundió de personaje, inventó un dato o se olvidó de algo), usa <strong>Corregir al DM</strong> con una frase concreta: «Dije que agarraba al mago (Al-fero), no a Dal Tepes». Una corrección clara vale más que repetir la acción.</li>
+      <li><strong>Si el DM se equivoca</strong> (te confundió de personaje, inventó un dato o se olvidó de algo), usa <strong>Corregir al DM</strong> con una frase concreta: «Dije que agarraba al mago (Al-fero), no a Dal Tepes». Una corrección clara vale más que repetir la acción. Corregir no repite los dados ni evita lo ya ocurrido: la tirada solo se vuelve a hacer si el error era clave para ella (por ejemplo, tirabas contra el objetivo equivocado).</li>
     </ul>
     <h3>Los dados</h3>
     <ul>
@@ -498,7 +498,7 @@
     <ul>
       <li><strong>Arriba, bajo la cabecera,</strong> tenéis siempre a la vista el <strong>🎯 Objetivo</strong> del grupo y el <strong>➡ Ahora</strong>: el siguiente paso concreto. Si lo veis desfasado, decídselo al DM.</li>
       <li><strong>La historia va por arcos.</strong> Cada historia (un encargo, un misterio, un enemigo) tiene su <em>inicio</em>, su <em>nudo</em> y su <em>desenlace</em>, y el DM las lleva hasta el final: verás avisos 📖 cuando un arco se abre, se complica o se cierra. Los PNJ no se quedan parados cuando os vais: siguen a lo suyo y de vez en cuando os llegará el eco de lo que hacen, siempre con vosotros como protagonistas.</li>
-      <li><strong>Si el DM se equivoca,</strong> pulsa «↩ Corregir al DM» bajo su última respuesta (o escribe <em>/corregir</em> y lo que falló): se borra esa respuesta con todos sus efectos y se repite tu acción con tu corrección.</li>
+      <li><strong>Si el DM se equivoca,</strong> pulsa «↩ Corregir al DM» bajo su última respuesta (o escribe <em>/corregir</em> y lo que falló): se borra esa respuesta con todos sus efectos y se repite tu acción con tu corrección (los dados que salieron se conservan, salvo que el error fuera clave para la tirada).</li>
       <li><strong>Se juega por turnos.</strong> Arriba del cuadro de texto ves el orden: cada uno actúa cuando le toca, el DM responde a esa acción y le pasa la palabra al siguiente. Mientras esperas puedes ir escribiendo tu acción; se envía cuando te toque. Si te toca y no quieres hacer nada, pulsa «Pasar turno»; si alguien se ha ido, cualquiera puede saltar su turno. Quien prefiera el desorden de antes puede desmarcar «Jugar por turnos» en el lateral (entonces las acciones esperan en cola y el DM las resuelve juntas).</li>
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
@@ -515,7 +515,7 @@
 <div class="velo" id="velo-corregir" hidden>
   <form id="form-corregir">
     <h2>Corregir al DM</h2>
-    <p>Se borra la última respuesta del DM <strong>con todos sus efectos</strong> (tiradas, heridas, objetos, notas, ubicación) y se repite la acción de <strong id="corregir-quien"></strong> con tu corrección. Sirve para errores de bulto: contradicciones, personajes confundidos, cosas que no pasaron.</p>
+    <p>Se borra la última respuesta del DM <strong>con todos sus efectos</strong> (heridas, objetos, notas, ubicación) y se repite la acción de <strong id="corregir-quien"></strong> con tu corrección. Sirve para errores de bulto: contradicciones, personajes confundidos, cosas que no pasaron. <strong>No sirve para repetir una tirada:</strong> los dados que salieron se conservan, y solo se vuelven a tirar si el dato que corriges es clave para esa tirada.</p>
     <label for="texto-correccion">¿Qué hizo mal? (opcional, pero ayuda mucho)</label>
     <textarea id="texto-correccion" rows="3" maxlength="600" placeholder="Ejemplo: Odo no estaba en la sala; Thorin sigue en el sótano."></textarea>
     <p class="aviso-error" id="error-corregir" hidden></p>
@@ -1068,7 +1068,7 @@
       })() +
       (infoTurno ? `${T.bloqueTurnos(infoTurno)}\n\n` : "") +
       (correccion
-        ? `# CORRECCIÓN DE LOS JUGADORES (hazles caso)\nTu respuesta anterior a esta acción tenía un error y se ha BORRADO con todos sus efectos (tiradas, heridas, objetos, notas, ubicación): todo está como antes de ella.\nLo que estaba mal: ${correccion.texto || "no lo han dicho: revisa el tablero y la secuencia y evita cualquier contradicción."}\nLo que dijiste y NO debes repetir: «${correccion.malo}»\nRehaz el turno respetando la corrección y el tablero. Las tiradas se vuelven a hacer.\n\n`
+        ? `# CORRECCIÓN DE LOS JUGADORES (hazles caso)\nTu respuesta anterior a esta acción tenía un error y se ha BORRADO con todos sus efectos (heridas, objetos, notas, ubicación): todo está como antes de ella.\nLo que estaba mal: ${correccion.texto || "no lo han dicho: revisa el tablero y la secuencia y evita cualquier contradicción."}\nLo que dijiste y NO debes repetir: «${correccion.malo}»\nRehaz el turno respetando la corrección y el tablero. ${correccion.tiradas?.length ? "LAS TIRADAS NO SE REPITEN: los dados que ya salieron vuelven a salir igual, en el mismo orden (corregir no sirve para intentar otra suerte ni para librarse de lo que ya pasó). Solo si el dato corregido es CLAVE para la acción que se tiró (por ejemplo, se tiró contra el objetivo equivocado o sin una circunstancia que cambiaba la ventaja o la dificultad) llama a reabrir_tiradas con el motivo, y los dados saldrán nuevos. Si el error era de narración, de consecuencia o de resultado, no la uses y respeta el resultado de los dados." : "Las tiradas se vuelven a hacer (esa respuesta no guardó sus dados)."}\n\n`
         : "") +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
     turnosEntrada.push({ role: "user", content: final });
@@ -1569,6 +1569,8 @@
       },
     };
 
+    // Al repetir un turno corregido, los dados que ya salieron vuelven a salir igual (salvo que el DM los reabra con motivo).
+    V.dados.iniciarRegistroDados(correccion?.tiradas);
     ctl = new AbortController();
     try {
       const res = await sample(construirEntrada(acciones, infoTurno, correccion), {
@@ -1597,7 +1599,7 @@
         marca,
       });
       const deshacerOk = await guardarCopia;
-      const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
+      const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
       V.regentes.contarTurno(copia);
@@ -1647,6 +1649,8 @@
       if (e?.code !== "cancelled") registrarError("dm", e?.message || e?.code || "error del DM", e);
       if (e?.code !== "cancelled") privados.push(MENSAJES_ERROR[e?.code] || "El DM se interrumpió (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar.");
       return false;
+    } finally {
+      V.dados.liberarDados(); // los dados fijados valen solo para este turno: nada que tire después (fichas, tiradas propias) los consume
     }
   }
 
@@ -1711,7 +1715,7 @@
       // Misma idea que al guardar un turno: una sola escritura confirma el estado anterior y apunta lo que falta
       // (borrar la respuesta y devolver la acción a la cola); si algo falla, se completa al sincronizar.
       const version = siguienteVersion();
-      const correccion = { texto: textoCorreccion, malo: String(ult.texto || "").slice(0, 500) };
+      const correccion = { texto: textoCorreccion, malo: String(ult.texto || "").slice(0, 500), tiradas: Array.isArray(ult.tiradas) ? ult.tiradas.slice(0, 300) : [] };
       // Queda constancia de qué dijo mal el DM y qué corrigieron los jugadores, para poder estudiar por qué se confunde.
       db.doc("correcciones/c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)).set({
         ts: Date.now(), por: nombre, ronda: ult.ronda || 0, jugadorTurno: ult.jugador || "", turnoId: ult._id,

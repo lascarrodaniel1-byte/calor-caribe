@@ -4,6 +4,7 @@
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
+import * as dados from "./dados.js";
 import { ejecutar, herramientas } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
@@ -121,5 +122,5 @@ export function estadoParaDM(p: Partida, foco?: string): string {
   return partes.join("\n\n");
 }
 
-export { aventuras, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA_WEB };

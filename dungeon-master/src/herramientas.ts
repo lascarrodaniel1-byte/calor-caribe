@@ -2,7 +2,7 @@
 // este programa, no el modelo, para que los resultados sean realmente aleatorios.
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { describir, tirar } from "./dados.js";
+import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
 import {
   aparecer,
   buscarCriatura,
@@ -268,6 +268,9 @@ const esquemas = {
     secundaria: z.string().optional().describe("Escudo o segunda arma ligera de la otra mano; «ninguna» la deja libre"),
     a_dos_manos: z.boolean().optional().describe("Empuña con las dos manos un arma versátil (más daño, sin escudo)"),
     usa_accion: z.boolean().optional().describe("En combate, confirma que gasta su acción (segundo cambio de objeto del asalto, o ponerse/quitarse el escudo)"),
+  }),
+  reabrir_tiradas: z.object({
+    motivo: z.string().describe("Qué dato corregido es clave para la acción que se tiró, y por qué cambia la tirada"),
   }),
   estilo_combate: z.object({
     quien: z.string(),
@@ -660,6 +663,8 @@ const descripciones: Record<Nombre, string> = {
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
   empunar:
     "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
+  reabrir_tiradas:
+    "SOLO al repetir un turno corregido por los jugadores: los dados que ya salieron se repiten igual. Llámala únicamente si el dato corregido es CLAVE para la acción que se tiró (se tiró contra el objetivo equivocado, sin una circunstancia que cambiaba la ventaja o la dificultad…); desde entonces los dados salen nuevos. Un error de narración, de consecuencia o de resultado no la justifica.",
   estilo_combate:
     "Elige el estilo de lucha (arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas) de un Mercenario, un Caballero (nivel 2+) o un Cazador de Brujas (nivel 2+).",
   papeles:
@@ -1083,6 +1088,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.empunar>;
         const texto = empunar(partida, e);
         return { contenido: texto, aviso: `✋ ${texto}` };
+      }
+      case "reabrir_tiradas": {
+        const e = validado.data as z.infer<typeof esquemas.reabrir_tiradas>;
+        if (!dadosFijados()) throw new Error("No hay tiradas fijadas: solo se usa al repetir un turno corregido. Las tiradas de ahora ya son nuevas.");
+        if (e.motivo.trim().length < 15) throw new Error("Explica con una frase qué dato corregido es clave para la tirada.");
+        liberarDados();
+        return { contenido: `Tiradas liberadas: desde ahora los dados salen nuevos (motivo: ${e.motivo.trim()}).`, aviso: `🎲 Se vuelve a tirar porque el dato corregido es clave para la acción: ${e.motivo.trim()}` };
       }
       case "estilo_combate": {
         const e = validado.data as z.infer<typeof esquemas.estilo_combate>;
