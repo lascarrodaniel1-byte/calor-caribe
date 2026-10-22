@@ -1063,7 +1063,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         if (e.clase === "Hechicero" && p.magia && nuevoEnClase) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
         ajustarMaestriaHechicero(p); // un Hechicero de nivel alto ya tiene la maestría de su nivel
         const don_txt = tipoDon === "fisico"
-          ? `\n💪 ${tiradaDon || "Don arcano físico."} Nació con un cuerpo prodigioso: competencia +1 y FUE, DES y CON pueden llegar a 24. Revélalo en la historia de forma memorable.`
+          ? `\n💪 ${tiradaDon || "Don arcano físico."} Nació con un cuerpo prodigioso: competencia +1 y FUE, DES y CON pueden llegar a 28. Revélalo en la historia de forma memorable.`
           : tipoDon === "magico"
             ? `\n✨ ${tiradaDon || "Don arcano mágico."} Nació con talento para la magia${e.clase === "Hechicero" ? " (domina todos los tipos)" : " de su estilo"}: revélalo en la historia de forma memorable.${e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : ""}`
             : tiradaDon ? `\n· ${tiradaDon}` : "";
@@ -1582,7 +1582,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "tirar_don_arcano": {
         const e = validado.data as z.infer<typeof esquemas.tirar_don_arcano>;
         const { t, nueva } = tirarDonJugador(partida, e.jugador);
-        const lectura = t.tipo === "fisico" ? "Don FÍSICO: cuerpo prodigioso (competencia +1; FUE, DES y CON hasta 24). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : t.tipo === "magico" ? "Don MÁGICO: talento para la magia (si es Hechicero, domina todos los tipos; si es otra clase, la magia de su estilo despierta). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : "Sin don arcano: un mortal corriente (si quiere ser Hechicero, necesitará linaje noble o rico).";
+        const lectura = t.tipo === "fisico" ? "Don FÍSICO: cuerpo prodigioso (competencia +1; FUE, DES y CON hasta 28). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : t.tipo === "magico" ? "Don MÁGICO: talento para la magia (si es Hechicero, domina todos los tipos; si es otra clase, la magia de su estilo despierta). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : "Sin don arcano: un mortal corriente (si quiere ser Hechicero, necesitará linaje noble o rico).";
         const txt = `${nueva ? "" : "(Ya estaba tirado) "}${e.jugador}: ${t.texto}. ${lectura}`;
         return { contenido: txt, aviso: `🎲 ${e.jugador}: ${t.texto}` };
       }

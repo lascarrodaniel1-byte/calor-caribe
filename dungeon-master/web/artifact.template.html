@@ -2073,7 +2073,7 @@
       // El don arcano lo tira el DM antes de crear el personaje: si ya está tirado, se lo recordamos.
       const d = (partida?.dones || {})[String(nombre).trim().toLowerCase()];
       const t = d?.tipo || (d ? (d.don ? "magico" : "ninguno") : "");
-      $("pj-don").textContent = t === "fisico" ? "💪 Naciste con el don arcano FÍSICO (el DM sacó 19): un cuerpo prodigioso. Competencia +1 y FUE, DES y CON hasta 24." : t === "magico" ? "✨ Naciste con el don arcano MÁGICO (el DM sacó 20): talento para la magia. Si eres Hechicero, dominas todos los tipos." : t === "ninguno" ? "No naciste con ningún don arcano (el DM tiró el dado)." : "El DM tirará un d20 para ver si naces con un don arcano (19 físico, 20 mágico) antes de que crees tu personaje.";
+      $("pj-don").textContent = t === "fisico" ? "💪 Naciste con el don arcano FÍSICO (el DM sacó 19): un cuerpo prodigioso. Competencia +1 y FUE, DES y CON hasta 28." : t === "magico" ? "✨ Naciste con el don arcano MÁGICO (el DM sacó 20): talento para la magia. Si eres Hechicero, dominas todos los tipos." : t === "ninguno" ? "No naciste con ningún don arcano (el DM tiró el dado)." : "El DM tirará un d20 para ver si naces con un don arcano (19 físico, 20 mágico) antes de que crees tu personaje.";
     }
     $("error-personaje").hidden = true;
     $("velo-personaje").hidden = false;

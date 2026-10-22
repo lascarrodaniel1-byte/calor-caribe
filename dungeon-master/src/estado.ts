@@ -218,7 +218,7 @@ export function fichaTexto(p: Personaje): string {
   return [
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
-    p.don === "fisico" ? "  Don arcano FÍSICO: competencia +1 y FUE, DES y CON hasta 24" : p.don === "magico" ? "  Don arcano MÁGICO" : "",
+    p.don === "fisico" ? "  Don arcano FÍSICO: competencia +1 y FUE, DES y CON hasta 28" : p.don === "magico" ? "  Don arcano MÁGICO" : "",
     "  " +
       (["fue", "des", "con", "int", "sab", "car"] as const)
         .map((k) => {
