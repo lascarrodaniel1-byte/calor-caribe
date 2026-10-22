@@ -3,6 +3,7 @@ import type { Leyenda } from "./leyenda.js";
 import { textoLeyenda } from "./leyenda.js";
 import type { Runas, RegistroMagia } from "./cazador_base.js";
 import { textoCazador } from "./cazador_base.js";
+import { textoManos } from "./manos.js";
 import type { Juramento } from "./juramento_base.js";
 import { textoJuramento } from "./juramento_base.js";
 import { textoRecursos } from "./recursos.js";
@@ -80,6 +81,9 @@ export interface Personaje {
   mascota?: { tipo: "halcon" | "raton"; nombre: string };
   /** Rivales cuya sangre tiene guardada (para marcarlos a distancia con un papel). */
   muestras?: string[];
+  /** Qué empuña en cada mano (ver manos.ts) y su estilo de lucha. */
+  manos?: { principal?: string; secundaria?: string; dosManos?: boolean };
+  estilo?: string;
   /** Mariscal de la Compañía del Cuervo Negro (si ganó el concurso). */
   mariscal?: "Hugin" | "Munin";
   /** Rasgos de clase ganados al subir de nivel. */
@@ -210,6 +214,7 @@ export function fichaTexto(p: Personaje): string {
     textoProgresion(p),
     textoRecursos(p),
     textoLeyenda(p),
+    textoManos(p),
     textoJuramento(p),
     textoCazador(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",

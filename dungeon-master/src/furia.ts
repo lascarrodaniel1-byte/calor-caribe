@@ -13,7 +13,7 @@ import { salvacion } from "./reglas.js";
 import { RECURSOS_CLASE } from "./recursos.js";
 
 RECURSOS_CLASE["Berserker de Ceniza"] = [
-  { nombre: "Furia", desde: 1, max: (p) => usosFuria(p.nivel), recarga: "largo", efecto: (p) => entrarFuria(p) },
+  { nombre: "Furia", adicional: true, desde: 1, max: (p) => usosFuria(p.nivel), recarga: "largo", efecto: (p) => entrarFuria(p) },
 ];
 
 export interface Furia {

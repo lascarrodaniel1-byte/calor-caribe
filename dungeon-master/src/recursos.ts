@@ -15,6 +15,8 @@ export interface DefRecurso {
   recarga: "corto" | "largo";
   /** Qué ocurre al usarlo (además de gastar el uso). */
   efecto: (p: Personaje, partida?: Partida) => string;
+  /** Se usa con una acción adicional: solo una por asalto en combate. */
+  adicional?: boolean;
 }
 
 // Otros módulos (furia.ts) añaden aquí los suyos al cargarse, para no crear ciclos de importación.
@@ -25,6 +27,7 @@ export const RECURSOS_CLASE: Record<string, DefRecurso[]> = {
   "Mercenario del Cuervo": [
     {
       nombre: "Segundo aliento",
+      adicional: true,
       desde: 1,
       max: () => 1,
       recarga: "corto",
@@ -89,7 +92,16 @@ export function usarRecurso(partida: Partida, d: { quien: string; recurso: strin
   if (p.condiciones.includes("muerto") || p.pv <= 0) throw new Error(`${p.nombre} está a 0 PV o muerto: no puede usar ${r.def.nombre}.`);
   if (efectos(p.condiciones).incapacitado) throw new Error(`${p.nombre} está incapacitado: no puede usar ${r.def.nombre}.`);
   if (r.gastados >= r.max) throw new Error(`${p.nombre} ya gastó ${r.def.nombre} (0/${r.max}); lo recupera con un ${r.def.recarga === "corto" ? "descanso corto o largo" : "descanso largo"}.`);
-  const efecto = r.def.efecto(p, partida); // si falla (p. ej. ya está en furia), no se gasta el uso
+  // Acción adicional: solo una por asalto en combate.
+  let turno: { adicional?: string } | undefined;
+  if (r.def.adicional && partida.combate) {
+    partida.combate.turnos ??= {};
+    const clave = Object.keys(partida.combate.turnos).find((k) => norm(k) === norm(p.nombre)) ?? p.nombre;
+    turno = partida.combate.turnos[clave] ??= {};
+    if (turno.adicional) throw new Error(`${p.nombre} ya usó su acción adicional este asalto (${turno.adicional}): ${r.def.nombre} es una acción adicional.`);
+  }
+  const efecto = r.def.efecto(p, partida);
+  if (turno) turno.adicional = r.def.nombre; // si falla (p. ej. ya está en furia), no se gasta el uso
   (p.gastados ??= {})[r.def.nombre] = r.gastados + 1;
   return `${efecto} Quedan ${r.max - r.gastados - 1}/${r.max}.`;
 }

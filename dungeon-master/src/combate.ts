@@ -14,6 +14,7 @@ import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
 import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js";
 import { gastarReserva, usoDivino } from "./juramento.js";
+import { autoManos, caEfectiva } from "./manos.js";
 import { danoEnSuelo } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
@@ -171,6 +172,12 @@ export interface PnjCombate {
 
 /** Lo que cada combatiente ha hecho este asalto (acciones de combate y reacción). */
 export interface EstadoTurno {
+  /** Ya atacó este asalto con un arma ligera (habilita el ataque de la mano secundaria). */
+  atacoLigero?: boolean;
+  /** Qué acción adicional ha usado este asalto (solo una). */
+  adicional?: string;
+  /** Cambios de objeto en las manos este asalto (el primero es gratis). */
+  interacciones?: number;
   /** Ya usó su reacción este asalto. */
   reaccion?: boolean;
   /** Esquivando: los ataques contra él tienen desventaja y tiene ventaja en salvaciones de DES. */
@@ -274,6 +281,7 @@ export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCom
   partida.combate = combate;
   const todos = [...nombres, ...pnj.map((n) => n.nombre)].map((n) => localizar(partida, n));
   const lineas: string[] = [];
+  for (const cb of todos) if (cb.tipo === "pj") { const m = autoManos(cb.p); if (m) lineas.push(m); }
 
   // Bandos: quien tiende la emboscada o sigue el plan, y sus rivales.
   const enBando = (c: Combatiente) => !!tactica?.bando.some((b) => igual(b, c.nombre));
@@ -367,7 +375,7 @@ export function siguienteAsalto(partida: Partida): string {
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; }
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -497,6 +505,10 @@ export interface DatosAtaque {
   castigo?: boolean;
   /** Es un ataque hecho como reacción (en turno ajeno): no cuenta como su turno. */
   reaccion?: boolean;
+  /** Pelea con dos armas: ataca con el arma ligera de la mano secundaria (acción adicional). */
+  mano_secundaria?: boolean;
+  /** Estilo de lucha con arma a dos manos: repite los 1 y 2 de los dados de daño. */
+  repetir_bajos?: boolean;
 }
 
 export interface ResultadoAtaque {
@@ -519,13 +531,18 @@ function doblarDados(expr: string): string {
 }
 
 /** Tira una expresión de daño que puede sumar varios grupos de dados ("2d6+3+1d8"). */
-function tirarDano(expr: string): { total: number; texto: string } {
+function tirarDano(expr: string, repetirBajos = false): { total: number; texto: string } {
   const partes = expr.replace(/\s+/g, "").replace(/-/g, "+-").split("+").filter(Boolean);
   let total = 0;
   const textos: string[] = [];
   for (const parte of partes) {
     if (/d/i.test(parte)) {
-      const t = tirar(parte.replace(/^-/, ""));
+      let t = tirar(parte.replace(/^-/, ""));
+      if (repetirBajos && !parte.startsWith("-") && t.dados.some((x) => x <= 2)) {
+        const nuevo = tirar(parte.replace(/^-/, ""));
+        textos.push(`(repite ${parte}[${t.dados.join(",")}])`);
+        t = nuevo;
+      }
       const v = parte.startsWith("-") ? -t.total : t.total;
       total += v;
       textos.push(`${parte}[${t.dados.join(",")}]`);
@@ -576,7 +593,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   // Defensa
   if (d.cobertura === "total") throw new Error(`${ob.nombre} tiene cobertura total: no se le puede atacar directamente (rodéalo, destruye la cobertura o usa un efecto de área).`);
   const cobBono = d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0;
-  const ca = cobBono + (d.ca ?? (ob.tipo === "pj" ? ob.p.ca : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
+  const ca = cobBono + (d.ca ?? (ob.tipo === "pj" ? caEfectiva(ob.p) : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
 
   // Ventaja y desventaja
   let ventaja = !!d.ventaja;
@@ -718,7 +735,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       const uso = usoDivino(at.p);
       lineas.push(`☀ Castigo divino: +${castigoStr.slice(1)} de daño radiante${maldito ? " (contra lo maldito, un dado más)" : ""}; gasta 5 PV de su reserva (${at.p.juramento!.reserva}). ${uso}`);
     }
-    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr) : d.dano + castigoStr) + (furiaMas ? `+${furiaMas}` : ""));
+    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr) : d.dano + castigoStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
     if (furiaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
     lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);

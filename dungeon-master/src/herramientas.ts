@@ -35,6 +35,7 @@ import { buscarHechizo, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MA
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
+import { ajustarAtaque, empunar, ESTILOS, estiloCombate } from "./manos.js";
 import { curarConRunas, esMagiaNegra, mascota, mitigacion, papeles, rastroMagico, registrarMagia } from "./cazador.js";
 import { gastarReserva, imponerManos, juramento, romperJuramento } from "./juramento.js";
 import { concurso } from "./compania.js";
@@ -260,6 +261,17 @@ const esquemas = {
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
+  }),
+  empunar: z.object({
+    quien: z.string(),
+    principal: z.string().optional().describe("Arma de la mano principal (del inventario); «ninguna» la deja libre"),
+    secundaria: z.string().optional().describe("Escudo o segunda arma ligera de la otra mano; «ninguna» la deja libre"),
+    a_dos_manos: z.boolean().optional().describe("Empuña con las dos manos un arma versátil (más daño, sin escudo)"),
+    usa_accion: z.boolean().optional().describe("En combate, confirma que gasta su acción (segundo cambio de objeto del asalto, o ponerse/quitarse el escudo)"),
+  }),
+  estilo_combate: z.object({
+    quien: z.string(),
+    estilo: z.enum(ESTILOS),
   }),
   papeles: z.object({
     quien: z.string().describe("El Cazador de Brujas"),
@@ -492,6 +504,7 @@ const esquemas = {
     atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
     bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
+    mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
     castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y suma dados de daño radiante"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
     ventaja: z.boolean().optional(),
@@ -645,6 +658,10 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  empunar:
+    "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
+  estilo_combate:
+    "Elige el estilo de lucha (arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas) de un Mercenario, un Caballero (nivel 2+) o un Cazador de Brujas (nivel 2+).",
   papeles:
     "Cazador de Brujas: dispone papeles de runas alrededor de la zona de la pelea (apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos; a nivel alto curan), los recoge, escribe más, o los usa sobre un rival: clavándole uno con una estaca o, a distancia, con su sangre (tomar_sangre, marcar_sangre).",
   mascota:
@@ -743,6 +760,11 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
     const red = redirigirTrance(partida, e.atacante, e.objetivo);
     if (red.aviso) { e = { ...e, objetivo: red.objetivo }; aviso0 = red.aviso; }
   }
+  // Reglas del libro: arma en la mano, segunda arma con la acción adicional, pesadas, estilos de lucha.
+  const aj = ajustarAtaque(partida, e);
+  if (e.mano_secundaria) e = { ...e, arma: Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase())?.manos?.secundaria ?? e.arma };
+  if (aj.dano || aj.bono_arma || aj.desventaja || aj.repetirBajos) e = { ...e, dano: aj.dano ?? e.dano, bono_arma: (e.bono_arma ?? 0) + (aj.bono_arma ?? 0), desventaja: e.desventaja || aj.desventaja, repetir_bajos: aj.repetirBajos };
+  if (aj.notas.length) aviso0 = [aviso0, ...aj.notas].filter(Boolean).join("\n");
   const r = atacar(partida, e);
   if (aviso0) {
     r.texto = `${aviso0}\n${r.texto}`;
@@ -1056,6 +1078,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
+      }
+      case "empunar": {
+        const e = validado.data as z.infer<typeof esquemas.empunar>;
+        const texto = empunar(partida, e);
+        return { contenido: texto, aviso: `✋ ${texto}` };
+      }
+      case "estilo_combate": {
+        const e = validado.data as z.infer<typeof esquemas.estilo_combate>;
+        const texto = estiloCombate(partida, e);
+        return { contenido: texto, aviso: `⚔ ${texto}` };
       }
       case "papeles": {
         const e = validado.data as z.infer<typeof esquemas.papeles>;
