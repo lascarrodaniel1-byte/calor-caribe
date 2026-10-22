@@ -110,6 +110,8 @@ export interface Personaje {
 
 export interface Partida {
   creada: string;
+  /** Don arcano ya tirado por nombre y raza: volver a guardar la ficha no vuelve a tirar (no se repite el dado hasta que salga). */
+  dones?: Record<string, { don: boolean; texto: string }>;
   historial: Anthropic.Beta.BetaMessageParam[];
   personajes: Record<string, Personaje>;
   notas_mundo: string[];

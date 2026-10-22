@@ -330,7 +330,7 @@ export function magiaInicial(clase: string, escuelasElegidas?: Escuela[], don = 
     const tipos = validos.length ? [...new Set(validos)].slice(0, 1) : escuelasElegidas?.length ? tiposDeEscuelas(escuelasElegidas.slice(0, 2)) : ["fuego"];
     const escuelas = don ? [...ESCUELAS] : ([...new Set(tipos.map((t) => buscarTipo(t)!.escuela))] as Escuela[]);
     const hechizos = hechizosDeTipos(tipos, 1);
-    return { maestria: "adepto", escuelas, hechizos, atributo: "int", don, tipos, licencias: tipos.filter((t) => buscarTipo(t)?.licenciado), ...vacia };
+    return { maestria: "adepto", escuelas, hechizos, atributo: "int", don, tipos, licencias: don ? TIPOS_MAGIA.filter((t) => t.licenciado).map((t) => t.id) : tipos.filter((t) => buscarTipo(t)?.licenciado), ...vacia };
   }
   // El Mercenario es la clase más corriente: aunque tenga el don, la magia no despierta hasta que suba de nivel.
   if (base && don && clase === "Mercenario del Cuervo") return { maestria: "profano", escuelas: [], hechizos: [], atributo: base.atributo, don: true, ...vacia };
@@ -352,7 +352,7 @@ export function textoMagia(m: MagiaPersonaje | undefined): string {
   const tributos = [m.calor && `calor ${m.calor}`, m.aliento && `aliento ${m.aliento}`, m.cordura && `cordura ${m.cordura}`, m.anios_perdidos && `${m.anios_perdidos} años perdidos`]
     .filter(Boolean)
     .join(" · ");
-  const hechicero = m.tipos ? `\n  Tipos de magia: ${m.don ? "todos (don arcano)" : m.tipos.join(", ")}${m.origen ? ` · origen ${m.origen}` : ""} · licencia de la Inquisición: ${m.licencias?.length ? m.licencias.map((t) => nombreEscuelaHechiceria(t)).join(", ") : "ninguna (hereje si lo descubren)"}` : "";
+  const hechicero = m.tipos ? `\n  Tipos de magia: ${m.don ? "todos (don arcano)" : m.tipos.join(", ")}${m.origen ? ` · origen ${m.origen}` : ""} · licencia de la Inquisición: ${m.don ? "todos los tipos licenciados (tutela por el don arcano)" : m.licencias?.length ? m.licencias.map((t) => nombreEscuelaHechiceria(t)).join(", ") : "ninguna (hereje si lo descubren)"}` : "";
   return `  Magia: ${m.maestria} (${m.don && m.tipos ? "todas las escuelas" : m.escuelas.join(", ")}) · ${m.hechizos.join(", ") || "sin hechizos"}${hechicero}${tributos ? `\n  Tributos: ${tributos}` : ""}`;
 }
 

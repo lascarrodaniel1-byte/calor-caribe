@@ -5,7 +5,7 @@ import { z } from "zod";
 import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
 import { aplicarPresa, dardos, estudiarPresa, forzarAcceso, NOMBRES_OBSTACULOS, prepararSoplo, resolverSoplo } from "./degollador.js";
 import { ALCANCE_CERBATANA } from "./degollador_base.js";
-import { amputar, diagnosticar, golpeNervio, gastarKit, gastarManoFirme, kitSanador } from "./barbero.js";
+import { amputar, diagnosticar, golpeNervio, gastarKit, gastarManoFirme, kitSanador, usosKit } from "./barbero.js";
 import { esBarberoC } from "./barbero_base.js";
 import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablarConMuertos, invocacion, liberarAlma, liberarSiMuere, prepararDescarga, sellarAlma } from "./segador.js";
 import { esSegador } from "./segador_base.js";
@@ -997,7 +997,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         let don = e.don_arcano ?? false;
         let tiradaDon = "";
         if (!previo?.magia && e.don_arcano === undefined) {
-          const t = tirarDon(e.raza);
+          const clave = `${e.nombre.toLowerCase()}|${e.raza}`;
+          const dones = (partida.dones ??= {});
+          const t = (dones[clave] ??= tirarDon(e.raza)); // el dado se tira una vez por personaje: un intento fallido no lo repite
           don = t.don;
           tiradaDon = t.texto;
         }
@@ -1110,11 +1112,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         }
         const sanador = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.sanador.toLowerCase());
         if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, h.podre && sanador.nivel >= 5 ? 10 : 5); // cerrar una herida cuesta 5 PV de su reserva (10 si además expulsa la Podre)
-        if (sanador && esBarberoC(sanador) && e.recursos.includes("kit de sanador")) {
-          const sinKit = gastarKit(sanador);
-          if (sinKit) throw new Error(sinKit);
-        }
+        const conKit = !!sanador && esBarberoC(sanador) && e.recursos.includes("kit de sanador");
+        if (conKit && usosKit(sanador!) <= 0) throw new Error("El kit de sanador se ha quedado sin usos: repónlo antes de tratar con él.");
         const texto = tratar(p, h, { ...e, sanador, nombre_sanador: e.sanador, gastar_mano_firme: sanador ? () => gastarManoFirme(partida, sanador) : undefined });
+        if (conKit) gastarKit(sanador!); // el uso se gasta cuando el tratamiento se hizo, no si falló por una orden mal dada
         return { contenido: `${texto}\n\nFicha actual:\n${fichaTexto(p)}`, aviso: `🩹 ${texto}` };
       }
       case "pasar_tiempo": {

@@ -85,6 +85,6 @@ export function avisoLicencia(p: Personaje, h: Hechizo): string {
   const tipo = buscarTipo(tipoDe(h));
   if (!tipo) return "";
   if (!tipo.licenciado) return `⚠ (solo DM) ${h.nombre} es magia negra (${tipo.nombre}): la Inquisición persigue a quien la practica.`;
-  if (!(p.magia.licencias ?? []).includes(tipo.id)) return `⚠ (solo DM) ${p.nombre} no tiene licencia de la Inquisición para la magia de ${tipo.nombre}: si lo ven, es un hereje.`;
+  if (!p.magia.don && !(p.magia.licencias ?? []).includes(tipo.id)) return `⚠ (solo DM) ${p.nombre} no tiene licencia de la Inquisición para la magia de ${tipo.nombre}: si lo ven, es un hereje.`;
   return "";
 }
