@@ -31,10 +31,11 @@ import {
   tratar,
   UBICACIONES,
 } from "./heridas.js";
-import { descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
+import { buscarHechizo, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
+import { curarConRunas, esMagiaNegra, mascota, mitigacion, papeles, rastroMagico, registrarMagia } from "./cazador.js";
 import { gastarReserva, imponerManos, juramento, romperJuramento } from "./juramento.js";
 import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
@@ -259,6 +260,31 @@ const esquemas = {
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
+  }),
+  papeles: z.object({
+    quien: z.string().describe("El Cazador de Brujas"),
+    accion: z.enum(["ver", "colocar", "recoger", "escribir", "clavar"]),
+    escenario: z.enum(["cerrado", "abierto"]).optional().describe("colocar: sala cerrada (4 hojas, una por pared) o círculo al aire libre"),
+    radio: z.number().min(2).max(20).optional().describe("colocar al aire libre: radio del círculo en metros"),
+    cantidad: z.number().int().min(1).max(40).optional().describe("escribir: cuántas hojas"),
+    objetivo: z.string().optional().describe("clavar: a quién le clava un papel con una estaca"),
+  }),
+  mascota: z.object({
+    quien: z.string(),
+    accion: z.enum(["elegir", "ver"]),
+    tipo: z.enum(["halcon", "raton"]).optional(),
+    nombre: z.string().optional(),
+  }),
+  rastro_magico: z.object({
+    quien: z.string().describe("El Cazador de Brujas (para registrar, cualquiera)"),
+    accion: z.enum(["detectar", "registrar", "amarrar", "rastrear"]),
+    lanzador: z.string().optional().describe("registrar: quién lanzó el hechizo o la maldición (secreto del DM)"),
+    hechizo: z.string().optional().describe("Hechizo o maldición"),
+    escuela: z.string().optional(),
+    victima: z.string().optional().describe("Sobre quién recae (para amarrar o rastrear, quien está delante)"),
+    objeto: z.string().optional().describe("O el objeto en que reside"),
+    lugar: z.string().optional().describe("registrar: lugar del mapa donde está de verdad el casteador (secreto)"),
+    negra: z.boolean().optional().describe("registrar: es magia negra (por defecto se deduce)"),
   }),
   juramento: z.object({
     quien: z.string(),
@@ -619,6 +645,12 @@ const descripciones: Record<Nombre, string> = {
     "Gasta la reacción de un combatiente (una por asalto): ataque de oportunidad contra quien sale de su alcance, o ejecutar una acción preparada.",
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
+  papeles:
+    "Cazador de Brujas: dispone papeles de runas alrededor de la zona de la pelea (apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos; a nivel alto curan), los recoge, escribe más o clava uno con una estaca a un rival.",
+  mascota:
+    "Cazador de Brujas: elige su mascota (halcón o ratón, a elección del jugador) o consulta lo que hace.",
+  rastro_magico:
+    "Cazador de Brujas: detecta hechizos y maldiciones recientes, amarra un hechizo negro a quien lo lanzó y lo rastrea (cuanto más nivel, más sabe). El DM anota con registrar las maldiciones y hechizos de los PNJ.",
   juramento:
     "Caballero Juramentado: jura (1-3 votos de Ka'i al crear la ficha), añade votos (hasta 5), consulta o expía un juramento roto. El juramento le da su poder mágico: más votos, más poder... y más duele romperlo.",
   romper_juramento:
@@ -700,7 +732,7 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
   const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
   if (dist) {
-    const asta = /alabarda|guada|lanza|pica|jabalina larga|estacas?|l[aá]tigo|urumi/i.test(e.arma ?? "");
+    const asta = /alabarda|guada|lanza|pica|jabalina larga|l[aá]tigo|urumi/i.test(e.arma ?? "");
     const alcance = e.a_distancia ? 120 : asta ? 3 : 2;
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
@@ -962,7 +994,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`No encuentro esa habilidad. Habilidades de ${e.criatura}: ${hay}. Usa habilidad_nueva para improvisar.`);
         }
         const objetivos = e.objetivos.map((n) => buscar(partida, n));
-        const texto = usarHabilidad(j, h, objetivos);
+        const mit = j ? mitigacion(partida, j) : null;
+        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
+        if (j) registrarMagia(partida, { hechizo: h.nombre, lanzador: j.nombre, victima: objetivos[0]?.nombre, negra: esMagiaNegra(undefined, `${h.nombre} ${h.descripcion} ${h.condicion ?? ""}`) && /no-muerto|vampiro|espectro|hechic|brujo|bruja|mago|culti/i.test(`${j.definicion.temple ?? ""} ${j.definicion.nombre}`), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
         return { contenido: texto, aviso: `💀 ${texto}` };
       }
       case "presagio_criatura": {
@@ -999,6 +1033,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const p = buscar(partida, e.lanzador);
         const objetivo = e.objetivo ? buscar(partida, e.objetivo) : undefined;
         const texto = lanzar(p, { ...e, objetivo });
+        const hz = e.hechizo_nuevo ?? (e.hechizo ? buscarHechizo(e.hechizo) : undefined);
+        if (hz && !/no sabe magia|aún no ha jurado|perdió su juramento|juramento roto/.test(texto))
+          registrarMagia(partida, { hechizo: hz.nombre, escuela: hz.escuela, lanzador: p.nombre, victima: objetivo?.nombre, negra: esMagiaNegra(hz.escuela, hz.nombre), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
         return { contenido: `${texto}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
       }
       case "regente": {
@@ -1019,6 +1056,21 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.maniobra>;
         const texto = maniobra(partida, e);
         return { contenido: texto, aviso: `🤼 ${texto}` };
+      }
+      case "papeles": {
+        const e = validado.data as z.infer<typeof esquemas.papeles>;
+        const texto = papeles(partida, e, (d) => ataqueCompleto(partida, d));
+        return { contenido: texto, aviso: `📜 ${texto.split("\n")[0]}` };
+      }
+      case "mascota": {
+        const e = validado.data as z.infer<typeof esquemas.mascota>;
+        const texto = mascota(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `🐾 ${texto.split("\n")[0]}` };
+      }
+      case "rastro_magico": {
+        const e = validado.data as z.infer<typeof esquemas.rastro_magico>;
+        const texto = rastroMagico(partida, e);
+        return { contenido: texto, aviso: e.accion === "registrar" ? null : `🔍 ${texto.split("\n")[0]}` };
       }
       case "juramento": {
         const e = validado.data as z.infer<typeof esquemas.juramento>;
@@ -1144,11 +1196,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
-        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida)].join("\n");
+        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "terminar_combate": {
         const furias = terminarTodas(partida, "se apaga al acabar el combate");
+        if (partida.runas) furias.push("📜 Las runas se agotan y los papeles se queman: la zona queda limpia.");
+        delete partida.runas;
         limpiarTrasCombate(partida);
         delete partida.combate;
         return { contenido: `Combate cerrado. Caducan las condiciones pasajeras (agarrado, derribado, aturdido…).${furias.length ? "\n" + furias.join("\n") : ""}`, aviso: furias.length ? `🔥 ${furias.join("\n")}` : null };

@@ -935,7 +935,7 @@ export function danar(e: EstadoJefe, cantidad: number): string {
   return `${e.nombre}: ${cantidad >= 0 ? `−${cantidad}` : `+${-cantidad}`} PV → ${e.pv}/${e.pv_max} (${estadoTexto(e)}).`;
 }
 
-export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[]): string {
+export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0): string {
   const log: string[] = [];
   const quien = e?.nombre ?? "La criatura";
   if (e && h.recarga) {
@@ -957,7 +957,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
     let falla = true;
     let margen = -99;
     if (h.salvacion && h.cd) {
-      const s = salvacion(p, h.salvacion, h.cd);
+      const s = salvacion(p, h.salvacion, Math.max(5, h.cd - cdMenos));
       falla = !s.exito;
       margen = s.margen;
       log.push(`· ${p.nombre}: ${s.texto}`);

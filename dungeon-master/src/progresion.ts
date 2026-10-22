@@ -35,8 +35,15 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   },
   "Cazador de Brujas": {
     2: ["Estilo de combate"],
-    3: ["Presa marcada: una vez por turno, +1d8 de daño a una criatura que ya esté herida", "Conciencia primigenia: siente a no-muertos y brujos a 9 m"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Urumi: como veterano de la orden, recibe un urumi (espada-látigo de láminas de acero, 1d8 cortante, alcance 3 m) que sustituye a su látigo de metal"],
+    3: ["Presa marcada: una vez por turno, +1d8 de daño a una criatura que ya esté herida", "Conciencia primigenia: siente a no-muertos, brujos y hechiceros a 9 m", "Runas de potencia 2 (dominan a seres de peligro 2); rastro: ahora sabe el rumbo del casteador"],
+    4: [],
+    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Urumi: como veterano del oficio, recibe un urumi (espada-látigo de láminas de acero, 1d8 cortante, alcance 3 m) que sustituye a su látigo de metal", "Rastro: ahora sabe la región del casteador"],
+    6: ["Runas de potencia 3 (dominan a seres de peligro 3)"],
+    7: ["Rastro: ahora sabe el lugar exacto del casteador"],
+    8: ["Runas que curan: dentro de las runas, cada asalto se cierra una herida leve y cada tres asaltos una moderada baja un nivel"],
+    9: ["Runas de potencia 4 (dominan a seres de peligro 4)"],
+    10: ["Rastro: reconoce al casteador por su nombre y puede seguirlo en tiempo real"],
+    12: ["Runas de potencia 5 (dominan hasta a los jefes de peligro 5)"],
   },
   Degollador: {
     2: ["Acción astuta: acción adicional para Correr, Retirarse o Esconderse"],

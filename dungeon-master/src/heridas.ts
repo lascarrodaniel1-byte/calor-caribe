@@ -210,6 +210,15 @@ export function volverRoja(h: Herida, motivo: string, nuevaEstructura?: string) 
 }
 
 /** Baja una herida de zona (magia, Sangre de Santo): para el reloj y la escalada. */
+/** Baja una herida un nivel de gravedad sin cerrarla (curación por runas). */
+export function bajarHerida(h: Herida) {
+  const nueva = baja(h.gravedad);
+  if (!nueva) return;
+  h.gravedad = nueva;
+  h.dias_restantes = Math.min(h.dias_restantes, tirar(REGLAS[nueva].dias).total);
+  bajarZona(h);
+}
+
 export function bajarZona(h: Herida) {
   if (h.zona_vital === "roja") h.zona_vital = "ambar";
   else if (h.zona_vital === "ambar" && h.gravedad === "leve") h.zona_vital = "verde";

@@ -37,6 +37,7 @@ const BASES: Base[] = [
   { nombre: "Espada corta", clase: "arma", detalle: "1d6 perforante, sutil", precio: 10 },
   { nombre: "Espada larga", clase: "arma", detalle: "1d8 cortante (1d10 a dos manos)", precio: 15 },
   { nombre: "Estoque", clase: "arma", detalle: "1d8 perforante, sutil", precio: 25 },
+  { nombre: "Shotel", clase: "arma", detalle: "1d6 cortante, sutil (hoja doblemente curva que rodea escudos); se lleva en pareja", precio: 30 },
   { nombre: "Látigo de metal", clase: "arma", detalle: "1d6 cortante, sutil, alcance 3 m (eslabones de acero que desgarran)", precio: 20 },
   { nombre: "Urumi", clase: "arma", detalle: "1d8 cortante, sutil, alcance 3 m (espada-látigo de láminas de acero flexibles; arma de los veteranos de la orden)", precio: 90 },
   { nombre: "Hacha de mano", clase: "arma", detalle: "1d6 cortante, arrojadiza", precio: 5 },

@@ -1,6 +1,8 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
 import type { Leyenda } from "./leyenda.js";
 import { textoLeyenda } from "./leyenda.js";
+import type { Runas, RegistroMagia } from "./cazador_base.js";
+import { textoCazador } from "./cazador_base.js";
 import type { Juramento } from "./juramento_base.js";
 import { textoJuramento } from "./juramento_base.js";
 import { textoRecursos } from "./recursos.js";
@@ -73,6 +75,9 @@ export interface Personaje {
   ceniza_fija?: number;
   /** Juramento del Caballero Juramentado (ver juramento_base.ts). */
   juramento?: Juramento;
+  /** Papeles de runas del Cazador de Brujas (ver cazador.ts). */
+  papeles?: { hojas: number; estacas: number };
+  mascota?: { tipo: "halcon" | "raton"; nombre: string };
   /** Mariscal de la Compañía del Cuervo Negro (si ganó el concurso). */
   mariscal?: "Hugin" | "Munin";
   /** Rasgos de clase ganados al subir de nivel. */
@@ -105,6 +110,10 @@ export interface Partida {
   reloj?: Reloj;
   /** Últimos encuentros (para no repetir enemigos). */
   encuentros?: RegistroEncuentro[];
+  /** Runas dispuestas por un Cazador de Brujas en la escena. */
+  runas?: Runas;
+  /** Hechizos y maldiciones recientes (los rastrea el Cazador de Brujas). */
+  hechizos?: RegistroMagia[];
   /** Política de los regentes: influencia, espías, relaciones y jugadas. */
   regentes?: EstadoRegentes;
 }
@@ -200,6 +209,7 @@ export function fichaTexto(p: Personaje): string {
     textoRecursos(p),
     textoLeyenda(p),
     textoJuramento(p),
+    textoCazador(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",

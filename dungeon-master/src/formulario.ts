@@ -105,6 +105,7 @@ export function textoFicha(f: DatosFicha): string {
     f.escuelas.length ? `Escuelas de magia: ${f.escuelas.join(" y ")}` : "",
     `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}`,
     `Trasfondo: ${f.trasfondo.trim()}`,
+    f.clase === "Cazador de Brujas" ? "Mascota: si el jugador nombró un halcón o un ratón (en el trasfondo o en el equipo extra), ese; si no, elige tú según su trasfondo, y guárdala con mascota {accion: elegir} justo después de guardar la ficha." : "",
     f.clase === "Caballero Juramentado" ? "Juramento: elige tú, sin preguntar, 1 a 3 votos de Ka'i (Verdad, Amparo, Lealtad, Luz, Descanso, Merced) acordes a su trasfondo y guárdalos con juramento {accion: jurar} justo después de guardar la ficha." : "",
   ]
     .filter(Boolean)

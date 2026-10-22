@@ -63,6 +63,8 @@ export const ARMAS: Arma[] = [
   { nombre: "garrote", patron: /garrote|porra|bast[oó]n|cayado|pu[ñn]o|patada|cabezazo|culatazo/i, tipo: "contundente", penetracion: 0, brutal: 1 },
   { nombre: "golpe de gigante", patron: /roca|pisot|cola|aplast|embest|coletazo|pu[ñn]o de hueso/i, tipo: "contundente", penetracion: 2, brutal: 2 },
   { nombre: "daga o cuchillo", patron: /daga|cuchill|pu[ñn]al|navaja|cuchilla|estilete/i, tipo: "punta", penetracion: -1 },
+  { nombre: "shotel", patron: /shotel|espada curva|hoz de combate/i, tipo: "corte", penetracion: 1 },
+  { nombre: "estaca", patron: /estaca/i, tipo: "punta", penetracion: 0 },
   { nombre: "urumi", patron: /urumi|espada.l[aá]tigo/i, tipo: "corte", penetracion: 1 },
   { nombre: "látigo de metal", patron: /l[aá]tigo de (metal|eslabones|acero|cadena)|cadena de cazador/i, tipo: "corte", penetracion: 0 },
   { nombre: "hacha pesada", patron: /hacha (a dos manos|de guerra|grande)|gran hacha|guada[ñn]a|alabarda|bisarma/i, tipo: "corte", penetracion: 2 },
