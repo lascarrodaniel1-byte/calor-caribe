@@ -218,6 +218,9 @@ export interface AjusteAtaque {
  * Reglas del libro para un ataque de un personaje: el arma debe estar en su mano, la segunda arma exige acción adicional y
  * armas ligeras, las pesadas penalizan a los pequeños, y los estilos de lucha. Lanza error si el ataque no es válido.
  */
+/** Destreza mínima para atacar con dos armas (regla de la casa: el libro solo pide que sean ligeras). */
+export const DES_DOS_ARMAS = 13;
+
 export function ajustarAtaque(partida: Partida, d: { atacante: string; arma?: string; dano?: string; a_distancia?: boolean; atributo?: string; mano_secundaria?: boolean; reaccion?: boolean }): AjusteAtaque {
   const notas: string[] = [];
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(d.atacante));
@@ -247,6 +250,7 @@ export function ajustarAtaque(partida: Partida, d: { atacante: string; arma?: st
   if (d.mano_secundaria) {
     const pp = propiedades(m!.principal);
     if (!pp?.ligera || !props?.ligera) throw new Error(`Pelea con dos armas: las dos armas deben ser ligeras (${m!.principal ?? "—"} y ${m!.secundaria}).`);
+    if (valor(p, "des") < DES_DOS_ARMAS) throw new Error(`Pelea con dos armas: exige destreza ${DES_DOS_ARMAS} o más (${p.nombre} tiene ${valor(p, "des")}). Con menos, la segunda arma solo sirve para parar o intimidar.`);
     if (t && !t.atacoLigero) throw new Error(`${p.nombre} aún no ha atacado con su arma ligera principal este asalto: el segundo ataque exige primero la acción de Atacar con una arma ligera.`);
     if (t?.adicional) throw new Error(`${p.nombre} ya usó su acción adicional este asalto (${t.adicional}).`);
     if (t) t.adicional = "ataque con la mano secundaria";
@@ -287,6 +291,6 @@ export function ajustarAtaque(partida: Partida, d: { atacante: string; arma?: st
 export const REGLAS_MANOS = `## Manos, armas de dos manos y dos armas (como el libro de reglas)
 - Cada arma tiene sus propiedades: ligera, pesada, sutil, versátil, a dos manos, arrojadiza, alcance, munición. Empuña con empuñar (principal, secundaria, a_dos_manos); el programa lo guarda, lo muestra en la ficha («Empuña: …») y lo comprueba al atacar: no se ataca con un arma que no se tiene en la mano. Al empezar un combate, quien no lo dijo recibe lo más lógico de su inventario.
 - Un arma a dos manos (o una versátil empuñada con las dos) ocupa las dos manos: sin escudo ni segunda arma. El escudo da +2 a la CA mientras está en la mano; con un arma a dos manos, o sin él, la CA baja 2 (el programa la calcula). Ponerse o quitarse el escudo cuesta una acción; sacar o envainar un arma es una interacción gratuita por turno, y la segunda gasta la acción.
-- Pelea con dos armas: tras atacar con una arma ligera, la acción adicional ataca con otra arma ligera en la otra mano (atacar {mano_secundaria: true}). No suma el modificador de característica al daño (el programa se lo quita de dano; ponlo como siempre), salvo que sea negativo o tenga el estilo de lucha con dos armas. Una sola acción adicional por asalto: Segundo aliento, la furia y este ataque compiten por ella.
+- Pelea con dos armas (exige DES 13 o más, regla de la casa): tras atacar con una arma ligera, la acción adicional ataca con otra arma ligera en la otra mano (atacar {mano_secundaria: true}). No suma el modificador de característica al daño (el programa se lo quita de dano; ponlo como siempre), salvo que sea negativo o tenga el estilo de lucha con dos armas. Una sola acción adicional por asalto: Segundo aliento, la furia y este ataque compiten por ella. Idea de fondo: el arma a dos manos pega más fuerte (dados mayores), el arma de una mano deja la otra libre para lo que se quiera (escudo, antorcha, mano vacía…) y las dos armas pegan menos cada una pero dan más versatilidad.
 - Armas pesadas: desventaja para los de talla pequeña (los Medianos). Versátiles a dos manos: daño mayor. Rigidez de una herida: −1 con armas a dos manos.
 - Estilo de lucha (estilo_combate; Mercenario, Caballero desde nv. 2, Cazador desde nv. 2): arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas.`;
