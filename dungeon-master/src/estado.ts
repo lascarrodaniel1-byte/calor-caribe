@@ -78,6 +78,8 @@ export interface Personaje {
   /** Papeles de runas del Cazador de Brujas (ver cazador.ts). */
   papeles?: { hojas: number; estacas: number };
   mascota?: { tipo: "halcon" | "raton"; nombre: string };
+  /** Rivales cuya sangre tiene guardada (para marcarlos a distancia con un papel). */
+  muestras?: string[];
   /** Mariscal de la Compañía del Cuervo Negro (si ganó el concurso). */
   mariscal?: "Hugin" | "Munin";
   /** Rasgos de clase ganados al subir de nivel. */

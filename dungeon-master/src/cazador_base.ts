@@ -33,5 +33,5 @@ export const papelesDe = (p: Personaje) => (p.papeles ??= { hojas: HOJAS_INICIAL
 export function textoCazador(p: Personaje): string {
   if (!esCazador(p)) return "";
   const pa = papelesDe(p);
-  return `  📜 Papeles de runas: ${pa.hojas} hoja(s), ${pa.estacas} estaca(s) · potencia ${potenciaDe(p)}${curaConRunas(p) ? " · curan en combate" : ""}${p.mascota ? ` · mascota: ${p.mascota.nombre} (${p.mascota.tipo === "halcon" ? "halcón" : "ratón"})` : " · aún sin mascota (mascota {accion: elegir})"}`;
+  return `  📜 Papeles de runas: ${pa.hojas} hoja(s), ${pa.estacas} estaca(s)${p.muestras?.length ? `, sangre de: ${p.muestras.join(", ")}` : ""} · potencia ${potenciaDe(p)}${curaConRunas(p) ? " · curan en combate" : ""}${p.mascota ? ` · mascota: ${p.mascota.nombre} (${p.mascota.tipo === "halcon" ? "halcón" : "ratón"})` : " · aún sin mascota (mascota {accion: elegir})"}`;
 }

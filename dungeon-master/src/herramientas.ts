@@ -263,11 +263,11 @@ const esquemas = {
   }),
   papeles: z.object({
     quien: z.string().describe("El Cazador de Brujas"),
-    accion: z.enum(["ver", "colocar", "recoger", "escribir", "clavar"]),
+    accion: z.enum(["ver", "colocar", "recoger", "escribir", "clavar", "tomar_sangre", "marcar_sangre"]),
     escenario: z.enum(["cerrado", "abierto"]).optional().describe("colocar: sala cerrada (4 hojas, una por pared) o círculo al aire libre"),
     radio: z.number().min(2).max(20).optional().describe("colocar al aire libre: radio del círculo en metros"),
     cantidad: z.number().int().min(1).max(40).optional().describe("escribir: cuántas hojas"),
-    objetivo: z.string().optional().describe("clavar: a quién le clava un papel con una estaca"),
+    objetivo: z.string().optional().describe("clavar: a quién le clava un papel con una estaca; tomar_sangre / marcar_sangre: de quién es la sangre (marcar_sangre lo marca a distancia)"),
   }),
   mascota: z.object({
     quien: z.string(),
@@ -646,7 +646,7 @@ const descripciones: Record<Nombre, string> = {
   maniobra:
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
   papeles:
-    "Cazador de Brujas: dispone papeles de runas alrededor de la zona de la pelea (apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos; a nivel alto curan), los recoge, escribe más o clava uno con una estaca a un rival.",
+    "Cazador de Brujas: dispone papeles de runas alrededor de la zona de la pelea (apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos; a nivel alto curan), los recoge, escribe más, o los usa sobre un rival: clavándole uno con una estaca o, a distancia, con su sangre (tomar_sangre, marcar_sangre).",
   mascota:
     "Cazador de Brujas: elige su mascota (halcón o ratón, a elección del jugador) o consulta lo que hace.",
   rastro_magico:

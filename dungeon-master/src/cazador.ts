@@ -8,6 +8,7 @@ import { tirar } from "./dados.js";
 import { aplicarCondicion } from "./combate.js";
 import { bajarHerida } from "./heridas.js";
 import { buscarLugar, rumboEntre } from "./mapa.js";
+import { distanciaPlano } from "./espacio.js";
 import { registrarPnj } from "./narrativa.js";
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -57,9 +58,20 @@ export function textoRunas(partida: Partida): string {
   return `## Runas del Cazador de Brujas (${z.creador})\nPapeles dispuestos ${z.cerrado ? "en un espacio cerrado" : "al aire libre (potencia efectiva −1)"}: ${z.hojas} hoja(s), potencia ${z.potencia}. Los no-muertos, brujas y hechiceros de peligro ≤ ${z.potencia} pierden la regeneración y 6 a la CD de sus poderes (peligro ${z.potencia + 1}: 3 y regeneración apagada; más alto: 1).${z.curacion ? " Curan a quienes están dentro: cada asalto cierran una herida leve y cada tres asaltos bajan una moderada un nivel." : ""}`;
 }
 
+function herido(partida: Partida, nombre: string): { nombre: string; herido: boolean } {
+  const n = norm(nombre);
+  const j = Object.values(partida.jefes).find((x) => norm(x.nombre) === n) ?? Object.values(partida.jefes).find((x) => norm(x.nombre).includes(n));
+  if (j) return { nombre: j.nombre, herido: j.pv < j.pv_max };
+  const pnj = Object.values(partida.combate?.pnj ?? {}).find((x) => norm(x.nombre) === n);
+  if (pnj) return { nombre: pnj.nombre, herido: pnj.pv !== undefined && pnj.pv_max !== undefined ? pnj.pv < pnj.pv_max : true };
+  const pj = Object.values(partida.personajes).find((x) => norm(x.nombre) === n);
+  if (pj) return { nombre: pj.nombre, herido: pj.pv < pj.pv_max || pj.heridas.length > 0 };
+  throw new Error(`«${nombre}» no es un rival conocido en la escena.`);
+}
+
 export interface DatosPapeles {
   quien: string;
-  accion: "ver" | "colocar" | "recoger" | "escribir" | "clavar";
+  accion: "ver" | "colocar" | "recoger" | "escribir" | "clavar" | "tomar_sangre" | "marcar_sangre";
   escenario?: "cerrado" | "abierto";
   radio?: number;
   cantidad?: number;
@@ -104,6 +116,28 @@ export function papeles(partida: Partida, d: DatosPapeles, atacarFn: AtacarFn): 
       pa.hojas += n;
       if (partida.reloj) partida.reloj.segundos += n * 1800;
       return `${p.nombre} escribe ${n} hoja(s) de runas (${n} po, ${n * 30} min con el reloj). Tiene ${pa.hojas} hoja(s).`;
+    }
+    case "tomar_sangre": {
+      if (!d.objetivo) throw new Error("Di de quién toma la sangre (objetivo).");
+      const ob = herido(partida, d.objetivo);
+      if (!ob.herido) throw new Error(`${ob.nombre} no está herido: no hay sangre que tomar. Primero hay que herirlo con el látigo o los shotels.`);
+      const dist = distanciaPlano(partida, p.nombre, ob.nombre);
+      if (dist && dist.metros > 3) throw new Error(`${ob.nombre} está a ${dist.metros} m: la sangre se toma de la hoja recién manchada o de su herida, a menos de 3 m.`);
+      p.muestras ??= [];
+      if (!p.muestras.some((m) => norm(m) === norm(ob.nombre))) p.muestras.push(ob.nombre);
+      if (p.muestras.length > 5) p.muestras.shift();
+      return `${p.nombre} recoge sangre de ${ob.nombre} en el borde de una hoja de runas. Con ella podrá marcarlo a distancia (marcar_sangre). Muestras: ${p.muestras.join(", ")}.`;
+    }
+    case "marcar_sangre": {
+      if (!d.objetivo) throw new Error("Di a quién marca (objetivo).");
+      const i = (p.muestras ?? []).findIndex((m) => norm(m) === norm(d.objetivo!));
+      if (i < 0) throw new Error(`${p.nombre} no tiene sangre de ${d.objetivo}: primero tomar_sangre (hay que herirlo).`);
+      if (pa.hojas < 1) throw new Error(`${p.nombre} no tiene hojas de runas.`);
+      pa.hojas -= 1;
+      const nombre = p.muestras![i];
+      p.muestras!.splice(i, 1);
+      const ap = aplicarCondicion(partida, { objetivo: nombre, accion: "aplicar", condicion: `marcado por runas (potencia ${pot})`, nota: `con su sangre, a distancia, por ${p.nombre}` });
+      return `🩸 ${p.nombre} quema una hoja con la sangre de ${nombre} y pronuncia su nombre: las runas lo alcanzan donde esté, sin tocarlo. ${ap.split("\n")[0]} (Gasta la hoja y la muestra; le quedan ${pa.hojas} hoja(s).)`;
     }
     case "clavar": {
       if (!d.objetivo) throw new Error("Di a quién le clava el papel (objetivo).");
@@ -258,6 +292,6 @@ export function rastroMagico(partida: Partida, d: DatosRastro): string {
 
 export const REGLAS_CAZADOR = `## Cazador de Brujas: papeles de runas, mascota y rastro de la magia
 - Es un explorador de un arte transmitido libremente (nació de un cuerpo paramilitar de la Inquisición, que lo tolera, pero no hay orden central). Se parece más a un mercenario que a un inquisidor.
-- Papeles de runas (papeles): no se usan sobre el rival, sino alrededor de la zona de la pelea, sobre todo en espacios cerrados (4 hojas, una por pared; al aire libre, un círculo y la potencia baja uno). Se clavan con estacas. Las runas apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos de peligro ≤ su potencia (la potencia sube con el nivel). Clavar un papel a un rival con una estaca (clavar) lo marca aunque no haya runas. El programa te lo recuerda en las criaturas afectadas: aplica ese efecto. A nivel alto (8+), las runas curan a quienes están dentro.
+- Papeles de runas (papeles): no se usan sobre el rival, salvo de dos maneras: clavándole un papel con una estaca (clavar) o, a distancia, con su sangre (tomar_sangre tras herirlo y marcar_sangre). Normalmente van alrededor de la zona de la pelea, sobre todo en espacios cerrados (4 hojas, una por pared; al aire libre, un círculo y la potencia baja uno). Se clavan con estacas. Las runas apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos de peligro ≤ su potencia (la potencia sube con el nivel). Clavar un papel a un rival con una estaca (clavar) lo marca aunque no haya runas. El programa te lo recuerda en las criaturas afectadas: aplica ese efecto. A nivel alto (8+), las runas curan a quienes están dentro.
 - Mascota (mascota): un halcón o un ratón, a elección del jugador. Su ficha da lo que hace.
 - Rastro de la magia (rastro_magico): detectar hechizos y maldiciones, y amarrar un hechizo negro a su casteador para rastrearlo con solo tener a la víctima o al objeto; cuanto más nivel, más sabe (tipo de magia → rumbo → región → lugar → quién es y seguirlo). Anota con registrar las maldiciones o hechizos que lancen los PNJ (con lugar y lanzador secretos).`;
