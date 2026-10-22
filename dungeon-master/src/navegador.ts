@@ -18,7 +18,7 @@ import * as espacio from "./espacio.js";
 import * as encuentros from "./encuentros.js";
 import * as regentes from "./regentes.js";
 import { mitigacion, textoRunas } from "./cazador.js";
-import { catalogoCompacto, consultarReglas, SISTEMA_WEB } from "./prompt-web.js";
+import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
 
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
 
@@ -151,4 +151,4 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
 }
 
 export { aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
-export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, SISTEMA_WEB };
+export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

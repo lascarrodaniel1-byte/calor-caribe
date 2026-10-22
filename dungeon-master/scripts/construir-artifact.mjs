@@ -9,7 +9,20 @@ import { fileURLToPath } from "node:url";
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 const salida = process.argv[2] ?? join(raiz, "dist", "mesa-de-velmora.html");
 
+// zod empaqueta sus 50 traducciones de mensajes de error aunque solo se use el inglés: se queda solo con «en».
+const soloIngles = {
+  name: "zod-solo-ingles",
+  setup(b) {
+    b.onResolve({ filter: /locales\/index\.js$/ }, (a) => (a.importer.includes("node_modules/zod") ? { path: "zod-locales", namespace: "zod-locales" } : undefined));
+    b.onLoad({ filter: /.*/, namespace: "zod-locales" }, () => ({
+      contents: `export { default as en } from ${JSON.stringify(join(raiz, "node_modules", "zod", "v4", "locales", "en.js"))};`,
+      resolveDir: raiz,
+    }));
+  },
+};
+
 const r = await build({
+  plugins: [soloIngles],
   entryPoints: [join(raiz, "src", "navegador.ts")],
   bundle: true,
   format: "iife",

@@ -857,8 +857,23 @@ const descripciones: Record<Nombre, string> = {
     "Guarda un hecho importante de la campaña, o corrige uno anterior que ha cambiado (reemplaza) o que ya no es cierto (olvidar).",
 };
 
+/** Quita del esquema JSON lo que no dice nada: los límites de entero seguro y «additionalProperties: false» (zod ya valida). */
+function aligerar(x: unknown): unknown {
+  if (Array.isArray(x)) return x.map(aligerar);
+  if (x && typeof x === "object") {
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(x as Record<string, unknown>)) {
+      if (k === "additionalProperties" && v === false) continue;
+      if ((k === "minimum" || k === "maximum") && typeof v === "number" && Math.abs(v) >= Number.MAX_SAFE_INTEGER) continue;
+      o[k] = aligerar(v);
+    }
+    return o;
+  }
+  return x;
+}
+
 export const herramientas: Anthropic.Beta.BetaTool[] = (Object.keys(esquemas) as Nombre[]).map((nombre) => {
-  const { $schema: _ignorado, ...schema } = z.toJSONSchema(esquemas[nombre]) as Record<string, unknown>;
+  const { $schema: _ignorado, ...schema } = aligerar(z.toJSONSchema(esquemas[nombre])) as Record<string, unknown>;
   return {
     name: nombre,
     description: descripciones[nombre],

@@ -1022,7 +1022,14 @@
 
 `;
 
-  function instrucciones() { return V.SISTEMA_WEB + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
+  // Las reglas de clase solo de las que hay en la mesa; con alguien aún sin ficha (o sin personajes), todas.
+  function clasesEnMesa() {
+    const fichas = Object.values(partida?.personajes || {});
+    if (!fichas.length) return undefined;
+    if (jugadores.some((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre))) return undefined;
+    return [...new Set(fichas.map((f) => f.clase))];
+  }
+  function instrucciones() { return V.sistemaWeb(clasesEnMesa()) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
 
   const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
 

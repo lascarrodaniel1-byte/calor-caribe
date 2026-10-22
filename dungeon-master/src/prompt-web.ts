@@ -128,11 +128,38 @@ export function catalogoCompacto(): string {
   return `## Acciones del motor (herramienta "motor")
 ${lineas.join("\n")}
 - actualizar_cronica(texto) — reescribe tu crónica completa (tu memoria).
-- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | behelits | bestiario | mapa | magia | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
+- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | behelits | bestiario | mapa | magia | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
-export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS, REGLAS_FURIA, REGLAS_JURAMENTO, REGLAS_CAZADOR, REGLAS_DEGOLLADOR, REGLAS_FLAGELANTE, REGLAS_SEGADOR, REGLAS_BARBERO, REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
+/** Las reglas propias de cada clase (el Hechicero va siempre: la magia la puede despertar cualquiera). */
+const REGLAS_DE_CLASE: Record<string, string> = {
+  "Berserker de Ceniza": REGLAS_FURIA,
+  "Caballero Juramentado": REGLAS_JURAMENTO,
+  "Cazador de Brujas": REGLAS_CAZADOR,
+  Degollador: REGLAS_DEGOLLADOR,
+  Flagelante: REGLAS_FLAGELANTE,
+  Segador: REGLAS_SEGADOR,
+  "Barbero-Cirujano": REGLAS_BARBERO,
+};
+
+/**
+ * Las instrucciones del DM. Sin argumento, completas. Con las clases que hay en la mesa, solo llevan las reglas de esas clases
+ * (el resto, ~14 KB, se consulta con consultar_reglas {tema: "clase"}): cada llamada pesa menos.
+ */
+export function sistemaWeb(clases?: string[]): string {
+  const presentes = clases ? new Set(clases) : undefined;
+  const clase = (c: string) => (!presentes || presentes.has(c) ? REGLAS_DE_CLASE[c] : "");
+  const ausentes = presentes ? Object.keys(REGLAS_DE_CLASE).filter((c) => !presentes.has(c)) : [];
+  return [
+    BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS,
+    clase("Berserker de Ceniza"), clase("Caballero Juramentado"), clase("Cazador de Brujas"), clase("Degollador"), clase("Flagelante"), clase("Segador"), clase("Barbero-Cirujano"),
+    REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO,
+    ausentes.length ? `## Reglas de clases que ahora no están en la mesa\nNo se cargan para ahorrar espacio (${ausentes.join(", ")}). Si un personaje u otro caso las necesita, léelas con consultar_reglas {tema: "clase", nombre: "<clase>"}.` : "",
+  ].filter(Boolean).join("\n\n");
+}
+
+export const SISTEMA_WEB = sistemaWeb();
 
 export function consultarReglas(tema: string, nombre?: string): string {
   switch (String(tema).toLowerCase()) {
@@ -158,6 +185,10 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return REGLAS_MAPA;
     case "magia":
       return REGLAS_MAGIA;
+    case "clase": {
+      const c = Object.keys(REGLAS_DE_CLASE).find((x) => x.toLowerCase() === String(nombre ?? "").toLowerCase().trim()) ?? (nombre ? Object.keys(REGLAS_DE_CLASE).find((x) => x.toLowerCase().includes(String(nombre).toLowerCase().trim())) : undefined);
+      return c ? REGLAS_DE_CLASE[c] : `Indica la clase en nombre: ${[...Object.keys(REGLAS_DE_CLASE), "Hechicero"].join(", ")}. (Hechicero: consultar_reglas {tema: "magia"}; el Mercenario no tiene reglas propias.)`;
+    }
     case "criatura": {
       const c = nombre ? buscarCriatura(nombre) : undefined;
       return c ? fichaCriatura(c) : `No está en el bestiario${nombre ? `: "${nombre}"` : ""}. Puedes inventarla con aparecer_criatura y definicion.`;
@@ -167,6 +198,6 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return h ? `${h.name}: ${h.description}\nEsquema: ${JSON.stringify(h.input_schema)}` : `No existe la acción "${nombre}". Acciones: ${herramientas.map((x) => x.name).join(", ")}.`;
     }
     default:
-      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, combate, heridas, viales, equipo, behelits, bestiario, mapa, magia, criatura, accion, compania.`);
+      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, behelits, bestiario, mapa, magia, criatura, accion, compania.`);
   }
 }
