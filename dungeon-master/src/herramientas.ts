@@ -38,8 +38,8 @@ import {
   tratar,
   UBICACIONES,
 } from "./heridas.js";
-import "./hechicero.js";
-import { ajustarMaestriaHechicero, buscarHechizo, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
+import { aprenderTipo, avisoLicencia, comprenderMagia } from "./hechicero.js";
+import { ajustarMaestriaHechicero, buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, TIPOS_IDS, tiposMax, tipoDe, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
@@ -136,7 +136,9 @@ const esquemas = {
     inventario: z.array(z.string()).optional(),
     oro: z.number().int().min(0).optional(),
     notas: z.string().optional().describe("Trasfondo, rasgos, conjuros, competencias…"),
-    escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Solo Hechicero: sus dos escuelas"),
+    escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Obsoleto (partidas antiguas): usa tipos_magia"),
+    tipos_magia: z.array(z.enum(TIPOS_IDS)).max(1).optional().describe("Solo Hechicero: el tipo de magia con que empieza (el que enseña su escuela): fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curacion, proteccion, mente, adivinacion; sombra y necromancia son magia negra, sin licencia"),
+    linaje: z.enum(["noble", "rico", "humilde"]).optional().describe("Solo Hechicero: solo los nobles o los ricos entran en las escuelas de hechicería, salvo quien nace con el don arcano (se incluye por fuerza mayor)"),
     don_arcano: z.boolean().optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza que tenga o no el don; si se omite, se tira en secreto"),
   }),
   modificar_personaje: z.object({
@@ -357,6 +359,16 @@ const esquemas = {
     obstaculo: z.enum(NOMBRES_OBSTACULOS),
     cd: z.number().int().min(1).max(30).optional().describe("Sustituye la dificultad por defecto del obstáculo"),
     sellado_magico: z.boolean().optional().describe("true si lo sella magia o runas: no se abre con maña"),
+  }),
+  aprender_tipo: z.object({
+    quien: z.string().describe("El Hechicero"),
+    tipo: z.enum(TIPOS_IDS),
+    maestro: z.string().describe("Quién o qué escuela le enseña (obligatorio)"),
+  }),
+  comprender_magia: z.object({
+    quien: z.string().describe("El Hechicero"),
+    hechizo: z.string().describe("Un hechizo o un tipo de magia que quiere comprender"),
+    visto: z.boolean().optional().describe("Con el don arcano: true si acaba de ver cómo se lanza; lo aprende con solo verlo"),
   }),
   reabrir_tiradas: z.object({
     motivo: z.string().describe("Qué dato corregido es clave para la acción que se tiró, y por qué cambia la tirada"),
@@ -786,6 +798,10 @@ const descripciones: Record<Nombre, string> = {
     "Degollador: ver, reponer o impregnar los dardos de su cerbatana con un vial de Hiel de Víbora Gris o de Leche de Amapola Negra (3 dardos por vial). Se sopla con atacar {arma: «cerbatana»}.",
   forzar_acceso:
     "Degollador (Entrar y salir): abre una ventana, puerta atrancada, cerradura, reja, cadenas o ataduras con ventaja en Juego de manos; desde el nivel 3 no falla hasta CD 15; desde el 2, en combate es acción adicional.",
+  aprender_tipo:
+    "Hechicero: estudia un nuevo tipo de magia en una escuela (el segundo desde el nivel 5, el tercero desde el 9). Las escuelas licenciadas dan licencia de la Inquisición; la sombra y la necromancia son magia negra. El del don arcano ya los domina todos.",
+  comprender_magia:
+    "Hechicero: comprende un hechizo o un tipo de magia aunque no lo domine (cómo funciona, qué cuesta, cómo se canaliza). Con el don arcano, si lo ha visto lanzar (visto=true), lo aprende al instante hasta el círculo que domina.",
   reabrir_tiradas:
     "SOLO al repetir un turno corregido por los jugadores: los dados que ya salieron se repiten igual. Llámala únicamente si el dato corregido es CLAVE para la acción que se tiró (se tiró contra el objetivo equivocado, sin una circunstancia que cambiaba la ventaja o la dificultad…); desde entonces los dados salen nuevos. Un error de narración, de consecuencia o de resultado no la justifica.",
   estilo_combate:
@@ -980,11 +996,14 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const previo = partida.personajes[e.nombre];
         let don = e.don_arcano ?? false;
         let tiradaDon = "";
-        if (!previo?.magia && e.clase !== "Hechicero" && e.don_arcano === undefined) {
+        if (!previo?.magia && e.don_arcano === undefined) {
           const t = tirarDon(e.raza);
           don = t.don;
           tiradaDon = t.texto;
         }
+        // Las escuelas de hechicería solo admiten a nobles y ricos; el don arcano lo incluye por fuerza mayor.
+        if (e.clase === "Hechicero" && !previo?.magia && !don && e.linaje !== "noble" && e.linaje !== "rico")
+          throw new Error(`Solo los nobles o los ricos entran en las escuelas de hechicería, y ${e.nombre} no nació con el don arcano (${tiradaDon || "sin don"}). Indica linaje «noble» o «rico» en su trasfondo, o cambia de clase: sin dinero ni título no hay escuela.`);
         const p: Personaje = normalizar({
           ...e,
           pv: e.pv ?? (previo ? Math.min(previo.pv, e.pv_max) : e.pv_max), // volver a guardar una ficha no cura
@@ -1005,9 +1024,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           anemia_progreso: partida.personajes[e.nombre]?.anemia_progreso ?? 0,
           dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
           robado: partida.personajes[e.nombre]?.robado ?? {},
-          magia: previo?.magia ?? magiaInicial(e.clase, e.escuelas_magia, don),
+          magia: previo?.magia ?? magiaInicial(e.clase, e.escuelas_magia, don, e.tipos_magia),
         });
         partida.personajes[p.nombre] = p;
+        if (e.clase === "Hechicero" && p.magia && !previo?.magia) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
         ajustarMaestriaHechicero(p); // un Hechicero de nivel alto ya tiene la maestría de su nivel
         const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." + (e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : "") : ""}` : "";
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
@@ -1233,7 +1253,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const hz = e.hechizo_nuevo ?? (e.hechizo ? buscarHechizo(e.hechizo) : undefined);
         if (hz && !/no sabe magia|aún no ha jurado|perdió su juramento|juramento roto/.test(texto))
           registrarMagia(partida, { hechizo: hz.nombre, escuela: hz.escuela, lanzador: p.nombre, victima: objetivo?.nombre, negra: esMagiaNegra(hz.escuela, hz.nombre), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
-        return { contenido: `${texto}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
+        const licencia = hz ? avisoLicencia(p, hz) : "";
+        return { contenido: `${texto}${licencia ? `\n${licencia}` : ""}\n\nFicha:\n${fichaTexto(p)}`, aviso: `✨ ${texto}` };
       }
       case "regente": {
         const e = validado.data as z.infer<typeof esquemas.regente>;
@@ -1340,6 +1361,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.forzar_acceso>;
         const texto = forzarAcceso(partida, e);
         return { contenido: texto, aviso: `🗝 ${texto}` };
+      }
+      case "aprender_tipo": {
+        const e = validado.data as z.infer<typeof esquemas.aprender_tipo>;
+        const texto = aprenderTipo(partida, e);
+        return { contenido: texto, aviso: `📚 ${texto}` };
+      }
+      case "comprender_magia": {
+        const e = validado.data as z.infer<typeof esquemas.comprender_magia>;
+        const texto = comprenderMagia(partida, e);
+        return { contenido: texto, aviso: `📚 ${texto}` };
       }
       case "reabrir_tiradas": {
         const e = validado.data as z.infer<typeof esquemas.reabrir_tiradas>;

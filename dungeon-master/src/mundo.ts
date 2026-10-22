@@ -231,8 +231,10 @@ export const CLASES: Clase[] = [
     principal: "INT",
     salvaciones: "INT, SAB",
     rasgos: [
-      "Don arcano innato: el sujeto con más potencial de todo Velmora, sin techo. Su maestría sube con el nivel: adepto (círculo 2), maestro (5, círculo 3), archimago (9, círculo 4) y ascendido (13, círculo 5, el ser más poderoso del universo)",
-      "Adepto en dos escuelas de magia a elegir (suma su competencia a la tirada de lanzar)",
+      "Escuela de hechicería: solo los nobles o los ricos entran en ellas (salvo quien nace con el don arcano, a quien incluyen por fuerza mayor). Cada escuela enseña UN tipo de magia (fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curación, protección, mente, adivinación) y tiene licencia de la Inquisición; la sombra y la necromancia son magia negra, sin licencia. Empieza dominando un tipo y puede llegar a tres según su nivel (2 en el nivel 5, 3 en el 9); cuanto más nivel, más hechizos",
+      "Comprensión: entiende cómo funciona cada tipo de magia y cada hechizo (comprender_magia) aunque no lo domine; para lanzarlo hace falta estudiarlo en una escuela",
+      "Maestría por nivel: adepto (círculo 2), maestro (5, círculo 3) y archimago (9, círculo 4). Adepto desde el principio (suma su competencia a la tirada de lanzar)",
+      "Con el don arcano (el sujeto más poderoso posible, en potencia y en acto): domina todos los tipos de magia con las mismas reglas y precios, comprende cómo se canaliza cada hechizo solo con verlo (lo aprende al instante, hasta el círculo que domina) y su maestría llega a ascendido en el nivel 13 (círculo 5, +8; INT hasta 24)",
       "Dominio de lo menor: sin catalizador, los hechizos dos círculos por debajo de su máximo no le cuestan nada y los de un círculo por debajo, la mitad; su bastón sirve de catalizador de calor, aliento o cordura (1 + un punto cada 4 niveles)",
       "Grimorio: conoce todos los hechizos de círculo 0 y 1 de sus escuelas; aprende más con maestros y grimorios",
       "Marcado: la Inquisición exige licencia a los magos; sin ella, es un hereje",

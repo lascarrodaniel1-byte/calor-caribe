@@ -503,7 +503,7 @@
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
       <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
-      <li>La magia es rara y siempre cobra un precio: calor, aliento, sangre, cordura o años de vida. El Hechicero es el único mago de verdad. Un guerrero solo sabe magia si nace con el don (se tira al crear el personaje y es raro) o si llega a élite y la aprende en la historia. Los catalizadores (como la Piedra de brasa) pagan por ti.</li>
+      <li>La magia es rara y siempre cobra un precio: calor, aliento, sangre, cordura o años de vida. El Hechicero es el único mago de verdad: estudió en una escuela de hechicería (solo entran nobles y ricos, y todas tienen licencia de la Inquisición), domina un tipo de magia —fuego, hielo, viento, agua, tierra, oscuridad, luz…— y aprende hasta tres con el nivel. Si nace con el don arcano domina todos los tipos y comprende cualquier hechizo con solo verlo. Un guerrero solo sabe magia si nace con el don (se tira al crear el personaje y es raro) o si llega a élite y la aprende en la historia. Los catalizadores (como la Piedra de brasa) y el bastón del hechicero pagan por ti.</li>
       <li>«Tirar d20» y «/tirar» los ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
     </ul>
     <div class="botonera">
@@ -1991,10 +1991,10 @@
     const magia = document.createElement("div"); magia.id = "pj-magia"; magia.hidden = true;
     const fila3 = document.createElement("div"); fila3.className = "fila";
     fila3.append(
-      campo("pj-esc1", "Escuela de magia 1", select("pj-esc1", DF.escuelas.map((e) => [e, e]), "Elige…")),
-      campo("pj-esc2", "Escuela de magia 2", select("pj-esc2", DF.escuelas.map((e) => [e, e]), "Elige…")),
+      campo("pj-tipo", "Tipo de magia (tu escuela)", select("pj-tipo", DF.tipos.map((e) => [e.id, e.nombre]), "Elige…")),
+      campo("pj-linaje", "Linaje", select("pj-linaje", DF.linajes.map((e) => [e.id, e.nombre]), "Elige…")),
     );
-    const ayM = document.createElement("p"); ayM.className = "ayuda"; ayM.textContent = "El Hechicero conoce todos los hechizos de círculo 0 y 1 de sus dos escuelas: no hace falta elegir hechizos.";
+    const ayM = document.createElement("p"); ayM.className = "ayuda"; ayM.textContent = "Cada escuela de hechicería enseña un solo tipo de magia y tiene licencia de la Inquisición. Empiezas dominando ese tipo y, con el nivel, aprenderás más (hasta tres). Solo los nobles y los ricos entran en las escuelas; un humilde solo entra si nace con el don arcano (se tira al crearte), y entonces domina todos los tipos.";
     magia.append(fila3, ayM); raiz.append(magia);
 
     raiz.append(campo("pj-extra", "Equipo extra (opcional)", texto("pj-extra", 150, "Además del equipo inicial de tu clase")));
@@ -2082,7 +2082,7 @@
     ATR.forEach((a) => (base[a] = Number($("pj-a-" + a).value) || 0));
     const datos = {
       nombre: $("pj-nombre").value, jugador: nombre, raza: $("pj-raza").value, clase: $("pj-clase").value, veterania: $("pj-vet").value,
-      personalidad: per, base, metodo: form.metodo, escuelas: [$("pj-esc1").value, $("pj-esc2").value].filter(Boolean),
+      personalidad: per, base, metodo: form.metodo, tipo: $("pj-tipo").value, linaje: $("pj-linaje").value,
       trasfondo: $("pj-trasfondo").value, extra: $("pj-extra").value,
     };
     const errores = FM.validarFicha(datos);

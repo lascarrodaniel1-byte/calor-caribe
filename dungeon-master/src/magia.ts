@@ -25,16 +25,19 @@ const MAESTRIA: Record<Maestria, { circulo: number; bono: number }> = {
 };
 
 /** La maestría que le corresponde a un Hechicero por su nivel: adepto, maestro (5), archimago (9) y ascendido (13). */
-export function maestriaHechicero(nivel: number): Maestria {
-  return nivel >= 13 ? "ascendido" : nivel >= 9 ? "archimago" : nivel >= 5 ? "maestro" : "adepto";
+export function maestriaHechicero(nivel: number, don = true): Maestria {
+  // Solo quien nace con el don arcano llega a ascendido; el que estudió en una escuela se queda en archimago.
+  return nivel >= 13 && don ? "ascendido" : nivel >= 9 ? "archimago" : nivel >= 5 ? "maestro" : "adepto";
 }
 
 /** Sube la maestría de un Hechicero a la de su nivel (nunca la baja). Devuelve la nueva si cambió. */
 export function ajustarMaestriaHechicero(p: Personaje): Maestria | null {
   if (p.clase !== "Hechicero" || !p.magia) return null;
-  const nueva = maestriaHechicero(p.nivel);
+  const nueva = maestriaHechicero(p.nivel, !!p.magia.don);
+  sincronizarGrimorio(p);
   if (MAESTRIAS.indexOf(nueva) <= MAESTRIAS.indexOf(p.magia.maestria)) return null;
   p.magia.maestria = nueva;
+  sincronizarGrimorio(p);
   return nueva;
 }
 
@@ -48,6 +51,44 @@ const TRIBUTO_ESCUELA: Record<Escuela, Tributo> = {
   adivinacion: "cordura",
 };
 
+// ---------------------------------------------------------------- tipos de magia y escuelas de hechicería
+
+/** Un tipo de magia: lo que enseña cada escuela de hechicería. Los licenciados los enseña una escuela con licencia de la Inquisición. */
+export interface TipoMagia {
+  id: string;
+  nombre: string;
+  escuela: Escuela;
+  tema?: "fuego" | "rayo" | "hielo" | "viento" | "oscuridad" | "agua" | "tierra" | "luz";
+  licenciado: boolean;
+  /** Cómo se canaliza este tipo (lo comprende cualquier hechicero, aunque no lo domine). */
+  canaliza: string;
+}
+
+export const TIPOS_MAGIA: TipoMagia[] = [
+  { id: "fuego", nombre: "fuego", escuela: "elemental", tema: "fuego", licenciado: true, canaliza: "se llama al calor del propio cuerpo y se empuja hacia fuera" },
+  { id: "rayo", nombre: "rayo", escuela: "elemental", tema: "rayo", licenciado: true, canaliza: "se carga el aire de la mano hasta que salta" },
+  { id: "hielo", nombre: "hielo", escuela: "elemental", tema: "hielo", licenciado: true, canaliza: "se roba el calor del entorno y se lo deja quieto" },
+  { id: "viento", nombre: "viento", escuela: "elemental", tema: "viento", licenciado: true, canaliza: "se manda el propio aliento y se le da forma" },
+  { id: "agua", nombre: "agua", escuela: "elemental", tema: "agua", licenciado: true, canaliza: "se convoca la humedad del aire y de la sangre" },
+  { id: "tierra", nombre: "tierra", escuela: "elemental", tema: "tierra", licenciado: true, canaliza: "se escucha el peso del suelo y se le pide que se mueva" },
+  { id: "oscuridad", nombre: "oscuridad", escuela: "elemental", tema: "oscuridad", licenciado: true, canaliza: "se aparta la luz con la voluntad hasta que solo queda sombra" },
+  { id: "luz", nombre: "luz", escuela: "elemental", tema: "luz", licenciado: true, canaliza: "se reúne la luz presente y se la concentra" },
+  { id: "curacion", nombre: "curación", escuela: "curacion", licenciado: true, canaliza: "se ofrece la propia sangre y se la dirige a la carne ajena" },
+  { id: "proteccion", nombre: "protección", escuela: "proteccion", licenciado: true, canaliza: "se cierra el aliento en torno a algo y se le da dureza" },
+  { id: "mente", nombre: "mente", escuela: "mente", licenciado: true, canaliza: "se toca el pensamiento ajeno con el propio" },
+  { id: "adivinacion", nombre: "adivinación", escuela: "adivinacion", licenciado: true, canaliza: "se escucha lo que dejaron los hechizos y los muertos" },
+  { id: "sombra", nombre: "sombra", escuela: "sombra", licenciado: false, canaliza: "se desprende la sombra propia y se la manda" },
+  { id: "necromancia", nombre: "necromancia", escuela: "necromancia", licenciado: false, canaliza: "se paga con años de vida para hablar con la muerte" },
+];
+export const TIPOS_IDS = TIPOS_MAGIA.map((t) => t.id) as [string, ...string[]];
+export const buscarTipo = (id: string): TipoMagia | undefined => TIPOS_MAGIA.find((t) => t.id === id.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""));
+/** El tipo de magia de un hechizo: el tema si es elemental; si no, su escuela. */
+export const tipoDe = (h: { escuela: Escuela; tema?: string }): string => (h.escuela === "elemental" ? (h.tema ?? "fuego") : h.escuela);
+/** La escuela de hechicería que enseña un tipo (todas con licencia de la Inquisición, salvo las de magia negra). */
+export const nombreEscuelaHechiceria = (tipo: string): string => `Escuela de ${buscarTipo(tipo)?.nombre ?? tipo}`;
+/** Cuántos tipos puede dominar un Hechicero de escuela: 1 al empezar, 2 desde el nivel 5 y 3 desde el 9. El del don, todos. */
+export const tiposMax = (nivel: number, don: boolean): number => (don ? TIPOS_MAGIA.length : nivel >= 9 ? 3 : nivel >= 5 ? 2 : 1);
+
 export interface Hechizo {
   nombre: string;
   escuela: Escuela;
@@ -57,7 +98,7 @@ export interface Hechizo {
   /** Solo con nivel 9 o más, maestría de adepto o afinidad racial con la magia. */
   requiere_alto?: boolean;
   /** Tema de un hechizo elemental (el Berserker solo domina rayo y hielo). */
-  tema?: "fuego" | "rayo" | "hielo" | "viento" | "oscuridad";
+  tema?: "fuego" | "rayo" | "hielo" | "viento" | "oscuridad" | "agua" | "tierra" | "luz";
   efecto: string;
   /** Dados de daño o efecto que el programa tira al lanzarlo. */
   dados?: string;
@@ -89,6 +130,39 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Bola de fuego", escuela: "elemental", tema: "fuego", circulo: 3, efecto: "Esfera de 6 m de radio: 8d6 de fuego, mitad si supera la salvación", dados: "8d6", salvacion: "DES" },
   { nombre: "Cadena de relámpagos", escuela: "elemental", tema: "rayo", circulo: 4, efecto: "Un rayo salta entre hasta 4 objetivos: 10d8 de relámpago, mitad si supera", dados: "10d8", salvacion: "DES" },
   { nombre: "Tormenta de ceniza", escuela: "elemental", tema: "fuego", circulo: 5, efecto: "Una tormenta de fuego y ceniza de 30 m durante 1 minuto: 12d6 por asalto", dados: "12d6", salvacion: "DES" },
+  // Más magia elemental por tipo (propuesta): cada tipo tiene hechizos desde el truco hasta los círculos altos
+  { nombre: "Muro de llamas", escuela: "elemental", tema: "fuego", circulo: 2, efecto: "Un muro de fuego de 9 m de largo durante 1 minuto: quien lo cruza sufre 5d6 de fuego", dados: "5d6", salvacion: "DES" },
+  { nombre: "Pilar de fuego", escuela: "elemental", tema: "fuego", circulo: 4, efecto: "Un cilindro de fuego de 3 m de radio cae del cielo: 8d8 de fuego, mitad si supera la salvación", dados: "8d8", salvacion: "DES" },
+  { nombre: "Tormenta eléctrica", escuela: "elemental", tema: "rayo", circulo: 3, efecto: "Un trueno sacude un área de 6 m de radio: 6d8 de relámpago y aturde un asalto al que falle", dados: "6d8", salvacion: "CON" },
+  { nombre: "Ira del cielo", escuela: "elemental", tema: "rayo", circulo: 5, efecto: "Un rayo del cielo cae sobre un punto a la vista: 14d8 de relámpago en 3 m de radio", dados: "14d8", salvacion: "DES" },
+  { nombre: "Aguanieve", escuela: "elemental", tema: "hielo", circulo: 3, efecto: "Un área de 6 m de radio se cubre de hielo y aguanieve: 4d6 de frío, velocidad a la mitad y derriba al que falle", dados: "4d6", salvacion: "DES" },
+  { nombre: "Prisión de hielo", escuela: "elemental", tema: "hielo", circulo: 4, efecto: "Encierra a un objetivo en hielo: retenido un minuto y 6d6 de frío", dados: "6d6", salvacion: "FUE" },
+  { nombre: "Invierno", escuela: "elemental", tema: "hielo", circulo: 5, efecto: "Un invierno de 30 m de radio durante 1 minuto: 12d6 de frío por asalto y velocidad a la mitad", dados: "12d6", salvacion: "CON" },
+  { nombre: "Soplo", escuela: "elemental", tema: "viento", circulo: 0, tributo: "aliento", efecto: "Un soplo empuja 3 m a un objetivo pequeño, apaga una llama o aleja el humo" },
+  { nombre: "Torbellino", escuela: "elemental", tema: "viento", circulo: 2, tributo: "aliento", efecto: "Un torbellino de 3 m de radio levanta y derriba a quien falle la salvación y lo arrastra 6 m", salvacion: "FUE" },
+  { nombre: "Ciclón", escuela: "elemental", tema: "viento", circulo: 4, tributo: "aliento", efecto: "Un cono de 18 m de ciclón: 12d6 contundente, derriba y empuja 9 m", dados: "12d6", salvacion: "FUE" },
+  { nombre: "Ojo de la tormenta", escuela: "elemental", tema: "viento", circulo: 5, tributo: "aliento", efecto: "Una tormenta de 30 m: nadie vuela ni dispara, 8d6 por asalto y el lanzador se mueve por dentro sin trabas", dados: "8d6", salvacion: "FUE" },
+  { nombre: "Gota de rocío", escuela: "elemental", tema: "agua", circulo: 0, tributo: "aliento", efecto: "Crea un trago de agua pura, apaga una llama pequeña o limpia una herida" },
+  { nombre: "Látigo de agua", escuela: "elemental", tema: "agua", circulo: 1, tributo: "aliento", efecto: "Ataque de hechizo a distancia (18 m): 2d6 contundente y empuja 1,5 m", dados: "2d6" },
+  { nombre: "Niebla", escuela: "elemental", tema: "agua", circulo: 2, tributo: "aliento", efecto: "Una niebla de 9 m de radio durante 10 minutos: oculta la vista, desventaja en Percepción" },
+  { nombre: "Ola", escuela: "elemental", tema: "agua", circulo: 3, tributo: "aliento", efecto: "Una ola de 9 m: 8d6 contundente, derriba y arrastra 6 m", dados: "8d6", salvacion: "FUE" },
+  { nombre: "Marea", escuela: "elemental", tema: "agua", circulo: 4, tributo: "aliento", efecto: "Una marea que arrastra a todos en 18 m: 10d8 contundente y los deja en el suelo", dados: "10d8", salvacion: "FUE" },
+  { nombre: "Diluvio", escuela: "elemental", tema: "agua", circulo: 5, tributo: "aliento", efecto: "Un diluvio de 30 m durante 1 minuto: 10d6 por asalto, apaga todo fuego y vuelve el suelo un lodazal", dados: "10d6", salvacion: "FUE" },
+  { nombre: "Esquirla", escuela: "elemental", tema: "tierra", circulo: 0, efecto: "Lanza una esquirla de piedra a un objetivo a 9 m: 1d8 perforante", dados: "1d8" },
+  { nombre: "Lanza de piedra", escuela: "elemental", tema: "tierra", circulo: 1, efecto: "Una lanza de piedra surge del suelo: 2d8 perforante a un objetivo a 18 m", dados: "2d8" },
+  { nombre: "Raíces", escuela: "elemental", tema: "tierra", circulo: 2, efecto: "Raíces y piedra atrapan a quien falle la salvación en 3 m de radio: retenido un minuto", salvacion: "FUE" },
+  { nombre: "Temblor", escuela: "elemental", tema: "tierra", circulo: 3, efecto: "El suelo tiembla en 9 m: 6d6 contundente y derriba a quien falle", dados: "6d6", salvacion: "DES" },
+  { nombre: "Muro de roca", escuela: "elemental", tema: "tierra", circulo: 4, efecto: "Un muro de roca de 12 m de largo y 6 de alto, infranqueable durante 10 minutos" },
+  { nombre: "Terremoto", escuela: "elemental", tema: "tierra", circulo: 5, efecto: "Un terremoto de 30 m de radio: 12d6 contundente, derriba, abre grietas y derrumba lo frágil", dados: "12d6", salvacion: "DES" },
+  { nombre: "Cegar", escuela: "elemental", tema: "oscuridad", circulo: 1, efecto: "Una nube de oscuridad sobre la cabeza de un objetivo: cegado un minuto", salvacion: "CON" },
+  { nombre: "Oscuridad total", escuela: "elemental", tema: "oscuridad", circulo: 2, efecto: "Una esfera de oscuridad de 6 m durante 10 minutos que ninguna luz vence" },
+  { nombre: "Absorber la luz", escuela: "elemental", tema: "oscuridad", circulo: 3, efecto: "Apaga todas las luces en 18 m, mágicas incluidas, y los rivales sin visión en la oscuridad tienen desventaja" },
+  { nombre: "Luz", escuela: "elemental", tema: "luz", circulo: 0, efecto: "Un objeto brilla como una antorcha (9 m) durante 1 hora" },
+  { nombre: "Destello", escuela: "elemental", tema: "luz", circulo: 1, efecto: "Un fogonazo de luz en 4,5 m: ciega un asalto a quien falle y hace 2d6 radiante a los no-muertos", dados: "2d6", salvacion: "CON" },
+  { nombre: "Lanza de luz", escuela: "elemental", tema: "luz", circulo: 2, efecto: "Un rayo de luz a un objetivo a 36 m: 3d8 radiante", dados: "3d8" },
+  { nombre: "Sol momentáneo", escuela: "elemental", tema: "luz", circulo: 3, efecto: "Una esfera de luz de 6 m: 8d6 radiante, los no-muertos con desventaja en sus salvaciones", dados: "8d6", salvacion: "CON" },
+  { nombre: "Rayo solar", escuela: "elemental", tema: "luz", circulo: 4, efecto: "Un rayo de sol en línea de 36 m: 12d8 radiante", dados: "12d8", salvacion: "CON" },
+  { nombre: "Amanecer", escuela: "elemental", tema: "luz", circulo: 5, efecto: "Un amanecer de 30 m durante 1 minuto: 10d10 radiante por asalto a no-muertos y malditos, y cura 2d8 a los aliados cada asalto", dados: "10d10", salvacion: "CON" },
   // Curación
   { nombre: "Cerrar la carne", escuela: "curacion", circulo: 1, efecto: "Toque: el objetivo recupera 2d8 + mod. del lanzador PV", cura: "2d8" },
   { nombre: "Sutura arcana", escuela: "curacion", circulo: 2, efecto: "Toque: baja una herida un nivel de gravedad y detiene su hemorragia", cierra_heridas: 1 },
@@ -131,6 +205,24 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Hablar con los muertos", escuela: "adivinacion", circulo: 2, efecto: "Un cadáver responde a tres preguntas, con lo que sabía en vida" },
   { nombre: "Visión del mañana", escuela: "adivinacion", circulo: 3, efecto: "Ve un instante del futuro: tira un d20 y guárdalo; puede sustituir una tirada propia o de un aliado hoy", dados: "1d20" },
 ];
+
+/** Hechizos de unos tipos hasta cierto círculo. */
+export function hechizosDeTipos(tipos: string[], circuloMax: number): string[] {
+  return HECHIZOS.filter((h) => tipos.includes(tipoDe(h)) && h.circulo <= circuloMax).map((h) => h.nombre);
+}
+
+/** Los tipos de magia que usa un personaje con escuelas heredadas (partidas antiguas): todos los de esas escuelas. */
+export const tiposDeEscuelas = (escuelas: Escuela[]): string[] => TIPOS_MAGIA.filter((t) => escuelas.includes(t.escuela)).map((t) => t.id);
+
+/** El grimorio de un Hechicero de escuela: sabe todos los hechizos de sus tipos hasta el círculo que domina; cuanto más nivel, más hechizos. */
+export function sincronizarGrimorio(p: Personaje): void {
+  const m = p.magia;
+  if (!m || p.clase !== "Hechicero" || m.don) return; // el del don aprende viendo
+  const tipos = m.tipos ?? tiposDeEscuelas(m.escuelas);
+  const sabidos = new Set(m.hechizos);
+  for (const n of hechizosDeTipos(tipos, MAESTRIA[m.maestria].circulo)) sabidos.add(n);
+  m.hechizos = [...sabidos];
+}
 
 export function buscarHechizo(nombre: string): Hechizo | undefined {
   const n = nombre.toLowerCase();
@@ -183,8 +275,14 @@ export interface MagiaPersonaje {
   anios_perdidos: number;
   /** Tramos de 10 años ya descontados de FUE y DES. */
   tramos_vejez: number;
-  /** Nació con don arcano que aún duerme (el Mercenario lo despierta al subir de nivel). */
+  /** Nació con don arcano que aún duerme (el Mercenario lo despierta al subir de nivel). En el Hechicero, el don lo hace dominar todos los tipos. */
   don?: boolean;
+  /** Hechicero: tipos de magia que domina (fuego, hielo, agua…), de los que lanza hechizos. */
+  tipos?: string[];
+  /** Hechicero: tipos de magia que cubre su licencia de la Inquisición (la de las escuelas en que estudió). */
+  licencias?: string[];
+  /** Hechicero: por qué entró en la hechicería: noble, rico o «don» (incluido por fuerza mayor). */
+  origen?: "noble" | "rico" | "don";
 }
 
 /**
@@ -211,13 +309,17 @@ export function tirarDon(raza: string): { don: boolean; texto: string } {
 }
 
 /** La magia con la que empieza un personaje. Los guerreros, solo si tienen el don. */
-export function magiaInicial(clase: string, escuelasElegidas?: Escuela[], don = false): MagiaPersonaje {
+export function magiaInicial(clase: string, escuelasElegidas?: Escuela[], don = false, tiposElegidos?: string[]): MagiaPersonaje {
   const vacia = { calor: 0, aliento: 0, cordura: 0, anios_perdidos: 0, tramos_vejez: 0 };
   const base = MAGIA_CLASE[clase];
   if (clase === "Hechicero") {
-    const escuelas = escuelasElegidas?.length ? escuelasElegidas.slice(0, 2) : (["elemental", "mente"] as Escuela[]);
-    const hechizos = HECHIZOS.filter((h) => escuelas.includes(h.escuela) && h.circulo <= 1).map((h) => h.nombre);
-    return { maestria: "adepto", escuelas, hechizos, atributo: "int", ...vacia };
+    // Escuela de hechicería: empieza con UN tipo de magia (el que enseña su escuela), con licencia de la Inquisición si es de los licenciados.
+    // Con el don arcano domina todos los tipos y su magia cuenta igual (mismas reglas y precios).
+    const validos = (tiposElegidos ?? []).filter((t) => buscarTipo(t)).map((t) => buscarTipo(t)!.id);
+    const tipos = validos.length ? [...new Set(validos)].slice(0, 1) : escuelasElegidas?.length ? tiposDeEscuelas(escuelasElegidas.slice(0, 2)) : ["fuego"];
+    const escuelas = don ? [...ESCUELAS] : ([...new Set(tipos.map((t) => buscarTipo(t)!.escuela))] as Escuela[]);
+    const hechizos = hechizosDeTipos(tipos, 1);
+    return { maestria: "adepto", escuelas, hechizos, atributo: "int", don, tipos, licencias: tipos.filter((t) => buscarTipo(t)?.licenciado), ...vacia };
   }
   // El Mercenario es la clase más corriente: aunque tenga el don, la magia no despierta hasta que suba de nivel.
   if (base && don && clase === "Mercenario del Cuervo") return { maestria: "profano", escuelas: [], hechizos: [], atributo: base.atributo, don: true, ...vacia };
@@ -239,7 +341,8 @@ export function textoMagia(m: MagiaPersonaje | undefined): string {
   const tributos = [m.calor && `calor ${m.calor}`, m.aliento && `aliento ${m.aliento}`, m.cordura && `cordura ${m.cordura}`, m.anios_perdidos && `${m.anios_perdidos} años perdidos`]
     .filter(Boolean)
     .join(" · ");
-  return `  Magia: ${m.maestria} (${m.escuelas.join(", ")}) · ${m.hechizos.join(", ") || "sin hechizos"}${tributos ? `\n  Tributos: ${tributos}` : ""}`;
+  const hechicero = m.tipos ? `\n  Tipos de magia: ${m.don ? "todos (don arcano)" : m.tipos.join(", ")}${m.origen ? ` · origen ${m.origen}` : ""} · licencia de la Inquisición: ${m.licencias?.length ? m.licencias.map((t) => nombreEscuelaHechiceria(t)).join(", ") : "ninguna (hereje si lo descubren)"}` : "";
+  return `  Magia: ${m.maestria} (${m.don && m.tipos ? "todas las escuelas" : m.escuelas.join(", ")}) · ${m.hechizos.join(", ") || "sin hechizos"}${hechicero}${tributos ? `\n  Tributos: ${tributos}` : ""}`;
 }
 
 // ---------------------------------------------------------------- catalizadores
@@ -306,11 +409,15 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   const h = d.hechizo_nuevo ?? (d.hechizo ? buscarHechizo(d.hechizo) : undefined);
   if (!h) throw new Error(`No conozco el hechizo "${d.hechizo}". Usa uno de la lista (consultar_reglas magia) o descríbelo con hechizo_nuevo.`);
   if (!m.escuelas.includes(h.escuela)) throw new Error(`${p.nombre} no domina la escuela de ${h.escuela} (domina: ${m.escuelas.join(", ") || "ninguna"}).`);
+  if (p.clase === "Hechicero" && !m.don) {
+    const tipos = m.tipos ?? tiposDeEscuelas(m.escuelas);
+    if (!tipos.includes(tipoDe(h))) throw new Error(`${p.nombre} comprende la magia de ${tipoDe(h)} pero no la domina: solo ha estudiado ${tipos.join(", ")}. Para lanzar ${h.nombre} necesita estudiar ese tipo en una escuela (aprender_tipo; puede dominar ${tiposMax(p.nivel, false)} a su nivel).`);
+  }
   if (p.clase === "Berserker de Ceniza" && h.escuela === "elemental" && !(h.tema && ["rayo", "hielo"].includes(h.tema) && h.circulo <= 2))
     throw new Error(`Un Berserker de Ceniza solo domina de la magia elemental los rayos y el hielo básicos (hasta círculo 2): ${h.nombre} queda fuera.`);
   if (p.clase === "Barbero-Cirujano" && h.escuela === "elemental" && !(h.tema && ["fuego", "hielo"].includes(h.tema) && h.circulo <= 1))
     throw new Error(`Un Barbero-Cirujano solo domina de la magia elemental el fuego y el hielo leves para cauterizar y enfriar (hasta círculo 1): ${h.nombre} queda fuera.`);
-  if (p.clase === "Degollador" && h.escuela === "elemental" && h.tema !== "oscuridad")
+  if (p.clase === "Degollador" && h.escuela === "elemental" && !(h.tema === "oscuridad" && h.circulo <= 1))
     throw new Error(`Un Degollador solo domina de la magia elemental la oscuridad menor (esconderse y cegar): ${h.nombre} queda fuera.`);
   if (h.requiere_alto && p.nivel < 9 && MAESTRIAS.indexOf(m.maestria) < MAESTRIAS.indexOf("adepto") && !((AFINIDAD[p.raza]?.bono ?? 0) > 0))
     throw new Error(`${h.nombre} exige nivel 9 o más, maestría de adepto o afinidad racial con la magia: ${p.nombre} (nivel ${p.nivel}, ${m.maestria}) aún no puede.`);
@@ -556,7 +663,9 @@ export function descansar(p: Personaje, dias: number, calidad: string) {
 }
 
 export const REGLAS_HECHICERO = `## Hechicero (el sujeto más poderoso posible)
-- El Hechicero tiene el don arcano innato: su potencial no tiene techo y, a nivel alto, es el ser más poderoso del universo, en potencia desde el primer día y en acto con los niveles. Su maestría sube sola: adepto (círculo 2) hasta el nivel 4, maestro (círculo 3, +4) en el 5, archimago (círculo 4, +6) en el 9 y ascendido (círculo 5, +8) en el 13; su INT llega a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. Cuenta el precio de su magia, pero ya no lo ata como a los demás.
+- Escuelas de hechicería: solo los nobles o los ricos entran en ellas; quien nace con el don arcano es la excepción y lo incluyen por fuerza mayor. Cada escuela enseña UN tipo de magia —fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curación, protección, mente o adivinación— y todas tienen licencia de la Inquisición; la sombra y la necromancia son magia negra, sin licencia, y quien las practica es un hereje. El Hechicero (guardar_personaje con tipos_magia y linaje) empieza dominando un tipo, y con el nivel domina más: dos desde el 5, tres desde el 9 (aprender_tipo, con un maestro o una escuela). Cuanto más nivel y más círculos domina, más hechizos conoce de sus tipos. Su maestría sube con el nivel: adepto (círculo 2), maestro (5, círculo 3) y archimago (9, círculo 4).
+- Comprensión: cualquier Hechicero comprende cómo funciona cada tipo de magia y cada hechizo (comprender_magia), cuánto cuesta y cómo se canaliza, aunque no lo domine: comprender no es poder lanzar. Para lanzar un tipo hay que estudiarlo.
+- El don arcano (se tira al crear al personaje; el Hechicero que lo tiene es la excepción de linaje) hace del Hechicero el sujeto más poderoso posible, en potencia desde el primer día y en acto con los niveles: domina TODOS los tipos de magia con las mismas reglas y los mismos precios que los demás, comprende cómo se canaliza cada hechizo solo con verlo (comprender_magia con visto=true: lo aprende al instante hasta el círculo que domina), su maestría llega a ascendido (círculo 5, +8) en el nivel 13 y su INT, a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. El Hechicero de escuela es poderoso pero tiene techo (archimago, tres tipos).
 - Dominio de lo menor: sin catalizador, un hechizo dos círculos por debajo de su círculo máximo no le cuesta nada y uno de un círculo por debajo cuesta la mitad. El programa lo aplica solo. Con catalizador no hay descuento (el catalizador ya absorbe el precio).
 - Su bastón es catalizador permanente (pásalo en catalizador: «Bastón»): absorbe calor, aliento o cordura (1 + 1 cada 4 niveles); no sirve contra la sangre ni los años de vida.
 - Recuperación arcana (usar_recurso): tras un descanso corto recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 9).`;

@@ -1,7 +1,7 @@
 // Formulario de personaje: el jugador rellena todo de una vez y el DM recibe una ficha completa,
 // con los valores ya calculados (bono racial, PV), para guardarla sin hacer más preguntas.
 import { PERSONALIDADES, VETERANIAS } from "./combate.js";
-import { ESCUELAS } from "./magia.js";
+import { buscarTipo, TIPOS_MAGIA } from "./magia.js";
 import { CLASES, RAZAS } from "./mundo.js";
 
 export const ATRIBUTOS = ["fue", "des", "con", "int", "sab", "car"] as const;
@@ -36,7 +36,12 @@ export const DATOS_FORMULARIO = {
   clases: CLASES.map((c) => ({ nombre: c.nombre, dado: c.dadoGolpe, principal: c.principal, equipo: c.equipo, mago: c.nombre === "Hechicero" })),
   personalidades: Object.entries(PERSONALIDADES).map(([nombre, p]) => ({ nombre, nota: p.nota })),
   veteranias: VETERANIAS.map((v) => ({ nombre: v, nota: DESCRIPCION_VETERANIA[v] ?? "" })),
-  escuelas: [...ESCUELAS],
+  tipos: TIPOS_MAGIA.filter((t) => t.licenciado).map((t) => ({ id: t.id, nombre: t.nombre })),
+  linajes: [
+    { id: "noble", nombre: "Noble" },
+    { id: "rico", nombre: "Rico (mercader, banquero, familia acomodada)" },
+    { id: "humilde", nombre: "Humilde (solo entra si nace con el don arcano: el dado lo decide al crearlo)" },
+  ],
   serie: SERIE_ESTANDAR,
 };
 
@@ -51,7 +56,10 @@ export interface DatosFicha {
   base: Record<Atributo, number>;
   /** "estandar" (15,14,13,12,10,8 una vez cada uno) o "tirada" (4d6kh3 seis veces). */
   metodo: "estandar" | "tirada";
-  escuelas: string[];
+  /** Hechicero: el tipo de magia con que empieza (lo que enseña su escuela). */
+  tipo: string;
+  /** Hechicero: noble, rico o humilde (solo el don arcano deja entrar a un humilde). */
+  linaje: string;
   trasfondo: string;
   extra: string;
 }
@@ -82,7 +90,8 @@ export function validarFicha(f: DatosFicha): string[] {
   else if (f.metodo === "estandar" && [...valores].sort((a, b) => b - a).join() !== SERIE_ESTANDAR.join())
     e.push("Con la serie estándar usa cada valor (15, 14, 13, 12, 10, 8) una sola vez.");
   if (clase?.nombre === "Hechicero") {
-    if (f.escuelas.length !== 2 || new Set(f.escuelas).size !== 2 || f.escuelas.some((s) => !(ESCUELAS as readonly string[]).includes(s))) e.push("El Hechicero elige dos escuelas de magia distintas.");
+    if (!buscarTipo(f.tipo ?? "")?.licenciado) e.push("El Hechicero elige el tipo de magia con que empieza (el que enseña su escuela).");
+    if (!["noble", "rico", "humilde"].includes(f.linaje ?? "")) e.push("Di si el Hechicero es noble, rico o humilde (solo los nobles y los ricos entran en las escuelas de hechicería, salvo el don arcano).");
   }
   if (f.trasfondo.trim().length < 20) e.push("Cuenta en unas líneas quién fue tu personaje y qué busca.");
   if (textoFicha(f).length > MAX_ACCION) e.push("El texto es demasiado largo: acorta el trasfondo o el equipo extra.");
@@ -102,7 +111,7 @@ export function textoFicha(f: DatosFicha): string {
     `Personalidad: ${f.personalidad.join(" y ")}`,
     `Atributos finales (${f.metodo === "tirada" ? "tiradas 4d6kh3" : "serie estándar"}, con el bono racial ya sumado): ${attrs}`,
     `PV: ${pvIniciales(f)} (dado de golpe máximo + mod. CON)`,
-    f.escuelas.length ? `Escuelas de magia: ${f.escuelas.join(" y ")}` : "",
+    f.clase === "Hechicero" ? `Magia: tipo inicial «${f.tipo}» (guárdalo con tipos_magia: [«${f.tipo}»]), linaje «${f.linaje}» (pásalo como linaje). El don arcano se tira solo al guardar; si es humilde y no lo tiene, la escuela no lo admite: dile al jugador que cambie de linaje o de clase.` : "",
     `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}`,
     `Trasfondo: ${f.trasfondo.trim()}`,
     f.clase === "Cazador de Brujas" ? "Mascota: si el jugador nombró un halcón o un ratón (en el trasfondo o en el equipo extra), ese; si no, elige tú según su trasfondo, y guárdala con mascota {accion: elegir} justo después de guardar la ficha." : "",

@@ -67,9 +67,9 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   Hechicero: {
     2: ["Recuperación arcana (usar_recurso, 1 vez al día; 2 desde el nivel 9): tras un descanso corto, recupera calor o aliento gastado igual a la mitad de su nivel (redondeando arriba)"],
     3: ["Dominio de lo menor: sin catalizador, los hechizos dos círculos por debajo de su máximo no le cuestan nada y los de un círculo por debajo, la mitad. Su bastón sirve de catalizador (calor, aliento o cordura)"],
-    5: ["Maestro: lanza hasta el círculo 3 con +4 al lanzamiento (aprende los hechizos con un maestro o un grimorio)"],
-    9: ["Archimago: lanza hasta el círculo 4 con +6; Recuperación arcana dos veces al día"],
-    13: ["Ascendido: lanza hasta el círculo 5 con +8. No hay poder en Velmora por encima del suyo: ni regentes, ni leyendas, ni los vestigios de los dioses muertos"],
+    5: ["Maestro: lanza hasta el círculo 3 con +4 al lanzamiento", "Segundo tipo de magia: puede estudiar otro tipo en una escuela (aprender_tipo); el del don arcano ya los domina todos"],
+    9: ["Archimago: lanza hasta el círculo 4 con +6; Recuperación arcana dos veces al día", "Tercer tipo de magia (el máximo para quien estudió en escuela)"],
+    13: ["Solo con el don arcano: Ascendido, lanza hasta el círculo 5 con +8. No hay poder en Velmora por encima del suyo: ni regentes, ni leyendas, ni los vestigios de los dioses muertos"],
   },
   "Barbero-Cirujano": {
     2: ["Mano de cirujano mejorada: +1 más a toda tirada de tratamiento"],
@@ -172,7 +172,7 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
     if (!a.length) throw new Error(`El nivel ${nuevo} da un aumento de característica: pasa aumento (+2 a una, o +1 a dos).`);
     if (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2)) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");
     for (const [k, v] of a) {
-      const tope = p.clase === "Hechicero" && k === "int" ? 24 : 20; // el don arcano no tiene techo: su INT llega a 24
+      const tope = p.clase === "Hechicero" && p.magia?.don && k === "int" ? 24 : 20; // el don arcano no tiene techo: su INT llega a 24
       if (p.atributos[k as Atributo] + (v as number) > tope) throw new Error(`${k.toUpperCase()} no puede pasar de ${tope}.`);
     }
     for (const [k, v] of a) {
