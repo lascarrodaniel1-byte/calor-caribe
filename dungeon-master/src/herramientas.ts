@@ -610,6 +610,7 @@ const esquemas = {
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
     nervio: z.enum(["brazo", "pierna", "columna"]).optional().describe("Barbero-Cirujano: golpea un nervio (−2, columna −3): si hiere, CON o brazo entumecido, pierna entumecida o paralizado un asalto"),
     dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
+    reaccion: z.boolean().optional().describe("Ataque de oportunidad ya anunciado con reaccion (sin dano): resuelve aquí su único ataque cuerpo a cuerpo, sin exigir que siga al alcance"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
     castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y suma dados de daño radiante"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
@@ -889,7 +890,20 @@ function enEscena(partida: Partida, nombre: string): EstadoJefe {
 }
 
 /** Un ataque completo: comprueba el alcance real en el plano, lo resuelve y, si la criatura cae, la retira de escena. */
+/** Si el ataque falla (objetivo fuera de alcance, daño mal escrito…), no se gasta nada: ni la acción adicional, ni la ayuda, ni la reserva. */
 function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; aviso: string } {
+  const turnos = partida.combate?.turnos ? JSON.parse(JSON.stringify(partida.combate.turnos)) : undefined;
+  const reservas = Object.values(partida.personajes).map((p) => [p, p.juramento?.reserva] as const);
+  try {
+    return ataqueCompletoInterno(partida, e);
+  } catch (err) {
+    if (turnos && partida.combate) partida.combate.turnos = turnos;
+    for (const [p, r] of reservas) if (p.juramento && r !== undefined) p.juramento.reserva = r;
+    throw err;
+  }
+}
+
+function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: string; aviso: string } {
   // Cerbatana del Degollador: a distancia (30 m), 1 de daño y un dardo de la reserva.
   const soplo = /cerbatana/i.test(e.arma ?? "") ? prepararSoplo(partida, e) : null;
   if (soplo) e = soplo.e;
@@ -1210,7 +1224,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         }
         const objetivos = e.objetivos.map((n) => buscar(partida, n));
         const mit = j ? mitigacion(partida, j) : null;
-        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
+        const esquivan = Object.entries(partida.combate?.turnos ?? {}).filter(([, t]) => t.esquiva).map(([k]) => k.toLowerCase());
+        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0, esquivan) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
         if (j) registrarMagia(partida, { hechizo: h.nombre, lanzador: j.nombre, victima: objetivos[0]?.nombre, negra: esMagiaNegra(undefined, `${h.nombre} ${h.descripcion} ${h.condicion ?? ""}`) && /no-muerto|vampiro|espectro|hechic|brujo|bruja|mago|culti/i.test(`${j.definicion.temple ?? ""} ${j.definicion.nombre}`), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
         return { contenido: texto, aviso: `💀 ${texto}` };
       }

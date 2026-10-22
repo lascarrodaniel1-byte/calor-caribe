@@ -43,6 +43,15 @@ export function levantarse(p: Personaje, motivo = "recupera el conocimiento"): s
   return `${p.nombre} ${motivo} (ya no está a 0 PV).`;
 }
 
+/** Daño masivo: si el golpe baja a 0 PV y lo que sobra iguala o supera sus PV máximos, muere en el acto (regla del libro). */
+export function muerteInstantanea(p: Personaje, pvAntes: number, dano: number): string {
+  if (!vivo(p) || pvAntes <= 0) return "";
+  const sobra = dano - pvAntes;
+  if (sobra < p.pv_max) return "";
+  marcarMuerto(p);
+  return `☠ El golpe sobrante (${sobra}) iguala o supera los PV máximos de ${p.nombre} (${p.pv_max}): muerte instantánea.`;
+}
+
 /** Daño recibido estando a 0 PV: fallos de salvación contra muerte, o muerte instantánea. */
 export function danoEnSuelo(p: Personaje, dano: number, critico: boolean): string {
   if (!vivo(p) || p.pv > 0) return "";

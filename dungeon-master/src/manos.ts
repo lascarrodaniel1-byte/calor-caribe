@@ -61,7 +61,8 @@ const TABLA: { patron: RegExp; p: Propiedades }[] = [
   { patron: /cerbatana/i, p: { nombre: "cerbatana", municion: true } },
   { patron: /ballesta pesada/i, p: { nombre: "ballesta pesada", municion: true, dosManos: true, pesada: true } },
   { patron: /ballesta ligera|ballesta/i, p: { nombre: "ballesta ligera", municion: true, dosManos: true } },
-  { patron: /arco largo|arco/i, p: { nombre: "arco", municion: true, dosManos: true, pesada: true } },
+  { patron: /arco largo/i, p: { nombre: "arco largo", municion: true, dosManos: true, pesada: true } },
+  { patron: /arco/i, p: { nombre: "arco", municion: true, dosManos: true } },
   { patron: /sierra de huesos|estaca/i, p: { nombre: "arma ligera", ligera: true } },
 ];
 

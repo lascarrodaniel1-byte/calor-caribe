@@ -31,9 +31,12 @@ export function accionCombate(partida: Partida, d: DatosAccionCombate): string {
   const c = localizar(partida, d.quien);
   const motivo = puedeActuar(c);
   if (motivo) throw new Error(motivo + ".");
+  if (partida.combate?.ronda === 1 && partida.combate.sorprendidos?.some((x) => igual(x, c.nombre))) throw new Error(`${c.nombre} está sorprendido: no puede actuar ni reaccionar en el primer asalto.`);
   const t = turnoDe(partida, c.nombre);
   // Empieza su turno: lo que hizo en el turno anterior caduca.
-  t.esquiva = false; t.retirada = false; t.corrio = false;
+  if (t.adicional !== "esquivar") t.esquiva = false; // la esquiva del Degollador (acción adicional) no se pierde por otra acción
+  t.retirada = false; t.corrio = false; t.pasoElusivo = false;
+  if (d.accion !== "preparar") delete t.preparada;
   switch (d.accion) {
     case "esquivar": {
       t.esquiva = true;
@@ -88,6 +91,7 @@ export function reaccion(partida: Partida, d: DatosReaccion, atacarFn: AtacarFn)
   const c = localizar(partida, d.quien);
   const motivo = puedeActuar(c);
   if (motivo) throw new Error(motivo + ".");
+  if (partida.combate?.ronda === 1 && partida.combate.sorprendidos?.some((x) => igual(x, c.nombre))) throw new Error(`${c.nombre} está sorprendido: no puede actuar ni reaccionar en el primer asalto.`);
   const t = turnoDe(partida, c.nombre);
   if (t.reaccion) throw new Error(`${c.nombre} ya usó su reacción este asalto (solo tiene una por asalto; la recupera en el siguiente_asalto).`);
   if (d.tipo === "preparada" && !t.preparada) throw new Error(`${c.nombre} no tiene ninguna acción preparada: usa accion_combate {accion: "preparar"} en su turno.`);
@@ -106,7 +110,7 @@ export function reaccion(partida: Partida, d: DatosReaccion, atacarFn: AtacarFn)
   // Solo si todo salió bien se gasta la reacción (y la acción preparada).
   t.reaccion = true;
   if (d.tipo === "preparada") delete t.preparada;
-  const resto = ataque ? `\n${ataque.texto}` : d.tipo === "ataque_oportunidad" ? "\n(Resuélvelo con atacar: un solo ataque cuerpo a cuerpo.)" : "";
+  const resto = ataque ? `\n${ataque.texto}` : d.tipo === "ataque_oportunidad" ? "\n(Resuélvelo con atacar {reaccion: true}: un solo ataque cuerpo a cuerpo contra quien sale de su alcance.)" : "";
   return { texto: cabecera + resto, aviso: ataque ? `${cabecera}\n${ataque.aviso}` : cabecera };
 }
 

@@ -81,6 +81,8 @@ export interface Efectos {
   contraCuerpo: "ventaja" | "desventaja" | null;
   contraDistancia: "ventaja" | "desventaja" | null;
   critCuerpo: boolean;
+  /** Por fuente, sin anular: una ventaja y una desventaja de cualquier origen se cancelan entre sí al tirar (regla del libro). */
+  atacaV: boolean; atacaD: boolean; cuerpoV: boolean; cuerpoD: boolean; distV: boolean; distD: boolean;
   agotamiento: number;
   /** Líneas legibles de por qué. */
   motivos: string[];
@@ -116,6 +118,10 @@ export function efectos(conds: string[]): Efectos {
     contraCuerpo: juntar(lista.map((c) => c.contraCuerpo)),
     contraDistancia: juntar(lista.map((c) => c.contraDistancia)),
     critCuerpo: lista.some((c) => c.critCuerpo),
+    atacaV: lista.some((c) => c.ataca === "ventaja"),
+    atacaD: lista.some((c) => c.ataca === "desventaja") || ag >= 3,
+    cuerpoV: lista.some((c) => c.contraCuerpo === "ventaja"), cuerpoD: lista.some((c) => c.contraCuerpo === "desventaja"),
+    distV: lista.some((c) => c.contraDistancia === "ventaja"), distD: lista.some((c) => c.contraDistancia === "desventaja"),
     agotamiento: ag,
     motivos,
   };

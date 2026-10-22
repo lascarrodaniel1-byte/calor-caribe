@@ -17,7 +17,7 @@ import { gastarReserva, usoDivino } from "./juramento.js";
 import { autoManos, caEfectiva } from "./manos.js";
 import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
 import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
-import { danoEnSuelo } from "./muerte.js";
+import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -286,7 +286,14 @@ function bonoIniciativa(c: Combatiente): { bono: number; modo: Modo; detalle: st
   return { bono: mod(des) + of + t.iniciativa + estilo + pers, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
 }
 
+/** Si la iniciativa falla (un nombre que no existe, una táctica mal dada), el combate en curso se queda como estaba. */
 export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCombate[], tactica?: Tactica): string {
+  const previo = partida.combate;
+  const copia = previo ? JSON.parse(JSON.stringify(previo)) : undefined;
+  try { return tirarIniciativaInterna(partida, nombres, pnj, tactica); } catch (e) { partida.combate = copia ? previo : undefined; if (previo && copia) Object.assign(previo, copia); throw e; }
+}
+
+function tirarIniciativaInterna(partida: Partida, nombres: string[], pnj: PnjCombate[], tactica?: Tactica): string {
   const combate: EstadoCombate = { ronda: 1, orden: [], pnj: {}, sorprendidos: [] };
   for (const n of pnj) combate.pnj[n.nombre] = { ...n, pv_max: n.pv_max ?? n.pv };
   partida.combate = combate;
@@ -360,7 +367,14 @@ export function tirarIniciativa(partida: Partida, nombres: string[], pnj: PnjCom
 }
 
 /** Suma combatientes a un combate en curso (refuerzos, una criatura que aparece): tiran su iniciativa y entran en el orden. */
+/** Si falla, el orden y los PNJ del combate quedan como estaban. */
 export function agregarAlCombate(partida: Partida, nombres: string[], pnj: PnjCombate[] = []): string {
+  const c0 = partida.combate;
+  const copia = c0 ? JSON.parse(JSON.stringify(c0)) : undefined;
+  try { return agregarAlCombateInterno(partida, nombres, pnj); } catch (e) { if (c0 && copia) { for (const k of Object.keys(c0)) delete (c0 as never as Record<string, unknown>)[k]; Object.assign(c0, copia); } throw e; }
+}
+
+function agregarAlCombateInterno(partida: Partida, nombres: string[], pnj: PnjCombate[] = []): string {
   const combate = partida.combate;
   if (!combate) throw new Error("No hay ningún combate en curso: empieza con iniciativa.");
   for (const n of pnj) combate.pnj[n.nombre] ??= { ...n, pv_max: n.pv_max ?? n.pv };
@@ -386,7 +400,8 @@ export function siguienteAsalto(partida: Partida): string {
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; delete t.pasoElusivo; delete t.sangre; delete t.heridos; }
+  // Lo que dura «hasta su próximo turno» (esquivar, ayudar, preparar, retirarse, correr, paso elusivo) NO caduca aquí: caduca cuando ese combatiente actúa de nuevo.
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -475,8 +490,24 @@ export function aplicarCondicion(
   }
   if (d.nota) texto += ` (${d.nota})`;
   lista.push(texto);
-  const t = textoEfectos([texto]);
+  // Quien queda incapacitado suelta a todos los que tenía agarrados.
+  const soltados = cat?.incapacitado ? soltarAgarrados(partida, c.nombre) : [];
+  const t = textoEfectos([texto]) + (soltados.length ? `${textoEfectos([texto]) ? "\n" : ""}${c.nombre} suelta a ${soltados.join(", ")}.` : "");
   return `${c.nombre}: ${texto}.${t ? `\nEfecto: ${t}` : cat ? "" : "\n(No está en el catálogo: es texto libre, sin efecto automático.)"}${esAgot && nivelAgotamiento(lista) >= 6 ? "\n☠ Agotamiento 6: muere." : ""}`;
+}
+
+/** Quita «agarrado (por X)» / «agarrado (cadenas de X)» de todos los que tenía agarrados X. */
+export function soltarAgarrados(partida: Partida, agarrador: string): string[] {
+  const out: string[] = [];
+  const quitar = (nombre: string, lista: string[] | undefined) => {
+    if (!lista) return;
+    const resto = lista.filter((x) => !(reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${agarrador.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)`, "i").test(x)));
+    if (resto.length !== lista.length) { lista.splice(0, lista.length, ...resto); out.push(nombre); }
+  };
+  for (const p of Object.values(partida.personajes)) quitar(p.nombre, p.condiciones);
+  for (const j of Object.values(partida.jefes)) quitar(j.nombre, j.condiciones);
+  for (const n of Object.values(partida.combate?.pnj ?? {})) quitar(n.nombre, n.condiciones);
+  return out;
 }
 
 /** Condiciones activas de todos los presentes en el combate (para recordarlas al empezar cada asalto). */
@@ -557,9 +588,12 @@ function tirarDano(expr: string, repetirBajos = false): { total: number; texto: 
     if (/d/i.test(parte)) {
       let t = tirar(parte.replace(/^-/, ""));
       if (repetirBajos && !parte.startsWith("-") && t.dados.some((x) => x <= 2)) {
-        const nuevo = tirar(parte.replace(/^-/, ""));
-        textos.push(`(repite ${parte}[${t.dados.join(",")}])`);
-        t = nuevo;
+        // Estilo con arma a dos manos: solo se repiten los dados que sacaron 1 o 2 (y se queda con el nuevo resultado).
+        const caras = Number(/d(\d+)/i.exec(parte)?.[1] ?? 6);
+        const nuevosDados = t.dados.map((x) => (x <= 2 ? tirar(`1d${caras}`).dados[0] : x));
+        textos.push(`(repite ${t.dados.filter((x) => x <= 2).length} dado(s) de ${parte}[${t.dados.join(",")}])`);
+        const modif = Number(/([+-]\d+)$/.exec(parte)?.[1] ?? 0);
+        t = { ...t, dados: nuevosDados, total: nuevosDados.reduce((a, b) => a + b, 0) + modif };
       }
       const v = parte.startsWith("-") ? -t.total : t.total;
       total += v;
@@ -573,8 +607,11 @@ function tirarDano(expr: string, repetirBajos = false): { total: number; texto: 
 }
 
 export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
+  if (d.dano && !/^[0-9dD+\-\s]+$/.test(d.dano)) throw new Error(`Daño no válido «${d.dano}»: usa solo dados y números, como «1d8+3» o «2d6+4+1d6» (el tipo de daño va en tipo_dano, no en el texto).`);
   const at = localizar(partida, d.atacante);
   const ob = localizar(partida, d.objetivo);
+  if (ob.tipo === "pj" && ob.p.condiciones.includes("muerto")) throw new Error(`${ob.nombre} ya está muerto: no se le puede atacar.`);
+  if (ob.tipo === "pnj" && ob.n.pv !== undefined && ob.n.pv <= 0) throw new Error(`${ob.nombre} ya ha caído (0 PV): no se le puede atacar.`);
   const distancia = !!d.a_distancia;
   const vet = veteraniaCombatiente(at);
   const of = OFICIO[vet];
@@ -634,8 +671,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const efAt = efectos(condsDe(at));
   if (cobBono) motivos.push(`${ob.nombre} tiene cobertura ${d.cobertura === "media" ? "media (+2 CA)" : "de tres cuartos (+5 CA)"}`);
   const efOb = efectos(condsDe(ob));
-  if (efAt.ataca === "desventaja") { desventaja = true; motivos.push(`desventaja por ${efAt.motivos.join(", ")}`); }
-  if (efAt.ataca === "ventaja") { ventaja = true; motivos.push(`ventaja: ${efAt.motivos.join(", ")}`); }
+  // Cada fuente cuenta por separado: cualquier ventaja y cualquier desventaja, de donde vengan, se anulan al final.
+  if (efAt.atacaD) { desventaja = true; motivos.push(`desventaja por ${efAt.motivos.join(", ")}`); }
+  if (efAt.atacaV) { ventaja = true; motivos.push(`ventaja: ${efAt.motivos.join(", ")}`); }
   if (at.tipo === "pj" && at.p.condiciones.some((c) => CONDICIONES_DESVENTAJA.test(c))) {
     desventaja = true;
     motivos.push(`desventaja por ${at.p.condiciones.filter((c) => CONDICIONES_DESVENTAJA.test(c)).join(", ")}`);
@@ -643,7 +681,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const tAt = turnoDe(partida, at.nombre);
   const tOb = turnoDe(partida, ob.nombre);
   // Empieza su turno: lo que hizo en el anterior (esquivar, retirarse, correr) ya no vale.
-  if (!d.reaccion) { if (tAt.adicional !== "esquivar") tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; } // la esquiva del Degollador (acción adicional) no se pierde al atacar
+  if (!d.reaccion) { if (tAt.adicional !== "esquivar") tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; tAt.pasoElusivo = false; delete tAt.preparada; } // la esquiva del Degollador (acción adicional) no se pierde al atacar
   if (tAt.ayuda && (!tAt.ayuda.contra || igual(tAt.ayuda.contra, ob.nombre))) {
     ventaja = true;
     motivos.push(`ventaja: lo ayuda ${tAt.ayuda.por}`);
@@ -653,9 +691,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     desventaja = true;
     motivos.push(`desventaja: ${ob.nombre} esquiva`);
   }
-  const contra = distancia ? efOb.contraDistancia : efOb.contraCuerpo;
-  if (contra === "ventaja") { ventaja = true; motivos.push(`ventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
-  if (contra === "desventaja") { desventaja = true; motivos.push(`desventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
+  if (distancia ? efOb.distV : efOb.cuerpoV) { ventaja = true; motivos.push(`ventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
+  if (distancia ? efOb.distD : efOb.cuerpoD) { desventaja = true; motivos.push(`desventaja: ${ob.nombre} está ${efOb.motivos.join(", ")}`); }
   if (sorprendido(ob.nombre)) {
     ventaja = true;
     motivos.push(`ventaja: ${ob.nombre} está sorprendido`);
@@ -822,6 +859,12 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       lineas.push(`🔥 Furia: resiste el daño físico (${antes} → ${dano}).`);
     }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
+    // Quien duerme despierta al recibir daño.
+    if (dano > 0) {
+      const lista = condsDe(ob);
+      const dormidas = lista.filter((x) => /^dormid[oa]/i.test(x));
+      if (dormidas.length) { lista.splice(0, lista.length, ...lista.filter((x) => !dormidas.includes(x))); lineas.push(`${ob.nombre} despierta con el golpe.`); }
+    }
 
     if (ob.tipo === "criatura") {
       if (dano) lineas.push(danar(ob.j, dano));
@@ -829,11 +872,15 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     } else if (ob.tipo === "pj") {
       const p = ob.p;
       const estabaEnSuelo = p.pv <= 0;
+      const pvAntes = p.pv;
       p.pv = Math.max(0, p.pv - dano);
       if (dano) lineas.push(`${p.nombre}: −${dano} PV → ${p.pv}/${p.pv_max}.`);
       if (estabaEnSuelo && dano > 0) {
         const t = danoEnSuelo(p, dano, resultado === "critico");
         if (t) lineas.push(t);
+      } else {
+        const mi = muerteInstantanea(p, pvAntes, dano);
+        if (mi) lineas.push(mi);
       }
       const causa =
         dano === 0 || resultado === "roce" ? (p.pv === 0 ? "cero_pv" : null) : resultado === "critico" ? "critico" : p.pv === 0 ? "cero_pv" : dano >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : null;
@@ -916,6 +963,6 @@ ${Object.entries(PERSONALIDADES).map(([k, p]) => `  - ${k}: ${p.nota}.`).join("\
 ${Object.entries(TEMPLES).map(([k, t]) => `  - ${k}: ${t.nota}.`).join("\n")}
 - Estilo de cada clase:
 ${Object.entries(ESTILO_CLASE).filter(([, e]) => e.nota).map(([k, e]) => `  - ${k}: ${e.nota}.`).join("\n")}
-- Las criaturas usan el bonificador de su ficha (o "bono"), fallan seguro solo con un 1 y no rozan. Envenenado, asustado, cegado, jadeando, agotado o apresado dan desventaja al PJ que ataca.
+- Las criaturas usan el bonificador de su ficha (o "bono"), fallan seguro solo con un 1 y no rozan. Envenenado, asustado, cegado, jadeando, agotado, derribado o retenido dan desventaja al PJ que ataca.
 
 ${REGLAS_ARMADURA}`;

@@ -1,6 +1,6 @@
 // Bestiario: criaturas de referencia y jefes. Es una BASE: el DM puede crear
 // criaturas y habilidades nuevas con la misma estructura en cualquier momento.
-import { danoEnSuelo } from "./muerte.js";
+import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { agregarCondicion, textoEfectos } from "./condiciones.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -937,7 +937,7 @@ export function danar(e: EstadoJefe, cantidad: number): string {
   return `${e.nombre}: ${cantidad >= 0 ? `−${cantidad}` : `+${-cantidad}`} PV → ${e.pv}/${e.pv_max} (${estadoTexto(e)}).`;
 }
 
-export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0): string {
+export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0, esquivan: string[] = []): string {
   const log: string[] = [];
   const quien = e?.nombre ?? "La criatura";
   const sello = e?.sellos?.find((s) => h.nombre.toLowerCase().includes(s.habilidad.toLowerCase()) || s.habilidad.toLowerCase().includes(h.nombre.toLowerCase()));
@@ -961,7 +961,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
     let falla = true;
     let margen = -99;
     if (h.salvacion && h.cd) {
-      const s = salvacion(p, h.salvacion, Math.max(5, h.cd - cdMenos));
+      const s = salvacion(p, h.salvacion, Math.max(5, h.cd - cdMenos), { ventaja: h.salvacion === "des" && esquivan.includes(p.nombre.toLowerCase()) }); // quien esquiva tiene ventaja en las salvaciones de DES
       falla = !s.exito;
       margen = s.margen;
       log.push(`· ${p.nombre}: ${s.texto}`);
@@ -976,8 +976,10 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
       const d = falla || !h.mitad_si_exito ? danoTotal.total : Math.floor(danoTotal.total / 2);
       if (falla || h.mitad_si_exito) {
         const estabaEnSuelo = p.pv <= 0;
+        const pvAntes = p.pv;
         p.pv = Math.max(0, p.pv - d);
         if (estabaEnSuelo && d > 0) { const t = danoEnSuelo(p, d, false); if (t) log.push("  " + t); }
+        else { const mi = muerteInstantanea(p, pvAntes, d); if (mi) log.push("  " + mi); }
         log.push(`  Recibe ${d} de daño (PV ${p.pv}).${p.pv === 0 ? " ¡Cae a 0 PV!" : ""}`);
       }
     }

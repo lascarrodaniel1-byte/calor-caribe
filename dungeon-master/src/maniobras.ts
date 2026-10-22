@@ -58,17 +58,23 @@ export interface DatosManiobra {
 export function maniobra(partida: Partida, d: DatosManiobra): string {
   const at = localizar(partida, d.atacante);
   const ob = localizar(partida, d.objetivo);
-  if (at === ob) throw new Error("Atacante y objetivo son el mismo.");
+  if (igual(at.nombre, ob.nombre)) throw new Error("Atacante y objetivo son el mismo.");
   const m = sinAccion(at);
   if (m) throw new Error(m + ".");
   const dist = distanciaPlano(partida, at.nombre, ob.nombre);
-  if (dist && dist.metros > 2) throw new Error(`${ob.nombre} está a ${dist.metros} m de ${at.nombre}: fuera de alcance (agarrar y empujar son cuerpo a cuerpo, 1,5 m).`);
+  // Atado con cadenas (Flagelante): se escapa aunque quien lo ata esté a distancia.
+  const conCadenas = d.tipo === "escapar" && condsDe(at).some((x) => reconocer(x)?.id === "agarrado" && /cadenas de/i.test(x));
+  if (dist && dist.metros > 2 && !conCadenas) throw new Error(`${ob.nombre} está a ${dist.metros} m de ${at.nombre}: fuera de alcance (agarrar y empujar son cuerpo a cuerpo, 1,5 m).`);
   const ea = efectos(condsDe(at));
   // Escapar: el agarrado (atacante) contra quien lo agarra (objetivo).
   const notaAgarre = (c: Combatiente) => condsDe(c).find((x) => reconocer(x)?.id === "agarrado");
   if (d.tipo === "escapar") {
-    if (!notaAgarre(at)) throw new Error(`${at.nombre} no está agarrado.`);
+    const nota = notaAgarre(at);
+    if (!nota) throw new Error(`${at.nombre} no está agarrado.`);
+    const quien = /(?:por|cadenas de) ([^)]+)\)/i.exec(nota)?.[1];
+    if (quien && !igual(quien, ob.nombre)) throw new Error(`${at.nombre} está agarrado por ${quien}, no por ${ob.nombre}: el enfrentamiento es contra ${quien}.`);
   }
+  if (d.tipo === "agarrar" && condsDe(ob).some((x) => reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${at.nombre}\\)`, "i").test(x))) throw new Error(`${ob.nombre} ya está agarrado por ${at.nombre}.`);
   const efO = efectos(condsDe(ob));
   const a = bonoManiobra(at, "atletismo", d.bono_atacante);
   const aA = d.tipo === "escapar" ? (() => {
@@ -131,7 +137,7 @@ export function caida(partida: Partida, d: { quien: string; metros: number; blan
     else if (t.total >= 3) lineas.push("Herida:\n" + infligir(p, { causa: "menor", tipo: "contusion", descripcion: "caída" }));
   } else if (c.tipo === "criatura") {
     lineas.push(danar(c.j, t.total));
-    if (c.j.pv <= 0) retirarCaido(partida, c.j);
+    if (c.j.pv <= 0) { retirarCaido(partida, c.j); return lineas.join("\n"); } // ya no está en escena: no hay nada más que derribar
   }
   else if (c.n.pv !== undefined) {
     c.n.pv = Math.max(0, c.n.pv - t.total);
