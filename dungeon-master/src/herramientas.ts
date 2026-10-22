@@ -5,6 +5,7 @@ import { z } from "zod";
 import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
 import { aplicarPresa, dardos, estudiarPresa, forzarAcceso, NOMBRES_OBSTACULOS, prepararSoplo, resolverSoplo } from "./degollador.js";
 import { ALCANCE_CERBATANA } from "./degollador_base.js";
+import { aplicarDolor, cadenas, devolverDolor, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
   buscarCriatura,
@@ -270,6 +271,15 @@ const esquemas = {
     secundaria: z.string().optional().describe("Escudo o segunda arma ligera de la otra mano; «ninguna» la deja libre"),
     a_dos_manos: z.boolean().optional().describe("Empuña con las dos manos un arma versátil (más daño, sin escudo)"),
     usa_accion: z.boolean().optional().describe("En combate, confirma que gasta su acción (segundo cambio de objeto del asalto, o ponerse/quitarse el escudo)"),
+  }),
+  sangre_ajena: z.object({
+    quien: z.string().describe("El Flagelante"),
+    objetivo: z.string().describe("Enemigo vivo y herido a su alcance (2 m) cuya sangre recoge"),
+  }),
+  cadenas: z.object({
+    quien: z.string().describe("El Flagelante"),
+    objetivo: z.string(),
+    accion: z.enum(["atar", "atraer", "soltar"]).describe("atar (agarrado, velocidad 0), atraer hasta su alcance o soltar"),
   }),
   estudiar_presa: z.object({
     quien: z.string().describe("El Degollador"),
@@ -683,6 +693,10 @@ const descripciones: Record<Nombre, string> = {
     "Agarrar, empujar (derribar o apartar) o escapar de un agarre: prueba enfrentada de Atletismo contra Atletismo o Acrobacias. Sustituye a un ataque.",
   empunar:
     "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
+  sangre_ajena:
+    "Flagelante de Haema (acción adicional): bebe o se unta la sangre de un enemigo vivo y herido a su alcance: recupera 2d6 + nivel PV y cierra la hemorragia de sus heridas, bajando la más grave un nivel. No sirve con no-muertos.",
+  cadenas:
+    "Flagelante: lanza las cadenas (hasta 6 m) con prueba de Atletismo enfrentada para atar a un enemigo (agarrado) o atraerlo hasta su alcance; también soltarlo. Las criaturas de peligro 4+ no se arrastran.",
   estudiar_presa:
     "Degollador: estudia a un objetivo (fuera de combate, al menos un minuto): su primer ataque contra él tiene ventaja y suma el ataque furtivo, y conoce su rutina. 1 uso por descanso corto.",
   dardos:
@@ -783,7 +797,7 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
   const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
   if (dist) {
-    const asta = /alabarda|guada|lanza|pica|jabalina larga|l[aá]tigo|urumi/i.test(e.arma ?? "");
+    const asta = /alabarda|guada|lanza|pica|jabalina larga|l[aá]tigo|urumi|cadenas/i.test(e.arma ?? "");
     const alcance = soplo ? ALCANCE_CERBATANA : e.a_distancia ? 120 : asta ? 3 : 2;
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
@@ -803,8 +817,15 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   const presa = aplicarPresa(partida, e);
   e = presa.e;
   if (presa.nota) aviso0 = [aviso0, presa.nota].filter(Boolean).join("\n");
+  // Flagelante: la comunión del dolor suma de +1 a +4 al daño según lo cerca que esté de la muerte.
+  const dolor = aplicarDolor(partida, e);
+  e = dolor.e;
+  if (dolor.nota) aviso0 = [aviso0, dolor.nota].filter(Boolean).join("\n");
   let r: ReturnType<typeof atacar>;
   try { r = atacar(partida, e); } catch (err) { presa.deshacer(); throw err; }
+  // Flagelante herido por un golpe cuerpo a cuerpo: devuelve el dolor.
+  const devuelto = devolverDolor(partida, e, r);
+  if (devuelto) { r.texto += `\n${devuelto}`; r.aviso += `\n${devuelto}`; }
   if (soplo) {
     const s = resolverSoplo(partida, e, r, soplo);
     if (s.texto) { r.texto += `\n${s.texto}`; r.aviso += `\n${s.texto}`; }
@@ -1127,6 +1148,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.empunar>;
         const texto = empunar(partida, e);
         return { contenido: texto, aviso: `✋ ${texto}` };
+      }
+      case "sangre_ajena": {
+        const e = validado.data as z.infer<typeof esquemas.sangre_ajena>;
+        const texto = sangreAjena(partida, e);
+        return { contenido: texto, aviso: `🩸 ${texto}` };
+      }
+      case "cadenas": {
+        const e = validado.data as z.infer<typeof esquemas.cadenas>;
+        const texto = cadenas(partida, e);
+        return { contenido: texto, aviso: `⛓ ${texto}` };
       }
       case "estudiar_presa": {
         const e = validado.data as z.infer<typeof esquemas.estudiar_presa>;

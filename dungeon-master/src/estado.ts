@@ -4,6 +4,7 @@ import { textoLeyenda } from "./leyenda.js";
 import type { Runas, RegistroMagia } from "./cazador_base.js";
 import { textoCazador } from "./cazador_base.js";
 import { textoDegollador, type Dardos } from "./degollador_base.js";
+import { textoFlagelante } from "./flagelante_base.js";
 import { textoManos } from "./manos.js";
 import type { Juramento } from "./juramento_base.js";
 import { textoJuramento } from "./juramento_base.js";
@@ -222,6 +223,7 @@ export function fichaTexto(p: Personaje): string {
     textoJuramento(p),
     textoCazador(p),
     textoDegollador(p),
+    textoFlagelante(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",

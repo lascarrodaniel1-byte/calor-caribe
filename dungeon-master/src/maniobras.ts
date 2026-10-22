@@ -23,7 +23,7 @@ function atributoCriatura(texto: string, a: "FUE" | "DES"): number {
 }
 
 /** Bono de Atletismo o Acrobacias de un combatiente (PJ por ficha; criatura por atributos; PNJ con el bono que dé el DM). */
-function bono(c: Combatiente, habilidad: "atletismo" | "acrobacias", extra?: number): { bono: number; desglose: string } {
+export function bonoManiobra(c: Combatiente, habilidad: "atletismo" | "acrobacias", extra?: number): { bono: number; desglose: string } {
   if (extra !== undefined) return { bono: extra, desglose: `bono ${signo(extra)}` };
   if (c.tipo === "pj") {
     const attr = habilidad === "atletismo" ? "fue" : "des";
@@ -70,12 +70,12 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
     if (!notaAgarre(at)) throw new Error(`${at.nombre} no está agarrado.`);
   }
   const efO = efectos(condsDe(ob));
-  const a = bono(at, "atletismo", d.bono_atacante);
+  const a = bonoManiobra(at, "atletismo", d.bono_atacante);
   const aA = d.tipo === "escapar" ? (() => {
-    const atl = bono(at, "atletismo", d.bono_atacante), acr = bono(at, "acrobacias", d.bono_atacante);
+    const atl = bonoManiobra(at, "atletismo", d.bono_atacante), acr = bonoManiobra(at, "acrobacias", d.bono_atacante);
     return atl.bono >= acr.bono ? { ...atl, hab: "Atletismo" } : { ...acr, hab: "Acrobacias" };
   })() : { ...a, hab: "Atletismo" };
-  const atl = bono(ob, "atletismo", d.bono_objetivo), acr = bono(ob, "acrobacias", d.bono_objetivo);
+  const atl = bonoManiobra(ob, "atletismo", d.bono_objetivo), acr = bonoManiobra(ob, "acrobacias", d.bono_objetivo);
   const def = d.tipo === "escapar" ? { ...atl, hab: "Atletismo" } : atl.bono >= acr.bono ? { ...atl, hab: "Atletismo" } : { ...acr, hab: "Acrobacias" };
   const hayV = !!d.ventaja, hayD = !!d.desventaja || ea.pruebas === "desventaja";
   const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";

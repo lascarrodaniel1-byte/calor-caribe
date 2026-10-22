@@ -43,6 +43,8 @@ const TABLA: { patron: RegExp; p: Propiedades }[] = [
   { patron: /flagelo/i, p: { nombre: "flagelo", ligera: true, sutil: true } },
   { patron: /estoque|rapier|misericordia/i, p: { nombre: "estoque", sutil: true } },
   { patron: /espada corta/i, p: { nombre: "espada corta", ligera: true, sutil: true } },
+  { patron: /kunai/i, p: { nombre: "kunai", ligera: true, sutil: true, arrojadiza: { normal: 6, largo: 18 } } },
+  { patron: /cadenas?\b/i, p: { nombre: "cadenas", alcance: true } },
   { patron: /daga|cuchillo|pu[ñn]al|navaja|estilete/i, p: { nombre: "daga", ligera: true, sutil: true, arrojadiza: { normal: 6, largo: 18 } } },
   { patron: /espad[oó]n|mandoble|montante|atarraga/i, p: { nombre: "espadón", pesada: true, dosManos: true } },
   { patron: /espada larga|espada de bastarda|sable|alfanje/i, p: { nombre: "espada larga", versatil: "1d10" } },

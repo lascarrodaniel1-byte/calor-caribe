@@ -53,10 +53,10 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     8: ["Ojos en la espalda: +5 para notar emboscadas, reacciona aunque lo hayan sorprendido y los ataques por la espalda o el flanco no dan ventaja al atacante"],
   },
   Flagelante: {
-    2: ["Puntos de dolor (igual a su nivel, se recuperan en descanso corto): ráfaga de golpes, defensa paciente, paso del viento", "Movimiento sin armadura: +3 m"],
+    2: ["Devolver el dolor: reacción; cuando un enemigo a su alcance le hace daño, le devuelve (nivel de dolor)d4 de daño, una vez por asalto", "Movimiento sin armadura: +3 m"],
     3: ["Desviar proyectiles: reacción para reducir 1d10 + DES + nivel el daño de un proyectil"],
     4: ["Caída lenta: reduce el daño de caída en 5 × nivel"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Golpe aturdidor: gasta 1 punto de dolor; CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
+    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Golpe aturdidor (1 uso por descanso corto): CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
   },
   Segador: {
     2: ["Invocaciones sobrenaturales: elige dos (p. ej. ojos del dios muerto, presencia sepulcral)", "Descarga con dos espacios de conjuro por descanso corto"],

@@ -76,6 +76,7 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Sutura arcana", escuela: "curacion", circulo: 2, efecto: "Toque: baja una herida un nivel de gravedad y detiene su hemorragia", cierra_heridas: 1 },
   { nombre: "Restaurar", escuela: "curacion", circulo: 3, efecto: "Toque: baja una herida dos niveles y el objetivo recupera 4d8 PV", cierra_heridas: 2, cura: "4d8" },
   { nombre: "Devolver el aliento", escuela: "curacion", circulo: 5, efecto: "Devuelve a la vida a alguien muerto hace menos de un minuto, con 1 PV" },
+  { nombre: "Sangre de Haema", escuela: "curacion", circulo: 1, efecto: "Lanza una salpicadura de su propia sangre que quema a un objetivo a 9 m: 2d6 de daño necrótico (la sangre es el precio, como en toda la curación)", dados: "2d6" },
   // Necromancia
   { nombre: "Toque de la tumba", escuela: "necromancia", circulo: 0, efecto: "Toque: 1d8 de daño necrótico", dados: "1d8" },
   { nombre: "Drenar vida", escuela: "necromancia", circulo: 2, efecto: "4d8 de daño necrótico a un objetivo a 9 m; el lanzador recupera la mitad", dados: "4d8", salvacion: "CON" },
@@ -142,7 +143,7 @@ export const MAGIA_CLASE: Record<string, { maestria: Maestria; escuelas: Escuela
   "Caballero Juramentado": { maestria: "iniciado", escuelas: ["curacion", "proteccion"], hechizos: ["Cerrar la carne", "Escudo de sal"], atributo: "car" },
   "Cazador de Brujas": { maestria: "iniciado", escuelas: ["adivinacion"], hechizos: ["Ojo de bruja", "Leer el rastro"], atributo: "sab" },
   Degollador: { maestria: "iniciado", escuelas: ["sombra", "elemental"], hechizos: ["Paso de sombra"], atributo: "int" },
-  Flagelante: { maestria: "iniciado", escuelas: ["mente"], hechizos: ["Susurro"], atributo: "sab" },
+  Flagelante: { maestria: "iniciado", escuelas: ["curacion"], hechizos: ["Cerrar la carne", "Sangre de Haema"], atributo: "sab" },
   Segador: { maestria: "adepto", escuelas: ["necromancia"], hechizos: ["Toque de la tumba", "Drenar vida"], atributo: "car" },
   "Barbero-Cirujano": { maestria: "iniciado", escuelas: ["curacion"], hechizos: ["Cerrar la carne"], atributo: "sab" },
   Hechicero: { maestria: "adepto", escuelas: [], hechizos: [], atributo: "int" },

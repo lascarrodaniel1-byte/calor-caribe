@@ -199,10 +199,13 @@ export const CLASES: Clase[] = [
     salvaciones: "FUE, DES",
     rasgos: [
       "Artes marciales: golpes sin armas de 1d4 y ataque adicional con acción adicional",
-      "Comunión del dolor: ignora las penalizaciones de heridas leves y moderadas, y +1 al daño por cada herida abierta (máx. +3)",
+      "Devoto de Haema, la diosa de la sangre que se sacrificaba y usaba su sangre para dañar y curar: monje guerrero hecho para recibir daño y devolverlo",
+      "Comunión del dolor (siempre activa, no se invoca): los PV máximos se dividen en cuatro cuartos (nivel de dolor 1-4) y cuanto más cerca de la muerte, más daño: +1, +2, +3 o +4. No cambia sus características ni lo ciega: es sereno y siente sus heridas",
+      "Sangre ajena (sangre_ajena, acción adicional): bebe o se unta la sangre de un enemigo herido para curarse (2d6 + nivel) y cerrar sus heridas",
+      "Cadenas (cadenas): ata a un enemigo o lo atrae hasta su alcance (hasta 6 m)",
       "Defensa sin armadura: CA 10 + DES + SAB",
     ],
-    equipo: "Flagelo de penitente (1d4 cortante, sutil), cadenas, hábito raído, 10 dardos, 3 po",
+    equipo: "Maza (1d6 contundente), cadenas (alcance 3 m), 10 kunais (1d4 perforante, arrojadizos), hábito raído, 3 po",
   },
   {
     nombre: "Segador",
