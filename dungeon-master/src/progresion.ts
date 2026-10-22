@@ -54,9 +54,9 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   },
   Flagelante: {
     2: ["Devolver el dolor: reacción; cuando un enemigo a su alcance le hace daño, le devuelve (nivel de dolor)d4 de daño, una vez por asalto", "Movimiento sin armadura: +3 m"],
-    3: ["Desviar proyectiles: reacción para reducir 1d10 + DES + nivel el daño de un proyectil"],
+    3: ["Contacto con la sangre: curación pasiva; ya no necesita untarla, el mero contacto con la sangre de un enemigo al que hiere cuerpo a cuerpo lo cura (1d6 PV, cierra hemorragias y baja un nivel su herida más grave, una vez por asalto)", "Desviar proyectiles: reacción para reducir 1d10 + DES + nivel el daño de un proyectil"],
     4: ["Caída lenta: reduce el daño de caída en 5 × nivel"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Golpe aturdidor (1 uso por descanso corto): CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
+    5: ["Paso elusivo (paso_elusivo, reacción): se aparta del ataque con una tirada de Acrobacias; con el dolor al máximo (nivel 4) es una esquiva automática que no falla nunca", "Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Golpe aturdidor (1 uso por descanso corto): CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
   },
   Segador: {
     2: ["Invocaciones sobrenaturales: elige dos (p. ej. ojos del dios muerto, presencia sepulcral)", "Descarga con dos espacios de conjuro por descanso corto"],

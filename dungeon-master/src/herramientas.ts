@@ -5,7 +5,7 @@ import { z } from "zod";
 import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
 import { aplicarPresa, dardos, estudiarPresa, forzarAcceso, NOMBRES_OBSTACULOS, prepararSoplo, resolverSoplo } from "./degollador.js";
 import { ALCANCE_CERBATANA } from "./degollador_base.js";
-import { aplicarDolor, cadenas, devolverDolor, sangreAjena } from "./flagelante.js";
+import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
   buscarCriatura,
@@ -275,6 +275,9 @@ const esquemas = {
   sangre_ajena: z.object({
     quien: z.string().describe("El Flagelante"),
     objetivo: z.string().describe("Enemigo vivo y herido a su alcance (2 m) cuya sangre recoge"),
+  }),
+  paso_elusivo: z.object({
+    quien: z.string().describe("El Flagelante (nivel 5+)"),
   }),
   cadenas: z.object({
     quien: z.string().describe("El Flagelante"),
@@ -695,6 +698,8 @@ const descripciones: Record<Nombre, string> = {
     "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
   sangre_ajena:
     "Flagelante de Haema (acción adicional): bebe o se unta la sangre de un enemigo vivo y herido a su alcance: recupera 2d6 + nivel PV y cierra la hemorragia de sus heridas, bajando la más grave un nivel. No sirve con no-muertos.",
+  paso_elusivo:
+    "Flagelante (nivel 5): declara su Paso elusivo (gasta su reacción) ANTES de que lo ataquen: el siguiente ataque que fuera a acertar se esquiva si su tirada de Acrobacias lo iguala o supera. Con el dolor al máximo (4/4) es una esquiva automática que no falla nunca y no hace falta declararla.",
   cadenas:
     "Flagelante: lanza las cadenas (hasta 6 m) con prueba de Atletismo enfrentada para atar a un enemigo (agarrado) o atraerlo hasta su alcance; también soltarlo. Las criaturas de peligro 4+ no se arrastran.",
   estudiar_presa:
@@ -824,6 +829,8 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   let r: ReturnType<typeof atacar>;
   try { r = atacar(partida, e); } catch (err) { presa.deshacer(); throw err; }
   // Flagelante herido por un golpe cuerpo a cuerpo: devuelve el dolor.
+  const contacto = curacionPasiva(partida, e, r);
+  if (contacto) { r.texto += `\n${contacto}`; r.aviso += `\n${contacto}`; }
   const devuelto = devolverDolor(partida, e, r);
   if (devuelto) { r.texto += `\n${devuelto}`; r.aviso += `\n${devuelto}`; }
   if (soplo) {
@@ -1153,6 +1160,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.sangre_ajena>;
         const texto = sangreAjena(partida, e);
         return { contenido: texto, aviso: `🩸 ${texto}` };
+      }
+      case "paso_elusivo": {
+        const e = validado.data as z.infer<typeof esquemas.paso_elusivo>;
+        const texto = pasoElusivo(partida, e);
+        return { contenido: texto, aviso: `💨 ${texto}` };
       }
       case "cadenas": {
         const e = validado.data as z.infer<typeof esquemas.cadenas>;

@@ -16,6 +16,7 @@ import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js"
 import { gastarReserva, usoDivino } from "./juramento.js";
 import { autoManos, caEfectiva } from "./manos.js";
 import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
+import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
 import { danoEnSuelo } from "./muerte.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
@@ -189,6 +190,10 @@ export interface EstadoTurno {
   corrio?: boolean;
   /** Alguien lo ayudó: su próximo ataque (contra `contra`, si se dice) tiene ventaja. */
   ayuda?: { por: string; contra?: string };
+  /** Flagelante: declaró su Paso elusivo (gastó su reacción): el siguiente ataque contra él se esquiva con una tirada. */
+  pasoElusivo?: boolean;
+  /** Flagelante: ya sacó provecho de la sangre de un enemigo este asalto (curación pasiva). */
+  sangre?: boolean;
   /** Acción preparada: qué hará cuando ocurra el disparador (gasta su reacción). */
   preparada?: { disparador: string; accion: string };
 }
@@ -377,7 +382,7 @@ export function siguienteAsalto(partida: Partida): string {
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; }
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; delete t.pasoElusivo; delete t.sangre; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -674,14 +679,16 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const primero = actuaAntes(partida, at.nombre, ob.nombre) || sorprendido(ob.nombre);
   const pers = personalidadDe(at);
   const torpezaBase = at.tipo === "criatura" ? 1 : of.torpeza;
-  const torpeza = Math.max(1, (primero ? 1 : torpezaBase) + tp.torpeza + estilo.torpeza + suma(pers, "torpeza"));
+  // Flagelante: el dolor no lo entorpece (nunca tiene más torpeza que el 1 natural).
+  const sinDolor = at.tipo === "pj" && esFlagelante(at.p);
+  const torpeza = sinDolor ? 1 : Math.max(1, (primero ? 1 : torpezaBase) + tp.torpeza + estilo.torpeza + suma(pers, "torpeza"));
 
   // Nervios: cada fuente de presión suma; cuánto pesan depende de la veteranía.
   const presiones: string[] = [];
   if (!primero) presiones.push("golpea después");
   const terrible = ob.tipo === "criatura" && (ob.j.definicion.categoria === "jefe" || ob.j.definicion.peligro >= 4);
   if (terrible && !pers.some((x) => x.sinTerror)) presiones.push("rival terrible");
-  if (at.tipo === "pj" && at.p.pv < at.p.pv_max / 2) presiones.push("malherido");
+  if (at.tipo === "pj" && at.p.pv < at.p.pv_max / 2 && !sinDolor) presiones.push("malherido"); // al Flagelante el dolor no lo achica
   const presionCaracter = suma(pers, "presion");
   if (presionCaracter > 0) presiones.push("carácter tenso");
   const presion = Math.max(0, Math.min(4, presiones.length - (presionCaracter < 0 ? -presionCaracter : 0)));
@@ -710,6 +717,22 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   else if (at.tipo !== "criatura" && -margen <= of.roce) resultado = "roce";
   else resultado = "fallo";
 
+  // Flagelante (nivel 5): Paso elusivo. Con el dolor al máximo es una esquiva automática que no falla nunca; con menos, si la
+  // declaró (herramienta paso_elusivo), tira Acrobacias contra el total del ataque. Gasta su reacción; no sorprendido ni incapacitado.
+  let notaElusivo = "";
+  if (ob.tipo === "pj" && pasoElusivoActivo(ob.p) && combate && !efOb.incapacitado && !sorprendido(ob.nombre) && ob.p.pv > 0 && ["impacto", "critico", "roce"].includes(resultado)) {
+    if (esquivaAutomatica(ob.p) && !tOb.reaccion) {
+      tOb.reaccion = true;
+      resultado = "fallo";
+      notaElusivo = `Esquiva automática: ${ob.nombre} tiene el dolor al máximo (4/4) y se aparta del golpe sin fallar. Gasta su reacción.`;
+    } else if (tOb.pasoElusivo) {
+      tOb.pasoElusivo = false;
+      const e = tirar(`1d20${signo(mod(valor(ob.p, "des")) + competencia(ob.p))}`);
+      if (e.total >= t.total) { resultado = "fallo"; notaElusivo = `Paso elusivo: ${ob.nombre} tira Acrobacias ${describir(e)} contra el ataque (${t.total}) y se aparta.`; }
+      else notaElusivo = `Paso elusivo: ${ob.nombre} tira Acrobacias ${describir(e)} contra el ataque (${t.total}), pero no llega a tiempo.`;
+    }
+  }
+
   const lineas = [
     `${at.nombre}${at.tipo !== "criatura" ? ` (${vet})` : ""} ataca a ${ob.nombre}${d.arma ? ` con ${d.arma}` : ""}${distancia ? " a distancia" : ""}: ` +
       `${describir(t)}${modo !== "normal" ? ` (${modo})` : ""}${repetido} [${desglose.join(", ")}] vs CA ${ca}`,
@@ -726,6 +749,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     critico: "¡CRÍTICO! dados de daño dobles",
   } as const;
   lineas.push(`→ ${etiquetas[resultado]}`);
+  if (notaElusivo) lineas.push(notaElusivo);
 
   let dano = 0;
   let muerto: string | undefined;
@@ -858,6 +882,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     lineas.push(`🔥 Senda de la Ceniza: la ceniza de ${ob.nombre} arde y quema a ${at.nombre} (${f} de fuego).`);
     aviso += `\n🔥 ${at.nombre} se quema (${f}).`;
   }
+  if (notaElusivo) aviso += `\n${notaElusivo}`;
   return { texto: lineas.join("\n"), aviso, muerto, resultado, dano };
 }
 

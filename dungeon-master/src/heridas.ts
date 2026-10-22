@@ -1,5 +1,6 @@
 // Motor de heridas: gravedad, infección, tratamiento, recuperación y secuelas.
 // Toda la aleatoriedad pasa por dados.ts; el DM solo narra lo que sale aquí.
+import { sangreFria } from "./flagelante_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
 import { buscarEstructura, elegirEstructura, RELOJ_MAX, tirarValor, type Estructura, type Region, type ZonaVital } from "./anatomia.js";
@@ -230,7 +231,7 @@ export function bajarZona(h: Herida) {
 export function pvMaxEfectivo(p: Personaje): number {
   if (p.furia?.activa) return p.pv_max; // en furia, las heridas no restan
   const penal = (p.heridas ?? []).reduce((s, h) => s + REGLAS[h.gravedad].penalPV, 0);
-  return Math.max(1, p.pv_max - penal);
+  return Math.max(1, p.pv_max - (sangreFria(p) ? Math.floor(penal / 2) : penal)); // Flagelante: sangre fría
 }
 
 function ajustarPV(p: Personaje) {

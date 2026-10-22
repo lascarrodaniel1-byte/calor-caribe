@@ -200,8 +200,9 @@ export const CLASES: Clase[] = [
     rasgos: [
       "Artes marciales: golpes sin armas de 1d4 y ataque adicional con acción adicional",
       "Devoto de Haema, la diosa de la sangre que se sacrificaba y usaba su sangre para dañar y curar: monje guerrero hecho para recibir daño y devolverlo",
-      "Comunión del dolor (siempre activa, no se invoca): los PV máximos se dividen en cuatro cuartos (nivel de dolor 1-4) y cuanto más cerca de la muerte, más daño: +1, +2, +3 o +4. No cambia sus características ni lo ciega: es sereno y siente sus heridas",
-      "Sangre ajena (sangre_ajena, acción adicional): bebe o se unta la sangre de un enemigo herido para curarse (2d6 + nivel) y cerrar sus heridas",
+      "Comunión del dolor (siempre activa, no se invoca): los PV máximos se dividen en cuatro cuartos (nivel de dolor 1-4) y cuanto más cerca de la muerte, más daño: +1, +2, +3 o +4. No cambia sus características ni lo ciega: es sereno, siente sus heridas (no las ignora) pero el dolor no le da desventaja ni lo entorpece al atacar (sin penalización de malherido ni torpeza)",
+      "Sangre fría (pasiva): reduce a la mitad las penalizaciones de las heridas (PV máximos) sin quitarles sus efectos. La sangre de Haema lo hace inmune a los efectos secundarios de la Sangre de Santo",
+      "Sangre ajena (sangre_ajena, acción adicional, niveles 1-2): bebe o se unta la sangre de un enemigo herido para curarse (2d6 + nivel) y cerrar sus heridas. Desde el nivel 3 es pasiva: el mero contacto con la sangre de un enemigo al que hiere lo cura, sin untarla",
       "Cadenas (cadenas): ata a un enemigo o lo atrae hasta su alcance (hasta 6 m)",
       "Defensa sin armadura: CA 10 + DES + SAB",
     ],

@@ -3,6 +3,7 @@ import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
 import { bajarZona, infligirSecuela, pvMaxEfectivo, REGLAS, resumenHerida, type Herida } from "./heridas.js";
 import { raza } from "./mundo.js";
+import { esFlagelante } from "./flagelante_base.js";
 import { marcarMuerto, salvacion, signo } from "./reglas.js";
 
 export const VIALES = {
@@ -75,6 +76,11 @@ function sangreDeSanto(p: Personaje, heridaId: string | undefined, log: string[]
   }
   p.pv = Math.min(pvMaxEfectivo(p), p.pv);
 
+  // La sangre de Haema corre por las venas del Flagelante: la Sangre de Santo no le espesa la sangre.
+  if (esFlagelante(p)) {
+    log.push("La sangre de Haema corre por sus venas: la Sangre de Santo no le hace coágulos ni infarto (inmune a sus efectos secundarios).");
+    return;
+  }
   const riesgo = 5 + 15 * previas;
   const d = tirar("1d100").total;
   log.push(`Riesgo de coágulo: ${riesgo}% (dosis hoy: ${p.dosis.curacion}) → d100 = ${d}.`);
