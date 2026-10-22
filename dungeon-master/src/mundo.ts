@@ -154,7 +154,7 @@ export const CLASES: Clase[] = [
       "Luz contra la Podre (nivel 5): su magia divina puede expulsar la Podre de una herida (cuesta 10 PV de la reserva), cosa que ninguna otra magia consigue",
       "Ceniza menor: gracias al juramento, su magia deja una marca de Ceniza de cada cuatro usos",
     ],
-    equipo: "Cota de mallas, espada larga, escudo, símbolo de Ka'i (un sol de hierro), 5 jabalinas, 8 po",
+    equipo: "Armadura de escamas, espada larga, escudo, símbolo de Ka'i (un sol de hierro), 5 jabalinas, 8 po",
   },
   {
     nombre: "Cazador de Brujas",
@@ -167,7 +167,7 @@ export const CLASES: Clase[] = [
       "Explorador nato: no se pierde en un tipo de terreno elegido",
       "Sal y plata: sus ataques con munición de plata ignoran la resistencia de no-muertos",
     ],
-    equipo: "Cuero tachonado, estoque, ballesta de mano y 20 virotes (5 de plata), 3 frascos de sal, estacas, 6 po",
+    equipo: "Cuero tachonado, látigo de metal, ballesta de mano y 20 virotes (5 de plata), 3 frascos de sal, estacas, 6 po (los más veteranos de la orden lucen un urumi)",
   },
   {
     nombre: "Degollador",

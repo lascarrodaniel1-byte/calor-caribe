@@ -36,7 +36,7 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   "Cazador de Brujas": {
     2: ["Estilo de combate"],
     3: ["Presa marcada: una vez por turno, +1d8 de daño a una criatura que ya esté herida", "Conciencia primigenia: siente a no-muertos y brujos a 9 m"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"],
+    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Urumi: como veterano de la orden, recibe un urumi (espada-látigo de láminas de acero, 1d8 cortante, alcance 3 m) que sustituye a su látigo de metal"],
   },
   Degollador: {
     2: ["Acción astuta: acción adicional para Correr, Retirarse o Esconderse"],
@@ -189,6 +189,12 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   if (p.clase === "Mercenario del Cuervo") {
     const antes = rangoCompania(nuevo - 1), ahora = rangoCompania(nuevo);
     if (antes.rango !== ahora.rango) rasgos.push(`ASCENSO en la Compañía del Cuervo Negro: ${ahora.rango} (${ahora.grado}). ${ahora.ventaja}`);
+  }
+  // El Cazador de Brujas veterano recibe el urumi, el arma de los más altos de la orden.
+  if (p.clase === "Cazador de Brujas" && nuevo === 5 && !p.inventario.some((x) => /urumi/i.test(x))) {
+    const i = p.inventario.findIndex((x) => /l[aá]tigo de metal/i.test(x));
+    if (i >= 0) p.inventario.splice(i, 1, "Urumi (espada-látigo)");
+    else p.inventario.push("Urumi (espada-látigo)");
   }
   // El Mercenario con don arcano lo despierta al subir de nivel (antes dormía).
   if (p.clase === "Mercenario del Cuervo" && nuevo === 2 && p.magia?.don && p.magia.maestria === "profano") {

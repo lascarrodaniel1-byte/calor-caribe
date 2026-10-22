@@ -700,7 +700,7 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
   const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
   if (dist) {
-    const asta = /alabarda|guada|lanza|pica|jabalina larga|estacas?/i.test(e.arma ?? "");
+    const asta = /alabarda|guada|lanza|pica|jabalina larga|estacas?|l[aá]tigo|urumi/i.test(e.arma ?? "");
     const alcance = e.a_distancia ? 120 : asta ? 3 : 2;
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
