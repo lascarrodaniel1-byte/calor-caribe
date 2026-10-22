@@ -5,7 +5,7 @@ import { exigirLibre } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
 import { levantarse } from "./muerte.js";
 import { describir, tirar } from "./dados.js";
-import type { Personaje } from "./estado.js";
+import type { Partida, Personaje } from "./estado.js";
 import { bajarZona, cauterizarHerida, infligir, perderSangre, pvMaxEfectivo, REGLAS } from "./heridas.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
@@ -306,27 +306,39 @@ export interface MagiaPersonaje {
   origen?: "noble" | "rico" | "don";
 }
 
-/**
- * Probabilidad (%) de nacer con don arcano, según la raza. Fuera del Hechicero,
- * casi nadie sabe magia: un guerrero que la usa tiene el don o es de élite y
- * la aprendió con un maestro.
- */
-export const DON_ARCANO: Record<string, number> = {
-  "Humano del Faro": 4,
-  "Enano de Karak-Dûm": 2,
-  "Elfo Marchito": 15,
-  "Mediano de Hollín": 4,
-  Varg: 1,
-  "Nacido Pálido": 12,
-  Cenizo: 10,
-};
+/** Los dones arcanos son de dos tipos: físico y mágico. */
+export type Don = "fisico" | "magico";
+export const NOMBRE_DON: Record<Don, string> = { fisico: "don arcano físico", magico: "don arcano mágico" };
+export interface TiradaDon { tipo: Don | "ninguno"; don: boolean; tirada?: number; texto: string }
 
-/** Tira el don arcano al crear un personaje. */
-export function tirarDon(raza: string): { don: boolean; texto: string } {
-  const prob = DON_ARCANO[raza] ?? 4;
-  const d = tirar("1d100").total;
-  const don = d <= prob;
-  return { don, texto: `Don arcano (${raza}, ${prob} %): d100 = ${d} → ${don ? "¡TIENE EL DON!" : "no"}` };
+/** La tirada del DM antes de crear a un personaje: un d20; 19 = don físico, 20 = don mágico. */
+export function tirarDon(): TiradaDon {
+  const d = tirar("1d20").total;
+  const tipo: TiradaDon["tipo"] = d === 20 ? "magico" : d === 19 ? "fisico" : "ninguno";
+  return { tipo, don: tipo === "magico", tirada: d, texto: `Don arcano (d20 = ${d}; 19 físico, 20 mágico) → ${tipo === "magico" ? "¡TIENE EL DON MÁGICO!" : tipo === "fisico" ? "¡TIENE EL DON FÍSICO!" : "no tiene don"}` };
+}
+
+const claveDon = (x: string) => x.toLowerCase().trim();
+
+/** El don ya tirado de un jugador o personaje (también las claves antiguas «nombre|raza»). */
+export function donTirado(partida: Partida, ...nombres: (string | undefined)[]): TiradaDon | undefined {
+  const dones = partida.dones ?? {};
+  for (const n of nombres) {
+    if (!n) continue;
+    const t = dones[claveDon(n)];
+    if (t) return { tipo: t.tipo ?? (t.don ? "magico" : "ninguno"), don: !!t.don, tirada: t.tirada, texto: t.texto };
+  }
+  const antigua = Object.keys(dones).find((k) => nombres.some((n) => n && k.startsWith(claveDon(n) + "|")));
+  return antigua ? { tipo: dones[antigua].tipo ?? (dones[antigua].don ? "magico" : "ninguno"), don: !!dones[antigua].don, tirada: dones[antigua].tirada, texto: dones[antigua].texto } : undefined;
+}
+
+/** El DM tira el don de un jugador (una sola vez: volver a pedirlo devuelve el mismo resultado). */
+export function tirarDonJugador(partida: Partida, jugador: string): { t: TiradaDon; nueva: boolean } {
+  const previo = donTirado(partida, jugador);
+  if (previo) return { t: previo, nueva: false };
+  const t = tirarDon();
+  (partida.dones ??= {})[claveDon(jugador)] = t;
+  return { t, nueva: true };
 }
 
 /** La magia con la que empieza un personaje. Los guerreros, solo si tienen el don. */
@@ -695,7 +707,7 @@ export function descansar(p: Personaje, dias: number, calidad: string) {
 export const REGLAS_HECHICERO = `## Hechicero (el sujeto más poderoso posible)
 - Escuelas de hechicería: solo los nobles o los ricos entran en ellas; quien nace con el don arcano es la excepción y lo incluyen por fuerza mayor. Cada escuela enseña UN tipo de magia —fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curación, protección, mente o adivinación— y todas tienen licencia de la Inquisición; la sombra y la necromancia son magia negra, sin licencia, y quien las practica es un hereje. El Hechicero (guardar_personaje con tipos_magia y linaje) empieza dominando un tipo, y con el nivel domina más: dos desde el 5, tres desde el 9 (aprender_tipo, con un maestro o una escuela). Cuanto más nivel y más círculos domina, más hechizos conoce de sus tipos. Su maestría sube con el nivel: adepto (círculo 2), maestro (5, círculo 3) y archimago (9, círculo 4).
 - Comprensión: cualquier Hechicero comprende cómo funciona cada tipo de magia y cada hechizo (comprender_magia), cuánto cuesta y cómo se canaliza, aunque no lo domine: comprender no es poder lanzar. Para lanzar un tipo hay que estudiarlo.
-- El don arcano (se tira al crear al personaje; el Hechicero que lo tiene es la excepción de linaje) hace del Hechicero el sujeto más poderoso posible, en potencia desde el primer día y en acto con los niveles: domina TODOS los tipos de magia con las mismas reglas y los mismos precios que los demás, comprende cómo se canaliza cada hechizo solo con verlo (comprender_magia con visto=true: lo aprende al instante hasta el círculo que domina), su maestría llega a ascendido (círculo 5, +8) en el nivel 13 y su INT, a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. El Hechicero de escuela es poderoso pero tiene techo (archimago, tres tipos).
+- El don arcano MÁGICO (el DM lo tira antes de crear al personaje: d20, 20 = mágico, 19 = físico; el Hechicero que lo tiene es la excepción de linaje) hace del Hechicero el sujeto más poderoso posible, en potencia desde el primer día y en acto con los niveles: domina TODOS los tipos de magia con las mismas reglas y los mismos precios que los demás, comprende cómo se canaliza cada hechizo solo con verlo (comprender_magia con visto=true: lo aprende al instante hasta el círculo que domina), su maestría llega a ascendido (círculo 5, +8) en el nivel 13 y su INT, a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. El Hechicero de escuela es poderoso pero tiene techo (archimago, tres tipos).
 - Dominio de lo menor: sin catalizador, un hechizo dos círculos por debajo de su círculo máximo no le cuesta nada y uno de un círculo por debajo cuesta la mitad. El programa lo aplica solo. Con catalizador no hay descuento (el catalizador ya absorbe el precio).
 - Su bastón es catalizador permanente (pásalo en catalizador: «Bastón»): absorbe calor, aliento o cordura (1 + 1 cada 4 niveles); no sirve contra la sangre ni los años de vida.
 - Recuperación arcana (usar_recurso): en cualquier momento (sin descansar) recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 9).`;
@@ -708,7 +720,7 @@ La magia es rara y temida. La Inquisición persigue a los magos sin licencia y l
 - Maestría: profano (no lanza), iniciado (hasta círculo 1), adepto (2), maestro (3), archimago (4), ascendido (5, solo el Hechicero con don arcano a nivel 13+). Forzar un círculo por encima: CD +5 y precio doble. El círculo 5 solo lo intenta un archimago forzando, o lo lanza con soltura un ascendido.
 - Catalizadores (en el inventario; pásalo en catalizador): Piedra de brasa (calor), Ámbar de tormenta (aliento), Corazón de cuervo (sangre), Incienso de amapola gris (cordura), Reloj de arena de hueso (años; rarísimo), Diente de dios (todo; reliquia), Báculo de roble petrificado (permanente, −1 de calor) y el bastón del Hechicero (permanente; absorbe calor, aliento o cordura: 1 + un punto cada 4 niveles). Los demás son caros o raros: que cueste conseguirlos.
 - Afinidad de las razas: ${Object.entries(AFINIDAD).map(([r, a]) => `${r}: ${a.nota}`).join("; ")}.
-- Quién sabe magia: casi nadie. El Hechicero es el único mago de verdad (adepto, un tipo de magia al empezar y hasta tres con el nivel —el del don arcano, todos—, suma su competencia; ver las reglas del Hechicero). Un guerrero solo la usa si nació con el don (el programa lo tira al crear el personaje; por raza: ${Object.entries(DON_ARCANO).map(([r, n]) => `${r} ${n} %`).join(", ")}) o si es de élite y la aprendió en la historia con un maestro, un grimorio o un pacto, tras mucho esfuerzo (modificar_personaje con maestria "iniciado": recibe la magia de su estilo). Estilo de cada clase: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}. Entre los PNJ, igual: los soldados, aldeanos y mercaderes no saben magia; solo algunos veteranos de élite (inquisidores de alto rango, cazadores de brujas curtidos, caballeros de órdenes antiguas) y unos pocos dotados.
+- Quién sabe magia: casi nadie. El Hechicero es el único mago de verdad (adepto, un tipo de magia al empezar y hasta tres con el nivel —el del don arcano, todos—, suma su competencia; ver las reglas del Hechicero). Un guerrero solo la usa si nació con el don arcano MÁGICO (el DM tira un d20 por jugador ANTES de crear su personaje: 19 = don físico, 20 = don mágico) o si es de élite y la aprendió en la historia con un maestro, un grimorio o un pacto, tras mucho esfuerzo (modificar_personaje con maestria "iniciado": recibe la magia de su estilo). Estilo de cada clase: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}. Entre los PNJ, igual: los soldados, aldeanos y mercaderes no saben magia; solo algunos veteranos de élite (inquisidores de alto rango, cazadores de brujas curtidos, caballeros de órdenes antiguas) y unos pocos dotados.
 - Subir de maestría o aprender hechizos exige maestros, grimorios o pactos, y tiempo (modificar_personaje con maestria, agregar_escuelas o agregar_hechizos).
 - Hechizos de referencia por tipo de magia: ${TIPOS_MAGIA.map((t) => `${t.nombre}: ${HECHIZOS.filter((h) => tipoDe(h) === t.id).sort((a, b) => a.circulo - b.circulo).map((h) => `${h.nombre} (${h.circulo})`).join(", ")}`).join(" | ")}. Puedes improvisar otros con hechizo_nuevo, respetando escuela, círculo y precio.
 - Los PNJ magos pagan el mismo precio: que se note en la ficción (manos quemadas, labios azules, canas prematuras).`;

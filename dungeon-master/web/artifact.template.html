@@ -503,7 +503,7 @@
       <li>Mientras el DM narra, la vela de arriba titila. Si se queda quieta y hay acciones en cola, pulsa «Que el DM responda».</li>
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
       <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
-      <li>La magia es rara y siempre cobra un precio: calor, aliento, sangre, cordura o años de vida. El Hechicero es el único mago de verdad: estudió en una escuela de hechicería (solo entran nobles y ricos, y todas tienen licencia de la Inquisición), domina un tipo de magia —fuego, hielo, viento, agua, tierra, oscuridad, luz…— y aprende hasta tres con el nivel. Si nace con el don arcano domina todos los tipos y comprende cualquier hechizo con solo verlo. Un guerrero solo sabe magia si nace con el don (se tira al crear el personaje y es raro) o si llega a élite y la aprende en la historia. Los catalizadores (como la Piedra de brasa) y el bastón del hechicero pagan por ti.</li>
+      <li>La magia es rara y siempre cobra un precio: calor, aliento, sangre, cordura o años de vida. El Hechicero es el único mago de verdad: estudió en una escuela de hechicería (solo entran nobles y ricos, y todas tienen licencia de la Inquisición), domina un tipo de magia —fuego, hielo, viento, agua, tierra, oscuridad, luz…— y aprende hasta tres con el nivel. Antes de crear a cada personaje, el DM tira un d20 para ver si nace con un don arcano: un 19 es el don físico (un cuerpo prodigioso) y un 20, el don mágico. Con el don mágico, el Hechicero domina todos los tipos y comprende cualquier hechizo con solo verlo. Un guerrero solo sabe magia si nace con el don mágico (es raro) o si llega a élite y la aprende en la historia. Los catalizadores (como la Piedra de brasa) y el bastón del hechicero pagan por ti.</li>
       <li>«Tirar d20» y «/tirar» los ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
     </ul>
     <div class="botonera">
@@ -1061,7 +1061,7 @@
       (detalles.length ? `# DETALLES MENORES (nombres, precios, objetos, aspecto, frases; respétalos)\n${detalles.map((x) => `- ${x}`).join("\n")}\n\n` : "") +
       (aventurasPrevias.length ? `${V.aventuras.textoAventurasPrevias(aventurasPrevias)}\n\n` : "") +
       `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
-      `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida, infoTurno?.actuante)}\n\n` +
+      `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida, infoTurno?.actuante, (jugadores.length ? jugadores.filter((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre)).map((j) => j.nombre) : (nombre && !tieneFicha(partida, nombre) ? [nombre] : [])))}\n\n` +
       (() => {
         const f = frasesDichas();
         return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
@@ -1951,6 +1951,7 @@
     const select = (id, opciones, vacio) => { const s = document.createElement("select"); s.id = id; if (vacio) s.append(opcion("", vacio)); opciones.forEach(([v, t]) => s.append(opcion(v, t))); return s; };
     const texto = (id, max, ph) => { const i = document.createElement("input"); i.type = "text"; i.id = id; i.maxLength = max; if (ph) i.placeholder = ph; i.autocomplete = "off"; return i; };
 
+    const donAviso = document.createElement("p"); donAviso.className = "ayuda"; donAviso.id = "pj-don"; raiz.append(donAviso);
     raiz.append(campo("pj-nombre", "Nombre de tu personaje", texto("pj-nombre", 40, "No el tuyo de jugador")));
     const fila1 = document.createElement("div"); fila1.className = "fila";
     fila1.append(
@@ -1994,7 +1995,7 @@
       campo("pj-tipo", "Tipo de magia (tu escuela)", select("pj-tipo", DF.tipos.map((e) => [e.id, e.nombre]), "Elige…")),
       campo("pj-linaje", "Linaje", select("pj-linaje", DF.linajes.map((e) => [e.id, e.nombre]), "Elige…")),
     );
-    const ayM = document.createElement("p"); ayM.className = "ayuda"; ayM.textContent = "Cada escuela de hechicería enseña un solo tipo de magia y tiene licencia de la Inquisición. Empiezas dominando ese tipo y, con el nivel, aprenderás más (hasta tres). Solo los nobles y los ricos entran en las escuelas; un humilde solo entra si nace con el don arcano (se tira al crearte), y entonces domina todos los tipos.";
+    const ayM = document.createElement("p"); ayM.className = "ayuda"; ayM.textContent = "Cada escuela de hechicería enseña un solo tipo de magia y tiene licencia de la Inquisición. Empiezas dominando ese tipo y, con el nivel, aprenderás más (hasta tres). Solo los nobles y los ricos entran en las escuelas; un humilde solo entra si el DM te tira el don arcano mágico antes de crearte, y entonces dominas todos los tipos.";
     magia.append(fila3, ayM); raiz.append(magia);
 
     raiz.append(campo("pj-extra", "Equipo extra (opcional)", texto("pj-extra", 150, "Además del equipo inicial de tu clase")));
@@ -2068,6 +2069,12 @@
     if (!nombre) { pedirNombre(); return; }
     if (!db || soloLectura) { privados.push("Para crear un personaje necesitas poder escribir en la partida."); pintar(); return; }
     construirFormulario();
+    {
+      // El don arcano lo tira el DM antes de crear el personaje: si ya está tirado, se lo recordamos.
+      const d = (partida?.dones || {})[String(nombre).trim().toLowerCase()];
+      const t = d?.tipo || (d ? (d.don ? "magico" : "ninguno") : "");
+      $("pj-don").textContent = t === "fisico" ? "💪 Naciste con el don arcano FÍSICO (el DM sacó 19): un cuerpo prodigioso. Competencia +1 y FUE, DES y CON hasta 24." : t === "magico" ? "✨ Naciste con el don arcano MÁGICO (el DM sacó 20): talento para la magia. Si eres Hechicero, dominas todos los tipos." : t === "ninguno" ? "No naciste con ningún don arcano (el DM tiró el dado)." : "El DM tirará un d20 para ver si naces con un don arcano (19 físico, 20 mágico) antes de que crees tu personaje.";
+    }
     $("error-personaje").hidden = true;
     $("velo-personaje").hidden = false;
     form.actualizar();

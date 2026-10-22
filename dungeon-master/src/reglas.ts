@@ -22,7 +22,7 @@ export function valor(p: Personaje, a: Atributo): number {
   return base;
 }
 
-export const competencia = (p: Personaje) => 2 + Math.floor((p.nivel - 1) / 4) + (p.leyenda?.coronada ? 1 : 0);
+export const competencia = (p: Personaje) => 2 + Math.floor((p.nivel - 1) / 4) + (p.leyenda?.coronada ? 1 : 0) + (p.don === "fisico" ? 1 : 0); // el don físico: +1
 
 /** ¿Tiene competencia en esa salvación según su clase? */
 export function salvacionCompetente(p: Personaje, a: Atributo): boolean {

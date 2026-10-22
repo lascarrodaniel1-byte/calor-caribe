@@ -40,7 +40,7 @@ import {
   UBICACIONES,
 } from "./heridas.js";
 import { aprenderTipo, avisoLicencia, comprenderMagia } from "./hechicero.js";
-import { ajustarMaestriaHechicero, buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, TIPOS_IDS, tiposMax, tipoDe, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
+import { ajustarMaestriaHechicero, donTirado, tirarDonJugador, buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, TIPOS_IDS, tiposMax, tipoDe, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
@@ -140,7 +140,7 @@ const esquemas = {
     escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Obsoleto (partidas antiguas): usa tipos_magia"),
     tipos_magia: z.array(z.enum(TIPOS_IDS)).max(1).optional().describe("Solo Hechicero: el tipo de magia con que empieza (el que enseña su escuela): fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curacion, proteccion, mente, adivinacion; sombra y necromancia son magia negra, sin licencia"),
     linaje: z.enum(["noble", "rico", "humilde"]).optional().describe("Solo Hechicero: solo los nobles o los ricos entran en las escuelas de hechicería, salvo quien nace con el don arcano (se incluye por fuerza mayor)"),
-    don_arcano: z.boolean().optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza que tenga o no el don; si se omite, se tira en secreto"),
+    don_arcano: z.union([z.boolean(), z.enum(["fisico", "magico"])]).optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza el don (true = mágico). Si se omite, vale el que tiró el DM con tirar_don_arcano antes de crear al personaje"),
   }),
   modificar_personaje: z.object({
     nombre: z.string(),
@@ -702,6 +702,9 @@ const esquemas = {
   }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
+  tirar_don_arcano: z.object({
+    jugador: z.string().describe("El jugador (o el personaje) para quien se tira el don, ANTES de crear su personaje"),
+  }),
   anotar_mundo: z.object({
     nota: z.string().optional().describe("Hecho importante de la campaña, tal y como es AHORA: PNJ, misión, lugar, deuda, promesa…"),
     reemplaza: z.string().optional().describe("Un trozo del texto de una nota anterior que este hecho sustituye porque algo cambió (así no quedan dos versiones). Requiere nota"),
@@ -720,6 +723,8 @@ const descripciones: Record<Nombre, string> = {
   atacar:
     "Resuelve un ataque con armas de cualquiera (PJ, criatura o PNJ): bonificador por atributo, competencia, veteranía, raza y clase; torpezas, roces de los veteranos y críticos; tira y aplica el daño.",
   siguiente_asalto: "Empieza el siguiente asalto del combate (la sorpresa y el plan solo valen en el primero).",
+  tirar_don_arcano:
+    "ANTES de crear el personaje de un jugador: el DM tira un d20 para ver si nace con un don arcano. 19 = don FÍSICO (cuerpo prodigioso), 20 = don MÁGICO (talento para la magia); cualquier otro resultado, sin don. Una sola tirada por jugador. Anuncia el resultado y luego guía la creación del personaje.",
   terminar_combate: "Cierra el combate en curso (borra el orden de iniciativa y los PNJ sin ficha).",
   tirar_dados:
     "Tira dados de verdad. Úsala SIEMPRE que haya que tirar (ataques, daño, salvaciones, pruebas, iniciativa, " +
@@ -1009,16 +1014,20 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "guardar_personaje": {
         const e = validado.data as z.infer<typeof esquemas.guardar_personaje>;
         const previo = partida.personajes[e.nombre];
-        let don = e.don_arcano ?? false;
-        let tiradaDon = "";
         const nuevoEnClase = !previo || previo.clase !== e.clase; // volver a guardar la ficha de siempre no vuelve a tirar el don ni a comprobar el linaje
-        if (nuevoEnClase && e.don_arcano === undefined) {
-          const clave = `${e.nombre.toLowerCase()}|${e.raza}`;
-          const dones = (partida.dones ??= {});
-          const t = (dones[clave] ??= tirarDon(e.raza)); // el dado se tira una vez por personaje: un intento fallido no lo repite
-          don = t.don;
-          tiradaDon = t.texto;
+        let tipoDon: "fisico" | "magico" | "ninguno" = previo && !nuevoEnClase ? previo.don ?? "ninguno" : "ninguno";
+        let tiradaDon = "";
+        if (nuevoEnClase) {
+          if (e.don_arcano !== undefined) tipoDon = e.don_arcano === true ? "magico" : e.don_arcano === false ? "ninguno" : e.don_arcano;
+          else {
+            // El DM debería haberlo tirado antes de crear al personaje; si no, se tira aquí (una sola vez por jugador).
+            const antes = donTirado(partida, e.jugador, e.nombre);
+            const { t } = antes ? { t: antes } : tirarDonJugador(partida, e.jugador ?? e.nombre);
+            tipoDon = t.tipo;
+            tiradaDon = (antes ? "" : "(Tirada hecha ahora: la próxima vez tira el don con tirar_don_arcano ANTES de crear al personaje.) ") + t.texto;
+          }
         }
+        const don = tipoDon === "magico";
         // Las escuelas de hechicería solo admiten a nobles y ricos; el don arcano lo incluye por fuerza mayor.
         if (e.clase === "Hechicero" && nuevoEnClase && !don && e.linaje !== "noble" && e.linaje !== "rico")
           throw new Error(`Solo los nobles o los ricos entran en las escuelas de hechicería, y ${e.nombre} no nació con el don arcano (${tiradaDon || "sin don"}). Indica linaje «noble» o «rico» en su trasfondo, o cambia de clase: sin dinero ni título no hay escuela.`);
@@ -1043,6 +1052,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           dosis: partida.personajes[e.nombre]?.dosis ?? { curacion: 0, sueno: 0 },
           robado: partida.personajes[e.nombre]?.robado ?? {},
           magia: !nuevoEnClase && previo?.magia ? previo.magia : magiaInicial(e.clase, e.escuelas_magia, don, e.tipos_magia),
+          don: tipoDon === "ninguno" ? undefined : tipoDon,
         });
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
@@ -1052,7 +1062,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         partida.personajes[p.nombre] = p;
         if (e.clase === "Hechicero" && p.magia && nuevoEnClase) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
         ajustarMaestriaHechicero(p); // un Hechicero de nivel alto ya tiene la maestría de su nivel
-        const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." + (e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : "") : ""}` : "";
+        const don_txt = tipoDon === "fisico"
+          ? `\n💪 ${tiradaDon || "Don arcano físico."} Nació con un cuerpo prodigioso: competencia +1 y FUE, DES y CON pueden llegar a 24. Revélalo en la historia de forma memorable.`
+          : tipoDon === "magico"
+            ? `\n✨ ${tiradaDon || "Don arcano mágico."} Nació con talento para la magia${e.clase === "Hechicero" ? " (domina todos los tipos)" : " de su estilo"}: revélalo en la historia de forma memorable.${e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : ""}`
+            : tiradaDon ? `\n· ${tiradaDon}` : "";
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
       }
       case "modificar_personaje": {
@@ -1564,6 +1578,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         avanzarSiHay(partida, 6);
         const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
+      }
+      case "tirar_don_arcano": {
+        const e = validado.data as z.infer<typeof esquemas.tirar_don_arcano>;
+        const { t, nueva } = tirarDonJugador(partida, e.jugador);
+        const lectura = t.tipo === "fisico" ? "Don FÍSICO: cuerpo prodigioso (competencia +1; FUE, DES y CON hasta 24). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : t.tipo === "magico" ? "Don MÁGICO: talento para la magia (si es Hechicero, domina todos los tipos; si es otra clase, la magia de su estilo despierta). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : "Sin don arcano: un mortal corriente (si quiere ser Hechicero, necesitará linaje noble o rico).";
+        const txt = `${nueva ? "" : "(Ya estaba tirado) "}${e.jugador}: ${t.texto}. ${lectura}`;
+        return { contenido: txt, aviso: `🎲 ${e.jugador}: ${t.texto}` };
       }
       case "terminar_combate": {
         const furias = terminarTodas(partida, "se apaga al acabar el combate");

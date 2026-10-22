@@ -33,6 +33,8 @@ import { valor } from "./reglas.js";
 export interface Personaje {
   nombre: string;
   jugador?: string;
+  /** Don arcano de nacimiento: físico o mágico (el mágico es magia.don). */
+  don?: "fisico" | "magico";
   raza: string;
   clase: string;
   nivel: number;
@@ -110,8 +112,8 @@ export interface Personaje {
 
 export interface Partida {
   creada: string;
-  /** Don arcano ya tirado por nombre y raza: volver a guardar la ficha no vuelve a tirar (no se repite el dado hasta que salga). */
-  dones?: Record<string, { don: boolean; texto: string }>;
+  /** Don arcano que el DM tiró para cada jugador antes de crear su personaje (d20: 19 físico, 20 mágico); no se repite. `don` = tiene el mágico. */
+  dones?: Record<string, { don: boolean; tipo?: "fisico" | "magico" | "ninguno"; tirada?: number; texto: string }>;
   historial: Anthropic.Beta.BetaMessageParam[];
   personajes: Record<string, Personaje>;
   notas_mundo: string[];
@@ -216,6 +218,7 @@ export function fichaTexto(p: Personaje): string {
   return [
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
+    p.don === "fisico" ? "  Don arcano FÍSICO: competencia +1 y FUE, DES y CON hasta 24" : p.don === "magico" ? "  Don arcano MÁGICO" : "",
     "  " +
       (["fue", "des", "con", "int", "sab", "car"] as const)
         .map((k) => {

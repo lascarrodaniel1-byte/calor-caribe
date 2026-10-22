@@ -40,7 +40,7 @@ export const DATOS_FORMULARIO = {
   linajes: [
     { id: "noble", nombre: "Noble" },
     { id: "rico", nombre: "Rico (mercader, banquero, familia acomodada)" },
-    { id: "humilde", nombre: "Humilde (solo entra si nace con el don arcano: el dado lo decide al crearlo)" },
+    { id: "humilde", nombre: "Humilde (solo entra si el DM te tiró el don arcano MÁGICO antes de crear el personaje)" },
   ],
   serie: SERIE_ESTANDAR,
 };
@@ -91,7 +91,7 @@ export function validarFicha(f: DatosFicha): string[] {
     e.push("Con la serie estándar usa cada valor (15, 14, 13, 12, 10, 8) una sola vez.");
   if (clase?.nombre === "Hechicero") {
     if (!buscarTipo(f.tipo ?? "")?.licenciado) e.push("El Hechicero elige el tipo de magia con que empieza (el que enseña su escuela).");
-    if (!["noble", "rico", "humilde"].includes(f.linaje ?? "")) e.push("Di si el Hechicero es noble, rico o humilde (solo los nobles y los ricos entran en las escuelas de hechicería, salvo el don arcano).");
+    if (!["noble", "rico", "humilde"].includes(f.linaje ?? "")) e.push("Di si el Hechicero es noble, rico o humilde (solo los nobles y los ricos entran en las escuelas de hechicería, salvo con el don arcano mágico).");
   }
   if (f.trasfondo.trim().length < 20) e.push("Cuenta en unas líneas quién fue tu personaje y qué busca.");
   if (textoFicha(f).length > MAX_ACCION) e.push("El texto es demasiado largo: acorta el trasfondo o el equipo extra.");
@@ -111,7 +111,7 @@ export function textoFicha(f: DatosFicha): string {
     `Personalidad: ${f.personalidad.join(" y ")}`,
     `Atributos finales (${f.metodo === "tirada" ? "tiradas 4d6kh3" : "serie estándar"}, con el bono racial ya sumado): ${attrs}`,
     `PV: ${pvIniciales(f)} (dado de golpe máximo + mod. CON)`,
-    f.clase === "Hechicero" ? `Magia: tipo inicial «${f.tipo}» (guárdalo con tipos_magia: [«${f.tipo}»]), linaje «${f.linaje}» (pásalo como linaje). El don arcano se tira solo al guardar; si es humilde y no lo tiene, la escuela no lo admite: dile al jugador que cambie de linaje o de clase.` : "",
+    f.clase === "Hechicero" ? `Magia: tipo inicial «${f.tipo}» (guárdalo con tipos_magia: [«${f.tipo}»]), linaje «${f.linaje}» (pásalo como linaje). El don arcano ya lo tiró el DM antes de crear el personaje (guardar_personaje lo aplica solo); si es humilde y no tiene el don mágico, la escuela no lo admite: dile al jugador que cambie de linaje o de clase.` : "",
     `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}`,
     `Trasfondo: ${f.trasfondo.trim()}`,
     f.clase === "Cazador de Brujas" ? "Mascota: si el jugador nombró un halcón o un ratón (en el trasfondo o en el equipo extra), ese; si no, elige tú según su trasfondo, y guárdala con mascota {accion: elegir} justo después de guardar la ficha." : "",

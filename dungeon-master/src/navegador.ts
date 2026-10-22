@@ -2,6 +2,7 @@
 // la terminal, empaquetado para el navegador. El DM es Claude a través de la
 // capacidad "sample" del artifact, que llama al motor con la herramienta "motor".
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
+import { donTirado } from "./magia.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
@@ -36,8 +37,35 @@ export function fichaPorNombre(p: Partida, nombre: string): string {
 }
 
 /** Estado de la partida tal y como lo necesita el DM (incluye secretos que los jugadores no ven en la página). */
-export function estadoParaDM(p: Partida, foco?: string): string {
+/** En qué punto está la mesa: tirar los dones, crear personajes o dar la introducción al mundo. */
+export function textoFase(p: Partida, sinFicha?: string[]): string {
+  const hayPj = Object.keys(p.personajes).length > 0;
+  const pendientes = sinFicha ?? (hayPj ? [] : ["los jugadores"]);
+  if (pendientes.length || !hayPj) {
+    const sinDon = pendientes.filter((n) => n !== "los jugadores" && !donTirado(p, n));
+    return [
+      "## FASE DE LA MESA: CREACIÓN DE PERSONAJES",
+      sinDon.length
+        ? `1) ANTES de crear ningún personaje, tira el don arcano de cada jugador que aún no lo tiene: ${sinDon.join(", ")} (tirar_don_arcano, un d20: 19 = don FÍSICO, 20 = don MÁGICO, el resto sin don). Anuncia a cada uno su resultado.`
+        : "1) Los dones arcanos ya están tirados (tirar_don_arcano); si llega un jugador nuevo, tira el suyo antes de que cree su personaje.",
+      `2) Cada jugador crea su personaje (📜 Crear personaje) sabiendo su don.${pendientes.length ? ` Aún sin ficha: ${pendientes.join(", ")}.` : ""}`,
+      "3) NO empieces la historia ni des la introducción al mundo hasta que todos tengan su ficha guardada.",
+    ].join("\n");
+  }
+  const t = p.trama;
+  if (!(t?.arcos?.length) && !(t?.cerrados?.length))
+    return [
+      "## FASE DE LA MESA: INTRODUCCIÓN AL MUNDO",
+      "Todos los personajes están creados. En este mismo turno: 1) da la INTRODUCCIÓN GENERAL a Velmora (entre 5 y 8 párrafos breves, en tu voz de narrador, sin listas): el Reino del Sol Herido y la herida de Ka'i, la Inquisición, la Corte Pálida y los regentes, cómo se vive (el precio de la magia, las heridas, la ceniza), las regiones del mapa y el tono oscuro; sin revelar ningún secreto del DM. Dirígete al grupo concreto: sus nombres, razas y clases, y los dones que nacieron con ellos si se notan.",
+      "2) Después, sin cortar el ritmo, abre el primer arco (trama abrir_arco con su premisa) y un PNJ con agenda propia, y da la palabra al primer jugador.",
+    ].join("\n");
+  return "";
+}
+
+export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): string {
   const partes: string[] = [];
+  const fase = textoFase(p, sinFicha);
+  if (fase) partes.push(fase);
   const tab = secuencia.tablero(p);
   if (tab) partes.push(tab);
   const variedad = encuentros.textoVariedad(p);

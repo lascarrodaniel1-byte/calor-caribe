@@ -172,7 +172,8 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
     if (!a.length) throw new Error(`El nivel ${nuevo} da un aumento de característica: pasa aumento (+2 a una, o +1 a dos).`);
     if (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2)) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");
     for (const [k, v] of a) {
-      const tope = p.clase === "Hechicero" && p.magia?.don && k === "int" ? 24 : 20; // el don arcano no tiene techo: su INT llega a 24
+      // el don arcano no tiene techo: la INT del Hechicero con don mágico y la FUE, DES y CON de quien nació con el don físico llegan a 24
+      const tope = (p.clase === "Hechicero" && p.magia?.don && k === "int") || (p.don === "fisico" && (k === "fue" || k === "des" || k === "con")) ? 24 : 20;
       if (p.atributos[k as Atributo] + (v as number) > tope) throw new Error(`${k.toUpperCase()} no puede pasar de ${tope}.`);
     }
     for (const [k, v] of a) {
