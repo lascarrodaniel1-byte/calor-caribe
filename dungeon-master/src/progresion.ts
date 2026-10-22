@@ -31,7 +31,7 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     2: ["Estilo de combate", "Castigo divino (atacar {castigo: true}): al impactar, gasta 5 PV de su reserva para +2d8 de daño radiante (3d8 con 3 votos, 4d8 con 5; un dado más contra no-muertos y malditos)"],
     3: ["Salud divina: casi inmune a las infecciones comunes (+5 a esas salvaciones; no a la Podre)", "Ventaja de cada voto: mientras cumple un voto jurado, obtiene su ventaja concreta (la ficha la muestra)"],
     4: ["Sentido divino mayor: su alcance sube a 36 m"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"],
+    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Luz contra la Podre: su magia divina expulsa la Podre de una herida (tratar_herida con magia divina; cuesta 10 PV de la reserva en vez de 5). Es la única magia que puede con ella"],
   },
   "Cazador de Brujas": {
     2: ["Estilo de combate"],

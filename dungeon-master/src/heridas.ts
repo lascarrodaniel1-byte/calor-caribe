@@ -432,6 +432,12 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       }
       p.ceniza += ceniza;
       if (ceniza) log.push(`${p.nombre} gana ${ceniza} de Ceniza (total ${p.ceniza}).`);
+      // Un Caballero Juramentado de nivel 5 o más, con el juramento en pie, expulsa la Podre con la luz de Ka'i.
+      const purga = h.podre && d.sanador?.clase === "Caballero Juramentado" && d.sanador.nivel >= 5 && !!d.sanador.juramento && !d.sanador.juramento.roto && !d.sanador.juramento.perdido;
+      if (purga) {
+        h.podre = false;
+        log.push("☀ La luz de Ka'i, a través del Caballero, expulsa la Podre de la herida: la carne podrida se consume y la herida queda limpia.");
+      }
       if (h.podre) {
         h.sangrando = false;
         h.magia_usada = true;

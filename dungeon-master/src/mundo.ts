@@ -151,6 +151,7 @@ export const CLASES: Clase[] = [
       "Juramento a Ka'i (honor y fe): le da su poder mágico. Jura de 1 a 5 votos de Ka'i (Verdad, Amparo, Lealtad, Luz, Descanso, Merced); cuantos más, más fuerte su magia —y más grave romperlos, como una liga estirada—: de la debilidad a que su propio poder lo queme y pierda la magia para siempre. Sin juramento no tiene poder",
       "Sentido divino (CAR+1 usos por descanso largo): detecta no-muertos y corruptos a 18 m (36 m desde el nivel 4)",
       "Imposición de manos: reserva de PV de nivel × (3 + 2 × votos). Curar PV es libre y no deja Ceniza; cerrar una herida cuesta 5 PV de la reserva y cuenta como magia divina",
+      "Luz contra la Podre (nivel 5): su magia divina puede expulsar la Podre de una herida (cuesta 10 PV de la reserva), cosa que ninguna otra magia consigue",
       "Ceniza menor: gracias al juramento, su magia deja una marca de Ceniza de cada cuatro usos",
     ],
     equipo: "Cota de mallas, espada larga, escudo, símbolo de Ka'i (un sol de hierro), 5 jabalinas, 8 po",

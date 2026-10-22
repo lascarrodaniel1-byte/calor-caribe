@@ -868,7 +868,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`${p.nombre} no tiene la herida ${e.herida}. Heridas abiertas: ${hay}`);
         }
         const sanador = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.sanador.toLowerCase());
-        if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, 5); // cerrar una herida cuesta 5 PV de su reserva
+        if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, h.podre && sanador.nivel >= 5 ? 10 : 5); // cerrar una herida cuesta 5 PV de su reserva (10 si además expulsa la Podre)
         const texto = tratar(p, h, { ...e, sanador, nombre_sanador: e.sanador });
         return { contenido: `${texto}\n\nFicha actual:\n${fichaTexto(p)}`, aviso: `🩹 ${texto}` };
       }
