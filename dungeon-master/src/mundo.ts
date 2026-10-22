@@ -231,7 +231,9 @@ export const CLASES: Clase[] = [
     principal: "INT",
     salvaciones: "INT, SAB",
     rasgos: [
-      "Adepto en dos escuelas de magia a elegir (lanza hasta círculo 2 y suma su competencia a la tirada)",
+      "Don arcano innato: el sujeto con más potencial de todo Velmora, sin techo. Su maestría sube con el nivel: adepto (círculo 2), maestro (5, círculo 3), archimago (9, círculo 4) y ascendido (13, círculo 5, el ser más poderoso del universo)",
+      "Adepto en dos escuelas de magia a elegir (suma su competencia a la tirada de lanzar)",
+      "Dominio de lo menor: sin catalizador, los hechizos dos círculos por debajo de su máximo no le cuestan nada y los de un círculo por debajo, la mitad; su bastón sirve de catalizador de calor, aliento o cordura (1 + un punto cada 4 niveles)",
       "Grimorio: conoce todos los hechizos de círculo 0 y 1 de sus escuelas; aprende más con maestros y grimorios",
       "Marcado: la Inquisición exige licencia a los magos; sin ella, es un hereje",
     ],

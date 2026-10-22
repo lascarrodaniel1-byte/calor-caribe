@@ -11,7 +11,7 @@ export const ESCUELAS = ["elemental", "curacion", "necromancia", "mente", "prote
 export type Escuela = (typeof ESCUELAS)[number];
 export const TRIBUTOS = ["calor", "aliento", "sangre", "cordura", "anios"] as const;
 export type Tributo = (typeof TRIBUTOS)[number];
-export const MAESTRIAS = ["profano", "iniciado", "adepto", "maestro", "archimago"] as const;
+export const MAESTRIAS = ["profano", "iniciado", "adepto", "maestro", "archimago", "ascendido"] as const;
 export type Maestria = (typeof MAESTRIAS)[number];
 
 /** Círculo más alto que domina cada maestría y bono a la tirada de lanzamiento. */
@@ -21,7 +21,22 @@ const MAESTRIA: Record<Maestria, { circulo: number; bono: number }> = {
   adepto: { circulo: 2, bono: 2 },
   maestro: { circulo: 3, bono: 4 },
   archimago: { circulo: 4, bono: 6 },
+  ascendido: { circulo: 5, bono: 8 },
 };
+
+/** La maestría que le corresponde a un Hechicero por su nivel: adepto, maestro (5), archimago (9) y ascendido (13). */
+export function maestriaHechicero(nivel: number): Maestria {
+  return nivel >= 13 ? "ascendido" : nivel >= 9 ? "archimago" : nivel >= 5 ? "maestro" : "adepto";
+}
+
+/** Sube la maestría de un Hechicero a la de su nivel (nunca la baja). Devuelve la nueva si cambió. */
+export function ajustarMaestriaHechicero(p: Personaje): Maestria | null {
+  if (p.clase !== "Hechicero" || !p.magia) return null;
+  const nueva = maestriaHechicero(p.nivel);
+  if (MAESTRIAS.indexOf(nueva) <= MAESTRIAS.indexOf(p.magia.maestria)) return null;
+  p.magia.maestria = nueva;
+  return nueva;
+}
 
 const TRIBUTO_ESCUELA: Record<Escuela, Tributo> = {
   elemental: "calor",
@@ -234,6 +249,10 @@ export interface Catalizador {
   tributo: Tributo | "cualquiera";
   /** Puntos que absorbe por hechizo (años en el caso de años; 99 = todo). */
   absorbe: number;
+  /** Si absorbe varios tributos (el bastón del Hechicero: calor, aliento y cordura). */
+  tributos?: Tributo[];
+  /** Absorbe más cuanto más nivel tiene quien lo usa: 1 + nivel/4. */
+  escala?: boolean;
   consumible: boolean;
   precio: number | null;
   descripcion: string;
@@ -246,6 +265,7 @@ export const CATALIZADORES: Catalizador[] = [
   { nombre: "Incienso de amapola gris", tributo: "cordura", absorbe: 3, consumible: true, precio: 25, descripcion: "Su humo calma las voces que trae la magia." },
   { nombre: "Reloj de arena de hueso", tributo: "anios", absorbe: 10, consumible: true, precio: null, descripcion: "Arena de hueso de un dios: se vacía en tu lugar. Rarísimo; no se vende." },
   { nombre: "Diente de dios", tributo: "cualquiera", absorbe: 99, consumible: true, precio: null, descripcion: "Absorbe todo el precio de un hechizo, sea cual sea. Reliquia de un dios muerto." },
+  { nombre: "Bastón", tributo: "calor", tributos: ["calor", "aliento", "cordura"], absorbe: 1, escala: true, consumible: false, precio: null, descripcion: "El bastón del hechicero, cargado de años de uso: absorbe parte del calor, del aliento o de la cordura que cobra un hechizo (1 + un punto más cada 4 niveles). No sirve contra la sangre ni los años de vida." },
   { nombre: "Báculo de roble petrificado", tributo: "calor", absorbe: 1, consumible: false, precio: 300, descripcion: "Permanente: cada hechizo cuesta 1 de calor menos." },
 ];
 
@@ -377,6 +397,13 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
     coste = Math.max(0, coste - (af.descuento?.[tributo] ?? 0));
     let aniosPagados = Math.round(aniosDe(circulo, h.escuela) * (af.anios ?? 1) * (forzado ? 2 : 1) * (pifia ? 2 : 1) * 10) / 10;
 
+    // Hechicero: los hechizos de círculo bajo le cuestan menos cuanto más poder tiene (sin catalizador): dos círculos por debajo de su máximo, nada; uno, la mitad.
+    if (p.clase === "Hechicero" && !d.catalizador && !forzado) {
+      const bajo = max - circulo;
+      if (bajo >= 2) { coste = 0; aniosPagados = 0; log.push(`Dominio: ${h.nombre} le sale ya de memoria (dos círculos por debajo de su máximo): no le cuesta nada.`); }
+      else if (bajo === 1) { coste = Math.ceil(coste / 2); aniosPagados = Math.round((aniosPagados / 2) * 10) / 10; log.push(`Dominio: ${h.nombre} está un círculo por debajo de su máximo: cuesta la mitad.`); }
+    }
+
     // Catalizador
     if (d.catalizador) {
       const c = buscarCatalizador(d.catalizador);
@@ -388,7 +415,8 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
           coste = 0;
           aniosPagados = 0;
         } else if (c.tributo === "anios") aniosPagados = Math.max(0, aniosPagados - c.absorbe);
-        else if (c.tributo === tributo) coste = Math.max(0, coste - c.absorbe);
+        else if ((c.tributos ?? [c.tributo]).includes(tributo)) coste = Math.max(0, coste - (c.escala ? 1 + Math.floor(p.nivel / 4) : c.absorbe));
+        else log.push(`${c.nombre} no absorbe este precio (${tributo}).`);
         if (c.consumible) p.inventario.splice(idx, 1);
         log.push(`${c.nombre} absorbe parte del precio${c.consumible ? " y se consume" : ""}.`);
       }
@@ -526,6 +554,12 @@ export function descansar(p: Personaje, dias: number, calidad: string) {
   m.cordura = Math.max(0, m.cordura - alivio * dias);
   p.condiciones = p.condiciones.filter((c) => !/^(jadeando|sin voz|inconsciente \(sin aire\)|sobrecalentado|agotamiento por calor|oye voces)/.test(c));
 }
+
+export const REGLAS_HECHICERO = `## Hechicero (el sujeto más poderoso posible)
+- El Hechicero tiene el don arcano innato: su potencial no tiene techo y, a nivel alto, es el ser más poderoso del universo, en potencia desde el primer día y en acto con los niveles. Su maestría sube sola: adepto (círculo 2) hasta el nivel 4, maestro (círculo 3, +4) en el 5, archimago (círculo 4, +6) en el 9 y ascendido (círculo 5, +8) en el 13; su INT llega a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. Cuenta el precio de su magia, pero ya no lo ata como a los demás.
+- Dominio de lo menor: sin catalizador, un hechizo dos círculos por debajo de su círculo máximo no le cuesta nada y uno de un círculo por debajo cuesta la mitad. El programa lo aplica solo. Con catalizador no hay descuento (el catalizador ya absorbe el precio).
+- Su bastón es catalizador permanente (pásalo en catalizador: «Bastón»): absorbe calor, aliento o cordura (1 + 1 cada 4 niveles); no sirve contra la sangre ni los años de vida.
+- Recuperación arcana (usar_recurso): tras un descanso corto recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 9).`;
 
 export const REGLAS_MAGIA = `## Magia (usa lanzar_hechizo; el programa tira y cobra el precio)
 La magia es rara y temida. La Inquisición persigue a los magos sin licencia y la gente corriente no la ha visto nunca. Nunca es gratis: cada hechizo se cobra un tributo en quien lo lanza, mayor cuanto más alto es su círculo (0 = truco gratuito, 5 = prohibido).

@@ -8,7 +8,7 @@ import { REGLAS_COMBATE } from "./combate.js";
 import { REGLAS_EQUIPO } from "./equipo.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
 import { herramientas } from "./herramientas.js";
-import { REGLAS_MAGIA } from "./magia.js";
+import { REGLAS_HECHICERO, REGLAS_MAGIA } from "./magia.js";
 import { REGLAS_MAPA } from "./mapa.js";
 import { REGLAS_NARRATIVA } from "./narrativa.js";
 import { REGLAS_ESPACIO_TIEMPO } from "./espacio.js";
@@ -132,7 +132,7 @@ ${lineas.join("\n")}
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
-export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS, REGLAS_FURIA, REGLAS_JURAMENTO, REGLAS_CAZADOR, REGLAS_DEGOLLADOR, REGLAS_FLAGELANTE, REGLAS_SEGADOR, REGLAS_BARBERO, REGLAS_MANOS, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
+export const SISTEMA_WEB = [BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS, REGLAS_FURIA, REGLAS_JURAMENTO, REGLAS_CAZADOR, REGLAS_DEGOLLADOR, REGLAS_FLAGELANTE, REGLAS_SEGADOR, REGLAS_BARBERO, REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO].join("\n\n");
 
 export function consultarReglas(tema: string, nombre?: string): string {
   switch (String(tema).toLowerCase()) {

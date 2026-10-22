@@ -38,7 +38,8 @@ import {
   tratar,
   UBICACIONES,
 } from "./heridas.js";
-import { buscarHechizo, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
+import "./hechicero.js";
+import { ajustarMaestriaHechicero, buscarHechizo, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, tirarDon, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
@@ -1007,6 +1008,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           magia: previo?.magia ?? magiaInicial(e.clase, e.escuelas_magia, don),
         });
         partida.personajes[p.nombre] = p;
+        ajustarMaestriaHechicero(p); // un Hechicero de nivel alto ya tiene la maestría de su nivel
         const don_txt = tiradaDon ? `\n${don ? "✨" : "·"} ${tiradaDon}${don ? " Nació con talento para la magia de su estilo: revélalo en la historia de forma memorable." + (e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : "") : ""}` : "";
         return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
       }
@@ -1018,6 +1020,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         if (e.nivel !== undefined) {
           p.nivel = e.nivel;
           cambios.push(`nivel ${p.nivel}`);
+          const nm = ajustarMaestriaHechicero(p);
+          if (nm) cambios.push(`maestría ${nm}`);
         }
         if (e.armadura !== undefined) {
           p.armadura = e.armadura;
