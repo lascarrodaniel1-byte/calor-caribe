@@ -5,6 +5,8 @@ import { z } from "zod";
 import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
 import { aplicarPresa, dardos, estudiarPresa, forzarAcceso, NOMBRES_OBSTACULOS, prepararSoplo, resolverSoplo } from "./degollador.js";
 import { ALCANCE_CERBATANA } from "./degollador_base.js";
+import { amputar, diagnosticar, golpeNervio, gastarKit, gastarManoFirme, kitSanador } from "./barbero.js";
+import { esBarberoC } from "./barbero_base.js";
 import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablarConMuertos, invocacion, liberarAlma, liberarSiMuere, prepararDescarga, sellarAlma } from "./segador.js";
 import { esSegador } from "./segador_base.js";
 import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
@@ -196,6 +198,7 @@ const esquemas = {
   }),
   usar_vial: z.object({
     vial: z.enum(NOMBRES_VIALES),
+    supervisa: z.string().optional().describe("Barbero-Cirujano que vigila la dosis de Sangre de Santo (−10 al riesgo de coágulo)"),
     receptor: z.string().optional().describe("Personaje jugador que lo bebe o lo recibe"),
     portador: z.string().optional().describe("Personaje de cuyo inventario sale el vial (se descuenta)"),
     objetivo_pnj: z
@@ -277,6 +280,22 @@ const esquemas = {
   sangre_ajena: z.object({
     quien: z.string().describe("El Flagelante"),
     objetivo: z.string().describe("Enemigo vivo y herido a su alcance (2 m) cuya sangre recoge"),
+  }),
+  diagnosticar: z.object({
+    quien: z.string().describe("El Barbero-Cirujano"),
+    paciente: z.string(),
+    herida: z.string().optional().describe("Id de la herida (por defecto, todas)"),
+  }),
+  amputar: z.object({
+    quien: z.string().describe("El Barbero-Cirujano"),
+    paciente: z.string(),
+    herida: z.string().describe("Id de la herida de un brazo o una pierna"),
+    anestesia: z.boolean().optional().describe("true si el paciente está sedado o anestesiado (CD 15 en vez de 18)"),
+  }),
+  kit_sanador: z.object({
+    quien: z.string().describe("El Barbero-Cirujano"),
+    accion: z.enum(["ver", "reponer"]),
+    usos: z.number().int().min(1).max(10).optional(),
   }),
   guadana: z.object({
     quien: z.string().describe("El Segador"),
@@ -576,6 +595,7 @@ const esquemas = {
     atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
     bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
+    nervio: z.enum(["brazo", "pierna", "columna"]).optional().describe("Barbero-Cirujano: golpea un nervio (−2, columna −3): si hiere, CON o brazo entumecido, pierna entumecida o paralizado un asalto"),
     dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
     castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y suma dados de daño radiante"),
@@ -735,6 +755,12 @@ const descripciones: Record<Nombre, string> = {
     "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
   sangre_ajena:
     "Flagelante de Haema (acción adicional): bebe o se unta la sangre de un enemigo vivo y herido a su alcance: recupera 2d6 + nivel PV y cierra la hemorragia de sus heridas, bajando la más grave un nivel. No sirve con no-muertos.",
+  diagnosticar:
+    "Barbero-Cirujano: examina las heridas de un paciente y dice su estructura, zona, reloj, dificultad de tratarlas y riesgo de infección.",
+  amputar:
+    "Barbero-Cirujano: amputa el brazo o la pierna de una herida (Medicina CD 15, 18 sin anestesia): la herida y su Podre desaparecen, queda una secuela y un choque de 2d6.",
+  kit_sanador:
+    "Barbero-Cirujano: ver o reponer los usos de su kit de sanador (10); cada tratamiento con el kit gasta uno.",
   guadana:
     "Segador: invoca (acción adicional) o despide la guadaña de huesos de Neter (1d10 cortante, alcance 3 m, a dos manos, ataca con CAR). Se ataca con atacar {arma: «Guadaña de Neter»}.",
   descarga:
@@ -850,6 +876,8 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   // Cerbatana del Degollador: a distancia (30 m), 1 de daño y un dardo de la reserva.
   const soplo = /cerbatana/i.test(e.arma ?? "") ? prepararSoplo(partida, e) : null;
   if (soplo) e = soplo.e;
+  if (e.nervio && !esBarberoC(Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase()) ?? ({} as never)))
+    throw new Error("Solo un Barbero-Cirujano sabe golpear los nervios.");
   // Segador: la guadaña ataca con CAR.
   const segP = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase());
   if (segP && esSegador(segP) && !e.a_distancia && (/guada[ñn]a/i.test(e.arma ?? "") || (!e.arma && /guada[ñn]a/i.test(segP.manos?.principal ?? ""))))
@@ -893,6 +921,8 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
     if (s.texto) { r.texto += `\n${s.texto}`; r.aviso += `\n${s.texto}`; }
     if (s.muerto && !r.muerto) r.muerto = s.muerto;
   }
+  const nervio = golpeNervio(partida, e, r);
+  if (nervio) { r.texto += `\n${nervio}`; r.aviso += `\n${nervio}`; }
   // Segador: anota a quién hirió (sangre fresca) y siega el alma de quien cae (paga Deuda).
   anotarHerida(partida, e, r);
   const siega = cosechar(partida, e, r);
@@ -1056,7 +1086,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         }
         const sanador = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.sanador.toLowerCase());
         if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, h.podre && sanador.nivel >= 5 ? 10 : 5); // cerrar una herida cuesta 5 PV de su reserva (10 si además expulsa la Podre)
-        const texto = tratar(p, h, { ...e, sanador, nombre_sanador: e.sanador });
+        if (sanador && esBarberoC(sanador) && e.recursos.includes("kit de sanador")) {
+          const sinKit = gastarKit(sanador);
+          if (sinKit) throw new Error(sinKit);
+        }
+        const texto = tratar(p, h, { ...e, sanador, nombre_sanador: e.sanador, gastar_mano_firme: sanador ? () => gastarManoFirme(partida, sanador) : undefined });
         return { contenido: `${texto}\n\nFicha actual:\n${fichaTexto(p)}`, aviso: `🩹 ${texto}` };
       }
       case "pasar_tiempo": {
@@ -1085,7 +1119,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const i = port ? port.inventario.findIndex((x) => x.toLowerCase().includes(e.vial.toLowerCase())) : -1;
         if (port && i < 0) throw new Error(`${port.nombre} no lleva ${e.vial} en el inventario.`);
         const receptor = e.receptor ? buscar(partida, e.receptor) : undefined;
-        const texto = usarVial({ ...e, receptor });
+        const supervisor = e.supervisa ? buscar(partida, e.supervisa) : undefined;
+        const texto = usarVial({ ...e, receptor, supervisor });
         if (port) port.inventario.splice(i, 1);
         return { contenido: texto + (receptor ? `\n\nFicha:\n${fichaTexto(receptor)}` : ""), aviso: `🧪 ${texto}` };
       }
@@ -1224,6 +1259,21 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.sangre_ajena>;
         const texto = sangreAjena(partida, e);
         return { contenido: texto, aviso: `🩸 ${texto}` };
+      }
+      case "diagnosticar": {
+        const e = validado.data as z.infer<typeof esquemas.diagnosticar>;
+        const texto = diagnosticar(partida, e);
+        return { contenido: texto, aviso: `🩺 ${texto}` };
+      }
+      case "amputar": {
+        const e = validado.data as z.infer<typeof esquemas.amputar>;
+        const texto = amputar(partida, e);
+        return { contenido: texto, aviso: `🩺 ${texto}` };
+      }
+      case "kit_sanador": {
+        const e = validado.data as z.infer<typeof esquemas.kit_sanador>;
+        const texto = kitSanador(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `🩺 ${texto}` };
       }
       case "guadana": {
         const e = validado.data as z.infer<typeof esquemas.guadana>;

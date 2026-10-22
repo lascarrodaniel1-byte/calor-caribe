@@ -244,9 +244,13 @@ export const CLASES: Clase[] = [
     principal: "SAB y DES",
     salvaciones: "CON, SAB",
     rasgos: [
+      "Cirujano de campo independiente: no pertenece a ninguna orden (las Hermanas de la Sutura cobran caro y lo miran con recelo); trata heridas donde caen, con el enemigo cerca",
       "Pericia en Medicina (doble bonificador de competencia)",
-      "Mano de cirujano: +2 a toda tirada de tratamiento; la falta de material solo le penaliza a la mitad",
-      "Mano firme: una vez por descanso largo puede repetir una tirada de tratamiento fallida",
+      "Mano de cirujano: +2 a toda tirada de tratamiento (+3 desde el nivel 2); la falta de material solo le penaliza a la mitad; Triaje: tratar en pleno combate le pesa la mitad",
+      "Mano firme (uso real): una vez por descanso largo puede repetir una tirada de tratamiento fallida",
+      "Diagnóstico (diagnosticar) y Amputación (amputar): examina una herida a fondo y corta el miembro perdido",
+      "Anatomía: apuntar le cuesta la mitad y puede golpear nervios (atacar {nervio}): entumece un brazo o una pierna, o paraliza un asalto con la columna",
+      "Magia contra el dolor (Adormecer el dolor, Anestesia profunda) y elemental leve de fuego y hielo (Brasa cauterizadora, Frío de quirófano); sin Cerrar la carne",
     ],
     equipo:
       "Herramientas de cirujano, kit de sanador (10 usos), sierra de huesos (1d6 cortante), 2 frascos de alcohol fuerte, cuero, ballesta ligera y 20 virotes, 7 po",

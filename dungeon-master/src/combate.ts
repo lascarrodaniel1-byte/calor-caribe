@@ -520,6 +520,8 @@ export interface DatosAtaque {
   mano_secundaria?: boolean;
   /** Estilo de lucha con arma a dos manos: repite los 1 y 2 de los dados de daño. */
   repetir_bajos?: boolean;
+  /** Barbero-Cirujano: golpea un nervio (brazo, pierna o columna) en lugar de buscar una herida: puede incapacitar. */
+  nervio?: "brazo" | "pierna" | "columna";
   /** Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene). */
   dardo?: "sano" | "impregnado";
 }
@@ -675,8 +677,17 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (d.apuntar) {
     const castigo =
       d.apuntar === "hueco" ? (at.tipo === "criatura" ? -4 : { recluta: -6, curtido: -5, veterano: -4, leyenda: -3 }[vet]) : d.apuntar === "cabeza" || d.apuntar === "cuello" ? -4 : -2;
-    bono += castigo;
-    desglose.push(`apunta ${d.apuntar === "hueco" ? "a un hueco" : `a ${d.apuntar}`} ${signo(castigo)}`);
+    const anatomia = at.tipo === "pj" && at.p.clase === "Barbero-Cirujano"; // conoce el cuerpo: apuntar le cuesta la mitad
+    const costo = anatomia ? Math.trunc(castigo / 2) : castigo;
+    bono += costo;
+    desglose.push(`apunta ${d.apuntar === "hueco" ? "a un hueco" : `a ${d.apuntar}`} ${signo(costo)}${anatomia ? " (anatomía)" : ""}`);
+  }
+
+  // Barbero-Cirujano: golpear un nervio exige precisión (brazo y pierna −2, columna −3, ya con su anatomía).
+  if (d.nervio) {
+    const c = d.nervio === "columna" ? -3 : -2;
+    bono += c;
+    desglose.push(`apunta al nervio (${d.nervio}) ${signo(c)}`);
   }
 
   // Torpeza: cuanto menos oficio, más fácil enredarse… salvo si golpea antes que su rival.

@@ -38,7 +38,7 @@ export const NOMBRES_VIALES = Object.keys(VIALES) as [NombreVial, ...NombreVial[
 
 const ORDEN = ["critica", "grave", "moderada", "leve"] as const;
 
-function sangreDeSanto(p: Personaje, heridaId: string | undefined, log: string[]) {
+function sangreDeSanto(p: Personaje, heridaId: string | undefined, log: string[], supervisor?: Personaje) {
   // El riesgo se calcula con las dosis previas del día.
   const previas = p.dosis.curacion;
   p.dosis.curacion++;
@@ -81,9 +81,9 @@ function sangreDeSanto(p: Personaje, heridaId: string | undefined, log: string[]
     log.push("La sangre de Haema corre por sus venas: la Sangre de Santo no le hace coágulos ni infarto (inmune a sus efectos secundarios).");
     return;
   }
-  const riesgo = 5 + 15 * previas;
+  const riesgo = Math.max(0, 5 + 15 * previas - (supervisor?.clase === "Barbero-Cirujano" ? 10 : 0));
   const d = tirar("1d100").total;
-  log.push(`Riesgo de coágulo: ${riesgo}% (dosis hoy: ${p.dosis.curacion}) → d100 = ${d}.`);
+  log.push(`Riesgo de coágulo: ${riesgo}%${supervisor?.clase === "Barbero-Cirujano" ? ` (${supervisor.nombre} vigila la dosis: −10)` : ""} (dosis hoy: ${p.dosis.curacion}) → d100 = ${d}.`);
   if (d > riesgo) return;
 
   const s = salvacion(p, "con", 15);
@@ -234,6 +234,8 @@ export interface UsoVial {
   via?: "bebido" | "arma";
   dosis?: number;
   herida?: string;
+  /** Un Barbero-Cirujano supervisa la dosis: el riesgo de coágulo baja 10 puntos. */
+  supervisor?: Personaje;
 }
 
 export function usarVial(u: UsoVial): string {
@@ -241,7 +243,7 @@ export function usarVial(u: UsoVial): string {
   switch (u.vial) {
     case "Sangre de Santo":
       if (!u.receptor) throw new Error("Sangre de Santo necesita un personaje receptor");
-      sangreDeSanto(u.receptor, u.herida, log);
+      sangreDeSanto(u.receptor, u.herida, log, u.supervisor);
       break;
     case "Ceniza Viva":
       if (!u.receptor) throw new Error("Ceniza Viva necesita un personaje receptor");

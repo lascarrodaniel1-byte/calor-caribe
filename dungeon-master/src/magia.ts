@@ -4,7 +4,7 @@
 import { exigirLibre } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
-import { bajarZona, infligir, perderSangre, pvMaxEfectivo, REGLAS } from "./heridas.js";
+import { bajarZona, cauterizarHerida, infligir, perderSangre, pvMaxEfectivo, REGLAS } from "./heridas.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
 export const ESCUELAS = ["elemental", "curacion", "necromancia", "mente", "proteccion", "sombra", "adivinacion"] as const;
@@ -52,6 +52,8 @@ export interface Hechizo {
   cierra_heridas?: number;
   /** Salvación que hacen los objetivos (CD = la del lanzador). */
   salvacion?: string;
+  /** Efecto que el programa aplica a un paciente o a su herida (cirugía). */
+  cuerpo?: "anestesia" | "anestesia_profunda" | "frio" | "brasa";
 }
 
 export const HECHIZOS: Hechizo[] = [
@@ -78,6 +80,11 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Restaurar", escuela: "curacion", circulo: 3, efecto: "Toque: baja una herida dos niveles y el objetivo recupera 4d8 PV", cierra_heridas: 2, cura: "4d8" },
   { nombre: "Devolver el aliento", escuela: "curacion", circulo: 5, efecto: "Devuelve a la vida a alguien muerto hace menos de un minuto, con 1 PV" },
   { nombre: "Sangre de Haema", escuela: "curacion", circulo: 1, efecto: "Lanza una salpicadura de su propia sangre que quema a un objetivo a 9 m: 2d6 de daño necrótico (la sangre es el precio, como en toda la curación)", dados: "2d6" },
+  // Cirugía: magia contra el dolor y elemental leve de fuego y hielo (Barbero-Cirujano)
+  { nombre: "Adormecer el dolor", escuela: "mente", circulo: 0, cuerpo: "anestesia", efecto: "Toque: el paciente no siente dolor durante la operación (+2 al próximo tratamiento, como un paciente sedado, pero despierto)" },
+  { nombre: "Anestesia profunda", escuela: "mente", circulo: 1, cuerpo: "anestesia_profunda", efecto: "Toque: duerme al paciente sin dolor ni sobresalto (+4 al próximo tratamiento y las complicaciones pegan la mitad)" },
+  { nombre: "Brasa cauterizadora", escuela: "elemental", tema: "fuego", circulo: 0, cuerpo: "brasa", efecto: "Una brasa en la punta de los dedos cauteriza una herida de corte, perforación o mordedura sin hierro candente (1d3 de fuego) y detiene la hemorragia" },
+  { nombre: "Frío de quirófano", escuela: "elemental", tema: "hielo", circulo: 0, cuerpo: "frio", efecto: "Toque helado sobre una herida: adormece y enfría, gana tres asaltos a una hemorragia y da +1 al tratamiento" },
   // Necromancia
   { nombre: "Toque de la tumba", escuela: "necromancia", circulo: 0, efecto: "Toque: 1d8 de daño necrótico", dados: "1d8" },
   { nombre: "Drenar vida", escuela: "necromancia", circulo: 2, efecto: "4d8 de daño necrótico a un objetivo a 9 m; el lanzador recupera la mitad", dados: "4d8", salvacion: "CON" },
@@ -146,7 +153,7 @@ export const MAGIA_CLASE: Record<string, { maestria: Maestria; escuelas: Escuela
   Degollador: { maestria: "iniciado", escuelas: ["sombra", "elemental"], hechizos: ["Paso de sombra"], atributo: "int" },
   Flagelante: { maestria: "iniciado", escuelas: ["curacion"], hechizos: ["Cerrar la carne", "Sangre de Haema"], atributo: "sab" },
   Segador: { maestria: "adepto", escuelas: ["necromancia"], hechizos: ["Toque de la tumba", "Drenar vida"], atributo: "car" },
-  "Barbero-Cirujano": { maestria: "iniciado", escuelas: ["curacion"], hechizos: ["Cerrar la carne"], atributo: "sab" },
+  "Barbero-Cirujano": { maestria: "iniciado", escuelas: ["mente", "elemental"], hechizos: ["Adormecer el dolor", "Brasa cauterizadora"], atributo: "sab" },
   Hechicero: { maestria: "adepto", escuelas: [], hechizos: [], atributo: "int" },
 };
 
@@ -281,6 +288,8 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   if (!m.escuelas.includes(h.escuela)) throw new Error(`${p.nombre} no domina la escuela de ${h.escuela} (domina: ${m.escuelas.join(", ") || "ninguna"}).`);
   if (p.clase === "Berserker de Ceniza" && h.escuela === "elemental" && !(h.tema && ["rayo", "hielo"].includes(h.tema) && h.circulo <= 2))
     throw new Error(`Un Berserker de Ceniza solo domina de la magia elemental los rayos y el hielo básicos (hasta círculo 2): ${h.nombre} queda fuera.`);
+  if (p.clase === "Barbero-Cirujano" && h.escuela === "elemental" && !(h.tema && ["fuego", "hielo"].includes(h.tema) && h.circulo <= 1))
+    throw new Error(`Un Barbero-Cirujano solo domina de la magia elemental el fuego y el hielo leves para cauterizar y enfriar (hasta círculo 1): ${h.nombre} queda fuera.`);
   if (p.clase === "Degollador" && h.escuela === "elemental" && h.tema !== "oscuridad")
     throw new Error(`Un Degollador solo domina de la magia elemental la oscuridad menor (esconderse y cegar): ${h.nombre} queda fuera.`);
   if (h.requiere_alto && p.nivel < 9 && MAESTRIAS.indexOf(m.maestria) < MAESTRIAS.indexOf("adepto") && !((AFINIDAD[p.raza]?.bono ?? 0) > 0))
@@ -321,6 +330,19 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
       log.push(`Tirada del hechizo: ${describir(tirar(dados))}.`);
     }
     const o = d.objetivo;
+    if (o && h.cuerpo) {
+      const her = d.herida ? o.heridas.find((x) => x.id.toLowerCase() === d.herida!.toLowerCase()) : [...o.heridas].sort((a, b) => Number(b.sangrando) - Number(a.sangrando))[0];
+      if (h.cuerpo === "anestesia" || h.cuerpo === "anestesia_profunda") {
+        o.anestesia = h.cuerpo === "anestesia" ? 2 : 4;
+        log.push(`${o.nombre} deja de sentir dolor: +${o.anestesia} al próximo tratamiento${h.cuerpo === "anestesia_profunda" ? " y las complicaciones pegan la mitad (duerme sin sobresalto)" : ""}.`);
+      } else if (!her) log.push(`${o.nombre} no tiene ninguna herida a la que aplicar el hechizo.`);
+      else if (h.cuerpo === "frio") {
+        her.enfriada = true;
+        if (her.reloj !== undefined) her.reloj += 3;
+        if (her.escalada !== undefined) her.escalada += 3;
+        log.push(`La herida ${her.id} de ${o.nombre} se entumece y se enfría: gana tres asaltos de hemorragia y +1 al tratamiento.`);
+      } else log.push(cauterizarHerida(o, her, "brasa", p.nombre));
+    }
     if (o && h.cura) {
       const c = tirar(h.cura);
       const curado = c.total + Math.max(0, mod(valor(p, m.atributo)));

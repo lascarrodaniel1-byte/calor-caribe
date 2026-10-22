@@ -60,7 +60,7 @@ function cobro(p: Personaje): string {
     const h = infligir(p, { causa: "menor", gravedad: "grave", tipo: "contusion", descripcion: "Neter cobra: un hueso se le parte desde dentro" });
     return `☠ NETER COBRA: un hueso se le parte desde dentro. ${h} La Deuda baja a ${p.deuda}.`;
   }
-  if (!p.condiciones.includes("guadaña dormida (1 día)")) p.condiciones.push("guadaña dormida (1 día)");
+  if (!p.condiciones.includes("guadaña fría (1 día)")) p.condiciones.push("guadaña fría (1 día)");
   p.inventario = p.inventario.filter((x) => !new RegExp(GUADANA, "i").test(x));
   if (p.manos?.principal && new RegExp(GUADANA, "i").test(p.manos.principal)) p.manos = {};
   return `☠ NETER COBRA: la guadaña se queda fría y callada un día entero y no puede invocarla. La Deuda baja a ${p.deuda}.`;
@@ -78,7 +78,7 @@ RECURSOS_CLASE["Segador"] = [
 ALDESCANSAR.push((p, tipo) => {
   if (!esSegador(p)) return;
   delete p.pielHueso;
-  if (tipo === "largo") p.condiciones = p.condiciones.filter((c) => !/guadaña dormida/.test(c));
+  if (tipo === "largo") p.condiciones = p.condiciones.filter((c) => !/guadaña fría/.test(c));
 });
 
 // ------------------------------------------------------------------ guadaña y descarga
@@ -93,7 +93,7 @@ export function guadana(partida: Partida, d: { quien: string; accion: "invocar" 
     if (p.manos?.principal && new RegExp(GUADANA, "i").test(p.manos.principal)) p.manos = {};
     return `${p.nombre} despide la guadaña: los huesos de Neter se deshacen en polvo entre sus manos.`;
   }
-  if (p.condiciones.some((c) => /guadaña dormida/.test(c))) throw new Error(`La guadaña está dormida (Neter cobró): no responde hasta el próximo descanso largo.`);
+  if (p.condiciones.some((c) => /guadaña fría/.test(c))) throw new Error(`La guadaña está dormida (Neter cobró): no responde hasta el próximo descanso largo.`);
   if (tiene && p.manos?.dosManos && new RegExp(GUADANA, "i").test(p.manos.principal ?? "")) throw new Error(`${p.nombre} ya empuña la guadaña.`);
   const t = partida.combate ? turnoDe(partida, p.nombre) : undefined;
   if (t) {

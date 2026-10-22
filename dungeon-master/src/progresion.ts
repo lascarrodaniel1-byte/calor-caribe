@@ -71,7 +71,7 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   },
   "Barbero-Cirujano": {
     2: ["Mano de cirujano mejorada: +1 más a toda tirada de tratamiento"],
-    3: ["Corte limpio: al tratar una herida, las complicaciones por fallo suben un nivel menos"],
+    3: ["Corte limpio: al tratar una herida, las complicaciones por fallo pegan la mitad"],
     5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Mano firme (2/descanso largo)"],
   },
 };

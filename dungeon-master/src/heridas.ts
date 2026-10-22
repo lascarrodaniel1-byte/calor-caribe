@@ -41,6 +41,8 @@ export interface Herida {
   mod_recuperacion: number;
   desinfectada: boolean;
   cauterizada: boolean;
+  /** Enfriada con magia (Frío de quirófano): más tiempo y +1 al tratamiento. */
+  enfriada?: boolean;
   magia_usada: boolean;
   /** Infección: el cuerpo la vence con 3 salvaciones superadas; 2 fallos agravan la herida. */
   infeccion_exitos: number;
@@ -402,6 +404,8 @@ export interface DatosTratamiento {
   recursos: Recurso[];
   entorno: Entorno;
   usar_mano_firme?: boolean;
+  /** Gasta un uso de Mano firme: devuelve un mensaje si ya no le quedan (null = bien). */
+  gastar_mano_firme?: () => string | null;
 }
 
 function cerrarConMagia(p: Personaje, h: Herida, log: string[]) {
@@ -418,6 +422,36 @@ function cerrarConMagia(p: Personaje, h: Herida, log: string[]) {
   bajarZona(h);
   h.dias_restantes = tirar(REGLAS[nueva].dias).total;
   log.push(`La herida ${h.id} baja a ${nueva}: ${resumenHerida(h)}`);
+}
+
+/** Cauteriza una herida: detiene la hemorragia, quema la Podre y deja cicatriz. El hierro quema 1d6; la brasa de un Barbero, 1d3; la Brasa interior de un Cenizo, nada. */
+export function cauterizarHerida(p: Personaje, h: Herida, fuente: "hierro" | "cenizo" | "brasa", quien: string): string {
+  const log: string[] = [];
+  if (!["corte", "perforacion", "mordedura"].includes(h.tipo)) return `No se puede cauterizar una herida de tipo ${h.tipo}.`;
+  const ec = buscarEstructura(h.estructura ?? "");
+  if (h.zona_vital === "roja" && !ec?.compresion) return `No se puede cauterizar ${h.estructura}: la hemorragia está dentro de una cavidad.`;
+  h.sangrando = false;
+  h.reloj = undefined;
+  h.escalada = undefined;
+  h.cauterizada = true;
+  h.mod_recuperacion -= 2;
+  if (h.podre) log.push("El fuego quema la Podre.");
+  h.podre = false;
+  if (h.estado === "infectada") h.estado = "sin tratar";
+  if (h.gravedad === "leve" || h.gravedad === "moderada") h.estado = "tratada";
+  if (fuente === "cenizo") log.push(`${quien} cauteriza con su Brasa interior (sin daño adicional).`);
+  else {
+    const t = tirar(fuente === "brasa" ? "1d3" : "1d6");
+    p.pv = Math.max(0, p.pv - t.total);
+    log.push(`${fuente === "brasa" ? `${quien} cauteriza con su brasa mágica` : "El hierro candente"} causa ${t.total} de daño de fuego (PV ${p.pv}).`);
+  }
+  log.push(
+    h.estado === "tratada"
+      ? `Herida ${h.id} cauterizada y cerrada; dejará cicatriz de quemadura.`
+      : `Hemorragia detenida en ${h.id}, pero una herida ${h.gravedad} sigue necesitando cirugía.`,
+  );
+  ajustarPV(p);
+  return log.join("\n");
 }
 
 export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
@@ -464,32 +498,9 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
 
     case "cauterizar": {
       const conMano = d.sanador?.raza === "Cenizo";
-      if (!conMano && !d.recursos.includes("hierro candente")) return "Para cauterizar hace falta hierro candente (o un Cenizo con su Brasa interior).";
-      if (!["corte", "perforacion", "mordedura"].includes(h.tipo)) return `No se puede cauterizar una herida de tipo ${h.tipo}.`;
-      const ec = buscarEstructura(h.estructura ?? "");
-      if (h.zona_vital === "roja" && !ec?.compresion) return `No se puede cauterizar ${h.estructura}: la hemorragia está dentro de una cavidad.`;
-      h.sangrando = false;
-      h.reloj = undefined;
-      h.escalada = undefined;
-      h.cauterizada = true;
-      h.mod_recuperacion -= 2;
-      if (h.podre) log.push("El fuego quema la Podre.");
-      h.podre = false;
-      if (h.estado === "infectada") h.estado = "sin tratar";
-      if (h.gravedad === "leve" || h.gravedad === "moderada") h.estado = "tratada";
-      if (conMano) log.push(`${d.nombre_sanador} cauteriza con su Brasa interior (sin daño adicional).`);
-      else {
-        const t = tirar("1d6");
-        p.pv = Math.max(0, p.pv - t.total);
-        log.push(`El hierro candente causa ${t.total} de daño de fuego (PV ${p.pv}).`);
-      }
-      log.push(
-        h.estado === "tratada"
-          ? `Herida ${h.id} cauterizada y cerrada; dejará cicatriz de quemadura.`
-          : `Hemorragia detenida en ${h.id}, pero una herida ${h.gravedad} sigue necesitando cirugía.`,
-      );
-      ajustarPV(p);
-      return log.join("\n");
+      const conBrasa = !conMano && !d.recursos.includes("hierro candente") && !!d.sanador?.magia?.hechizos.includes("Brasa cauterizadora") && esBarbero(d.sanador);
+      if (!conMano && !conBrasa && !d.recursos.includes("hierro candente")) return "Para cauterizar hace falta hierro candente (o un Cenizo con su Brasa interior, o un Barbero-Cirujano con su Brasa cauterizadora).";
+      return cauterizarHerida(p, h, conMano ? "cenizo" : conBrasa ? "brasa" : "hierro", d.nombre_sanador);
     }
 
     case "remedio raro": {
@@ -516,9 +527,12 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       if (ent) mods.push(`${d.entorno} ${signo(ent)}`);
       bono += ent;
       if (barbero) {
-        bono += 2;
-        mods.push("Barbero-Cirujano +2");
+        const mano = 2 + ((d.sanador?.nivel ?? 1) >= 2 ? 1 : 0);
+        bono += mano;
+        mods.push(`Barbero-Cirujano +${mano}`);
+        if (d.entorno === "en combate") { bono += 2; mods.push("Triaje +2 (el combate le pesa la mitad)"); }
       }
+      if (h.enfriada) { bono += 1; mods.push("herida enfriada +1"); }
       let cd = hemorragia ? (estr?.compresion?.cd ?? (h.gravedad === "critica" ? 15 : 10)) : regla.cdTratar;
       if (hemorragia && estr?.compresion) mods.push(estr.compresion.como);
       if (!hemorragia && h.reloj !== undefined && h.sangrando) {
@@ -540,9 +554,11 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
             mods.push(`${extra} +1`);
           }
         }
-        if (d.recursos.includes("paciente sedado")) {
-          bono += 2;
-          mods.push("paciente sedado +2");
+        const sedado = d.recursos.includes("paciente sedado") ? 2 : 0;
+        const anest = p.anestesia ?? 0;
+        if (Math.max(sedado, anest)) {
+          bono += Math.max(sedado, anest);
+          mods.push(anest > sedado ? `anestesia mágica +${anest}` : "paciente sedado +2");
         }
         if (regla.material) {
           const tiene = (x: Recurso) => d.recursos.includes(x);
@@ -560,9 +576,15 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       let t = tirar(`1d20${signo(bono)}`);
       log.push(`${d.nombre_sanador} intenta ${hemorragia ? "detener la hemorragia" : "tratar"} ${h.id} (${h.gravedad}, ${h.ubicacion}): ${describir(t)} vs CD ${cd} [${mods.join(", ")}]`);
       if (t.total < cd && d.usar_mano_firme && barbero) {
-        t = tirar(`1d20${signo(bono)}`);
-        log.push(`Mano firme, repite: ${describir(t)}`);
+        const sin = d.gastar_mano_firme?.() ?? null;
+        if (sin) log.push(sin);
+        else {
+          t = tirar(`1d20${signo(bono)}`);
+          log.push(`Mano firme, repite: ${describir(t)}`);
+        }
       }
+      const anestesiado = p.anestesia ?? 0;
+      p.anestesia = undefined; // la anestesia dura lo que dura la operación
       const natural = t.dados[0];
 
       if (t.total >= cd || natural === 20) {
@@ -593,9 +615,12 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
         log.push(`Convalecencia: ${Math.ceil(h.dias_restantes)} días (con pasar_tiempo).`);
       } else if (natural === 1 || t.total <= cd - 5) {
         const dano = tirar(regla.danoComplicacion);
-        p.pv = Math.max(0, p.pv - dano.total);
+        // Corte limpio (Barbero nivel 3+) o anestesia profunda: la complicación pega la mitad.
+        const mitad = (barbero && (d.sanador?.nivel ?? 1) >= 3) || anestesiado >= 4;
+        const total = mitad ? Math.ceil(dano.total / 2) : dano.total;
+        p.pv = Math.max(0, p.pv - total);
         h.mod_recuperacion -= 1;
-        log.push(`Complicación: ${p.nombre} pierde ${dano.total} PV (PV ${p.pv}) y la herida queda peor (−1 a la recuperación). Puede reintentarse.`);
+        log.push(`Complicación: ${p.nombre} pierde ${total} PV${mitad ? ` (mitad por ${anestesiado >= 4 ? "la anestesia profunda" : "el corte limpio"})` : ""} (PV ${p.pv}) y la herida queda peor (−1 a la recuperación). Puede reintentarse.`);
       } else {
         log.push("Fallo: no se consigue. Puede reintentarse con más tiempo, otro sanador o mejor material.");
       }
