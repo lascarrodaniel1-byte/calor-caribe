@@ -6,6 +6,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { descansar as descansarMagia } from "./magia.js";
 import { pvMaxEfectivo } from "./heridas.js";
 import { efectos } from "./condiciones.js";
+import { selloDe } from "./segador_base.js";
 
 export interface DefRecurso {
   nombre: string;
@@ -68,7 +69,7 @@ export function recursosDe(p: Personaje): { def: DefRecurso; max: number; gastad
 export function textoRecursos(p: Personaje): string {
   const r = recursosDe(p);
   if (!r.length) return "";
-  return `  Usos: ${r.map((x) => `${x.def.nombre} ${x.max - x.gastados}/${x.max} (${x.def.recarga === "corto" ? "descanso corto" : "descanso largo"})`).join(" · ")}`;
+  return `  Usos: ${r.map((x) => `${x.def.nombre} ${x.max - x.gastados}/${x.max} (${x.def.recarga === "corto" ? "descanso corto" : "descanso largo"})${selloDe(p.sellos, x.def.nombre) ? " 🔒 SELLADO" : ""}`).join(" · ")}`;
 }
 
 function personaje(partida: Partida, quien: string): Personaje {
@@ -90,6 +91,8 @@ export function usarRecurso(partida: Partida, d: { quien: string; recurso: strin
   const r = lista.find((x) => norm(x.def.nombre) === norm(d.recurso)) ?? lista.find((x) => norm(x.def.nombre).includes(norm(d.recurso)));
   if (!r) throw new Error(`${p.nombre} no tiene «${d.recurso}». Tiene: ${lista.map((x) => x.def.nombre).join(", ") || "ningún rasgo con usos"}.`);
   if (p.condiciones.includes("muerto") || p.pv <= 0) throw new Error(`${p.nombre} está a 0 PV o muerto: no puede usar ${r.def.nombre}.`);
+  const sello = selloDe(p.sellos, r.def.nombre);
+  if (sello) throw new Error(`${p.nombre} tiene sellada su ${r.def.nombre} (su alma está en manos de ${sello.por}): no puede usarla hasta que la liberen.`);
   if (efectos(p.condiciones).incapacitado) throw new Error(`${p.nombre} está incapacitado: no puede usar ${r.def.nombre}.`);
   if (r.gastados >= r.max) throw new Error(`${p.nombre} ya gastó ${r.def.nombre} (0/${r.max}); lo recupera con un ${r.def.recarga === "corto" ? "descanso corto o largo" : "descanso largo"}.`);
   // Acción adicional: solo una por asalto en combate.

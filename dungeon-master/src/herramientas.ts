@@ -5,6 +5,8 @@ import { z } from "zod";
 import { describir, dadosFijados, liberarDados, tirar } from "./dados.js";
 import { aplicarPresa, dardos, estudiarPresa, forzarAcceso, NOMBRES_OBSTACULOS, prepararSoplo, resolverSoplo } from "./degollador.js";
 import { ALCANCE_CERBATANA } from "./degollador_base.js";
+import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablarConMuertos, invocacion, liberarAlma, liberarSiMuere, prepararDescarga, sellarAlma } from "./segador.js";
+import { esSegador } from "./segador_base.js";
 import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
@@ -275,6 +277,41 @@ const esquemas = {
   sangre_ajena: z.object({
     quien: z.string().describe("El Flagelante"),
     objetivo: z.string().describe("Enemigo vivo y herido a su alcance (2 m) cuya sangre recoge"),
+  }),
+  guadana: z.object({
+    quien: z.string().describe("El Segador"),
+    accion: z.enum(["invocar", "despedir"]).describe("invocar (acción adicional) o despedir la guadaña de huesos de Neter"),
+  }),
+  descarga: z.object({
+    quien: z.string().describe("El Segador"),
+    objetivo: z.string(),
+    objetivo2: z.string().optional().describe("Nivel 5: el segundo rayo puede ir a otro objetivo"),
+  }),
+  sellar_alma: z.object({
+    quien: z.string().describe("El Segador (nivel 2+)"),
+    objetivo: z.string().describe("Al que acaba de herir con la guadaña"),
+    habilidad: z.string().optional().describe("PJ: su habilidad firma (por defecto la principal de su clase); criatura/PNJ: el poder o rasgo que sellas"),
+    con_sangre: z.boolean().optional().describe("Fuera de combate: true si acaba de herirlo con la guadaña"),
+  }),
+  liberar_alma: z.object({
+    quien: z.string().describe("El Segador"),
+    nombre: z.string().optional().describe("Alma a liberar (omítelo para todas)"),
+    por: z.enum(["voluntad", "rito"]).optional().describe("voluntad suya o rito de las Hermanas"),
+  }),
+  entregar_almas: z.object({
+    quien: z.string().describe("El Segador"),
+    en_tumba: z.boolean().describe("true si está en una tumba de Neter"),
+    nombre: z.string().optional(),
+  }),
+  hablar_con_muertos: z.object({
+    quien: z.string().describe("El Segador"),
+    objetivo: z.string().describe("El cadáver o espíritu con el que habla"),
+    preguntas: z.number().int().min(1).max(3).optional(),
+  }),
+  invocacion: z.object({
+    quien: z.string().describe("El Segador"),
+    accion: z.enum(["ver", "elegir", "usar"]),
+    nombre: z.string().optional().describe("Ojos del dios muerto, Presencia sepulcral, Voz de los muertos o Piel de hueso"),
   }),
   paso_elusivo: z.object({
     quien: z.string().describe("El Flagelante (nivel 5+)"),
@@ -698,6 +735,20 @@ const descripciones: Record<Nombre, string> = {
     "Dice qué empuña un personaje en cada mano: un arma a dos manos (o una versátil a dos manos) ocupa ambas; el escudo da +2 a la CA mientras está en la mano. El programa lo comprueba al atacar y calcula la CA.",
   sangre_ajena:
     "Flagelante de Haema (acción adicional): bebe o se unta la sangre de un enemigo vivo y herido a su alcance: recupera 2d6 + nivel PV y cierra la hemorragia de sus heridas, bajando la más grave un nivel. No sirve con no-muertos.",
+  guadana:
+    "Segador: invoca (acción adicional) o despide la guadaña de huesos de Neter (1d10 cortante, alcance 3 m, a dos manos, ataca con CAR). Se ataca con atacar {arma: «Guadaña de Neter»}.",
+  descarga:
+    "Segador: descarga sobrenatural (1d10 de fuerza a 36 m, ataque de CAR; dos rayos desde el nivel 5). Gasta un uso por descanso corto y suma Deuda de Neter.",
+  sellar_alma:
+    "Segador (nivel 2+, acción adicional): tras herir a un vivo con la guadaña este asalto, sella su alma (salvación de CAR): pierde su habilidad firma (la furia, el Ataque adicional…) mientras el Segador la sostenga. Suma 3 de Deuda.",
+  liberar_alma:
+    "Segador: libera un alma sellada por su voluntad o por un rito de las Hermanas; también cuando él muere.",
+  entregar_almas:
+    "Segador: entrega a Neter, en una tumba del dios, las almas selladas: se pierden para siempre y pagan el doble de su valor de la Deuda.",
+  hablar_con_muertos:
+    "Segador: habla con un cadáver o espíritu (hasta tres preguntas, con lo que sabía en vida). Suma 1 de Deuda.",
+  invocacion:
+    "Segador: ver, elegir (nivel 2: dos) o usar una invocación de Neter: Ojos del dios muerto, Presencia sepulcral, Voz de los muertos o Piel de hueso (+2 CA).",
   paso_elusivo:
     "Flagelante (nivel 5): declara su Paso elusivo (gasta su reacción) ANTES de que lo ataquen: el siguiente ataque que fuera a acertar se esquiva si su tirada de Acrobacias lo iguala o supera. Con el dolor al máximo (4/4) es una esquiva automática que no falla nunca y no hace falta declararla.",
   cadenas:
@@ -799,11 +850,15 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
   // Cerbatana del Degollador: a distancia (30 m), 1 de daño y un dardo de la reserva.
   const soplo = /cerbatana/i.test(e.arma ?? "") ? prepararSoplo(partida, e) : null;
   if (soplo) e = soplo.e;
+  // Segador: la guadaña ataca con CAR.
+  const segP = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase());
+  if (segP && esSegador(segP) && !e.a_distancia && (/guada[ñn]a/i.test(e.arma ?? "") || (!e.arma && /guada[ñn]a/i.test(segP.manos?.principal ?? ""))))
+    e = { ...e, arma: e.arma ?? segP.manos!.principal, atributo: e.atributo ?? "car" };
   // Con los dos en el plano, el alcance es real: cuerpo a cuerpo (2 m, 3 m con asta) o a distancia (hasta 120 m).
   const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
   if (dist) {
     const asta = /alabarda|guada|lanza|pica|jabalina larga|l[aá]tigo|urumi|cadenas/i.test(e.arma ?? "");
-    const alcance = soplo ? ALCANCE_CERBATANA : e.a_distancia ? 120 : asta ? 3 : 2;
+    const alcance = soplo ? ALCANCE_CERBATANA : /descarga sobrenatural/i.test(e.arma ?? "") ? 36 : e.a_distancia ? 120 : asta ? 3 : 2;
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
   }
@@ -838,6 +893,10 @@ function ataqueCompleto(partida: Partida, e: DatosAtaque): { texto: string; avis
     if (s.texto) { r.texto += `\n${s.texto}`; r.aviso += `\n${s.texto}`; }
     if (s.muerto && !r.muerto) r.muerto = s.muerto;
   }
+  // Segador: anota a quién hirió (sangre fresca) y siega el alma de quien cae (paga Deuda).
+  anotarHerida(partida, e, r);
+  const siega = cosechar(partida, e, r);
+  if (siega) { r.texto += `\n${siega}`; r.aviso += `\n${siega}`; }
   if (aviso0) {
     r.texto = `${aviso0}\n${r.texto}`;
     r.aviso = `${aviso0}\n${r.aviso}`;
@@ -857,6 +916,8 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
   const r = ejecutarInterno(nombre, entrada, partida);
   if (r.error || nombre === "salvacion_muerte") return r;
+  const libres = liberarSiMuere(partida); // un Segador muerto libera las almas que sostenía
+  if (libres.length) { r.contenido += `\n${libres.join("\n")}`; r.aviso = [r.aviso, ...libres].filter(Boolean).join("\n"); }
   const avisos = revisarCaidas(partida, antes);
   if (!avisos.length) return r;
   return { ...r, contenido: `${r.contenido}\n${avisos.join("\n")}`, aviso: [r.aviso, ...avisos.map((a) => a.split(/\.\s/)[0].replace(/\.?$/, "."))].filter(Boolean).join("\n") };
@@ -1126,7 +1187,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.lanzar_hechizo>;
         const p = buscar(partida, e.lanzador);
         const objetivo = e.objetivo ? buscar(partida, e.objetivo) : undefined;
-        const texto = lanzar(p, { ...e, objetivo });
+        const texto0 = lanzar(p, { ...e, objetivo });
+        const hzc = e.hechizo_nuevo ?? (e.hechizo ? buscarHechizo(e.hechizo) : undefined);
+        const deuda = hzc && !/no sabe magia|aún no ha jurado|perdió su juramento|juramento roto/.test(texto0) ? deudaPorHechizo(p, Math.max(hzc.circulo, e.circulo ?? hzc.circulo), hzc.nombre) : "";
+        const texto = deuda ? `${texto0}\n${deuda}` : texto0;
         const hz = e.hechizo_nuevo ?? (e.hechizo ? buscarHechizo(e.hechizo) : undefined);
         if (hz && !/no sabe magia|aún no ha jurado|perdió su juramento|juramento roto/.test(texto))
           registrarMagia(partida, { hechizo: hz.nombre, escuela: hz.escuela, lanzador: p.nombre, victima: objetivo?.nombre, negra: esMagiaNegra(hz.escuela, hz.nombre), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
@@ -1160,6 +1224,43 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.sangre_ajena>;
         const texto = sangreAjena(partida, e);
         return { contenido: texto, aviso: `🩸 ${texto}` };
+      }
+      case "guadana": {
+        const e = validado.data as z.infer<typeof esquemas.guadana>;
+        const texto = guadana(partida, e);
+        return { contenido: texto, aviso: `💀 ${texto}` };
+      }
+      case "descarga": {
+        const e = validado.data as z.infer<typeof esquemas.descarga>;
+        const pre = prepararDescarga(partida, e);
+        const rs = pre.ataques.map((a) => ataqueCompleto(partida, a));
+        const deuda = pre.deuda();
+        return { contenido: `${pre.nota}\n${rs.map((r) => r.texto).join("\n")}\n${deuda}`, aviso: `💀 ${pre.nota}\n${rs.map((r) => r.aviso).join("\n")}\n${deuda}` };
+      }
+      case "sellar_alma": {
+        const e = validado.data as z.infer<typeof esquemas.sellar_alma>;
+        const texto = sellarAlma(partida, e);
+        return { contenido: texto, aviso: `🔒 ${texto}` };
+      }
+      case "liberar_alma": {
+        const e = validado.data as z.infer<typeof esquemas.liberar_alma>;
+        const texto = liberarAlma(partida, e);
+        return { contenido: texto, aviso: `🕊 ${texto}` };
+      }
+      case "entregar_almas": {
+        const e = validado.data as z.infer<typeof esquemas.entregar_almas>;
+        const texto = entregarAlmas(partida, e);
+        return { contenido: texto, aviso: `💀 ${texto}` };
+      }
+      case "hablar_con_muertos": {
+        const e = validado.data as z.infer<typeof esquemas.hablar_con_muertos>;
+        const texto = hablarConMuertos(partida, e);
+        return { contenido: texto, aviso: `💀 ${texto.split(". ")[0]}.` };
+      }
+      case "invocacion": {
+        const e = validado.data as z.infer<typeof esquemas.invocacion>;
+        const texto = invocacion(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `💀 ${texto}` };
       }
       case "paso_elusivo": {
         const e = validado.data as z.infer<typeof esquemas.paso_elusivo>;

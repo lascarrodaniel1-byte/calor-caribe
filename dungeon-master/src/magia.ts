@@ -1,6 +1,7 @@
 // Magia de Velmora: rara y cara. Cada hechizo se cobra un tributo en el cuerpo
 // o la mente de quien lo lanza (calor, aliento, sangre, cordura o años de vida),
 // mayor cuanto más alto es su círculo. Los catalizadores absorben ese precio.
+import { exigirLibre } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
 import { bajarZona, infligir, perderSangre, pvMaxEfectivo, REGLAS } from "./heridas.js";
@@ -268,6 +269,7 @@ function aniosDe(circulo: number, escuela: Escuela): number {
 
 export function lanzar(p: Personaje, d: DatosLanzamiento): string {
   const m = p.magia;
+  exigirLibre(p, "Magia");
   if (!m || m.maestria === "profano") return `${p.nombre} no sabe magia: necesita un maestro, un grimorio o un objeto que la contenga.`;
   if (p.clase === "Caballero Juramentado") {
     if (!p.juramento) return `${p.nombre} aún no ha jurado: su poder viene del juramento.`;
@@ -447,7 +449,7 @@ function consecuencias(p: Personaje, t: "calor" | "aliento" | "cordura", log: st
   }
 }
 
-function envejecer(p: Personaje, log: string[]) {
+export function envejecer(p: Personaje, log: string[]) {
   const m = p.magia!;
   const tramos = Math.floor(m.anios_perdidos / 10);
   for (let i = m.tramos_vejez ?? 0; i < tramos; i++) {

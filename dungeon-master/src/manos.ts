@@ -93,6 +93,7 @@ export function caEfectiva(p: Personaje): number {
     if (tieneEscudo && !empunado) ca -= 2;
   }
   if (p.estilo === "defensa" && armaduraDe(p).piezas.length) ca += 1;
+  if (p.pielHueso) ca += 2; // invocación del Segador
   return ca;
 }
 

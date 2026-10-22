@@ -1,6 +1,7 @@
 // Cazador de Brujas: papeles de runas que se disponen alrededor del campo de batalla (apagan la regeneración y
 // mitigan los poderes de brujas, hechiceros y no-muertos; a nivel alto, también curan), una mascota (halcón o ratón) y
 // el rastro de la magia (detectar hechizos y maldiciones, y «amarrar» un hechizo negro a quien lo lanzó).
+import { exigirLibre } from "./segador_base.js";
 import type { Partida, Personaje } from "./estado.js";
 import { curaConRunas, esCazador, MAX_HOJAS, papelesDe, potenciaDe, type RegistroMagia } from "./cazador_base.js";
 import type { EstadoJefe, Criatura } from "./bestiario.js";
@@ -82,6 +83,7 @@ export type AtacarFn = (d: { atacante: string; objetivo: string; arma: string; d
 
 export function papeles(partida: Partida, d: DatosPapeles, atacarFn: AtacarFn): string {
   const p = cazador(partida, d.quien);
+  if (d.accion !== "ver") exigirLibre(p, "Papeles de runas");
   const pa = papelesDe(p);
   const pot = potenciaDe(p);
   switch (d.accion) {

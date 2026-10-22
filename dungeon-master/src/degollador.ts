@@ -10,6 +10,7 @@ import { resolverPrueba } from "./pruebas.js";
 import { ALDESCANSAR, RECURSOS_CLASE, usarRecurso } from "./recursos.js";
 import { mod, signo } from "./reglas.js";
 import { usarVial, type NombreVial } from "./viales.js";
+import { exigirLibre } from "./segador_base.js";
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
@@ -191,6 +192,7 @@ export const NOMBRES_OBSTACULOS = Object.keys(OBSTACULOS) as [keyof typeof OBSTA
 
 export function forzarAcceso(partida: Partida, d: { quien: string; obstaculo: keyof typeof OBSTACULOS; cd?: number; sellado_magico?: boolean }): string {
   const p = degollador(partida, d.quien);
+  exigirLibre(p, "Entrar y salir");
   if (p.condiciones.includes("muerto") || p.pv <= 0) throw new Error(`${p.nombre} no está en condiciones de forzar nada.`);
   const o = OBSTACULOS[d.obstaculo];
   if (d.sellado_magico) throw new Error(`${o.nombre[0].toUpperCase() + o.nombre.slice(1)} está sellado por magia: ni la maña ni las ganzúas lo abren.`);

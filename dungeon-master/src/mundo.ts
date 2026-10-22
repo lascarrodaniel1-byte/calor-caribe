@@ -215,11 +215,14 @@ export const CLASES: Clase[] = [
     principal: "CAR",
     salvaciones: "SAB, CAR",
     rasgos: [
-      "Pacto con el cadáver de un dios: puede invocar su arma de pacto (una guadaña) y usar CAR para atacar con ella",
-      "Descarga sobrenatural (1d10 de fuerza) y 1 espacio de conjuro que se recupera en descanso corto",
-      "El dios muerto susurra: el DM puede pedirle cosas en sueños",
+      "Recolector de almas de Neter: Neter era el dios de las cosechas y la vegetación; al morir pactó con sus fieles para trasladar su esencia a ellos. Cosechar almas es el modo de pagar al dios, y su cadáver le habla (el DM puede pedirle cosas en sueños)",
+      "Guadaña de Neter (guadana): hecha de los huesos del dios; la invoca como acción adicional, ataca con CAR, 1d10 cortante, alcance 3 m, a dos manos",
+      "Descarga sobrenatural (descarga): 1d10 de fuerza a 36 m con ataque de CAR; 1 uso por descanso corto (2 desde el nivel 2)",
+      "Deuda de Neter: todo poder suma Deuda, que pesa más cuanto más poder tiene (×1, ×2 desde el nivel 5, ×3 desde el 9) y se paga con almas",
+      "Hablar con los muertos (hablar_con_muertos): un cadáver o espíritu responde hasta tres preguntas con lo que sabía en vida",
+      "Magia de necromancia (años de vida como tributo)",
     ],
-    equipo: "Armadura de cuero, guadaña (como alabarda), foco (un hueso del dios), 2 dagas, 5 po",
+    equipo: "Armadura de cuero, guadaña de Neter (hueso del dios), foco (un hueso del dios), 2 dagas, 5 po",
   },
   {
     nombre: "Hechicero",

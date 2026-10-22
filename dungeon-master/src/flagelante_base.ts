@@ -1,5 +1,6 @@
 // Parte sin dependencias del Flagelante de Haema (la usan la ficha y el combate).
 import type { Personaje } from "./estado.js";
+import { selloDe } from "./segador_base.js";
 
 export const esFlagelante = (p: Personaje) => p.clase === "Flagelante";
 
@@ -26,7 +27,7 @@ export const pasoElusivoActivo = (p: Personaje) => esFlagelante(p) && p.nivel >=
 export const esquivaAutomatica = (p: Personaje) => pasoElusivoActivo(p) && nivelDolor(p) === 4 && p.pv > 0;
 
 /** Daño extra de la comunión del dolor: +1 a +4 según el nivel de dolor. No cambia sus características. */
-export const bonoDolor = (p: Personaje) => (esFlagelante(p) ? nivelDolor(p) : 0);
+export const bonoDolor = (p: Personaje) => (esFlagelante(p) && !selloDe(p.sellos, "Comunión del dolor") ? nivelDolor(p) : 0);
 
 export function textoFlagelante(p: Personaje): string {
   if (!esFlagelante(p)) return "";

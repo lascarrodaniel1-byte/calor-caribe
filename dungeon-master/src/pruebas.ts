@@ -1,6 +1,7 @@
 // Pruebas de característica, de habilidad y salvaciones: cada habilidad usa SU característica, y el programa lo
 // comprueba (no vale una tirada de Carisma para algo que no es de Carisma). Suma la competencia solo si la clase
 // o el trasfondo del personaje la justifican.
+import { desventajaSigilo } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
 import { clase } from "./mundo.js";
@@ -111,7 +112,7 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
     return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
   const efP = efectos(pj.condiciones);
-  const hayD = !!d.desventaja || efP.pruebas === "desventaja";
+  const hayD = !!d.desventaja || efP.pruebas === "desventaja" || (hab === "sigilo" && desventajaSigilo(pj)); // huesos que crujen (Segador, Deuda 5+)
   const ley = pj.leyenda?.coronada && d.conoce_su_nombre && ((hab === "persuasion" && pj.leyenda.tono !== "infamia") || (hab === "intimidacion" && pj.leyenda.tono !== "gloria"));
   const modoP = (d.ventaja || ley) && !hayD ? "ventaja" : hayD && !(d.ventaja || ley) ? "desventaja" : "normal";
   const m = mod(valor(pj, attr!));

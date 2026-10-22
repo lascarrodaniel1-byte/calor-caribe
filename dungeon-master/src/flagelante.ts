@@ -12,6 +12,7 @@ import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { bonoManiobra } from "./maniobras.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
 import { RECURSOS_CLASE } from "./recursos.js";
+import { exigirLibre, selloDe } from "./segador_base.js";
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const SIN_SANGRE = /no-muerto|no muerto|ghul|espectro|vampiro|esqueleto|aut[oó]mata|constructo|hambriento|ceniza viva|elemental/i;
@@ -40,6 +41,7 @@ export function aplicarDolor(partida: Partida, e: DatosAtaque): { e: DatosAtaque
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(e.atacante));
   if (!p || !esFlagelante(p) || !e.dano) return { e };
   const b = bonoDolor(p);
+  if (!b) return { e, nota: "🔒 Su comunión del dolor está sellada: sin daño extra." };
   return { e: { ...e, dano: `${e.dano}+${b}` }, nota: `🩸 Comunión del dolor (nivel ${nivelDolor(p)}/4): +${b} al daño.` };
 }
 
@@ -71,6 +73,7 @@ const ZONAS = ["roja", "ambar", "verde"];
 
 export function sangreAjena(partida: Partida, d: { quien: string; objetivo: string }): string {
   const p = flagelante(partida, d.quien);
+  exigirLibre(p, "Sangre ajena");
   if (p.nivel >= 3) throw new Error(`Desde el nivel 3 ${p.nombre} no necesita untarse la sangre: el mero contacto con la de un enemigo al que hiere cuerpo a cuerpo lo cura solo (pasivo, una vez por asalto).`);
   const motivo = puedeActuar({ tipo: "pj", nombre: p.nombre, p });
   if (motivo) throw new Error(motivo + ".");
@@ -120,7 +123,7 @@ function sangreViva(c: ReturnType<typeof localizar>): boolean {
 /** Nivel 3+: el mero contacto con la sangre de un enemigo al que hiere cuerpo a cuerpo lo cura (una vez por asalto, sin acción). */
 export function curacionPasiva(partida: Partida, e: DatosAtaque, r: ResultadoAtaque): string {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(e.atacante));
-  if (!p || !esFlagelante(p) || p.nivel < 3 || e.a_distancia || p.pv <= 0) return "";
+  if (!p || !esFlagelante(p) || p.nivel < 3 || e.a_distancia || p.pv <= 0 || selloDe(p.sellos, "Sangre ajena")) return "";
   if (!((r.dano ?? 0) > 0) || (r.resultado !== "impacto" && r.resultado !== "critico" && r.resultado !== "roce")) return "";
   const c = localizar(partida, e.objetivo);
   if (c.nombre === p.nombre || !sangreViva(c)) return "";
@@ -136,6 +139,7 @@ const ALCANCE_CADENAS = 6;
 
 export function cadenas(partida: Partida, d: { quien: string; objetivo: string; accion: "atar" | "atraer" | "soltar" }): string {
   const p = flagelante(partida, d.quien);
+  exigirLibre(p, "Cadenas");
   const m = p.manos;
   if (!p.inventario.some((x) => /cadenas?/i.test(x))) throw new Error(`${p.nombre} no lleva cadenas.`);
   if (m && !/cadenas?/i.test(`${m.principal ?? ""} ${m.secundaria ?? ""}`)) throw new Error(`${p.nombre} no empuña las cadenas: lleva ${m.principal ?? "nada"}${m.secundaria ? ` y ${m.secundaria}` : ""}. Usa empuñar antes.`);

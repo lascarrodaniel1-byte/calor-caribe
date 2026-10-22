@@ -1,5 +1,6 @@
 // El juramento del Caballero Juramentado: lo que le da su poder mágico. Cuanto más jura, más fuerte es su magia y más
 // duele romperlo (como una liga estirada): desde la debilidad hasta que su propio poder lo queme y no vuelva a usar magia.
+import { exigirLibre } from "./segador_base.js";
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { infligir, pvMaxEfectivo } from "./heridas.js";
@@ -112,6 +113,7 @@ export function romperJuramento(partida: Partida, d: { quien: string; voto: stri
 /** Gasta PV de la reserva de imposición de manos (para curar, tratar una herida o castigar). */
 export function gastarReserva(p: Personaje, cantidad: number): void {
   if (!esCaballero(p)) return;
+  exigirLibre(p, "Imposición de manos");
   if (!p.juramento) throw new Error(`${p.nombre} aún no ha jurado: sin juramento no tiene poder (juramento {accion: jurar}).`);
   if (p.juramento.perdido) throw new Error(`${p.nombre} perdió su juramento para siempre: ya no usa magia divina.`);
   if (p.juramento.roto) throw new Error(`${p.nombre} tiene el juramento roto (${p.juramento.roto.voto}): sus poderes callan hasta que expíe.`);

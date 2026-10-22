@@ -1,4 +1,5 @@
 // Utilidades de reglas compartidas: modificadores y tiradas de salvación de los personajes.
+import { desventajaSab } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
 import { clase } from "./mundo.js";
@@ -47,7 +48,7 @@ export function salvacion(
   if (ef.falla.has(a))
     return { exito: false, total: 0, natural: 0, margen: -99, texto: `salvación de ${a.toUpperCase()}: fallo automático (${ef.motivos.join(", ")})` };
   const bono = mod(valor(p, a)) + (salvacionCompetente(p, a) ? competencia(p) : 0) + (opciones.extra ?? 0);
-  const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv);
+  const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv) || (a === "sab" && desventajaSab(p)); // la voz de Neter (Segador, Deuda 10+)
   // La fortaleza del Berserker (CON) y la esquiva del Degollador (DES): ventaja en esas salvaciones.
   const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza") || (a === "des" && p.clase === "Degollador");
   const modo = vent && !desv ? "ventaja" : desv && !vent ? "desventaja" : "normal";

@@ -111,6 +111,8 @@ export interface Robo {
 
 export interface EstadoJefe {
   nombre: string;
+  /** Almas selladas por un Segador: poderes o rasgos que no puede usar. */
+  sellos?: import("./segador_base.js").Sello[];
   pv: number;
   pv_max: number;
   /** Habilidades con recarga gastadas. */
@@ -938,6 +940,8 @@ export function danar(e: EstadoJefe, cantidad: number): string {
 export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0): string {
   const log: string[] = [];
   const quien = e?.nombre ?? "La criatura";
+  const sello = e?.sellos?.find((s) => h.nombre.toLowerCase().includes(s.habilidad.toLowerCase()) || s.habilidad.toLowerCase().includes(h.nombre.toLowerCase()));
+  if (sello) return `${quien} tiene sellado «${h.nombre}» (su alma está en manos de ${sello.por}): no puede usarlo. Elige otra acción.`;
   if (e && h.recarga) {
     if (e.gastadas.includes(h.nombre)) {
       const r = tirar("1d6").total;

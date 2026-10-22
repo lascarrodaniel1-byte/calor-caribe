@@ -5,6 +5,7 @@ import type { Runas, RegistroMagia } from "./cazador_base.js";
 import { textoCazador } from "./cazador_base.js";
 import { textoDegollador, type Dardos } from "./degollador_base.js";
 import { textoFlagelante } from "./flagelante_base.js";
+import { textoSegador, type AlmaSellada, type Sello } from "./segador_base.js";
 import { textoManos } from "./manos.js";
 import type { Juramento } from "./juramento_base.js";
 import { textoJuramento } from "./juramento_base.js";
@@ -83,6 +84,13 @@ export interface Personaje {
   mascota?: { tipo: "halcon" | "raton"; nombre: string };
   /** Degollador: a quién estudió (su primer ataque contra él lleva ventaja) y los dardos de su cerbatana. */
   presa?: { objetivo: string; usada: boolean };
+  /** Segador: su Deuda con Neter, las almas que lleva selladas y sus invocaciones. */
+  deuda?: number;
+  almas?: AlmaSellada[];
+  invocaciones?: string[];
+  pielHueso?: boolean;
+  /** Almas selladas por un Segador: habilidades que no puede usar. */
+  sellos?: Sello[];
   dardos?: Dardos;
   /** Rivales cuya sangre tiene guardada (para marcarlos a distancia con un papel). */
   muestras?: string[];
@@ -224,6 +232,7 @@ export function fichaTexto(p: Personaje): string {
     textoCazador(p),
     textoDegollador(p),
     textoFlagelante(p),
+    textoSegador(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",

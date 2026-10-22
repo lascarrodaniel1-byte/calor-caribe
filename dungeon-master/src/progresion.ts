@@ -59,9 +59,10 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     5: ["Paso elusivo (paso_elusivo, reacción): se aparta del ataque con una tirada de Acrobacias; con el dolor al máximo (nivel 4) es una esquiva automática que no falla nunca", "Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Golpe aturdidor (1 uso por descanso corto): CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
   },
   Segador: {
-    2: ["Invocaciones sobrenaturales: elige dos (p. ej. ojos del dios muerto, presencia sepulcral)", "Descarga con dos espacios de conjuro por descanso corto"],
-    3: ["Don del pacto: su guadaña ahora cuenta como mágica y puede cambiar de forma una vez por descanso"],
-    5: ["Ataque adicional: puede atacar dos veces con su arma de pacto", "Descarga sobrenatural: dos rayos"],
+    2: ["Invocaciones de Neter (invocacion): elige dos (Ojos del dios muerto, Presencia sepulcral, Voz de los muertos, Piel de hueso)", "Sellar almas (sellar_alma): tras herir a un vivo con la guadaña, sella su habilidad firma; sostiene hasta la mitad de su nivel almas", "Descarga con dos usos por descanso corto"],
+    3: ["Don del pacto: su guadaña ahora cuenta como mágica"],
+    5: ["Ataque adicional: puede atacar dos veces con la guadaña", "Descarga sobrenatural: dos rayos", "Tercera invocación; la Deuda de Neter pesa ×2"],
+    9: ["Cuarta invocación; la Deuda de Neter pesa ×3"],
   },
   Hechicero: {
     2: ["Recuperación arcana: una vez al día, tras un descanso corto, recupera calor o aliento gastado igual a la mitad de su nivel (redondeando arriba)"],

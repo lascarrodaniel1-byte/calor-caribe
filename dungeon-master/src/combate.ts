@@ -152,6 +152,8 @@ export interface Tactica {
 /** PNJ sin ficha que entran en un combate (un capitán, unos bandidos…). */
 export interface PnjCombate {
   nombre: string;
+  /** Almas selladas por un Segador: poderes o rasgos que no puede usar. */
+  sellos?: import("./segador_base.js").Sello[];
   bono_ataque: number;
   ca: number;
   des?: number;
@@ -192,6 +194,8 @@ export interface EstadoTurno {
   ayuda?: { por: string; contra?: string };
   /** Flagelante: declaró su Paso elusivo (gastó su reacción): el siguiente ataque contra él se esquiva con una tirada. */
   pasoElusivo?: boolean;
+  /** Segador: a quién hirió con la guadaña este asalto (su sangre está fresca para sellar un alma). */
+  heridos?: string[];
   /** Flagelante: ya sacó provecho de la sangre de un enemigo este asalto (curación pasiva). */
   sangre?: boolean;
   /** Acción preparada: qué hará cuando ocurra el disparador (gasta su reacción). */
@@ -382,7 +386,7 @@ export function siguienteAsalto(partida: Partida): string {
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; delete t.pasoElusivo; delete t.sangre; }
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.esquiva; delete t.retirada; delete t.corrio; delete t.preparada; delete t.ayuda; delete t.pasoElusivo; delete t.sangre; delete t.heridos; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
