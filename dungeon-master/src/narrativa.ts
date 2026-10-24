@@ -172,6 +172,8 @@ export interface DatosTrama {
   hito?: string;
   cerrar_arco?: string;
   desenlace?: string;
+  /** Al cerrar: cuánta experiencia da el arco. */
+  importancia?: "menor" | "normal" | "mayor" | "epica";
   amenaza?: string;
   avanzar_amenaza?: number;
 }

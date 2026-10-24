@@ -19,6 +19,7 @@ import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
 import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
 import { selloDe } from "./segador_base.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
+import { PX_PELIGRO, registrarBaja } from "./progresion.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -439,6 +440,7 @@ export function puedeActuar(c: Combatiente): string | null {
 /** Una criatura que ha muerto sale de escena: se devuelve lo que robó y se quita del orden de iniciativa. */
 export function retirarCaido(partida: Partida, j: EstadoJefe): string[] {
   const devueltos = devolverRobos(partida, j);
+  registrarBaja(partida, j.nombre, PX_PELIGRO[j.definicion.peligro] ?? 0); // su experiencia se reparte al cerrar el combate
   delete partida.jefes[j.nombre];
   if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => !igual(o.nombre, j.nombre));
   return devueltos;

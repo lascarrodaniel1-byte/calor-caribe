@@ -109,8 +109,34 @@ export function textoProgresion(p: Personaje): string {
   return `${rango ? rango.slice(1) + "\n" : ""}  Experiencia: ${pxActual(p)}${s !== null ? `/${s} PX` : " PX (nivel máximo)"}${puedeSubir(p) ? " ⬆ PUEDE SUBIR DE NIVEL (subir_nivel)" : ""}${rasgos}`;
 }
 
+/** PX de un enemigo con ficha de PNJ que cae en combate, según su veteranía. */
+export const PX_PNJ: Record<string, number> = { recluta: 25, curtido: 50, veterano: 100, leyenda: 200 };
+/** Una misión o arco da a cada personaje este porcentaje de lo que le falta para el nivel siguiente (de un nivel al otro). */
+export const PX_MISION: Record<string, number> = { menor: 0.15, normal: 0.3, mayor: 0.5, epica: 0.8 };
+
+/** Anota los PX de un enemigo derrotado; se reparten al cerrar el combate. */
+export function registrarBaja(partida: Partida, nombre: string, px: number): void {
+  if (!(px > 0)) return;
+  const l = (partida.px_pendiente ??= { total: 0, bajas: [] });
+  l.total += px;
+  l.bajas.push(`${nombre} (${px})`);
+}
+
+/** Reparte los PX anotados en los combates (criaturas y enemigos caídos) entre el grupo; vacío si no hay nada. */
+export function repartirBajas(partida: Partida, extra: { nombre: string; px: number }[] = []): string {
+  for (const x of extra) registrarBaja(partida, x.nombre, x.px);
+  const l = partida.px_pendiente;
+  if (!l || l.total <= 0) return "";
+  delete partida.px_pendiente;
+  try {
+    return darExperiencia(partida, { accion: "dar", px: l.total, motivo: `la victoria (${l.bajas.join(", ")})` });
+  } catch { return ""; } // sin supervivientes a quienes darla
+}
+
 export interface DatosExperiencia {
-  accion: "dar" | "por_criatura" | "ver";
+  accion: "dar" | "por_criatura" | "ver" | "mision";
+  /** mision: cuánto pesa (menor 15 %, normal 30 %, mayor 50 %, épica 80 % de lo que falta para el siguiente nivel, a cada uno). */
+  importancia?: "menor" | "normal" | "mayor" | "epica";
   px?: number;
   /** por_criatura: peligro de la criatura derrotada (1-5) y cuántas. */
   peligro?: number;
@@ -123,7 +149,19 @@ export interface DatosExperiencia {
 export function darExperiencia(partida: Partida, d: DatosExperiencia): string {
   const pjs = Object.values(partida.personajes).filter((p) => !p.condiciones.includes("muerto"));
   if (!pjs.length) throw new Error("No hay personajes a quienes dar experiencia.");
-  if (d.accion === "ver") return pjs.map((p) => `${p.nombre}: ${textoProgresion(p).trim()}`).join("\n");
+  if (d.accion === "ver") return pjs.map((p) => `${p.nombre}: ${textoProgresion(p).trim()}`).join("\n") + (partida.px_pendiente ? `\nPX por repartir al cerrar el combate: ${partida.px_pendiente.total} (${partida.px_pendiente.bajas.join(", ")}).` : "");
+  if (d.accion === "mision") {
+    const f = PX_MISION[d.importancia ?? "normal"];
+    const receptores = d.quienes?.length ? pjs.filter((p) => d.quienes!.some((n) => n.toLowerCase() === p.nombre.toLowerCase() || n.toLowerCase() === p.jugador?.toLowerCase())) : pjs;
+    if (!receptores.length) throw new Error("Nadie a quien dar la experiencia de la misión.");
+    const lineas = receptores.map((p) => {
+      const antes = puedeSubir(p);
+      const parte = p.nivel >= NIVEL_MAX ? 0 : Math.round(f * (PX_NIVEL[p.nivel] - PX_NIVEL[p.nivel - 1]));
+      p.px = pxActual(p) + parte;
+      return `${p.nombre}: +${parte} PX (${p.px}${pxSiguiente(p) !== null ? `/${pxSiguiente(p)}` : ""})${!antes && puedeSubir(p) ? " ⬆ ¡puede subir de nivel!" : ""}`;
+    });
+    return `Experiencia por ${d.motivo ?? "la misión"} (${d.importancia ?? "normal"}, ${Math.round(f * 100)} % del camino al siguiente nivel, a cada uno):\n${lineas.join("\n")}`;
+  }
   let total = d.px ?? 0;
   if (d.accion === "por_criatura") {
     if (!d.peligro || !PX_PELIGRO[d.peligro]) throw new Error("por_criatura: di el peligro (1-5) de la criatura derrotada.");
@@ -235,6 +273,7 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
 }
 
 export const REGLAS_PROGRESION = `## Experiencia y niveles
-- Reparte experiencia con la herramienta experiencia al acabar un combate (por_criatura, según su peligro), un desafío o un hito. Se divide a partes iguales entre el grupo. En la ficha verás los PX y «⬆ PUEDE SUBIR DE NIVEL».
+- La experiencia es AUTOMÁTICA: cada criatura que muere suma sus PX según su peligro (1: 50, 2: 200, 3: 450, 4: 700, 5: 1100) y cada enemigo con ficha de PNJ que cae, según su veteranía (recluta 25, curtido 50, veterano 100, leyenda 200); al cerrar el combate (terminar_combate) se reparten a partes iguales entre los personajes vivos. NO la repartas tú a mano por esos combates. Las criaturas que huyen o se perdonan no dan PX.
+- Cerrar un arco (trama cerrar_arco) da experiencia solo: a cada personaje, el 30 % de lo que le falta para el siguiente nivel (importancia: menor 15 %, normal 30 %, mayor 50 %, épica 80 %). Una misión menor o un encargo que no es un arco se premia con experiencia {accion: mision, importancia, motivo}. Para un desafío suelto, un buen plan o una escena memorable, usa experiencia {accion: dar, px}. En la ficha verás los PX y «⬆ PUEDE SUBIR DE NIVEL».
 - Sube de nivel con subir_nivel en un momento tranquilo (tras un descanso): el programa suma los PV (promedio o tirada), la competencia y los rasgos de clase hasta el nivel 5; en los niveles 4, 8, 12, 16 y 19 el jugador elige un aumento de característica (+2 a una o +1 a dos). No cambies el nivel a mano con modificar_personaje salvo para corregir un error.
 - Los niveles dan poder lentamente: no regales niveles por hito más de uno cada varias sesiones.`;

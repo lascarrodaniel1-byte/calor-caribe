@@ -129,6 +129,8 @@ export interface Partida {
   pnjs?: Record<string, Pnj>;
   /** Hilo de la trama: objetivo, pistas, hilos abiertos y amenaza. */
   trama?: Trama;
+  /** PX ganados por derrotar criaturas y enemigos que aún no se han repartido: se reparten solos al cerrar el combate. */
+  px_pendiente?: { total: number; bajas: string[] };
   /** Secuencia de turnos y asuntos pendientes (la escribe el DM al final de cada respuesta). */
   secuencia?: Secuencia;
   /** Plano de la escena actual: dónde está cada uno, en metros (norte arriba). */

@@ -51,7 +51,7 @@ import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
-import { darExperiencia, subirNivel } from "./progresion.js";
+import { darExperiencia, PX_PNJ, repartirBajas, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
 import { agregarCondicion, mismaCondicion } from "./condiciones.js";
@@ -457,7 +457,8 @@ const esquemas = {
     blando: z.boolean().optional().describe("Cae sobre agua, paja, nieve…: un dado de daño menos"),
   }),
   experiencia: z.object({
-    accion: z.enum(["dar", "por_criatura", "ver"]),
+    accion: z.enum(["dar", "por_criatura", "ver", "mision"]).describe("dar: PX sueltos · por_criatura: por peligro · mision: según importancia · ver"),
+    importancia: z.enum(["menor", "normal", "mayor", "epica"]).optional().describe("mision: menor 15 %, normal 30 %, mayor 50 %, épica 80 % de lo que falta para el siguiente nivel, a cada uno"),
     px: z.number().int().min(1).max(100000).optional().describe("PX totales a repartir (accion dar)"),
     peligro: z.number().int().min(1).max(5).optional().describe("por_criatura: peligro de lo derrotado"),
     cantidad: z.number().int().min(1).max(50).optional().describe("por_criatura: cuántas"),
@@ -638,6 +639,7 @@ const esquemas = {
     proximo_paso: z.string().optional().describe("Lo siguiente concreto que el grupo puede hacer ahora (a quién ver, adónde ir, qué hacer). Se ve siempre en la página"),
     revelar_pista: z.string().optional().describe("Algo que los jugadores acaban de descubrir"),
     retirar_pista: z.string().optional().describe("Un trozo del texto de una pista que resultó falsa o que ya no vale; se borra (si hay una versión corregida, pásala en revelar_pista)"),
+    importancia: z.enum(["menor", "normal", "mayor", "epica"]).optional().describe("Al cerrar el arco: cuánta experiencia da (normal 30 % del camino al siguiente nivel; menor 15, mayor 50, épica 80)"),
     abrir_arco: z.string().optional().describe("Nombre de un arco nuevo (empieza en INICIO; como mucho 3 abiertos). Requiere premisa"),
     premisa: z.string().optional().describe("El principio del arco: de qué va, quién interviene y qué se juega"),
     final_previsto: z.string().optional().describe("Hacia dónde apunta el final del arco (puede cambiar)"),
@@ -1583,11 +1585,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "trama": {
         const e = validado.data as z.infer<typeof esquemas.trama>;
-        const texto = actualizarTrama(partida, e);
+        let texto = actualizarTrama(partida, e);
+        let xpArco = "";
+        if ((e.cerrar_arco ?? e.cerrar_hilo) && /^Arco cerrado/m.test(texto)) {
+          try { xpArco = darExperiencia(partida, { accion: "mision", importancia: e.importancia ?? "normal", motivo: "cerrar el arco" }); } catch { /* sin personajes vivos */ }
+          if (xpArco) texto += `\n${xpArco}`;
+        }
         const visible = texto.split("\n").filter((l) => /^(Pista revelada|Hilo cerrado|Objetivo|Arco)/.test(l));
         const arcos = visible.filter((l) => l.startsWith("Arco")).map((l) => `📖 ${l}`);
         const otros = visible.filter((l) => !l.startsWith("Arco"));
-        return { contenido: texto, aviso: [...arcos, ...(otros.length ? [`🧭 ${otros.join("\n")}`] : [])].join("\n") || null };
+        return { contenido: texto, aviso: [...arcos, ...(otros.length ? [`🧭 ${otros.join("\n")}`] : []), ...(xpArco ? [`✨ ${xpArco.split("\n")[0]}`] : [])].join("\n") || null };
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
@@ -1603,11 +1610,15 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "terminar_combate": {
         const furias = terminarTodas(partida, "se apaga al acabar el combate");
+        // La experiencia de la victoria: criaturas caídas (ya anotadas) y enemigos con ficha de PNJ que cayeron.
+        const caidos = Object.values(partida.combate?.pnj ?? {}).filter((n) => !n.aliado && n.pv !== undefined && n.pv <= 0).map((n) => ({ nombre: n.nombre, px: PX_PNJ[n.veterania ?? "curtido"] ?? 50 }));
+        const xp = repartirBajas(partida, caidos);
+        if (xp) furias.push(`✨ ${xp.split("\n")[0]}`);
         if (partida.runas) furias.push("📜 Las runas se agotan y los papeles se queman: la zona queda limpia.");
         delete partida.runas;
         limpiarTrasCombate(partida);
         delete partida.combate;
-        return { contenido: `Combate cerrado. Caducan las condiciones pasajeras (agarrado, derribado, aturdido…).${furias.length ? "\n" + furias.join("\n") : ""}`, aviso: furias.length ? `🔥 ${furias.join("\n")}` : null };
+        return { contenido: `Combate cerrado. Caducan las condiciones pasajeras (agarrado, derribado, aturdido…).${furias.length ? "\n" + furias.join("\n") : ""}${xp ? "\n" + xp : ""}`, aviso: furias.length ? `🔥 ${furias.join("\n")}` : null };
       }
       case "anotar_mundo": {
         const e = validado.data as z.infer<typeof esquemas.anotar_mundo>;
