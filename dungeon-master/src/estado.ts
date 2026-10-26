@@ -37,6 +37,12 @@ export interface Personaje {
   don?: "fisico" | "magico";
   /** Cuándo comió y bebió por última vez y el agotamiento ya cobrado (ver sustento.ts). */
   sustento?: import("./sustento.js").Sustento;
+  /** Monta una criatura o PNJ (ver montura.ts). */
+  montura?: import("./montura.js").Montura;
+  /** Bajo el agua: el aire que le queda (ver agua.ts). */
+  sumergido?: import("./agua.js").Sumergido;
+  /** La nave en la que va a bordo (ver naves.ts). */
+  nave?: string;
   raza: string;
   clase: string;
   nivel: number;
@@ -134,6 +140,8 @@ export interface Partida {
   /** PX ganados por derrotar criaturas y enemigos que aún no se han repartido: se reparten solos al cerrar el combate. */
   /** Trampas colocadas por el DM (ver trampas.ts). */
   trampas?: Record<string, import("./trampas.js").Trampa>;
+  /** Botes, balsas y barcos (ver naves.ts). */
+  naves?: Record<string, import("./naves.js").Nave>;
   px_pendiente?: { total: number; bajas: string[] };
   /** Secuencia de turnos y asuntos pendientes (la escribe el DM al final de cada respuesta). */
   secuencia?: Secuencia;

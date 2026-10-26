@@ -20,6 +20,9 @@ import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "
 import { selloDe } from "./segador_base.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { pxCriatura, registrarBaja } from "./progresion.js";
+import { ajusteAgua, estaSumergido } from "./agua.js";
+import { ventajaMontada } from "./montura.js";
+import { ajusteMar } from "./naves.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -712,6 +715,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       desglose.push("plan +1");
     }
   }
+  // El entorno: bajo el agua, a caballo y sobre la cubierta de una nave.
+  const aguaAj = ajusteAgua(estaSumergido(condsDe(at)), condsDe(at).some((c) => /nadador/i.test(c)), distancia, d.arma);
+  if (aguaAj.desventaja) { desventaja = true; motivos.push(aguaAj.desventaja); }
+  const monta = ventajaMontada(partida, at.nombre, ob.nombre, distancia);
+  if (monta) { ventaja = true; motivos.push(monta); }
+  const mar = ajusteMar(partida, at.nombre, distancia);
+  if (mar) { desventaja = true; motivos.push(mar); }
   const modo: Modo = ventaja && !desventaja ? "ventaja" : desventaja && !ventaja ? "desventaja" : "normal";
 
   // Apuntar: a una región concreta o a los huecos de la armadura (cuanto más oficio, menos cuesta).

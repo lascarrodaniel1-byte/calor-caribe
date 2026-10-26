@@ -52,6 +52,9 @@ import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
+import { agua, pasarAsaltoAgua } from "./agua.js";
+import { montura, revisarMonturas } from "./montura.js";
+import { nave, pasarAsaltoNave } from "./naves.js";
 import { revisarSustento, sustento, viajar } from "./sustento.js";
 import { darExperiencia, PX_PNJ, repartirBajas, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
@@ -706,6 +709,34 @@ const esquemas = {
   }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
+  montura: z.object({
+    accion: z.enum(["montar", "desmontar", "caer"]),
+    jinete: z.string(),
+    montura: z.string().optional().describe("montar: el animal o la criatura (si está en escena, el jinete cae si ella cae)"),
+    control: z.enum(["controlada", "independiente"]).optional().describe("controlada (entrenada, por defecto) o independiente"),
+    grande: z.boolean().optional().describe("Mayor que quien va a pie (por defecto sí): da ventaja cuerpo a cuerpo al jinete"),
+    motivo: z.string().optional(),
+  }),
+  agua: z.object({
+    accion: z.enum(["sumergir", "emerger", "nadar", "ver"]),
+    quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
+    nadador: z.boolean().optional().describe("sumergir: sabe nadar de verdad (sin desventaja en el cuerpo a cuerpo)"),
+    minutos: z.number().min(0.5).max(60).optional().describe("nadar: minutos bajo el agua"),
+  }),
+  nave: z.object({
+    accion: z.enum(["crear", "abordar", "desembarcar", "navegar", "danar", "reparar", "mar", "abordaje", "ver"]),
+    nave: z.string().optional(),
+    tipo: z.string().optional().describe("crear: balsa, bote, barca, carraca o galera"),
+    casco: z.number().int().min(1).optional().describe("crear: PV del casco si no son los del tipo"),
+    quienes: z.array(z.string()).optional(),
+    horas: z.number().min(0.5).max(48).optional(),
+    viento: z.enum(["favorable", "normal", "calmo", "contrario", "tormenta"]).optional(),
+    cantidad: z.number().int().min(1).optional().describe("danar: daño al casco"),
+    tipo_dano: z.string().optional().describe("danar: si es de fuego, hace el doble y prende"),
+    mar: z.enum(["calmo", "picado", "tormenta"]).optional(),
+    tarea: z.enum(["achicar", "remendar", "apagar"]).optional().describe("reparar"),
+    otra: z.string().optional().describe("abordaje: la otra nave"),
+  }),
   trampa: z.object({
     accion: z.enum(["colocar", "detectar", "desarmar", "disparar", "ver"]),
     nombre: z.string().optional(),
@@ -751,6 +782,12 @@ const descripciones: Record<Nombre, string> = {
   atacar:
     "Resuelve un ataque con armas de cualquiera (PJ, criatura o PNJ): bonificador por atributo, competencia, veteranía, raza y clase; torpezas, roces de los veteranos y críticos; tira y aplica el daño.",
   siguiente_asalto: "Empieza el siguiente asalto del combate (la sorpresa y el plan solo valen en el primero).",
+  montura:
+    "Combate montado: montar, desmontar o caer de la montura (DES CD 10). El jinete grande ataca con ventaja a los de a pie; si la montura cae, el jinete cae.",
+  agua:
+    "Combate bajo el agua: sumergir, emerger, nadar (minutos) o ver el aire. Gasta aire por asalto, ahoga, y los ataques sufren desventaja salvo armas adecuadas.",
+  nave:
+    "Botes, balsas y barcos: crear, abordar, desembarcar, navegar (horas y viento), mar, danar el casco, reparar (achicar, remendar, apagar) y abordaje. Se hunde, arde y tira gente por la borda.",
   trampa:
     "Trampas secretas: colocar (CD de detectar y de desarmar, efecto), detectar (Percepción pasiva del grupo o búsqueda activa), desarmar (Juego de manos) y disparar. Nunca avises de una trampa que nadie ha descubierto.",
   sustento:
@@ -1032,6 +1069,8 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
   const r = ejecutarInterno(nombre, entrada, partida);
   if (r.error || nombre === "salvacion_muerte") return r;
+  const monturas = revisarMonturas(partida); // si cae la montura, el jinete cae con ella
+  if (monturas.length) { r.contenido += `\n${monturas.join("\n")}`; r.aviso = [r.aviso, ...monturas.map((m) => `🐎 ${m.split("\n")[0]}`)].filter(Boolean).join("\n"); }
   const hambre = revisarSustento(partida); // el reloj puede haber pasado de la hora de comer o beber
   if (hambre.length) { r.contenido += `\n${hambre.join("\n")}`; r.aviso = [r.aviso, ...hambre.map((h) => `🍖 ${h}`)].filter(Boolean).join("\n"); }
   const libres = liberarSiMuere(partida); // un Segador muerto libera las almas que sostenía
@@ -1108,7 +1147,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         if (e.clase === "Hechicero" && p.magia && nuevoEnClase) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
@@ -1632,8 +1671,23 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
-        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida)].join("\n");
+        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
+      }
+      case "montura": {
+        const e = validado.data as z.infer<typeof esquemas.montura>;
+        const texto = montura(partida, e);
+        return { contenido: texto, aviso: `🐎 ${texto.split("\n")[0]}` };
+      }
+      case "agua": {
+        const e = validado.data as z.infer<typeof esquemas.agua>;
+        const texto = agua(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `🌊 ${texto.split("\n").join(" ")}` };
+      }
+      case "nave": {
+        const e = validado.data as z.infer<typeof esquemas.nave>;
+        const r = nave(partida, e);
+        return { contenido: r.texto, aviso: r.publico };
       }
       case "trampa": {
         const e = validado.data as z.infer<typeof esquemas.trampa>;
