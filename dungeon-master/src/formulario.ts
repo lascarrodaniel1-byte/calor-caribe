@@ -112,7 +112,7 @@ export function textoFicha(f: DatosFicha): string {
     `Atributos finales (${f.metodo === "tirada" ? "tiradas 4d6kh3" : "serie estándar"}, con el bono racial ya sumado): ${attrs}`,
     `PV: ${pvIniciales(f)} (dado de golpe máximo + mod. CON)`,
     f.clase === "Hechicero" ? `Magia: tipo inicial «${f.tipo}» (guárdalo con tipos_magia: [«${f.tipo}»]), linaje «${f.linaje}» (pásalo como linaje). El don arcano ya lo tiró el DM antes de crear el personaje (guardar_personaje lo aplica solo); si es humilde y no tiene el don mágico, la escuela no lo admite: dile al jugador que cambie de linaje o de clase.` : "",
-    `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}`,
+    `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}; más «Raciones de viaje (5)» y «Odre de agua (2)» en el inventario`,
     `Trasfondo: ${f.trasfondo.trim()}`,
     f.clase === "Cazador de Brujas" ? "Mascota: si el jugador nombró un halcón o un ratón (en el trasfondo o en el equipo extra), ese; si no, elige tú según su trasfondo, y guárdala con mascota {accion: elegir} justo después de guardar la ficha." : "",
     f.clase === "Caballero Juramentado" ? "Juramento: elige tú, sin preguntar, 1 a 3 votos de Ka'i (Verdad, Amparo, Lealtad, Luz, Descanso, Merced) acordes a su trasfondo y guárdalos con juramento {accion: jurar} justo después de guardar la ficha." : "",

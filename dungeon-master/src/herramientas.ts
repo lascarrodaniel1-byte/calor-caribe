@@ -51,6 +51,7 @@ import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
+import { revisarSustento, sustento, viajar } from "./sustento.js";
 import { darExperiencia, PX_PNJ, repartirBajas, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
@@ -704,6 +705,17 @@ const esquemas = {
   }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
+  sustento: z.object({
+    accion: z.enum(["comer", "beber", "ver"]),
+    quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
+    libre: z.boolean().optional().describe("Comió o bebió de algo que no es del inventario (posada, río, caza): no gasta provisiones"),
+  }),
+  viajar: z.object({
+    horas: z.number().min(0.5).max(24),
+    ritmo: z.enum(["lento", "normal", "rapido"]),
+    terreno: z.enum(["camino", "abierto", "dificil"]),
+    motivo: z.string().optional().describe("Adónde van"),
+  }),
   tirar_don_arcano: z.object({
     jugador: z.string().describe("El jugador (o el personaje) para quien se tira el don, ANTES de crear su personaje"),
   }),
@@ -725,6 +737,10 @@ const descripciones: Record<Nombre, string> = {
   atacar:
     "Resuelve un ataque con armas de cualquiera (PJ, criatura o PNJ): bonificador por atributo, competencia, veteranía, raza y clase; torpezas, roces de los veteranos y críticos; tira y aplica el daño.",
   siguiente_asalto: "Empieza el siguiente asalto del combate (la sorpresa y el plan solo valen en el primero).",
+  sustento:
+    "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
+  viajar:
+    "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
   tirar_don_arcano:
     "ANTES de crear el personaje de un jugador: el DM tira un d20 para ver si nace con un don arcano. 19 = don FÍSICO (cuerpo prodigioso), 20 = don MÁGICO (talento para la magia); cualquier otro resultado, sin don. Una sola tirada por jugador. Anuncia el resultado y luego guía la creación del personaje.",
   terminar_combate: "Cierra el combate en curso (borra el orden de iniciativa y los PNJ sin ficha).",
@@ -1000,6 +1016,8 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
   const r = ejecutarInterno(nombre, entrada, partida);
   if (r.error || nombre === "salvacion_muerte") return r;
+  const hambre = revisarSustento(partida); // el reloj puede haber pasado de la hora de comer o beber
+  if (hambre.length) { r.contenido += `\n${hambre.join("\n")}`; r.aviso = [r.aviso, ...hambre.map((h) => `🍖 ${h}`)].filter(Boolean).join("\n"); }
   const libres = liberarSiMuere(partida); // un Segador muerto libera las almas que sostenía
   if (libres.length) { r.contenido += `\n${libres.join("\n")}`; r.aviso = [r.aviso, ...libres].filter(Boolean).join("\n"); }
   const avisos = revisarCaidas(partida, antes);
@@ -1074,7 +1092,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         if (e.clase === "Hechicero" && p.magia && nuevoEnClase) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
@@ -1600,6 +1618,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         avanzarSiHay(partida, 6);
         const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
+      }
+      case "sustento": {
+        const e = validado.data as z.infer<typeof esquemas.sustento>;
+        const texto = sustento(partida, e);
+        return { contenido: texto, aviso: e.accion === "ver" ? null : `🍖 ${texto.split("\n").slice(1).join(" ")}` };
+      }
+      case "viajar": {
+        const e = validado.data as z.infer<typeof esquemas.viajar>;
+        const texto = viajar(partida, e);
+        return { contenido: texto, aviso: `🥾 ${texto.split("\n")[0]}` };
       }
       case "tirar_don_arcano": {
         const e = validado.data as z.infer<typeof esquemas.tirar_don_arcano>;

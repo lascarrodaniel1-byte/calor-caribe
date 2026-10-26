@@ -6,6 +6,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { descansar as descansarMagia } from "./magia.js";
 import { pvMaxEfectivo } from "./heridas.js";
 import { efectos } from "./condiciones.js";
+import { recuperarAgotamiento } from "./sustento.js";
 import { selloDe } from "./segador_base.js";
 
 export interface DefRecurso {
@@ -121,6 +122,7 @@ export function descanso(partida: Partida, d: { tipo: "corto" | "largo"; quienes
     for (const x of rec) if (x.gastados) delete p.gastados![x.def.nombre];
     for (const g of ALDESCANSAR) g(p, d.tipo);
     descansarMagia(p, 0, "normal"); // el calor y el aliento bajan con la calma
+    if (d.tipo === "largo") { const ag = recuperarAgotamiento(partida, p); if (ag) lineas.push(ag); }
     lineas.push(`${p.nombre}: ${rec.filter((x) => x.gastados).map((x) => x.def.nombre).join(", ") || "sin usos que recuperar"} recuperado${rec.some((x) => x.gastados) ? "s" : ""}; calor y aliento a cero.`);
   }
   return `Descanso ${d.tipo} (${horas} h${partida.reloj ? ", el reloj avanza" : ""}). No cura heridas ni PV por sí solo: para la convalecencia usa pasar_tiempo.\n${lineas.join("\n")}`;

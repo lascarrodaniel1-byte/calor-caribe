@@ -35,6 +35,8 @@ export interface Personaje {
   jugador?: string;
   /** Don arcano de nacimiento: físico o mágico (el mágico es magia.don). */
   don?: "fisico" | "magico";
+  /** Cuándo comió y bebió por última vez y el agotamiento ya cobrado (ver sustento.ts). */
+  sustento?: import("./sustento.js").Sustento;
   raza: string;
   clase: string;
   nivel: number;

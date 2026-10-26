@@ -3,6 +3,7 @@
 // capacidad "sample" del artifact, que llama al motor con la herramienta "motor".
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
 import { donTirado } from "./magia.js";
+import { textoSustento } from "./sustento.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
@@ -87,6 +88,8 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
     `## Personajes jugadores${conFoco ? " (ficha completa solo del que actúa; la de los demás, con consultar_reglas {tema: \"ficha\", nombre})" : ""}\n` +
       (pjs.length ? pjs.map((x) => (conFoco && !esFoco(x) ? fichaCorta(x) : fichaTexto(x))).join(conFoco ? "\n" : "\n\n") : "Aún no hay personajes: hay que crearlos."),
   );
+  const sust = pjs.map((x) => textoSustento(x, p).trim()).map((t, i) => (t ? `${pjs[i].nombre}: ${t.replace(/^Sustento: /, "")}` : "")).filter(Boolean);
+  if (sust.length) partes.push(`## Sustento\n${sust.join("\n")}`);
   const seq = secuencia.textoSecuencia(p.secuencia);
   if (seq) partes.push(seq);
   if (p.trama) {
