@@ -1,5 +1,5 @@
 // Botes, balsas y barcos: navegar, aguantar el mar, el casco, los incendios, hundirse y el abordaje.
-import { alAgua } from "./agua.js";
+import { alAgua, gastarAireDe } from "./agua.js";
 import { condsDe, localizar } from "./combate.js";
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -31,6 +31,8 @@ export interface Nave {
   incendio?: boolean;
   /** Pegada a otra nave (abordaje). */
   abordada?: string;
+  /** Segundos del reloj hasta los que ya se han contado el fuego, el agua y la tormenta. */
+  marca?: number;
 }
 
 /** Tipos de nave (valores míos, a confirmar). */
@@ -199,31 +201,79 @@ export function nave(partida: Partida, d: DatosNave): { texto: string; publico: 
 }
 
 /** Cada asalto: el fuego quema, el agua entra y la tormenta tira gente por la borda. */
-export function pasarAsaltoNave(partida: Partida): string[] {
+export function pasarAsaltoNave(partida: Partida, asaltos = 1): string[] {
   const out: string[] = [];
   for (const n of Object.values(partida.naves ?? {})) {
-    if (n.estado === "hundida") continue;
-    if (n.incendio) {
-      const d = tirar("1d6").total; n.casco = Math.max(0, n.casco - d);
-      out.push(`🔥 ${n.nombre} arde: −${d} (casco ${n.casco}/${n.casco_max}).`);
-      if (n.casco <= 0) { out.push(...hundir(partida, n)); continue; }
-      const e = actualizarEstado(n); if (e) out.push(e);
-    }
-    if (n.estado === "hundiéndose" && n.asaltos_hundir !== undefined) {
-      n.asaltos_hundir--;
-      if (n.asaltos_hundir <= 0) { out.push(...hundir(partida, n)); continue; }
-      out.push(`${n.nombre} se hunde en ${n.asaltos_hundir} asalto(s).`);
-    }
-    if (n.mar === "tormenta") {
-      for (const nombre of [...n.a_bordo]) {
-        const p = pj(partida, nombre);
-        if (p.condiciones.includes("muerto") || p.pv <= 0) continue;
-        const s = salvacion(p, "des", 10);
-        if (!s.exito) { n.a_bordo = n.a_bordo.filter((x) => x !== p.nombre); p.nave = undefined; out.push(`${p.nombre}: ${s.texto} → cae por la borda.`, ...alAgua(partida, [p.nombre])); }
+    for (let i = 0; i < asaltos && n.estado !== "hundida"; i++) {
+      if (n.incendio) {
+        const d = tirar("1d6").total; n.casco = Math.max(0, n.casco - d);
+        if (asaltos === 1 || n.casco <= 0) out.push(`🔥 ${n.nombre} arde: −${d} (casco ${n.casco}/${n.casco_max}).`);
+        if (n.casco <= 0) { out.push(...hundir(partida, n)); break; }
+        const e = actualizarEstado(n); if (e) out.push(e);
+      }
+      if (n.estado === "hundiéndose" && n.asaltos_hundir !== undefined) {
+        n.asaltos_hundir--;
+        if (n.asaltos_hundir <= 0) { out.push(...hundir(partida, n)); break; }
+        if (asaltos === 1) out.push(`${n.nombre} se hunde en ${n.asaltos_hundir} asalto(s).`);
+      }
+      // En tormenta, una salvación por asalto en combate; con el tiempo corriendo, una por minuto.
+      if (n.mar === "tormenta" && (asaltos === 1 || i % 10 === 0)) {
+        for (const nombre of [...n.a_bordo]) {
+          const p = pj(partida, nombre);
+          if (p.condiciones.includes("muerto") || p.pv <= 0) continue;
+          const s = salvacion(p, "des", 10);
+          if (!s.exito) { n.a_bordo = n.a_bordo.filter((x) => x !== p.nombre); p.nave = undefined; out.push(`${p.nombre}: ${s.texto} → cae por la borda.`, ...alAgua(partida, [p.nombre])); }
+        }
       }
     }
   }
   return out;
+}
+
+const MAX_ASALTOS_TIEMPO = 600; // una hora de golpe como mucho
+
+/** Deja las marcas de tiempo al día (tras una acción que ya contó el tiempo por su cuenta: un asalto, nadar, navegar). */
+export function marcarTiempo(partida: Partida): void {
+  if (!partida.reloj) return;
+  for (const n of Object.values(partida.naves ?? {})) n.marca = partida.reloj.segundos;
+  for (const p of Object.values(partida.personajes)) if (p.sumergido) p.sumergido.marca = partida.reloj.segundos;
+}
+
+/** El tiempo normal también corre: el fuego, el agua que entra, la tormenta y el aire de los sumergidos, según el reloj. */
+export function procesarTiempo(partida: Partida): string[] {
+  if (!partida.reloj) return [];
+  const ahora = partida.reloj.segundos;
+  const out: string[] = [];
+  let naves = 0, aire = 0;
+  for (const n of Object.values(partida.naves ?? {})) {
+    if (n.marca === undefined) { n.marca = ahora; continue; }
+    const as = Math.floor((ahora - n.marca) / 6);
+    if (as < 1) continue;
+    n.marca += as * 6; naves = Math.max(naves, 0);
+    if (n.estado !== "hundida" && (n.incendio || n.estado === "hundiéndose" || n.mar === "tormenta")) {
+      const salida = pasarAsaltoNaveUna(partida, n, Math.min(as, MAX_ASALTOS_TIEMPO));
+      out.push(...salida);
+    }
+  }
+  for (const p of Object.values(partida.personajes)) {
+    const s = p.sumergido;
+    if (!s) continue;
+    if (s.marca === undefined) { s.marca = ahora; continue; }
+    const as = Math.floor((ahora - s.marca) / 6);
+    if (as < 1) continue;
+    s.marca += as * 6; aire += as;
+    out.push(...gastarAireDe(partida, p, Math.min(as, MAX_ASALTOS_TIEMPO)));
+  }
+  void naves; void aire;
+  return out;
+}
+
+/** Procesa una sola nave (el bucle de pasarAsaltoNave, para el tiempo que corre). */
+function pasarAsaltoNaveUna(partida: Partida, n: Nave, asaltos: number): string[] {
+  const otras = partida.naves!;
+  const solo = { [n.nombre]: n };
+  partida.naves = solo;
+  try { return pasarAsaltoNave(partida, asaltos); } finally { partida.naves = otras; }
 }
 
 /** Armas de cubierta: las de abordaje, y las cortas o curvas que se manejan bien donde no hay sitio para un mandoble. */
@@ -258,5 +308,6 @@ export const REGLAS_NAVES = `## Botes, barcos y combate naval
 - Crea la nave con nave {accion: crear, nave, tipo: balsa|bote|barca|carraca|galera} (casco 20, 40, 70, 220, 400; km/h 2,5, 4, 9, 11, 13) y sube al grupo con abordar. navegar {horas, viento} calcula los km (viento favorable ×1,5, calmo ×0,6, contrario ×0,5, tormenta ×0,3), avanza el reloj y exige tripulación mínima (menos, va más lenta). Si va escorada, a medio ritmo. En tormenta daña el casco y cada pasajero tira DES CD 10 o cae al agua.
 - Mar: nave {accion: mar, mar: calmo|picado|tormenta}. Picado: desventaja en los ataques a distancia desde cubierta. Tormenta: desventaja en todos los ataques y, cada asalto, DES CD 10 o cae por la borda (queda bajo el agua: reglas de agua).
 - Combate naval: dañar el casco con nave {accion: danar, cantidad, tipo_dano} (fuego: doble, y prende fuego: −1d6 de casco por asalto hasta apagarlo). Un casco a la mitad escora la nave; a un cuarto se hunde en 2d6 asaltos salvo que se achique (reparar achicar: +1 asalto cada vez) y se remiende (reparar remendar: prueba de FUE CD 12, repara 2d6). Una embestida causa 2d10 al casco por cada 5 km/h de velocidad. A 0 se hunde y todos caen al agua.
+- El tiempo normal también cuenta: si el reloj avanza (tiempo, descanso, un viaje largo…), el fuego sigue quemando, la nave sigue hundiéndose, la tormenta sigue tirando gente por la borda (una salvación por minuto) y los sumergidos siguen gastando aire. Con la nave en llamas o el agua entrando, no dejes pasar el tiempo sin que pase algo.
 - Armas de cubierta: en una nave (o en un abordaje, con en_cubierta=true en atacar para PNJ y criaturas), el cuerpo a cuerpo con sable o hacha de abordaje, chuzo, alfanje, cimitarra, espada corta, daga, hacha de mano o shotel tiene VENTAJA: se manejan bien donde no hay sitio para un mandoble (espadones y armas de asta, no). En tormenta se cancela con su desventaja.
 - Abordaje: nave {accion: abordaje, nave, otra} une las naves con garfios; se cruza con una acción de movimiento y se combate en cubierta. Atacar el casco con armas pequeñas apenas lo daña: solo máquinas, embestidas, fuego o armas de gran tamaño.`;

@@ -54,7 +54,7 @@ import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
 import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
-import { nave, pasarAsaltoNave } from "./naves.js";
+import { marcarTiempo, nave, pasarAsaltoNave, procesarTiempo } from "./naves.js";
 import { revisarSustento, sustento, viajar } from "./sustento.js";
 import { darExperiencia, PX_PNJ, repartirBajas, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
@@ -1070,6 +1070,13 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
   const r = ejecutarInterno(nombre, entrada, partida);
   if (r.error || nombre === "salvacion_muerte") return r;
+  // El tiempo normal también corre: fuego, agua que entra, tormenta y aire de los sumergidos. Lo que ya contó su propio tiempo solo deja la marca.
+  const accion = (entrada as { accion?: string } | null)?.accion;
+  if (nombre === "siguiente_asalto" || (nombre === "agua" && accion === "nadar") || (nombre === "nave" && accion === "navegar")) marcarTiempo(partida);
+  else {
+    const paso = procesarTiempo(partida);
+    if (paso.length) { r.contenido += `\n${paso.join("\n")}`; r.aviso = [r.aviso, ...paso.map((x) => x.split("\n")[0])].filter(Boolean).join("\n"); }
+  }
   const monturas = revisarMonturas(partida); // si cae la montura, el jinete cae con ella
   if (monturas.length) { r.contenido += `\n${monturas.join("\n")}`; r.aviso = [r.aviso, ...monturas.map((m) => `🐎 ${m.split("\n")[0]}`)].filter(Boolean).join("\n"); }
   const hambre = revisarSustento(partida); // el reloj puede haber pasado de la hora de comer o beber

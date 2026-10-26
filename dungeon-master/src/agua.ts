@@ -11,6 +11,8 @@ export interface Sumergido {
   /** Asaltos que aguanta sin aire antes de caer a 0 PV (se cuentan cuando aire llega a 0). */
   sinAire: number;
   nadador?: boolean;
+  /** Segundos del reloj hasta los que ya se le ha contado el aire. */
+  marca?: number;
 }
 
 const ES_SUMERGIDO = /^sumergido/i;
@@ -55,10 +57,14 @@ export function emerger(partida: Partida, nombres: string[]): string[] {
 
 /** Gasta asaltos de aire a cada sumergido; quien se queda sin aire cae a 0 PV, y si ya estaba a 0, se ahoga. */
 export function gastarAire(partida: Partida, asaltos: number): string[] {
+  return Object.values(partida.personajes).flatMap((p) => gastarAireDe(partida, p, asaltos));
+}
+
+export function gastarAireDe(_partida: Partida, p: Personaje, asaltos: number): string[] {
   const out: string[] = [];
-  for (const p of Object.values(partida.personajes)) {
+  {
     const s = p.sumergido;
-    if (!s || p.condiciones.includes("muerto")) continue;
+    if (!s || p.condiciones.includes("muerto")) return out;
     for (let i = 0; i < asaltos; i++) {
       if (s.aire > 0) { s.aire--; if (s.aire === 0) out.push(`${p.nombre} se queda sin aire: le quedan ${s.sinAire} asalto(s) de ahogo.`); continue; }
       if (p.pv <= 0) { marcarMuerto(p); out.push(`☠ ${p.nombre} se ahoga.`); break; }
