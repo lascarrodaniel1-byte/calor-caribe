@@ -51,6 +51,7 @@ import { concurso } from "./compania.js";
 import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
+import { trampa } from "./trampas.js";
 import { revisarSustento, sustento, viajar } from "./sustento.js";
 import { darExperiencia, PX_PNJ, repartirBajas, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
@@ -705,6 +706,19 @@ const esquemas = {
   }),
   siguiente_asalto: z.object({}),
   terminar_combate: z.object({}),
+  trampa: z.object({
+    accion: z.enum(["colocar", "detectar", "desarmar", "disparar", "ver"]),
+    nombre: z.string().optional(),
+    lugar: z.string().optional(),
+    cd_detectar: z.number().int().min(5).max(30).optional(),
+    cd_desarmar: z.number().int().min(5).max(30).optional(),
+    efecto: habilidad.optional().describe("colocar: lo que hace al saltar (salvación, cd, dano, tipo_dano, condicion, herida…)"),
+    reutilizable: z.boolean().optional(),
+    quienes: z.array(z.string()).optional().describe("detectar activo / desarmar: quién lo intenta · disparar: quién la sufre"),
+    activa: z.boolean().optional().describe("detectar: registran a propósito (prueba de Percepción) en vez de solo la pasiva"),
+    herramientas: z.boolean().optional().describe("desarmar: con herramientas de ladrón; si no, desventaja"),
+    rapido: z.boolean().optional().describe("detectar pasivo: van a ritmo rápido (−5)"),
+  }),
   sustento: z.object({
     accion: z.enum(["comer", "beber", "ver"]),
     quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
@@ -737,6 +751,8 @@ const descripciones: Record<Nombre, string> = {
   atacar:
     "Resuelve un ataque con armas de cualquiera (PJ, criatura o PNJ): bonificador por atributo, competencia, veteranía, raza y clase; torpezas, roces de los veteranos y críticos; tira y aplica el daño.",
   siguiente_asalto: "Empieza el siguiente asalto del combate (la sorpresa y el plan solo valen en el primero).",
+  trampa:
+    "Trampas secretas: colocar (CD de detectar y de desarmar, efecto), detectar (Percepción pasiva del grupo o búsqueda activa), desarmar (Juego de manos) y disparar. Nunca avises de una trampa que nadie ha descubierto.",
   sustento:
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   viajar:
@@ -1618,6 +1634,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         avanzarSiHay(partida, 6);
         const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
+      }
+      case "trampa": {
+        const e = validado.data as z.infer<typeof esquemas.trampa>;
+        const r = trampa(partida, e as Parameters<typeof trampa>[1]);
+        return { contenido: r.texto, aviso: r.publico };
       }
       case "sustento": {
         const e = validado.data as z.infer<typeof esquemas.sustento>;

@@ -4,6 +4,7 @@
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
 import { donTirado } from "./magia.js";
 import { textoSustento } from "./sustento.js";
+import { textoTrampas } from "./trampas.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
@@ -90,6 +91,8 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   );
   const sust = pjs.map((x) => textoSustento(x, p).trim()).map((t, i) => (t ? `${pjs[i].nombre}: ${t.replace(/^Sustento: /, "")}` : "")).filter(Boolean);
   if (sust.length) partes.push(`## Sustento\n${sust.join("\n")}`);
+  const tr = textoTrampas(p);
+  if (tr) partes.push(tr);
   const seq = secuencia.textoSecuencia(p.secuencia);
   if (seq) partes.push(seq);
   if (p.trama) {

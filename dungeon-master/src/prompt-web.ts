@@ -23,6 +23,7 @@ import { REGLAS_JURAMENTO } from "./juramento.js";
 import { REGLAS_FURIA } from "./furia.js";
 import { REGLAS_COMPANIA } from "./compania.js";
 import { REGLAS_SUSTENTO } from "./sustento.js";
+import { REGLAS_TRAMPAS } from "./trampas.js";
 import { REGLAS_LEYENDA } from "./leyenda.js";
 import { REGLAS_RECURSOS } from "./recursos.js";
 import { REGLAS_MANIOBRAS } from "./maniobras.js";
@@ -155,7 +156,7 @@ export function sistemaWeb(clases?: string[]): string {
   return [
     BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS,
     clase("Berserker de Ceniza"), clase("Caballero Juramentado"), clase("Cazador de Brujas"), clase("Degollador"), clase("Flagelante"), clase("Segador"), clase("Barbero-Cirujano"),
-    REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_SUSTENTO, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO,
+    REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_SUSTENTO, REGLAS_TRAMPAS, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO,
     ausentes.length ? `## Reglas de clases que ahora no están en la mesa\nNo se cargan para ahorrar espacio (${ausentes.join(", ")}). Si un personaje u otro caso las necesita, léelas con consultar_reglas {tema: "clase", nombre: "<clase>"}.` : "",
   ].filter(Boolean).join("\n\n");
 }

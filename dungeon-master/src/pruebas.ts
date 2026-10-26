@@ -73,7 +73,7 @@ export function clave(h: string): string {
   return k;
 }
 
-export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: string; exito: boolean } {
+export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: string; exito: boolean; margen?: number } {
   const n = sinTildes(d.quien);
   const pj = Object.values(partida.personajes).find((p) => sinTildes(p.nombre) === n || (p.jugador && sinTildes(p.jugador) === n));
   const salv = d.tipo === "salvacion";
@@ -101,7 +101,7 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
     const bono = d.bono ?? 0;
     const t = tirar(`1d20${signo(bono)}`, modo);
     const exito = t.dados[0] === 20 || (t.dados[0] !== 1 && t.total >= d.cd);
-    return { texto: `🎲 ${nombrePrueba} de ${d.quien} (PNJ, bono ${signo(bono)}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modo !== "normal" ? ` (${modo})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito };
+    return { texto: `🎲 ${nombrePrueba} de ${d.quien} (PNJ, bono ${signo(bono)}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modo !== "normal" ? ` (${modo})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito, margen: t.total - d.cd };
   }
   if (pj.pv <= 0 || pj.condiciones.includes("inconsciente") || pj.condiciones.includes("muerto"))
     throw new Error(`${pj.nombre} está ${pj.condiciones.includes("muerto") ? "muerto" : "inconsciente o a 0 PV"}: no puede intentar ${salv ? "esa salvación" : "una prueba"} (en una salvación contra muerte usa salvacion_muerte, no esta herramienta).`);
@@ -127,7 +127,7 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   const natural = t.dados[0];
   const exito = natural === 20 || (natural !== 1 && t.total >= d.cd);
   const desglose = [`${ATR_CORTO[attr!]} ${signo(m)}`, bonoComp ? `competencia ${signo(bonoComp)}${pericia ? " (pericia)" : ""}` : hab ? "sin competencia" : "", extra ? `ajuste ${signo(extra)}` : ""].filter(Boolean).join(", ");
-  return { texto: `🎲 ${nombrePrueba} de ${pj.nombre} (${desglose}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modoP !== "normal" ? ` (${modoP})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito };
+  return { texto: `🎲 ${nombrePrueba} de ${pj.nombre} (${desglose}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modoP !== "normal" ? ` (${modoP})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito, margen: t.total - d.cd };
 }
 
 /** ¿La tirada genérica parece una prueba de característica de un PJ? (para dirigirla a la herramienta `prueba`) */
