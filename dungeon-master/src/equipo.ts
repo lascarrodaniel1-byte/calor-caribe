@@ -35,6 +35,9 @@ interface Base {
 const BASES: Base[] = [
   { nombre: "Daga", clase: "arma", detalle: "1d4 perforante, sutil, arrojadiza", precio: 2 },
   { nombre: "Espada corta", clase: "arma", detalle: "1d6 perforante, sutil", precio: 10 },
+  { nombre: "Sable de abordaje", clase: "arma", detalle: "1d8 cortante, sutil, ligera (hoja corta y curva hecha para cubiertas atestadas: ventaja en una nave)", precio: 20 },
+  { nombre: "Hacha de abordaje", clase: "arma", detalle: "1d8 cortante, ligera (corta cabos y huesos; ventaja en una nave)", precio: 12 },
+  { nombre: "Chuzo de abordaje", clase: "arma", detalle: "1d8 perforante, alcance, dos manos (lanza corta para rechazar abordajes; ventaja en una nave)", precio: 8 },
   { nombre: "Espada larga", clase: "arma", detalle: "1d8 cortante (1d10 a dos manos)", precio: 15 },
   { nombre: "Estoque", clase: "arma", detalle: "1d8 perforante, sutil", precio: 25 },
   { nombre: "Shotel", clase: "arma", detalle: "1d6 cortante, sutil (hoja doblemente curva que rodea escudos); se lleva en pareja", precio: 30 },

@@ -22,7 +22,7 @@ import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { pxCriatura, registrarBaja } from "./progresion.js";
 import { ajusteAgua, estaSumergido } from "./agua.js";
 import { ventajaMontada } from "./montura.js";
-import { ajusteMar } from "./naves.js";
+import { ajusteMar, ventajaNaval } from "./naves.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -561,6 +561,8 @@ export interface DatosAtaque {
   nervio?: "brazo" | "pierna" | "columna";
   /** Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene). */
   dardo?: "sano" | "impregnado";
+  /** PNJ o criatura que combate sobre la cubierta de una nave (los PJ ya lo saben por estar a bordo). */
+  en_cubierta?: boolean;
 }
 
 export interface ResultadoAtaque {
@@ -720,6 +722,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (aguaAj.desventaja) { desventaja = true; motivos.push(aguaAj.desventaja); }
   const monta = ventajaMontada(partida, at.nombre, ob.nombre, distancia);
   if (monta) { ventaja = true; motivos.push(monta); }
+  const naval = ventajaNaval(partida, at.nombre, d.arma, distancia, d.en_cubierta);
+  if (naval) { ventaja = true; motivos.push(naval); }
   const mar = ajusteMar(partida, at.nombre, distancia);
   if (mar) { desventaja = true; motivos.push(mar); }
   const modo: Modo = ventaja && !desventaja ? "ventaja" : desventaja && !ventaja ? "desventaja" : "normal";

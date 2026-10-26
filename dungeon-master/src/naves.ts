@@ -226,6 +226,18 @@ export function pasarAsaltoNave(partida: Partida): string[] {
   return out;
 }
 
+/** Armas de cubierta: las de abordaje, y las cortas o curvas que se manejan bien donde no hay sitio para un mandoble. */
+const ARMAS_DE_CUBIERTA = /abordaje|alfanje|sable|cimitarra|shotel|machete|espada corta|daga|cuchill|pu[ñn]al|hacha de mano|hachuela/i;
+
+/** Ventaja del cuerpo a cuerpo con un arma de cubierta sobre la de una nave (o en un abordaje). */
+export function ventajaNaval(partida: Partida, atacante: string, arma: string | undefined, distancia: boolean, enCubierta?: boolean): string | null {
+  if (distancia || !arma || !ARMAS_DE_CUBIERTA.test(arma)) return null;
+  const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(atacante));
+  const n = p?.nave ? partida.naves?.[p.nave] : undefined;
+  if (!enCubierta && (!n || n.estado === "hundida")) return null;
+  return `ventaja: ${arma} es un arma de cubierta${n ? ` en ${n.nombre}` : ""}`;
+}
+
 /** Desventaja a los ataques a distancia (mar picado o tormenta) y a todos (tormenta) desde una nave. */
 export function ajusteMar(partida: Partida, atacante: string, distancia: boolean): string | null {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(atacante));
@@ -246,4 +258,5 @@ export const REGLAS_NAVES = `## Botes, barcos y combate naval
 - Crea la nave con nave {accion: crear, nave, tipo: balsa|bote|barca|carraca|galera} (casco 20, 40, 70, 220, 400; km/h 2,5, 4, 9, 11, 13) y sube al grupo con abordar. navegar {horas, viento} calcula los km (viento favorable ×1,5, calmo ×0,6, contrario ×0,5, tormenta ×0,3), avanza el reloj y exige tripulación mínima (menos, va más lenta). Si va escorada, a medio ritmo. En tormenta daña el casco y cada pasajero tira DES CD 10 o cae al agua.
 - Mar: nave {accion: mar, mar: calmo|picado|tormenta}. Picado: desventaja en los ataques a distancia desde cubierta. Tormenta: desventaja en todos los ataques y, cada asalto, DES CD 10 o cae por la borda (queda bajo el agua: reglas de agua).
 - Combate naval: dañar el casco con nave {accion: danar, cantidad, tipo_dano} (fuego: doble, y prende fuego: −1d6 de casco por asalto hasta apagarlo). Un casco a la mitad escora la nave; a un cuarto se hunde en 2d6 asaltos salvo que se achique (reparar achicar: +1 asalto cada vez) y se remiende (reparar remendar: prueba de FUE CD 12, repara 2d6). Una embestida causa 2d10 al casco por cada 5 km/h de velocidad. A 0 se hunde y todos caen al agua.
+- Armas de cubierta: en una nave (o en un abordaje, con en_cubierta=true en atacar para PNJ y criaturas), el cuerpo a cuerpo con sable o hacha de abordaje, chuzo, alfanje, cimitarra, espada corta, daga, hacha de mano o shotel tiene VENTAJA: se manejan bien donde no hay sitio para un mandoble (espadones y armas de asta, no). En tormenta se cancela con su desventaja.
 - Abordaje: nave {accion: abordaje, nave, otra} une las naves con garfios; se cruza con una acción de movimiento y se combate en cubierta. Atacar el casco con armas pequeñas apenas lo daña: solo máquinas, embestidas, fuego o armas de gran tamaño.`;
