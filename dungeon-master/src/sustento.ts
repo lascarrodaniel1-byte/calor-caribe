@@ -32,6 +32,18 @@ function subirAgotamiento(p: Personaje, causa: string): string {
   return `${p.nombre}: agotamiento ${nivel} (${causa}).`;
 }
 
+const ESTADOS_HAMBRE = /^(con hambre|famélico)/i, ESTADOS_SED = /^(con sed|deshidratado)/i;
+
+/** Pone (o quita) el estado de hambre y de sed que le toca por las horas que lleva sin comer y sin beber. */
+function ponerEstados(p: Personaje, horasSinComer: number, horasSinBeber: number): void {
+  const lim = diasSinComer(p) * 24;
+  const hambre = horasSinComer >= lim ? "famélico" : horasSinComer >= Math.max(24, lim / 2) ? "con hambre" : "";
+  const sed = horasSinBeber >= 24 ? "deshidratado" : horasSinBeber >= 12 ? "con sed" : "";
+  p.condiciones = p.condiciones.filter((c) => !ESTADOS_HAMBRE.test(c) && !ESTADOS_SED.test(c));
+  if (hambre) p.condiciones.push(hambre);
+  if (sed) p.condiciones.push(sed);
+}
+
 /** Revisa el hambre y la sed con el reloj; devuelve lo que ha pasado desde la última vez. */
 export function revisarSustento(partida: Partida): string[] {
   if (!partida.reloj) return [];
@@ -47,6 +59,7 @@ export function revisarSustento(partida: Partida): string[] {
     for (let i = s.sed; i < excesoS; i++) out.push(subirAgotamiento(p, `lleva ${sinBeber + 1} días sin beber`));
     s.hambre = Math.max(s.hambre, excesoH);
     s.sed = Math.max(s.sed, excesoS);
+    if (!p.condiciones.includes("muerto")) ponerEstados(p, (ahora - s.comida) / 3600, (ahora - s.agua) / 3600);
   }
   return out;
 }
@@ -113,11 +126,13 @@ export function sustento(partida: Partida, d: DatosSustento): string {
       const gastado = d.libre ? "lo que encontró" : gastarUnidad(p, /raci[oó]n|raciones|provisi[oó]n|pan\b|carne seca|queso/i);
       if (!gastado) { lineas.push(`${p.nombre}: no tiene qué comer (sin raciones en el inventario; si come de una posada o de la caza, pasa libre=true).`); continue; }
       s.comida = ahora; s.hambre = 0;
+      p.condiciones = p.condiciones.filter((c) => !ESTADOS_HAMBRE.test(c));
       lineas.push(`${p.nombre} come (${gastado}).`);
     } else {
       const gastado = d.libre ? "una fuente" : gastarUnidad(p, /agua|odre|cantimplora/i, "Odre vacío");
       if (!gastado) { lineas.push(`${p.nombre}: no tiene qué beber (sin agua ni odre lleno; si bebe de un río o un pozo, pasa libre=true).`); continue; }
       s.agua = ahora; s.sed = 0;
+      p.condiciones = p.condiciones.filter((c) => !ESTADOS_SED.test(c));
       lineas.push(`${p.nombre} bebe (${gastado}).`);
     }
   }
@@ -172,6 +187,6 @@ export function viajar(partida: Partida, d: DatosViaje): string {
 }
 
 export const REGLAS_SUSTENTO = `## Viaje, raciones, hambre y sed
-- El reloj (tiempo) cuenta el hambre y la sed solo: sin comer, un personaje aguanta 3 + mod. de CON días (mínimo 1) y después sube un nivel de agotamiento por cada día; sin beber aguanta un día y luego sube un nivel por día. Al llegar a agotamiento 6, muere. Comer y beber (sustento {accion: comer|beber}) gasta una ración o una unidad de agua del inventario («Raciones de viaje (5)», «Odre de agua (2)»); si come en una posada o bebe de un río, pasa libre=true. Dale a cada personaje al empezar «Raciones de viaje (5)» y «Odre de agua (2)» si su equipo no las trae.
+- El reloj (tiempo) cuenta el hambre y la sed solo: sin comer, un personaje aguanta 3 + mod. de CON días (mínimo 1) y después sube un nivel de agotamiento por cada día (y antes, el hambre pasa por dos estados con castigo: «con hambre» —desventaja en pruebas— a partir de la mitad del plazo y «famélico» —también en ataques— al cumplirlo); sin beber aguanta un día y luego sube un nivel por día («con sed» a las 12 h y «deshidratado» a las 24 h, con los mismos castigos). Comer o beber los quita. Al llegar a agotamiento 6, muere. Comer y beber (sustento {accion: comer|beber}) gasta una ración o una unidad de agua del inventario («Raciones de viaje (5)», «Odre de agua (2)»); si come en una posada o bebe de un río, pasa libre=true. Dale a cada personaje al empezar «Raciones de viaje (5)» y «Odre de agua (2)» si su equipo no las trae.
 - Para ir de un sitio a otro usa viajar {horas, ritmo, terreno}: calcula los km (lento 3,2 km/h, normal 4,8, rápido 6,4; terreno difícil, la mitad), avanza el reloj y cobra la marcha forzada pasadas 8 horas (salvación de CON, CD 10 + horas de más, o agotamiento). Rápido: −5 a la Percepción pasiva y sin sigilo; lento: sigilo y forrajeo. Buscar comida por el camino es una prueba de Supervivencia (CD 10 fértil, 15 normal, 20 árido): si sale, comen con libre=true.
 - Un descanso largo quita un nivel de agotamiento solo si en el último día comió y bebió.`;
