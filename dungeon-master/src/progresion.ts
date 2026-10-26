@@ -12,7 +12,9 @@ export const PX_NIVEL = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64
 export const NIVEL_MAX = 20;
 export const NIVELES_AUMENTO = [4, 8, 12, 16, 19];
 /** PX por peligro de la criatura (1-5), como el valor de desafío de 5e. */
-export const PX_PELIGRO: Record<number, number> = { 1: 50, 2: 200, 3: 450, 4: 700, 5: 1100 };
+export const PX_PELIGRO: Record<number, number> = { 1: 50, 2: 450, 3: 1800, 4: 5000, 5: 15000 };
+/** Los jefes (criaturas únicas, con nombre propio) valen la mitad más que un monstruo del mismo peligro. */
+export const pxCriatura = (c: { peligro: number; categoria?: string }): number => Math.round((PX_PELIGRO[c.peligro] ?? 0) * (c.categoria === "jefe" ? 1.5 : 1));
 
 export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
   "Mercenario del Cuervo": {
@@ -110,7 +112,7 @@ export function textoProgresion(p: Personaje): string {
 }
 
 /** PX de un enemigo con ficha de PNJ que cae en combate, según su veteranía. */
-export const PX_PNJ: Record<string, number> = { recluta: 25, curtido: 50, veterano: 100, leyenda: 200 };
+export const PX_PNJ: Record<string, number> = { recluta: 25, curtido: 50, veterano: 150, leyenda: 450 };
 /** Una misión o arco da a cada personaje este porcentaje de lo que le falta para el nivel siguiente (de un nivel al otro). */
 export const PX_MISION: Record<string, number> = { menor: 0.15, normal: 0.3, mayor: 0.5, epica: 0.8 };
 
@@ -273,7 +275,7 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
 }
 
 export const REGLAS_PROGRESION = `## Experiencia y niveles
-- La experiencia es AUTOMÁTICA: cada criatura que muere suma sus PX según su peligro (1: 50, 2: 200, 3: 450, 4: 700, 5: 1100) y cada enemigo con ficha de PNJ que cae, según su veteranía (recluta 25, curtido 50, veterano 100, leyenda 200); al cerrar el combate (terminar_combate) se reparten a partes iguales entre los personajes vivos. NO la repartas tú a mano por esos combates. Las criaturas que huyen o se perdonan no dan PX.
+- La experiencia es AUTOMÁTICA: cada criatura que muere suma sus PX según su peligro (1: 50, 2: 450, 3: 1800, 4: 5000, 5: 15000; los jefes, un 50 % más: cuanto más poderoso, mucho más) y cada enemigo con ficha de PNJ que cae, según su veteranía (recluta 25, curtido 50, veterano 150, leyenda 450); al cerrar el combate (terminar_combate) se reparten a partes iguales entre los personajes vivos. NO la repartas tú a mano por esos combates. Las criaturas que huyen o se perdonan no dan PX.
 - Cerrar un arco (trama cerrar_arco) da experiencia solo: a cada personaje, el 30 % de lo que le falta para el siguiente nivel (importancia: menor 15 %, normal 30 %, mayor 50 %, épica 80 %). Una misión menor o un encargo que no es un arco se premia con experiencia {accion: mision, importancia, motivo}. Para un desafío suelto, un buen plan o una escena memorable, usa experiencia {accion: dar, px}. En la ficha verás los PX y «⬆ PUEDE SUBIR DE NIVEL».
 - Sube de nivel con subir_nivel en un momento tranquilo (tras un descanso): el programa suma los PV (promedio o tirada), la competencia y los rasgos de clase hasta el nivel 5; en los niveles 4, 8, 12, 16 y 19 el jugador elige un aumento de característica (+2 a una o +1 a dos). No cambies el nivel a mano con modificar_personaje salvo para corregir un error.
 - Los niveles dan poder lentamente: no regales niveles por hito más de uno cada varias sesiones.`;
