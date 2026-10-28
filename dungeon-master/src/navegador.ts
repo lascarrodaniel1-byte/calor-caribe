@@ -16,6 +16,7 @@ import { comando } from "./mesa.js";
 import * as narrativa from "./narrativa.js";
 import { textoPnj, textoPnjsFuera, textoTrama } from "./narrativa.js";
 import * as turnos from "./turnos.js";
+import * as anotador from "./anotador.js";
 import * as formulario from "./formulario.js";
 import * as aventuras from "./aventuras.js";
 import * as espacio from "./espacio.js";
@@ -159,5 +160,5 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   return partes.join("\n\n");
 }
 
-export { aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { anotador, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };
