@@ -33,6 +33,9 @@ import { valor } from "./reglas.js";
 export interface Personaje {
   nombre: string;
   jugador?: string;
+  /** Enfermedades que sufre (ver enfermedades.ts) y si está aislado (no contagia ni se contagia). */
+  enfermedades?: import("./enfermedades.js").Enfermedad[];
+  aislado?: boolean;
   /** Dotes elegidas (las que llevan opción: «id:opción»; ver dotes.ts) y la dote gratis del Humano del Faro. */
   dotes?: string[];
   dote_humano?: string;
@@ -235,6 +238,7 @@ export function fichaTexto(p: Personaje): string {
   return [
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
+    p.enfermedades?.some((e) => e.etapa !== "incubando") ? `  Enfermo: ${p.enfermedades.filter((e) => e.etapa !== "incubando").map((e) => `${e.id.replace(/_/g, " ")} (${e.etapa})`).join(", ")}` : "",
     p.dotes?.length ? `  Dotes: ${p.dotes.map((d) => d.replace(":", " (") + (d.includes(":") ? ")" : "")).join(", ")}` : "",
     p.don === "fisico" ? "  Don arcano FÍSICO: competencia +1 y FUE, DES y CON hasta 28" : p.don === "magico" ? "  Don arcano MÁGICO" : "",
     "  " +

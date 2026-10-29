@@ -25,6 +25,7 @@ import { REGLAS_COMPANIA } from "./compania.js";
 import { REGLAS_SUSTENTO } from "./sustento.js";
 import { REGLAS_TRAMPAS } from "./trampas.js";
 import { REGLAS_DOTES } from "./dotes.js";
+import { REGLAS_ENFERMEDADES } from "./enfermedades.js";
 import { REGLAS_MONTURA } from "./montura.js";
 import { REGLAS_AGUA } from "./agua.js";
 import { REGLAS_NAVES } from "./naves.js";
@@ -160,7 +161,7 @@ export function sistemaWeb(clases?: string[]): string {
   return [
     BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS,
     clase("Berserker de Ceniza"), clase("Caballero Juramentado"), clase("Cazador de Brujas"), clase("Degollador"), clase("Flagelante"), clase("Segador"), clase("Barbero-Cirujano"),
-    REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_SUSTENTO, REGLAS_TRAMPAS, REGLAS_DOTES, REGLAS_MONTURA, REGLAS_AGUA, REGLAS_NAVES, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO,
+    REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_SUSTENTO, REGLAS_TRAMPAS, REGLAS_ENFERMEDADES, REGLAS_DOTES, REGLAS_MONTURA, REGLAS_AGUA, REGLAS_NAVES, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO,
     ausentes.length ? `## Reglas de clases que ahora no están en la mesa\nNo se cargan para ahorrar espacio (${ausentes.join(", ")}). Si un personaje u otro caso las necesita, léelas con consultar_reglas {tema: "clase", nombre: "<clase>"}.` : "",
   ].filter(Boolean).join("\n\n");
 }

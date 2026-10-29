@@ -53,6 +53,7 @@ import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
 import { dote, tomarDote } from "./dotes.js";
+import { buscarEnfermedad, enfermedad, exponer, procesarEnfermedades } from "./enfermedades.js";
 import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
 import { marcarTiempo, nave, pasarAsaltoNave, procesarTiempo } from "./naves.js";
@@ -771,6 +772,15 @@ const esquemas = {
     terreno: z.enum(["camino", "abierto", "dificil"]),
     motivo: z.string().optional().describe("Adónde van"),
   }),
+  enfermedad: z.object({
+    accion: z.enum(["catalogo", "exponer", "tratar", "curar", "aislar", "ver"]),
+    enfermedad: z.string().optional().describe("fiebre_cienaga, tos_ceniza, peste_ratas o hambre_muerta"),
+    quienes: z.array(z.string()).optional().describe("exponer/aislar: por defecto, todo el grupo · tratar/curar: el enfermo"),
+    cd: z.number().int().min(5).max(25).optional().describe("exponer: otra CD si la exposición es más suave o más fuerte"),
+    sanador: z.string().optional().describe("tratar: quién cuida"),
+    metodo: z.enum(["cuidados", "hierbas", "remedio_raro", "magia_divina"]).optional(),
+    aislado: z.boolean().optional().describe("aislar: false para dejar de aislar"),
+  }),
   dote: z.object({
     accion: z.enum(["lista", "elegir", "ver"]),
     quien: z.string().optional(),
@@ -810,6 +820,8 @@ const descripciones: Record<Nombre, string> = {
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   viajar:
     "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
+  enfermedad:
+    "Enfermedades: exponer (salvación de CON; si falla incuba en secreto), tratar (cuidados, hierbas, remedio raro, magia divina), curar, aislar, ver y catalogo. El reloj hace avanzar la enfermedad solo.",
   dote:
     "Dotes: lista (todas), ver (las de un personaje) o elegir (la dote gratis del Humano del Faro; las demás se eligen en subir_nivel).",
   tirar_don_arcano:
@@ -1096,6 +1108,8 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   }
   const monturas = revisarMonturas(partida); // si cae la montura, el jinete cae con ella
   if (monturas.length) { r.contenido += `\n${monturas.join("\n")}`; r.aviso = [r.aviso, ...monturas.map((m) => `🐎 ${m.split("\n")[0]}`)].filter(Boolean).join("\n"); }
+  const mal = procesarEnfermedades(partida); // el reloj hace avanzar las enfermedades
+  if (mal.length) { r.contenido += `\n${mal.join("\n")}`; r.aviso = [r.aviso, ...mal.map((m) => `🤒 ${m}`)].filter(Boolean).join("\n"); }
   const hambre = revisarSustento(partida); // el reloj puede haber pasado de la hora de comer o beber
   if (hambre.length) { r.contenido += `\n${hambre.join("\n")}`; r.aviso = [r.aviso, ...hambre.map((h) => `🍖 ${h}`)].filter(Boolean).join("\n"); }
   const libres = liberarSiMuere(partida); // un Segador muerto libera las almas que sostenía
@@ -1172,7 +1186,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "enfermedades", "aislado", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         delete (p as unknown as Record<string, unknown>).dote;
@@ -1684,6 +1698,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "atacar": {
         const e = validado.data as z.infer<typeof esquemas.atacar>;
         const r = ataqueCompleto(partida, e);
+        // Los mordiscos de los muertos exponen a la enfermedad de la criatura (si el ataque impacta).
+        const cri = Object.values(partida.jefes).find((j) => j.nombre.toLowerCase() === e.atacante.toLowerCase());
+        const pjObjetivo = Object.values(partida.personajes).find((p) => p.nombre.toLowerCase() === e.objetivo.toLowerCase());
+        if (cri?.definicion.contagia && pjObjetivo && /→ (IMPACTO|¡?CRÍTICO)/.test(r.texto) && partida.reloj) {
+          const def = buscarEnfermedad(cri.definicion.contagia.enfermedad);
+          if (def) { const x = exponer(partida, pjObjetivo, def, cri.definicion.contagia.cd); r.texto += `\n🦠 ${x}`; }
+        }
         return { contenido: r.texto, aviso: r.aviso };
       }
       case "pnj": {
@@ -1737,6 +1758,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.viajar>;
         const texto = viajar(partida, e);
         return { contenido: texto, aviso: `🥾 ${texto.split("\n")[0]}` };
+      }
+      case "enfermedad": {
+        const e = validado.data as z.infer<typeof esquemas.enfermedad>;
+        const r = enfermedad(partida, e);
+        return { contenido: r.texto, aviso: r.publico };
       }
       case "dote": {
         const e = validado.data as z.infer<typeof esquemas.dote>;
