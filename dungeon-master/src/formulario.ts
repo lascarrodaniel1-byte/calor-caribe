@@ -1,5 +1,6 @@
 // Formulario de personaje: el jugador rellena todo de una vez y el DM recibe una ficha completa,
 // con los valores ya calculados (bono racial, PV), para guardarla sin hacer más preguntas.
+import { buscarDote, DOTES } from "./dotes.js";
 import { PERSONALIDADES, VETERANIAS } from "./combate.js";
 import { buscarTipo, TIPOS_MAGIA } from "./magia.js";
 import { CLASES, RAZAS } from "./mundo.js";
@@ -43,6 +44,7 @@ export const DATOS_FORMULARIO = {
     { id: "humilde", nombre: "Humilde (solo entra si el DM te tiró el don arcano MÁGICO antes de crear el personaje)" },
   ],
   serie: SERIE_ESTANDAR,
+  dotes: DOTES.map((d) => ({ id: d.id, nombre: d.nombre, efecto: d.efecto, requisito: `${d.requisito.atributos.map((a) => a.toUpperCase()).join(" o ")} ${d.requisito.minimo}${d.requisito.clase ? `, solo ${d.requisito.clase}` : ""}`, opciones: d.opciones ?? [] })),
 };
 
 export interface DatosFicha {
@@ -62,6 +64,9 @@ export interface DatosFicha {
   linaje: string;
   trasfondo: string;
   extra: string;
+  /** Solo el Humano del Faro: su dote gratis y la opción que lleve. */
+  dote?: string;
+  opcion_dote?: string;
 }
 
 export function finales(f: DatosFicha): Record<Atributo, number> {
@@ -93,6 +98,14 @@ export function validarFicha(f: DatosFicha): string[] {
     if (!buscarTipo(f.tipo ?? "")?.licenciado) e.push("El Hechicero elige el tipo de magia con que empieza (el que enseña su escuela).");
     if (!["noble", "rico", "humilde"].includes(f.linaje ?? "")) e.push("Di si el Hechicero es noble, rico o humilde (solo los nobles y los ricos entran en las escuelas de hechicería, salvo con el don arcano mágico).");
   }
+  if (f.raza === "Humano del Faro") {
+    const d = buscarDote(f.dote ?? "");
+    const fin = finales(f);
+    if (!d) e.push("El Humano del Faro empieza con una dote gratis: elige una.");
+    else if (d.requisito.clase && d.requisito.clase !== f.clase) e.push(`${d.nombre} es solo para ${d.requisito.clase}.`);
+    else if (!d.requisito.atributos.some((a) => fin[a] >= d.requisito.minimo)) e.push(`${d.nombre} pide ${d.requisito.atributos.map((a) => a.toUpperCase()).join(" o ")} ${d.requisito.minimo} (con tus atributos finales).`);
+    else if (d.opciones && !d.opciones.includes(f.opcion_dote ?? "")) e.push(`${d.nombre}: elige ${d.opciones.join(" o ")}.`);
+  }
   if (f.trasfondo.trim().length < 20) e.push("Cuenta en unas líneas quién fue tu personaje y qué busca.");
   if (textoFicha(f).length > MAX_ACCION) e.push("El texto es demasiado largo: acorta el trasfondo o el equipo extra.");
   return e;
@@ -114,6 +127,7 @@ export function textoFicha(f: DatosFicha): string {
     f.clase === "Hechicero" ? `Magia: tipo inicial «${f.tipo}» (guárdalo con tipos_magia: [«${f.tipo}»]), linaje «${f.linaje}» (pásalo como linaje). El don arcano ya lo tiró el DM antes de crear el personaje (guardar_personaje lo aplica solo); si es humilde y no tiene el don mágico, la escuela no lo admite: dile al jugador que cambie de linaje o de clase.` : "",
     `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}; más «Raciones de viaje (5)» y «Odre de agua (2)» en el inventario`,
     `Trasfondo: ${f.trasfondo.trim()}`,
+    f.raza === "Humano del Faro" ? `Dote gratis del Humano del Faro: «${f.dote}»${f.opcion_dote ? ` (opción ${f.opcion_dote})` : ""} (pásala a guardar_personaje como dote${f.opcion_dote ? " y opcion_dote" : ""}).` : "",
     f.clase === "Cazador de Brujas" ? "Mascota: si el jugador nombró un halcón o un ratón (en el trasfondo o en el equipo extra), ese; si no, elige tú según su trasfondo, y guárdala con mascota {accion: elegir} justo después de guardar la ficha." : "",
     f.clase === "Caballero Juramentado" ? "Juramento: elige tú, sin preguntar, 1 a 3 votos de Ka'i (Verdad, Amparo, Lealtad, Luz, Descanso, Merced) acordes a su trasfondo y guárdalos con juramento {accion: jurar} justo después de guardar la ficha." : "",
   ]

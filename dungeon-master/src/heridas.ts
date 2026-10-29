@@ -1,5 +1,6 @@
 // Motor de heridas: gravedad, infección, tratamiento, recuperación y secuelas.
 // Toda la aleatoriedad pasa por dados.ts; el DM solo narra lo que sale aquí.
+import { tiene as tieneDote } from "./dotes_base.js";
 import { sangreFria } from "./flagelante_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Personaje } from "./estado.js";
@@ -181,7 +182,8 @@ const rasgos = (p: Personaje) => {
   const base = raza(p.raza)?.curacion ?? NORMAL;
   // Salud divina (Caballero Juramentado, nivel 3+, con el juramento en pie): casi inmune a las infecciones comunes (no a la Podre).
   const j = p.juramento;
-  return p.clase === "Caballero Juramentado" && p.nivel >= 3 && j && !j.roto && !j.perdido ? { ...base, infeccion: base.infeccion + 5 } : base;
+  const r = p.clase === "Caballero Juramentado" && p.nivel >= 3 && j && !j.roto && !j.perdido ? { ...base, infeccion: base.infeccion + 5 } : base;
+  return tieneDote(p, "cicatrizado") ? { ...r, recuperacion: r.recuperacion + 2 } : r; // Cicatrizado: +2 a la recuperación
 };
 const modCON = (p: Personaje) => Math.floor((valor(p, "con") - 10) / 2);
 const signo = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
@@ -254,8 +256,8 @@ export function resumenHerida(h: Herida): string {
   return `[${h.id}] ${zonaTxt}${h.gravedad} · ${h.tipo} · ${h.ubicacion}${estr} · ${extra.join(" · ")} — ${efecto(h)}${h.descripcion ? ` (${h.descripcion})` : ""}`;
 }
 
-function salvacionCON(p: Personaje, cd: number, extra = 0) {
-  const t = tirar(`1d20${signo(modCON(p) + extra)}`);
+function salvacionCON(p: Personaje, cd: number, extra = 0, ventaja = false) {
+  const t = tirar(`1d20${signo(modCON(p) + extra)}`, ventaja ? "ventaja" : "normal");
   return { exito: t.total >= cd, total: t.total, texto: `${describir(t)} vs CD ${cd}` };
 }
 
@@ -366,7 +368,7 @@ export function infligir(p: Personaje, d: DatosHerida): string {
     if (r.inmunePodre) log.push(`${p.raza}: inmune a la Podre.`);
     else if (gravedad === "leve") log.push("Herida superficial: la Podre no llega a entrar.");
     else {
-      const s = salvacion(p, "con", d.cd_podre ?? 12, { extra: r.infeccion });
+      const s = salvacion(p, "con", d.cd_podre ?? 12, { extra: r.infeccion, ventaja: tieneDote(p, "cicatrizado") });
       h.podre = !s.exito;
       log.push(`Contagio de la Podre: ${s.texto}${h.podre ? " → ¡la Podre entra en la herida!" : " → la resiste."}`);
     }
@@ -521,7 +523,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
 
 
       const mods: string[] = [];
-      let bono = d.bono_medicina;
+      let bono = d.bono_medicina + (tieneDote(d.sanador, "manos_de_cirujano") ? 2 : 0); // Manos de cirujano
       mods.push(`Medicina ${signo(d.bono_medicina)}`);
       const ent = ENTORNOS[d.entorno];
       if (ent) mods.push(`${d.entorno} ${signo(ent)}`);
@@ -564,7 +566,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
           const tiene = (x: Recurso) => d.recursos.includes(x);
           let pen = 0;
           if (regla.material === "kit de sanador" && !tiene("kit de sanador") && !tiene("herramientas de cirujano")) pen = 5;
-          if (regla.material === "herramientas de cirujano" && !tiene("herramientas de cirujano")) pen = tiene("kit de sanador") ? 5 : 10;
+          if (regla.material === "herramientas de cirujano" && !tiene("herramientas de cirujano")) pen = tiene("kit de sanador") ? (tieneDote(d.sanador, "manos_de_cirujano") ? 0 : 5) : 10;
           if (barbero) pen = Math.floor(pen / 2);
           if (pen) {
             bono -= pen;
@@ -811,7 +813,7 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
           log.push(`☠ ${p.nombre} muere: ${h.estructura} sin cirugía (shock, peritonitis o sangre en el cráneo).`);
           break;
         }
-        const s = salvacionCON(p, 13 + 2 * h.fallos_viscerales, r.infeccion);
+        const s = salvacionCON(p, 13 + 2 * h.fallos_viscerales, r.infeccion, tieneDote(p, "cicatrizado"));
         if (!s.exito) {
           h.fallos_viscerales++;
           if (h.fallos_viscerales >= 3) {
@@ -831,7 +833,7 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
       }
 
       if (h.estado === "infectada") {
-        const s = salvacionCON(p, cdInf, r.infeccion);
+        const s = salvacionCON(p, cdInf, r.infeccion, tieneDote(p, "cicatrizado"));
         if (s.exito && !h.podre && ++h.infeccion_exitos >= 3) {
           h.estado = h.tratada_antes ? "tratada" : "sin tratar";
           h.mod_recuperacion -= 1;
@@ -860,7 +862,7 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
 
       if (h.estado === "sin tratar" && h.gravedad !== "leve") {
         if (h.dias_abierta >= 1) {
-          const s = salvacionCON(p, cdInf, r.infeccion);
+          const s = salvacionCON(p, cdInf, r.infeccion, tieneDote(p, "cicatrizado"));
           if (!s.exito) {
             infectar(h);
             log.push(`${h.id} sin tratar: ${s.texto} → se infecta${h.podre ? " (la Podre: el cuerpo no puede vencerla solo)" : ""}.`);
@@ -871,7 +873,7 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
 
       // Tratadas, y leves aunque no estén tratadas.
       if (calidad === "esfuerzo" || calidad === "precario") {
-        const s = salvacionCON(p, cdInf - 4 - (h.desinfectada ? 3 : 0), r.infeccion);
+        const s = salvacionCON(p, cdInf - 4 - (h.desinfectada ? 3 : 0), r.infeccion, tieneDote(p, "cicatrizado"));
         if (!s.exito) {
           infectar(h);
           log.push(`${h.id}: ${s.texto} → la herida se infecta (${calidad === "esfuerzo" ? "por el esfuerzo" : "por las malas condiciones"}).`);

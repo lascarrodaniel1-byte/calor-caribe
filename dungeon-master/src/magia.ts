@@ -1,6 +1,7 @@
 // Magia de Velmora: rara y cara. Cada hechizo se cobra un tributo en el cuerpo
 // o la mente de quien lo lanza (calor, aliento, sangre, cordura o años de vida),
 // mayor cuanto más alto es su círculo. Los catalizadores absorben ese precio.
+import { tiene } from "./dotes_base.js";
 import { exigirLibre } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
 import { levantarse } from "./muerte.js";
@@ -89,7 +90,7 @@ export const tipoDe = (h: { escuela: Escuela; tema?: string }): string => (h.esc
 /** La escuela de hechicería que enseña un tipo (todas con licencia de la Inquisición, salvo las de magia negra). */
 export const nombreEscuelaHechiceria = (tipo: string): string => `Escuela de ${buscarTipo(tipo)?.nombre ?? tipo}`;
 /** Cuántos tipos puede dominar un Hechicero de escuela: 1 al empezar, 2 desde el nivel 5 y 3 desde el 9. El del don, todos. */
-export const tiposMax = (nivel: number, don: boolean): number => (don ? TIPOS_MAGIA.length : nivel >= 9 ? 3 : nivel >= 5 ? 2 : 1);
+export const tiposMax = (nivel: number, don: boolean, extra = 0): number => (don ? TIPOS_MAGIA.length : (nivel >= 9 ? 3 : nivel >= 5 ? 2 : 1) + extra);
 
 export interface Hechizo {
   nombre: string;
@@ -231,7 +232,7 @@ export const tiposDeEscuelas = (escuelas: Escuela[]): string[] => TIPOS_MAGIA.fi
 function recortarTipos(p: Personaje): void {
   const m = p.magia;
   if (!m || p.clase !== "Hechicero" || m.don || !m.tipos) return;
-  const max = tiposMax(p.nivel, false);
+  const max = tiposMax(p.nivel, false, tiene(p, "discipulo_de_escuela") ? 1 : 0);
   if (m.tipos.length > max) { m.tipos = m.tipos.slice(0, max); m.licencias = (m.licencias ?? []).filter((t) => m.tipos!.includes(t)); m.escuelas = [...new Set(m.tipos.map((t) => buscarTipo(t)!.escuela))] as Escuela[]; }
 }
 

@@ -1,5 +1,6 @@
 // Trampas con CD y Percepción pasiva. El DM las coloca en secreto; el grupo las nota solo (pasiva) o las busca (prueba),
 // se desarman con una prueba de Juego de manos y, si saltan, afectan como la habilidad de una criatura (salvación, daño, heridas…).
+import { tiene } from "./dotes_base.js";
 import { usarHabilidad, type Habilidad } from "./bestiario.js";
 import { efectos } from "./condiciones.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -22,7 +23,8 @@ export function percepcionPasiva(p: Personaje, rapido = false): number {
   const e = efectos(p.condiciones);
   if (p.pv <= 0 || p.condiciones.includes("muerto") || e.incapacitado || e.ids.includes("cegado")) return 0;
   const comp = (COMPETENCIAS_CLASE[p.clase] ?? []).includes("percepcion") ? competencia(p) : 0;
-  return 10 + mod(valor(p, "sab")) + comp - (rapido ? 5 : 0);
+  const ojo = tiene(p, "ojo_de_cazador"); // Ojo de cazador: +5 y no pierde el −5 de ir deprisa
+  return 10 + mod(valor(p, "sab")) + comp + (ojo ? 5 : 0) - (rapido && !ojo ? 5 : 0);
 }
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -81,7 +83,7 @@ export function trampa(partida: Partida, d: DatosTrampa): { texto: string; publi
         const quienes = personajes(partida, d.quienes?.length ? d.quienes : vivos(partida).map((p) => p.nombre));
         let hallada = false;
         for (const p of quienes) {
-          const r = resolverPrueba(partida, { quien: p.nombre, habilidad: "percepcion", cd: t.cd_detectar, motivo: "buscar trampas" });
+          const r = resolverPrueba(partida, { quien: p.nombre, habilidad: "percepcion", cd: t.cd_detectar, ventaja: tiene(p, "ojo_de_cazador"), motivo: "buscar trampas" });
           lineas.push(r.texto.replace(/ — buscar trampas/, ""));
           if (r.exito) { hallada = true; break; }
         }

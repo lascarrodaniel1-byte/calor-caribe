@@ -1,9 +1,10 @@
 // Agarrar, empujar y escapar (reglas básicas de D&D 5e), y cobertura. Agarrar y empujar sustituyen un ataque: es una
 // prueba enfrentada de Atletismo (FUE) del atacante contra Atletismo (FUE) o Acrobacias (DES) del objetivo, lo mejor de los dos.
 // Un empate deja las cosas como estaban. El objetivo no puede ser más de un tamaño mayor que el atacante.
+import { tiene } from "./dotes_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
-import { aplicarCondicion, condsDe, igual, localizar, puedeActuar, retirarCaido, type Combatiente } from "./combate.js";
+import { aplicarCondicion, condsDe, igual, localizar, puedeActuar, retirarCaido, turnoDe, type Combatiente } from "./combate.js";
 import { efectos, reconocer } from "./condiciones.js";
 import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { COMPETENCIAS_CLASE } from "./pruebas.js";
@@ -53,6 +54,10 @@ export interface DatosManiobra {
   bono_objetivo?: number;
   ventaja?: boolean;
   desventaja?: boolean;
+  /** Maestro del escudo (dote): empuja con el escudo como acción adicional. */
+  escudo?: boolean;
+  /** Pendenciero (dote): agarra como acción adicional. */
+  adicional?: boolean;
 }
 
 export function maniobra(partida: Partida, d: DatosManiobra): string {
@@ -83,7 +88,15 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   })() : { ...a, hab: "Atletismo" };
   const atl = bonoManiobra(ob, "atletismo", d.bono_objetivo), acr = bonoManiobra(ob, "acrobacias", d.bono_objetivo);
   const def = d.tipo === "escapar" ? { ...atl, hab: "Atletismo" } : atl.bono >= acr.bono ? { ...atl, hab: "Atletismo" } : { ...acr, hab: "Acrobacias" };
-  const hayV = !!d.ventaja, hayD = !!d.desventaja || ea.pruebas === "desventaja";
+  if (d.escudo || d.adicional) {
+    if (at.tipo !== "pj") throw new Error("Solo los personajes jugadores tienen dotes.");
+    if (d.escudo && !(tiene(at.p, "maestro_del_escudo") && d.tipo === "empujar" && /escudo|rodela|adarga/i.test(at.p.manos?.secundaria ?? ""))) throw new Error(`${at.nombre} necesita la dote Maestro del escudo, un escudo empuñado y empujar.`);
+    if (d.adicional && !(tiene(at.p, "pendenciero") && d.tipo === "agarrar")) throw new Error(`${at.nombre} necesita la dote Pendenciero y agarrar.`);
+    const t = turnoDe(partida, at.nombre);
+    if (t.adicional) throw new Error(`${at.nombre} ya usó su acción adicional este asalto (${t.adicional}).`);
+    t.adicional = d.escudo ? "empujón con escudo" : "agarrar (Pendenciero)";
+  }
+  const hayV = !!d.ventaja || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
   const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";
   const ta = tirar(`1d20${signo(aA.bono)}`, modoA);
   const incapObjetivo = efO.incapacitado;

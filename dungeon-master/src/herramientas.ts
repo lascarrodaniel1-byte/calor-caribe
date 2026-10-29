@@ -52,6 +52,7 @@ import { coronarLeyenda, registrarHazana } from "./leyenda.js";
 import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
+import { dote, tomarDote } from "./dotes.js";
 import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
 import { marcarTiempo, nave, pasarAsaltoNave, procesarTiempo } from "./naves.js";
@@ -145,6 +146,8 @@ const esquemas = {
     escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Obsoleto (partidas antiguas): usa tipos_magia"),
     tipos_magia: z.array(z.enum(TIPOS_IDS)).max(1).optional().describe("Solo Hechicero: el tipo de magia con que empieza (el que enseña su escuela): fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curacion, proteccion, mente, adivinacion; sombra y necromancia son magia negra, sin licencia"),
     linaje: z.enum(["noble", "rico", "humilde"]).optional().describe("Solo Hechicero: solo los nobles o los ricos entran en las escuelas de hechicería, salvo quien nace con el don arcano (se incluye por fuerza mayor)"),
+    dote: z.string().optional().describe("Solo Humano del Faro: su dote gratis (dote {accion: lista})"),
+    opcion_dote: z.string().optional().describe("Opción de esa dote (Lengua de plata: persuasion o intimidacion)"),
     don_arcano: z.union([z.boolean(), z.enum(["fisico", "magico"])]).optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza el don (true = mágico). Si se omite, vale el que tiró el DM con tirar_don_arcano antes de crear al personaje"),
   }),
   modificar_personaje: z.object({
@@ -263,7 +266,7 @@ const esquemas = {
   }),
   reaccion: z.object({
     quien: z.string(),
-    tipo: z.enum(["ataque_oportunidad", "preparada", "otra"]),
+    tipo: z.enum(["ataque_oportunidad", "preparada", "centinela", "otra"]).describe("centinela: dote Centinela, contra quien ataca a un aliado cercano"),
     objetivo: z.string().optional().describe("Contra quién ataca"),
     arma: z.string().optional(),
     dano: z.string().optional().describe("Daño del ataque, p. ej. 1d8+3: si se da, el ataque se resuelve aquí mismo"),
@@ -278,6 +281,8 @@ const esquemas = {
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
+    escudo: z.boolean().optional().describe("Dote Maestro del escudo: empuja con el escudo como acción adicional"),
+    adicional: z.boolean().optional().describe("Dote Pendenciero: agarra como acción adicional"),
   }),
   empunar: z.object({
     quien: z.string(),
@@ -475,6 +480,8 @@ const esquemas = {
     pv: z.enum(["promedio", "tirar"]).describe("Cómo se calculan los PV ganados"),
     aumento: z.record(z.string(), z.number().int()).optional().describe("Solo en los niveles 4, 8, 12, 16 y 19: {fue: 2} o {des: 1, con: 1}"),
     por_hito: z.boolean().optional().describe("Sube sin los PX, por un hito de la historia"),
+    dote: z.string().optional().describe("Niveles 4, 8, 12, 16 y 19: una dote en lugar del aumento de característica (dote {accion: lista})"),
+    opcion: z.string().optional().describe("Opción de la dote (Lengua de plata: persuasion o intimidacion)"),
   }),
   salvacion_muerte: z.object({ quien: z.string().describe("Personaje a 0 PV que tira la salvación") }),
   estabilizar: z.object({
@@ -617,6 +624,8 @@ const esquemas = {
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
     nervio: z.enum(["brazo", "pierna", "columna"]).optional().describe("Barbero-Cirujano: golpea un nervio (−2, columna −3): si hiere, CON o brazo entumecido, pierna entumecida o paralizado un asalto"),
     dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
+    golpe_demoledor: z.boolean().optional().describe("Dote Golpe demoledor: con arma pesada, −5 al ataque y +10 al daño"),
+    duelo: z.boolean().optional().describe("Dote Esgrimista: es un duelo uno contra uno (ventaja en el primer ataque del combate)"),
     en_cubierta: z.boolean().optional().describe("PNJ o criatura que lucha sobre la cubierta de una nave: sus armas de cubierta (sable de abordaje…) dan ventaja"),
     reaccion: z.boolean().optional().describe("Ataque de oportunidad ya anunciado con reaccion (sin dano): resuelve aquí su único ataque cuerpo a cuerpo, sin exigir que siga al alcance"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
@@ -762,6 +771,12 @@ const esquemas = {
     terreno: z.enum(["camino", "abierto", "dificil"]),
     motivo: z.string().optional().describe("Adónde van"),
   }),
+  dote: z.object({
+    accion: z.enum(["lista", "elegir", "ver"]),
+    quien: z.string().optional(),
+    dote: z.string().optional(),
+    opcion: z.string().optional(),
+  }),
   tirar_don_arcano: z.object({
     jugador: z.string().describe("El jugador (o el personaje) para quien se tira el don, ANTES de crear su personaje"),
   }),
@@ -795,6 +810,8 @@ const descripciones: Record<Nombre, string> = {
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   viajar:
     "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
+  dote:
+    "Dotes: lista (todas), ver (las de un personaje) o elegir (la dote gratis del Humano del Faro; las demás se eligen en subir_nivel).",
   tirar_don_arcano:
     "ANTES de crear el personaje de un jugador: el DM tira un d20 para ver si nace con un don arcano. 19 = don FÍSICO (cuerpo prodigioso), 20 = don MÁGICO (talento para la magia); cualquier otro resultado, sin don. Una sola tirada por jugador. Anuncia el resultado y luego guía la creación del personaje.",
   terminar_combate: "Cierra el combate en curso (borra el orden de iniciativa y los PNJ sin ficha).",
@@ -1155,9 +1172,18 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
+        delete (p as unknown as Record<string, unknown>).dote;
+        delete (p as unknown as Record<string, unknown>).opcion_dote;
+        let dote_txt = "";
+        if (nuevoEnClase && p.raza === "Humano del Faro" && !previo?.dote_humano) {
+          if (e.dote) {
+            try { dote_txt = `\n🎓 ${tomarDote(p, e.dote, e.opcion_dote)}`; p.dote_humano = p.dotes![p.dotes!.length - 1]; }
+            catch (err) { dote_txt = `\n⚠ ${(err as Error).message} Elige otra con dote {accion: elegir, quien: «${p.nombre}», dote}.`; }
+          } else dote_txt = `\n🎓 Humano del Faro: tiene una dote GRATIS. Pregunta al jugador cuál quiere (dote {accion: lista}) y guárdala con dote {accion: elegir, quien: «${p.nombre}», dote}.`;
+        }
         if (e.clase === "Hechicero" && p.magia && nuevoEnClase) p.magia.origen = don && e.linaje !== "noble" && e.linaje !== "rico" ? "don" : (e.linaje as "noble" | "rico");
         ajustarMaestriaHechicero(p); // un Hechicero de nivel alto ya tiene la maestría de su nivel
         const don_txt = tipoDon === "fisico"
@@ -1165,7 +1191,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           : tipoDon === "magico"
             ? `\n✨ ${tiradaDon || "Don arcano mágico."} Nació con talento para la magia${e.clase === "Hechicero" ? " (domina todos los tipos)" : " de su estilo"}: revélalo en la historia de forma memorable.${e.clase === "Mercenario del Cuervo" ? " Pero es un Mercenario, la clase más corriente: su don dormirá hasta que suba de nivel." : ""}`
             : tiradaDon ? `\n· ${tiradaDon}` : "";
-        return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}` };
+        return { contenido: `Ficha guardada:\n${fichaTexto(p)}${don_txt}${dote_txt}`, aviso: `📜 Ficha guardada:\n${fichaTexto(p)}${don_txt}${dote_txt}` };
       }
       case "modificar_personaje": {
         const e = validado.data as z.infer<typeof esquemas.modificar_personaje>;
@@ -1711,6 +1737,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.viajar>;
         const texto = viajar(partida, e);
         return { contenido: texto, aviso: `🥾 ${texto.split("\n")[0]}` };
+      }
+      case "dote": {
+        const e = validado.data as z.infer<typeof esquemas.dote>;
+        const texto = dote(partida, e);
+        return { contenido: texto, aviso: e.accion === "elegir" ? `🎓 ${texto.split("\n")[0]}` : null };
       }
       case "tirar_don_arcano": {
         const e = validado.data as z.infer<typeof esquemas.tirar_don_arcano>;

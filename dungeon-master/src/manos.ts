@@ -6,6 +6,7 @@
 // - Pelea con dos armas: tras atacar con un arma ligera, la acción adicional ataca con otra arma ligera en la otra mano, sin
 //   sumar el modificador de característica al daño (salvo que sea negativo o tenga el estilo de lucha con dos armas).
 // - Estilos de lucha: arquería, defensa, duelo, lucha con arma a dos manos, protección y lucha con dos armas.
+import { tiene } from "./dotes_base.js";
 import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, reconocerArma } from "./armadura.js";
 import { mod, valor } from "./reglas.js";
@@ -98,6 +99,8 @@ export function caEfectiva(p: Personaje): number {
   }
   if (p.estilo === "defensa" && armaduraDe(p).piezas.length) ca += 1;
   if (p.pielHueso) ca += 2; // invocación del Segador
+  if (tiene(p, "esgrimista") && p.manos?.principal && propiedades(p.manos.principal)?.sutil && !p.manos.secundaria) ca += 1; // Esgrimista
+  if (tiene(p, "maestro_del_escudo") && esEscudo(p.manos?.secundaria) && !p.manos?.dosManos) ca += 1; // Maestro del escudo
   return ca;
 }
 

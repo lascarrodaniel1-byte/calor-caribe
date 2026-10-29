@@ -2,6 +2,7 @@
 // lleva la cuenta de éxitos y fallos: 10 o más en el d20 es un éxito; menos de 10, un fallo; un 1 son dos fallos; un 20
 // lo levanta con 1 PV. Tres éxitos lo estabilizan; tres fallos lo matan. Cada golpe que recibe en el suelo es un fallo
 // (dos si es crítico) y un golpe de tantos PV como su máximo lo mata en el acto.
+import { tiene } from "./dotes_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { resolverPrueba } from "./pruebas.js";
@@ -30,6 +31,12 @@ export function caerA0(p: Personaje): string {
   }
   const eraFuria = !!p.furia?.activa;
   if (eraFuria) p.furia = undefined;
+  // Terco: una vez por descanso largo, no cae: se queda en pie con 1 PV.
+  if (tiene(p, "terco") && !p.gastados?.["Terco"]) {
+    (p.gastados ??= {})["Terco"] = 1;
+    p.pv = 1;
+    return `💪 ${p.nombre} debería caer a 0 PV, pero es Terco: se queda en pie con 1 PV (una vez por descanso largo).`;
+  }
   p.muerte = { exitos: 0, fallos: 0, estable: false, ...(p.muerte?.desventaja ? { desventaja: true } : {}) };
   if (!p.condiciones.includes("inconsciente")) p.condiciones.push("inconsciente");
   return `⚠ ${p.nombre} cae a 0 PV${eraFuria ? " (la furia se apaga de golpe)" : ""}: inconsciente. Cada asalto, en su turno, salvación contra muerte (herramienta salvacion_muerte); un compañero puede estabilizarlo (herramienta estabilizar). Mientras no sea estable, cada golpe que reciba es un fallo (dos si es crítico).`;
@@ -78,7 +85,7 @@ export function salvacionMuerte(partida: Partida, nombre: string): string {
   if (m.estable) return `${p.nombre} está estable (inconsciente pero sin riesgo): no necesita más salvaciones. Con 1 PV de cualquier curación despierta; si no, recupera 1 PV en 1d4 horas.`;
   // Objetos que dan ventaja o desventaja en estas salvaciones (los que lleva puestos o consigo).
   const propios = (p.inventario ?? []).map((nom) => Object.values(partida.objetos ?? {}).find((o) => o.nombre.toLowerCase() === nom.toLowerCase())?.verdad ?? "").join(" | ");
-  const ventaja = /ventaja en (las )?salvaciones contra muerte/i.test(propios.replace(/desventaja/gi, ""));
+  const ventaja = tiene(p, "terco") || /ventaja en (las )?salvaciones contra muerte/i.test(propios.replace(/desventaja/gi, ""));
   const desventaja = !!m.desventaja || /desventaja en las salvaciones contra muerte/i.test(propios);
   const modo = ventaja && !desventaja ? "ventaja" : desventaja && !ventaja ? "desventaja" : "normal";
   const t = tirar("1d20", modo);

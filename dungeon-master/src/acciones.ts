@@ -1,6 +1,7 @@
 // Acciones de combate (esquivar, correr, retirarse, ayudar, preparar…), reacciones y ataques de oportunidad de las
 // reglas básicas de D&D 5e. El programa lleva quién ha usado su reacción este asalto, quién esquiva o se retiró y quién
 // ayuda a quién, y avisa cuando un movimiento sobre el plano provoca un ataque de oportunidad.
+import { tiene } from "./dotes_base.js";
 import type { Partida } from "./estado.js";
 import { esDegollador } from "./degollador_base.js";
 import { condsDe, igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
@@ -77,7 +78,7 @@ export function accionCombate(partida: Partida, d: DatosAccionCombate): string {
 
 export interface DatosReaccion {
   quien: string;
-  tipo: "ataque_oportunidad" | "preparada" | "otra";
+  tipo: "ataque_oportunidad" | "preparada" | "centinela" | "otra";
   objetivo?: string;
   arma?: string;
   dano?: string;
@@ -102,7 +103,13 @@ export function reaccion(partida: Partida, d: DatosReaccion, atacarFn: AtacarFn)
     const o = localizar(partida, d.objetivo);
     if (turnoDe(partida, o.nombre).retirada) throw new Error(`${o.nombre} se retiró este turno: su movimiento no provoca ataques de oportunidad.`);
     if (d.dano) ataque = atacarFn({ atacante: c.nombre, objetivo: d.objetivo, arma: d.arma, dano: d.dano, reaccion: true });
-    cabecera = `⚔ Ataque de oportunidad de ${c.nombre} contra ${d.objetivo}. Reacción gastada.`;
+    cabecera = `⚔ Ataque de oportunidad de ${c.nombre} contra ${d.objetivo}. Reacción gastada.${c.tipo === "pj" && tiene(c.p, "centinela") ? " Centinela: si impacta, " + d.objetivo + " queda con velocidad 0 hasta el final de su turno." : ""}`;
+  } else if (d.tipo === "centinela") {
+    if (c.tipo !== "pj" || !tiene(c.p, "centinela")) throw new Error(`${c.nombre} no tiene la dote Centinela.`);
+    if (!d.objetivo) throw new Error("centinela: di contra quién (objetivo), el que ha atacado a un aliado cercano.");
+    localizar(partida, d.objetivo);
+    if (d.dano) ataque = atacarFn({ atacante: c.nombre, objetivo: d.objetivo, arma: d.arma, dano: d.dano, reaccion: true });
+    cabecera = `🛡 ${c.nombre} (Centinela) contraataca a ${d.objetivo} por haber atacado a un aliado. Reacción gastada.`;
   } else if (d.tipo === "preparada") {
     if (d.objetivo && d.dano) ataque = atacarFn({ atacante: c.nombre, objetivo: d.objetivo, arma: d.arma, dano: d.dano, reaccion: true });
     cabecera = `${c.nombre} ejecuta su acción preparada (${t.preparada!.accion}, al ocurrir «${t.preparada!.disparador}»). Reacción gastada.`;

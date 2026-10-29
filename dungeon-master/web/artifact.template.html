@@ -2005,6 +2005,15 @@
     const ayM = document.createElement("p"); ayM.className = "ayuda"; ayM.textContent = "Cada escuela de hechicería enseña un solo tipo de magia y tiene licencia de la Inquisición. Empiezas dominando ese tipo y, con el nivel, aprenderás más (hasta tres). Solo los nobles y los ricos entran en las escuelas; un humilde solo entra si el DM te tira el don arcano mágico antes de crearte, y entonces dominas todos los tipos.";
     magia.append(fila3, ayM); raiz.append(magia);
 
+    // Dote gratis (solo el Humano del Faro)
+    const dotes = document.createElement("div"); dotes.id = "pj-dotes"; dotes.hidden = true;
+    const fila4 = document.createElement("div"); fila4.className = "fila";
+    fila4.append(
+      campo("pj-dote", "Dote gratis (Humano del Faro)", select("pj-dote", DF.dotes.map((d) => [d.id, `${d.nombre} (${d.requisito})`]), "Elige…"), true),
+      campo("pj-dote-opcion", "Opción de la dote", select("pj-dote-opcion", [["persuasion", "Persuasión"], ["intimidacion", "Intimidación"]], "Elige…")),
+    );
+    dotes.append(fila4); raiz.append(dotes);
+
     raiz.append(campo("pj-extra", "Equipo extra (opcional)", texto("pj-extra", 150, "Además del equipo inicial de tu clase")));
     const ta = document.createElement("textarea"); ta.id = "pj-trasfondo"; ta.maxLength = 700; ta.rows = 4; ta.placeholder = "De dónde vienes, qué hiciste antes, qué buscas en Aldenmar y cómo eres.";
     raiz.append(campo("pj-trasfondo", "Trasfondo", ta, true));
@@ -2028,6 +2037,10 @@
       const v = DF.veteranias.find((x) => x.nombre === $("pj-vet").value); $("pj-vet-ayuda").textContent = v ? v.nota : "";
       [["pj-per1"], ["pj-per2"]].forEach(([id]) => { const x = DF.personalidades.find((q) => q.nombre === $(id).value); $(id + "-ayuda").textContent = x ? x.nota : ""; });
       $("pj-magia").hidden = !clase?.mago;
+      $("pj-dotes").hidden = $("pj-raza").value !== "Humano del Faro";
+      const dt = DF.dotes.find((d) => d.id === $("pj-dote").value);
+      $("pj-dote-ayuda").textContent = dt ? dt.efecto : "Los Humanos del Faro son tozudos y versátiles: empiezan con una dote gratis.";
+      $("pj-dote-opcion").parentElement.hidden = !(dt && dt.opciones.length);
       $("pj-trasfondo-ayuda").textContent = `${$("pj-trasfondo").value.length}/700`;
       let con = 0;
       ATR.forEach((a) => {
@@ -2096,7 +2109,7 @@
     ATR.forEach((a) => (base[a] = Number($("pj-a-" + a).value) || 0));
     const datos = {
       nombre: $("pj-nombre").value, jugador: nombre, raza: $("pj-raza").value, clase: $("pj-clase").value, veterania: $("pj-vet").value,
-      personalidad: per, base, metodo: form.metodo, tipo: $("pj-tipo").value, linaje: $("pj-linaje").value,
+      personalidad: per, base, metodo: form.metodo, tipo: $("pj-tipo").value, linaje: $("pj-linaje").value, dote: $("pj-raza").value === "Humano del Faro" ? $("pj-dote").value : undefined, opcion_dote: $("pj-dote-opcion").value || undefined,
       trasfondo: $("pj-trasfondo").value, extra: $("pj-extra").value,
     };
     const errores = FM.validarFicha(datos);

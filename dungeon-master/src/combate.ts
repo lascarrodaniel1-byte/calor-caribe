@@ -6,6 +6,7 @@
 // estar malherido) y pesan mucho más en los novatos. Las emboscadas y los planes
 // dan ventaja, pero a un veterano cuesta más sorprenderlo, y la personalidad
 // (arrogancia, prudencia, impulsividad…) cambia lo fácil que es engañar a alguien.
+import { tiene } from "./dotes_base.js";
 import { danar, devolverRobos, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -14,7 +15,7 @@ import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, signo, valor } from "./reglas.js";
 import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js";
 import { gastarReserva, usoDivino } from "./juramento.js";
-import { autoManos, caEfectiva } from "./manos.js";
+import { autoManos, caEfectiva, propiedades } from "./manos.js";
 import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
 import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
 import { selloDe } from "./segador_base.js";
@@ -215,6 +216,8 @@ export interface EstadoCombate {
   pnj: Record<string, PnjCombate>;
   /** Sorprendidos: no actúan en el primer asalto y se les ataca con ventaja. */
   sorprendidos?: string[];
+  /** Esgrimistas que ya usaron su ventaja de duelo en este combate. */
+  duelos?: string[];
   plan?: { bando: string[]; calidad: CalidadPlan; leido_por: string[] };
 }
 
@@ -563,6 +566,10 @@ export interface DatosAtaque {
   dardo?: "sano" | "impregnado";
   /** PNJ o criatura que combate sobre la cubierta de una nave (los PJ ya lo saben por estar a bordo). */
   en_cubierta?: boolean;
+  /** Golpe demoledor (dote): con arma pesada, −5 al ataque y +10 al daño. */
+  golpe_demoledor?: boolean;
+  /** Esgrimista (dote): es un duelo uno contra uno: ventaja en su primer ataque del combate. */
+  duelo?: boolean;
 }
 
 export interface ResultadoAtaque {
@@ -653,6 +660,15 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     if (extra) desglose.push(`temple ${signo(extra)}`);
   }
 
+  if (d.golpe_demoledor) {
+    if (at.tipo !== "pj" || !tiene(at.p, "golpe_demoledor")) throw new Error(`${at.nombre} no tiene la dote Golpe demoledor.`);
+    const arma = propiedades(d.arma ?? at.p.manos?.principal);
+    if (!(arma?.pesada || arma?.dosManos || at.p.manos?.dosManos)) throw new Error("Golpe demoledor pide un arma pesada o a dos manos.");
+    if (!d.dano) throw new Error("Golpe demoledor suma +10 al daño: pasa dano.");
+    bono -= 5; desglose.push("golpe demoledor −5");
+    d = { ...d, dano: `${d.dano}+10` };
+  }
+
   // Defensa
   if (d.cobertura === "total") throw new Error(`${ob.nombre} tiene cobertura total: no se le puede atacar directamente (rodéalo, destruye la cobertura o usa un efecto de área).`);
   const cobBono = d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0;
@@ -718,10 +734,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     }
   }
   // El entorno: bajo el agua, a caballo y sobre la cubierta de una nave.
-  const aguaAj = ajusteAgua(estaSumergido(condsDe(at)), condsDe(at).some((c) => /nadador/i.test(c)), distancia, d.arma);
+  const aguaAj = ajusteAgua(estaSumergido(condsDe(at)), condsDe(at).some((c) => /nadador/i.test(c)) || (at.tipo === "pj" && tiene(at.p, "marinero")), distancia, d.arma);
   if (aguaAj.desventaja) { desventaja = true; motivos.push(aguaAj.desventaja); }
   const monta = ventajaMontada(partida, at.nombre, ob.nombre, distancia);
   if (monta) { ventaja = true; motivos.push(monta); }
+  if (d.duelo && at.tipo === "pj" && tiene(at.p, "esgrimista") && !distancia) {
+    const usados = (combate ? (combate.duelos ??= []) : []);
+    if (!usados.some((x) => igual(x, at.nombre))) { ventaja = true; usados.push(at.nombre); motivos.push("ventaja: duelo (Esgrimista, primer ataque)"); }
+  }
   const naval = ventajaNaval(partida, at.nombre, d.arma, distancia, d.en_cubierta);
   if (naval) { ventaja = true; motivos.push(naval); }
   const mar = ajusteMar(partida, at.nombre, distancia);

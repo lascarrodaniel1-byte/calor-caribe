@@ -1,6 +1,8 @@
 // Experiencia y subida de nivel (reglas básicas de D&D 5e): tabla de PX, PV por nivel, aumentos de característica y
 // los rasgos de clase hasta el nivel 5. Más allá del 5 el programa sigue dando PV, competencia y aumentos, y el DM
 // diseña los rasgos de clase nuevos.
+import { tomarDote } from "./dotes.js";
+import { tiene } from "./dotes_base.js";
 import { tirar } from "./dados.js";
 import { despertarMagia, ajustarMaestriaHechicero } from "./magia.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -194,6 +196,9 @@ export interface DatosSubirNivel {
   aumento?: Partial<Record<Atributo, number>>;
   /** Sube sin tener los PX (hito de la historia). */
   por_hito?: boolean;
+  /** En los niveles de aumento: una dote en lugar del aumento de característica. */
+  dote?: string;
+  opcion?: string;
 }
 
 export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
@@ -205,12 +210,13 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   const nuevo = p.nivel + 1;
   const cambioAtr: string[] = [];
   if (NIVELES_AUMENTO.includes(nuevo)) {
-    const a = Object.entries(d.aumento ?? {}).filter(([, v]) => v);
+    const a = d.dote ? [] : Object.entries(d.aumento ?? {}).filter(([, v]) => v);
+    if (d.dote && Object.values(d.aumento ?? {}).some((v) => v)) throw new Error("Elige una cosa o la otra: un aumento de característica O una dote.");
     const malas = a.filter(([k]) => !(ATRIBUTOS as readonly string[]).includes(k)).map(([k]) => k);
     if (malas.length) throw new Error(`Característica no válida: ${malas.join(", ")}. Usa fue, des, con, int, sab o car.`);
     const suma = a.reduce((s, [, v]) => s + (v as number), 0);
-    if (!a.length) throw new Error(`El nivel ${nuevo} da un aumento de característica: pasa aumento (+2 a una, o +1 a dos).`);
-    if (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2)) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");
+    if (!a.length && !d.dote) throw new Error(`El nivel ${nuevo} da un aumento de característica o una dote: pasa aumento (+2 a una, o +1 a dos) o dote (dote {accion: lista} las enseña).`);
+    if (a.length && (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2))) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");
     for (const [k, v] of a) {
       // el don arcano no tiene techo: la INT del Hechicero con don mágico y la FUE, DES y CON de quien nació con el don físico llegan a 24 y 28 respectivamente
       const tope = p.don === "fisico" && (k === "fue" || k === "des" || k === "con") ? 28 : p.clase === "Hechicero" && p.magia?.don && k === "int" ? 24 : 20;
@@ -220,10 +226,11 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
       p.atributos[k as Atributo] += v as number;
       cambioAtr.push(`${k.toUpperCase()} +${v}`);
     }
-  } else if (d.aumento && Object.keys(d.aumento).length) throw new Error(`El nivel ${nuevo} no da aumento de característica (solo en ${NIVELES_AUMENTO.join(", ")}).`);
+    if (d.dote) cambioAtr.push(tomarDote(p, d.dote, d.opcion));
+  } else if ((d.dote || (d.aumento && Object.keys(d.aumento).length))) throw new Error(`El nivel ${nuevo} no da aumento de característica (solo en ${NIVELES_AUMENTO.join(", ")}).`);
   const c = CLASES.find((x) => x.nombre === p.clase);
   const dado = c?.dadoGolpe ?? 8;
-  const fortaleza = p.clase === "Berserker de Ceniza" ? 1 : 0; // +1 PV por nivel
+  const fortaleza = (p.clase === "Berserker de Ceniza" ? 1 : 0) + (tiene(p, "duro_de_pelar") ? 2 : 0); // +1 PV por nivel del Berserker; +2 de Duro de pelar
   const m = mod(valor(p, "con"));
   let ganado: number;
   let detalle: string;

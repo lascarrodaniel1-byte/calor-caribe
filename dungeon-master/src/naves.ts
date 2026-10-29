@@ -1,4 +1,5 @@
 // Botes, balsas y barcos: navegar, aguantar el mar, el casco, los incendios, hundirse y el abordaje.
+import { tiene } from "./dotes_base.js";
 import { alAgua, gastarAireDe } from "./agua.js";
 import { condsDe, localizar } from "./combate.js";
 import { tirar } from "./dados.js";
@@ -158,7 +159,7 @@ export function nave(partida: Partida, d: DatosNave): { texto: string; publico: 
       lineas.push(`🌩 La tormenta castiga el casco: −${dano} (casco ${n.casco}/${n.casco_max}).`);
       for (const nombre of [...n.a_bordo]) {
         const p = pj(partida, nombre);
-        const s = salvacion(p, "des", 10);
+        const s = salvacion(p, "des", 10, { ventaja: tiene(p, "marinero") });
         if (!s.exito) { n.a_bordo = n.a_bordo.filter((x) => x !== p.nombre); p.nave = undefined; lineas.push(`${p.nombre}: ${s.texto} → cae por la borda.`, ...alAgua(partida, [p.nombre])); }
       }
       if (n.casco <= 0) lineas.push(...hundir(partida, n)); else { const e = actualizarEstado(n); if (e) lineas.push(e); }
@@ -221,7 +222,7 @@ export function pasarAsaltoNave(partida: Partida, asaltos = 1): string[] {
         for (const nombre of [...n.a_bordo]) {
           const p = pj(partida, nombre);
           if (p.condiciones.includes("muerto") || p.pv <= 0) continue;
-          const s = salvacion(p, "des", 10);
+          const s = salvacion(p, "des", 10, { ventaja: tiene(p, "marinero") });
           if (!s.exito) { n.a_bordo = n.a_bordo.filter((x) => x !== p.nombre); p.nave = undefined; out.push(`${p.nombre}: ${s.texto} → cae por la borda.`, ...alAgua(partida, [p.nombre])); }
         }
       }
@@ -294,7 +295,7 @@ export function ajusteMar(partida: Partida, atacante: string, distancia: boolean
   const n = p?.nave ? partida.naves?.[p.nave] : undefined;
   if (!n || n.estado === "hundida") return null;
   if (n.mar === "tormenta") return `desventaja: tormenta sobre la cubierta de ${n.nombre}`;
-  if (n.mar === "picado" && distancia) return `desventaja: el mar picado mueve la cubierta de ${n.nombre}`;
+  if (n.mar === "picado" && distancia && !tiene(p, "marinero")) return `desventaja: el mar picado mueve la cubierta de ${n.nombre}`;
   return null;
 }
 

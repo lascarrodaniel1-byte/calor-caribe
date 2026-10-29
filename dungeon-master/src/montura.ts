@@ -1,4 +1,5 @@
 // Combate montado: montar, desmontar, caer de la montura y la ventaja de cargar desde lo alto.
+import { tiene } from "./dotes_base.js";
 import { agregarCondicion } from "./condiciones.js";
 import { localizar, condsDe } from "./combate.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -67,6 +68,7 @@ export function montura(partida: Partida, d: DatosMontura): string {
 export function caerDeLaMontura(partida: Partida, p: Personaje, motivo: string): string {
   const n = p.montura?.nombre ?? "la montura";
   delete p.montura;
+  if (tiene(p, "jinete")) return `${p.nombre} se cae de ${n} (${motivo}), pero es Jinete: aterriza de pie junto a ${n}.`;
   const s = salvacion(p, "des", 10);
   const lineas = [`${p.nombre} se cae de ${n} (${motivo}): ${s.texto}.`];
   if (s.exito) { lineas.push(`${p.nombre} aterriza de pie junto a ${n}.`); return lineas.join("\n"); }

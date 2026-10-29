@@ -1,4 +1,5 @@
 // Combate bajo el agua: contener la respiración, ahogarse y cómo cambian los ataques.
+import { tiene } from "./dotes_base.js";
 import { agregarCondicion } from "./condiciones.js";
 import { localizar, condsDe } from "./combate.js";
 import type { Partida, Personaje } from "./estado.js";
@@ -21,7 +22,8 @@ export const estaSumergido = (conds: string[]) => conds.some((c) => ES_SUMERGIDO
 /** Un minuto = 10 asaltos de 6 segundos. Aire: (1 + mod. CON) minutos, mínimo 30 s; luego mod. CON asaltos (mínimo 1). */
 export function respiracion(p: Personaje): { aire: number; sinAire: number } {
   const m = mod(valor(p, "con"));
-  return { aire: Math.max(5, (1 + m) * 10), sinAire: Math.max(1, m) };
+  const dobla = tiene(p, "marinero") ? 2 : 1; // Marinero: aguanta el doble
+  return { aire: Math.max(5, (1 + m) * 10) * dobla, sinAire: Math.max(1, m) * dobla };
 }
 
 /** Los pone bajo el agua; devuelve las líneas. */
@@ -34,7 +36,7 @@ export function alAgua(partida: Partida, nombres: string[], nadador = false): st
     agregarCondicion(conds, nadador ? "sumergido (nadador)" : "sumergido");
     if (c.tipo === "pj") {
       const r = respiracion(c.p);
-      c.p.sumergido = { ...r, nadador };
+      c.p.sumergido = { ...r, nadador: nadador || tiene(c.p, "marinero") };
       c.p.nave = undefined;
       out.push(`${c.nombre} se hunde bajo el agua: contiene la respiración ${r.aire / 10} min (${r.aire} asaltos) y luego aguanta ${r.sinAire} asalto(s) antes de caer.`);
     } else out.push(`${c.nombre} está bajo el agua (lleva tú su aire).`);

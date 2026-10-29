@@ -1,5 +1,6 @@
 // Hechicero: el único mago de verdad, con el don arcano innato. Su poder no tiene techo (maestría por nivel hasta ascendido),
 // los hechizos de círculo bajo le cuestan cada vez menos y su bastón sirve de catalizador. La Recuperación arcana tiene usos reales.
+import { tiene } from "./dotes_base.js";
 import type { Partida, Personaje } from "./estado.js";
 import { buscarHechizo, buscarTipo, MAESTRIAS, nombreEscuelaHechiceria, sincronizarGrimorio, tipoDe, tiposMax, tiposDeEscuelas, type Hechizo } from "./magia.js";
 import { RECURSOS_CLASE } from "./recursos.js";
@@ -42,7 +43,7 @@ export function aprenderTipo(partida: Partida, d: { quien: string; tipo: string;
   if (!t) throw new Error(`«${d.tipo}» no es un tipo de magia conocido.`);
   m.tipos ??= tiposDeEscuelas(m.escuelas);
   if (m.tipos.includes(t.id)) throw new Error(`${p.nombre} ya domina la magia de ${t.nombre}.`);
-  const max = tiposMax(p.nivel, false);
+  const max = tiposMax(p.nivel, false, tiene(p, "discipulo_de_escuela") ? 1 : 0);
   if (m.tipos.length >= max) throw new Error(`${p.nombre} (nivel ${p.nivel}) solo puede dominar ${max} tipo(s) de magia y ya domina ${m.tipos.join(", ")}: el segundo llega en el nivel 5 y el tercero en el 9.`);
   if (d.maestro.trim().length < 3) throw new Error("Di quién o qué escuela le enseña (maestro).");
   m.tipos.push(t.id);

@@ -1,6 +1,7 @@
 // Pruebas de característica, de habilidad y salvaciones: cada habilidad usa SU característica, y el programa lo
 // comprueba (no vale una tirada de Carisma para algo que no es de Carisma). Suma la competencia solo si la clase
 // o el trasfondo del personaje la justifican.
+import { opcionDe, tiene } from "./dotes_base.js";
 import { desventajaSigilo } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
@@ -114,7 +115,8 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   const efP = efectos(pj.condiciones);
   const hayD = !!d.desventaja || efP.pruebas === "desventaja" || (hab === "sigilo" && desventajaSigilo(pj)); // huesos que crujen (Segador, Deuda 5+)
   const ley = pj.leyenda?.coronada && d.conoce_su_nombre && ((hab === "persuasion" && pj.leyenda.tono !== "infamia") || (hab === "intimidacion" && pj.leyenda.tono !== "gloria"));
-  const modoP = (d.ventaja || ley) && !hayD ? "ventaja" : hayD && !(d.ventaja || ley) ? "desventaja" : "normal";
+  const ventajaDote = (hab === "sigilo" && tiene(pj, "pasos_de_gato")) || (!!hab && opcionDe(pj, "lengua_de_plata") === hab);
+  const modoP = (d.ventaja || ley || ventajaDote) && !hayD ? "ventaja" : hayD && !(d.ventaja || ley || ventajaDote) ? "desventaja" : "normal";
   const m = mod(valor(pj, attr!));
   const comp = competencia(pj);
   const deClase = hab ? (COMPETENCIAS_CLASE[pj.clase] ?? []).includes(hab) : false;
