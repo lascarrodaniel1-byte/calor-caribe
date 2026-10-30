@@ -53,7 +53,7 @@ import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
 import { dote, tomarDote } from "./dotes.js";
-import { buscarEnfermedad, enfermedad, exponer, procesarEnfermedades } from "./enfermedades.js";
+import { enfermedad, procesarEnfermedades } from "./enfermedades.js";
 import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
 import { marcarTiempo, nave, pasarAsaltoNave, procesarTiempo } from "./naves.js";
@@ -774,7 +774,7 @@ const esquemas = {
   }),
   enfermedad: z.object({
     accion: z.enum(["catalogo", "exponer", "tratar", "curar", "aislar", "ver"]),
-    enfermedad: z.string().optional().describe("fiebre_cienaga, tos_ceniza, peste_ratas o hambre_muerta"),
+    enfermedad: z.string().optional().describe("fiebre_cienaga, tos_ceniza o peste_ratas"),
     quienes: z.array(z.string()).optional().describe("exponer/aislar: por defecto, todo el grupo · tratar/curar: el enfermo"),
     cd: z.number().int().min(5).max(25).optional().describe("exponer: otra CD si la exposición es más suave o más fuerte"),
     sanador: z.string().optional().describe("tratar: quién cuida"),
@@ -1698,13 +1698,6 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "atacar": {
         const e = validado.data as z.infer<typeof esquemas.atacar>;
         const r = ataqueCompleto(partida, e);
-        // Los mordiscos de los muertos exponen a la enfermedad de la criatura (si el ataque impacta).
-        const cri = Object.values(partida.jefes).find((j) => j.nombre.toLowerCase() === e.atacante.toLowerCase());
-        const pjObjetivo = Object.values(partida.personajes).find((p) => p.nombre.toLowerCase() === e.objetivo.toLowerCase());
-        if (cri?.definicion.contagia && pjObjetivo && /→ (IMPACTO|¡?CRÍTICO)/.test(r.texto) && partida.reloj) {
-          const def = buscarEnfermedad(cri.definicion.contagia.enfermedad);
-          if (def) { const x = exponer(partida, pjObjetivo, def, cri.definicion.contagia.cd); r.texto += `\n🦠 ${x}`; }
-        }
         return { contenido: r.texto, aviso: r.aviso };
       }
       case "pnj": {

@@ -30,24 +30,19 @@ export interface DefEnfermedad {
   /** Daño por día mientras dura (dados), si lo hay. */
   danoDia?: string;
   /** Lo que pasa a quien llega al final. */
-  fin: "muerte" | "alzado";
   sintomas: Record<Exclude<Etapa, "incubando">, string>;
   /** CD de la prueba de Medicina para cuidarlo. */
   cd_tratar: number;
   cura: string;
-  /** Solo la magia o un remedio raro la curan de verdad. */
-  solo_remedio?: boolean;
 }
 
 export const ENFERMEDADES: DefEnfermedad[] = [
-  { id: "fiebre_cienaga", nombre: "Fiebre de las ciénagas", via: "agua estancada y mosquitos de las Ciénagas de Hollín", cd: 12, incubacion: "1d4", intervalo: 1, exitos: 3, fallos: 3, fin: "muerte", cd_tratar: 12,
+  { id: "fiebre_cienaga", nombre: "Fiebre de las ciénagas", via: "agua estancada y mosquitos de las Ciénagas de Hollín", cd: 12, incubacion: "1d4", intervalo: 1, exitos: 3, fallos: 3, cd_tratar: 12,
     sintomas: { leve: "escalofríos y sudor frío", grave: "fiebre alta que nubla la cabeza", critica: "delirio y temblores; no se tiene en pie" }, cura: "reposo, cuidados y hierbas; se pasa con tres salvaciones superadas" },
-  { id: "tos_ceniza", nombre: "Tos de ceniza", via: "respirar polvo de ceniza en la Marca Hueca o en las minas de Karak-Dûm", cd: 13, incubacion: "3d4", intervalo: 3, exitos: 3, fallos: 3, fin: "muerte", cd_tratar: 13,
+  { id: "tos_ceniza", nombre: "Tos de ceniza", via: "respirar polvo de ceniza en la Marca Hueca o en las minas de Karak-Dûm", cd: 13, incubacion: "3d4", intervalo: 3, exitos: 3, fallos: 3, cd_tratar: 13,
     sintomas: { leve: "tos seca que delata al que se esconde", grave: "falta de aire y esputos negros", critica: "los pulmones se llenan de hollín; apenas respira" }, cura: "aire limpio lejos de la ceniza (+4) y cuidados" },
-  { id: "peste_ratas", nombre: "Peste de las ratas", via: "pulgas de rata, alcantarillas y ciudades en hambruna", cd: 13, incubacion: "2d4", intervalo: 1, exitos: 3, fallos: 3, fin: "muerte", cd_tratar: 14, danoDia: "1d4", contagio: { cd: 11, como: "contacto cercano y ropa compartida" },
+  { id: "peste_ratas", nombre: "Peste de las ratas", via: "pulgas de rata, alcantarillas y ciudades en hambruna", cd: 13, incubacion: "2d4", intervalo: 1, exitos: 3, fallos: 3, cd_tratar: 14, danoDia: "1d4", contagio: { cd: 11, como: "contacto cercano y ropa compartida" },
     sintomas: { leve: "bubones en las ingles y las axilas", grave: "bubones negros y reventando; fiebre", critica: "gangrena y delirio" }, cura: "abrir los bubones (Medicina CD 14), hierbas y aislamiento" },
-  { id: "hambre_muerta", nombre: "Hambre muerta", via: "mordisco o arañazo de un Hambriento o un Ghul", cd: 13, incubacion: "1d4", intervalo: 1, exitos: 5, fallos: 3, fin: "alzado", cd_tratar: 15, solo_remedio: true,
-    sintomas: { leve: "la herida se amorata y duele el hambre de carne", grave: "ojos velados, manos que tiemblan, olor a tierra", critica: "ya no recuerda nombres y mira a los suyos con hambre" }, cura: "solo la magia divina, la Sangre de Santo o un remedio raro; los cuidados solo ganan tiempo" },
 ];
 
 export const buscarEnfermedad = (n: string): DefEnfermedad | undefined => {
@@ -137,8 +132,8 @@ export function procesarEnfermedades(partida: Partida): string[] {
         } else {
           e.fallos++;
           if (e.fallos >= d.fallos) {
-            if (d.fin === "alzado") { marcarMuerto(p); out.push(`☠ ${p.nombre} muere de ${d.nombre} y volverá a levantarse como un Hambriento: narra el horror (el DM decide cuándo y qué hace el grupo).`); }
-            else { marcarMuerto(p); out.push(`☠ ${p.nombre} muere de ${d.nombre}.`); }
+            marcarMuerto(p);
+            out.push(`☠ ${p.nombre} muere de ${d.nombre}.`);
             break;
           }
           const nueva: Etapa = e.fallos >= 2 ? "critica" : "grave";
@@ -185,7 +180,7 @@ function pjs(partida: Partida, nombres?: string[]): Personaje[] {
 
 export function enfermedad(partida: Partida, d: DatosEnfermedad): { texto: string; publico: string | null } {
   if (d.accion === "catalogo")
-    return { texto: ENFERMEDADES.map((e) => `- ${e.nombre} (${e.id}): ${e.via}. CD ${e.cd}, incuba ${e.incubacion} días, salvación cada ${e.intervalo} día(s) (${e.exitos} éxitos curan, ${e.fallos} fallos ${e.fin === "alzado" ? "matan y alzan" : "matan"}). Cura: ${e.cura}.${e.contagio ? ` Contagiosa (${e.contagio.como}).` : ""}`).join("\n"), publico: null };
+    return { texto: ENFERMEDADES.map((e) => `- ${e.nombre} (${e.id}): ${e.via}. CD ${e.cd}, incuba ${e.incubacion} días, salvación cada ${e.intervalo} día(s) (${e.exitos} éxitos curan, ${e.fallos} fallos matan). Cura: ${e.cura}.${e.contagio ? ` Contagiosa (${e.contagio.como}).` : ""}`).join("\n"), publico: null };
   if (d.accion === "ver") {
     const l = vivos(partida).filter((p) => p.enfermedades?.length);
     return { texto: l.length ? l.map((p) => `${p.nombre}: ${p.enfermedades!.map((e) => { const x = buscarEnfermedad(e.id)!; return `${x.nombre} (${e.etapa}, éxitos ${e.exitos}/${x.exitos}, fallos ${e.fallos}/${x.fallos}, próxima ${textoReloj({ segundos: e.t })})`; }).join("; ")}`).join("\n") : "Nadie está enfermo.", publico: null };
@@ -236,9 +231,9 @@ export function enfermedad(partida: Partida, d: DatosEnfermedad): { texto: strin
   }
   const r = resolverPrueba(partida, { quien: san.nombre, habilidad: "medicina", cd: def.cd_tratar, bono: tiene(san, "manos_de_cirujano") ? 2 : 0, competente: undefined, motivo: `cuidar a ${objetivo.nombre} de ${def.nombre}` });
   if (!r.exito) return { texto: `${r.texto}\nLos cuidados no bastan esta vez.`, publico: null };
-  const bono = (def.solo_remedio ? 1 : 2) + (metodo === "hierbas" ? 2 : 0);
+  const bono = 2 + (metodo === "hierbas" ? 2 : 0);
   e.bono = bono; e.bono_veces = 3;
-  return { texto: `${r.texto}\nLos cuidados ${metodo === "hierbas" ? "y las hierbas " : ""}ayudan: +${bono} a sus próximas 3 salvaciones contra ${def.nombre}.${def.solo_remedio ? " (Solo gana tiempo: esto solo lo cura la magia divina o un remedio raro.)" : ""}`, publico: null };
+  return { texto: `${r.texto}\nLos cuidados ${metodo === "hierbas" ? "y las hierbas " : ""}ayudan: +${bono} a sus próximas 3 salvaciones contra ${def.nombre}.`, publico: null };
 }
 
 export function textoEnfermedades(partida: Partida): string {
@@ -248,6 +243,6 @@ export function textoEnfermedades(partida: Partida): string {
 }
 
 export const REGLAS_ENFERMEDADES = `## Enfermedades
-- Hay cuatro: ${ENFERMEDADES.map((e) => `${e.nombre} (${e.via})`).join("; ")}. Cuando el grupo se exponga (beber agua estancada, dormir entre ratas, respirar ceniza, un mordisco de muerto), llama a enfermedad {accion: exponer, enfermedad, quienes}: salvación de CON (la CD sale del catálogo; enfermedad {accion: catalogo} da los detalles). Los mordiscos de Hambrientos y Ghuls exponen solos.
+- Hay tres: ${ENFERMEDADES.map((e) => `${e.nombre} (${e.via})`).join("; ")}. Cuando el grupo se exponga (beber agua estancada, dormir entre ratas, respirar ceniza). El mordisco de un muerto no es una enfermedad: es la Podre de la herida, llama a enfermedad {accion: exponer, enfermedad, quienes}: salvación de CON (la CD sale del catálogo; enfermedad {accion: catalogo} da los detalles).
 - Si falla, el personaje incuba en secreto unos días: NO se lo cuentes hasta que el programa avise de los síntomas. Después, el reloj hace una salvación de CON cada intervalo: con los éxitos necesarios se cura, con los fallos empeora (agotamiento y síntomas) y al final muere. Las contagiosas pasan a los compañeros que no se aíslan (enfermedad {accion: aislar}).
-- Cuidarlos: enfermedad {accion: tratar, enfermedad, quienes: [enfermo], sanador, metodo: cuidados|hierbas|remedio_raro|magia_divina}: Medicina contra la CD de tratar da +2 (+2 más con hierbas) a sus 3 próximas salvaciones; magia divina (1 de Ceniza) o un remedio raro curan del todo. La Hambre muerta solo se cura así. Narra los síntomas con crudeza; no son un adorno.`;
+- Cuidarlos: enfermedad {accion: tratar, enfermedad, quienes: [enfermo], sanador, metodo: cuidados|hierbas|remedio_raro|magia_divina}: Medicina contra la CD de tratar da +2 (+2 más con hierbas) a sus 3 próximas salvaciones; magia divina (1 de Ceniza) o un remedio raro curan del todo. Narra los síntomas con crudeza; no son un adorno.`;

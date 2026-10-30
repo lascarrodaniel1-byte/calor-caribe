@@ -35,6 +35,8 @@ export interface Herida {
   estado: "sin tratar" | "tratada" | "infectada";
   sangrando: boolean;
   podre: boolean;
+  /** Días que lleva la Podre sin curarse: a los 7 mata y el muerto se alza. */
+  dias_podre?: number;
   /** Días de convalecencia que le faltan (solo avanzan si está tratada; las leves avanzan solas). */
   dias_restantes: number;
   dias_abierta: number;
@@ -249,7 +251,7 @@ export function resumenHerida(h: Herida): string {
     h.reloj !== undefined && h.sangrando ? `¡${Math.max(0, h.reloj)} asalto(s) de vida!` : "",
     h.escalada !== undefined && h.sangrando ? `se vuelve roja en ${h.escalada} asalto(s)` : "",
     h.agonia ? "AGONIZANDO" : "",
-    h.podre ? "con PODRE" : "",
+    h.podre ? `con PODRE${h.dias_podre ? ` (día ${h.dias_podre}/7)` : ""}` : "",
   ].filter(Boolean);
   const zonaTxt = h.zona_vital ? `ZONA ${ZONA_TXT[h.zona_vital]} · ` : "";
   const estr = h.estructura ? ` (${h.estructura})` : "";
@@ -392,7 +394,7 @@ export function infligir(p: Personaje, d: DatosHerida): string {
   } else if (h.sangrando) {
     log.push("Hemorragia: pierde 1 PV por asalto y sangre (riesgo de anemia) hasta detenerla.");
   }
-  if (h.podre) log.push("La herida tiene Podre: hay que cortar la carne podrida (medicina, CD +4), cauterizarla o usar un remedio raro.");
+  if (h.podre) log.push("La herida tiene Podre: hay que cortar la carne podrida (medicina, CD +4), cauterizarla o usar un remedio raro. Sin curar, a los 7 días la Podre mata y el muerto se alza como un Hambriento.");
   return log.join("\n");
 }
 
@@ -790,6 +792,16 @@ export function pasarTiempo(p: Personaje, dias: number, calidad: Calidad): strin
     if (p.condiciones.includes("muerto")) break;
     for (const h of [...p.heridas]) {
       h.dias_abierta++;
+      // La Podre sin curar sube por el cuerpo: a la semana mata, y el muerto se alza como un Hambriento.
+      if (h.podre) {
+        h.dias_podre = (h.dias_podre ?? 0) + 1;
+        if (h.dias_podre >= 7) {
+          marcarMuerto(p);
+          log.push(`☠ ${p.nombre} muere: la Podre de ${h.id} llegó al corazón y a la voluntad. Su cuerpo se alzará como un Hambriento (tú decides cuándo y qué hacen los suyos).`);
+          break;
+        }
+        if (h.dias_podre === 4) log.push(`${h.id}: la Podre sube por la carne (día 4 de 7): ${p.nombre} ya no siente los dedos, el hambre le roe y a ratos no recuerda nombres. Hay que cortarla o cauterizarla ya.`);
+      } else h.dias_podre = undefined;
       const regla = REGLAS[h.gravedad];
       const cdInf = regla.cdInfeccion + (h.podre ? 2 : 0) - (calidad === "enfermeria" ? 3 : 0);
 

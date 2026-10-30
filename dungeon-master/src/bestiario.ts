@@ -79,8 +79,6 @@ export interface Criatura {
   /** Si gobierna un dominio: sus subordinados, y que puede enviarlos o llevarlos consigo. */
   regente?: Regente;
   categoria: "bestia" | "monstruo" | "jefe";
-  /** Sus golpes que impactan exponen a esta enfermedad (ver enfermedades.ts). */
-  contagia?: { enfermedad: string; cd?: number };
   /** 1 (peligro común) a 5 (mata a un grupo entero si se descuida). */
   peligro: 1 | 2 | 3 | 4 | 5;
   region: string;
@@ -135,7 +133,6 @@ export const BESTIARIO: Criatura[] = [
     nombre: "Hambriento",
     temple: "no-muerto torpe",
     categoria: "monstruo",
-    contagia: { enfermedad: "hambre_muerta", cd: 12 },
     peligro: 1,
     region: "Cualquiera; en manadas en la Marca Hueca",
     descripcion: "Muerto alzado, lento y torpe, que no deja de masticar aunque le falte la mandíbula.",
@@ -165,7 +162,6 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ghul de las fosas",
-    contagia: { enfermedad: "hambre_muerta", cd: 13 },
     temple: "no-muerto",
     categoria: "monstruo",
     peligro: 2,
