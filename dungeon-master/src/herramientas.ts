@@ -53,6 +53,7 @@ import { descanso, usarRecurso } from "./recursos.js";
 import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
 import { dote, tomarDote } from "./dotes.js";
+import { sal } from "./sal.js";
 import { enfermedad, procesarEnfermedades } from "./enfermedades.js";
 import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
@@ -772,6 +773,13 @@ const esquemas = {
     terreno: z.enum(["camino", "abierto", "dificil"]),
     motivo: z.string().optional().describe("Adónde van"),
   }),
+  sal: z.object({
+    accion: z.enum(["circulo", "lanzar", "herida", "cadaver", "romper"]),
+    quien: z.string().describe("Quién usa la sal (debe llevar frascos de sal)"),
+    objetivo: z.string().optional().describe("lanzar: el no-muerto · herida: el herido (por defecto, él mismo) · cadaver: el muerto"),
+    protegidos: z.array(z.string()).optional().describe("circulo: quiénes quedan dentro (por defecto, todo el grupo)"),
+    herida: z.string().optional().describe("herida: id de la herida (por defecto, una con Podre)"),
+  }),
   enfermedad: z.object({
     accion: z.enum(["catalogo", "exponer", "tratar", "curar", "aislar", "ver"]),
     enfermedad: z.string().optional().describe("fiebre_cienaga, tos_ceniza o peste_ratas"),
@@ -820,6 +828,8 @@ const descripciones: Record<Nombre, string> = {
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   viajar:
     "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
+  sal:
+    "La sal de los frascos: círculo que frena a los no-muertos, lanzarla contra uno, salar una herida (la Podre retrocede 3 días) o el rito del cadáver (no se alza). Gasta frascos de sal del inventario.",
   enfermedad:
     "Enfermedades: exponer (salvación de CON; si falla incuba en secreto), tratar (cuidados, hierbas, remedio raro, magia divina), curar, aislar, ver y catalogo. El reloj hace avanzar la enfermedad solo.",
   dote:
@@ -1751,6 +1761,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.viajar>;
         const texto = viajar(partida, e);
         return { contenido: texto, aviso: `🥾 ${texto.split("\n")[0]}` };
+      }
+      case "sal": {
+        const e = validado.data as z.infer<typeof esquemas.sal>;
+        const r = sal(partida, e, (a) => ataqueCompleto(partida, a));
+        return { contenido: r.texto, aviso: r.publico };
       }
       case "enfermedad": {
         const e = validado.data as z.infer<typeof esquemas.enfermedad>;

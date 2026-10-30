@@ -83,6 +83,13 @@ export function gastarUnidad(p: Personaje, buscar: RegExp, vacio?: string): stri
   const i = p.inventario.findIndex((x) => buscar.test(x) && !/vac[ií]o/i.test(x));
   if (i < 0) return null;
   const nombre = p.inventario[i];
+  const pre = /^(\d+)\s+(?=\D)/.exec(nombre); // «5 frascos de sal»
+  if (pre) {
+    const n = Number(pre[1]);
+    if (n > 1) p.inventario[i] = nombre.replace(/^\d+/, String(n - 1));
+    else p.inventario.splice(i, 1);
+    return nombre;
+  }
   const m = CANTIDAD.exec(nombre);
   if (m) {
     const n = Number(m[1] ?? m[2] ?? m[3]);

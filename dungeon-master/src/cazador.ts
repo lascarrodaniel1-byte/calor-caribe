@@ -2,6 +2,7 @@
 // mitigan los poderes de brujas, hechiceros y no-muertos; a nivel alto, también curan), una mascota (halcón o ratón) y
 // el rastro de la magia (detectar hechizos y maldiciones, y «amarrar» un hechizo negro a quien lo lanzó).
 import { exigirLibre } from "./segador_base.js";
+import { REGLAS_SAL } from "./sal.js";
 import type { Partida, Personaje } from "./estado.js";
 import { curaConRunas, esCazador, MAX_HOJAS, papelesDe, potenciaDe, type RegistroMagia } from "./cazador_base.js";
 import type { EstadoJefe, Criatura } from "./bestiario.js";
@@ -298,4 +299,5 @@ export const REGLAS_CAZADOR = `## Cazador de Brujas: papeles de runas, mascota y
 - Es un explorador de un arte transmitido libremente (nació de un cuerpo paramilitar de la Inquisición, que lo tolera, pero no hay orden central). Se parece más a un mercenario que a un inquisidor.
 - Papeles de runas (papeles): no se usan sobre el rival, salvo de dos maneras: clavándole un papel con una estaca (clavar) o, a distancia, con su sangre (tomar_sangre tras herirlo y marcar_sangre). Normalmente van alrededor de la zona de la pelea, sobre todo en espacios cerrados (4 hojas, una por pared; al aire libre, un círculo y la potencia baja uno). Se clavan con estacas. Las runas apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos de peligro ≤ su potencia (la potencia sube con el nivel). Clavar un papel a un rival con una estaca (clavar) lo marca aunque no haya runas. El programa te lo recuerda en las criaturas afectadas: aplica ese efecto. A nivel alto (8+), las runas curan a quienes están dentro.
 - Mascota (mascota): un halcón o un ratón, a elección del jugador. Su ficha da lo que hace.
-- Rastro de la magia (rastro_magico): detectar hechizos y maldiciones, y amarrar un hechizo negro a su casteador para rastrearlo con solo tener a la víctima o al objeto; cuanto más nivel, más sabe (tipo de magia → rumbo → región → lugar → quién es y seguirlo). Anota con registrar las maldiciones o hechizos que lancen los PNJ (con lugar y lanzador secretos).`;
+- Rastro de la magia (rastro_magico): detectar hechizos y maldiciones, y amarrar un hechizo negro a su casteador para rastrearlo con solo tener a la víctima o al objeto; cuanto más nivel, más sabe (tipo de magia → rumbo → región → lugar → quién es y seguirlo). Anota con registrar las maldiciones o hechizos que lancen los PNJ (con lugar y lanzador secretos).
+${REGLAS_SAL}`;

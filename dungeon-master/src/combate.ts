@@ -24,6 +24,7 @@ import { pxCriatura, registrarBaja } from "./progresion.js";
 import { ajusteAgua, estaSumergido } from "./agua.js";
 import { ventajaMontada } from "./montura.js";
 import { ajusteMar, ventajaNaval } from "./naves.js";
+import { bloqueoDeSal } from "./sal.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -628,6 +629,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (ob.tipo === "pj" && ob.p.condiciones.includes("muerto")) throw new Error(`${ob.nombre} ya está muerto: no se le puede atacar.`);
   if (ob.tipo === "pnj" && ob.n.pv !== undefined && ob.n.pv <= 0) throw new Error(`${ob.nombre} ya ha caído (0 PV): no se le puede atacar.`);
   const distancia = !!d.a_distancia;
+  const sal = bloqueoDeSal(partida, at, ob, distancia);
+  if (sal) return { texto: sal, aviso: sal, resultado: "fallo" };
   const vet = veteraniaCombatiente(at);
   const of = OFICIO[vet];
   const tp = temple(templeDe(at));

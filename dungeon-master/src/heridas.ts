@@ -37,6 +37,8 @@ export interface Herida {
   podre: boolean;
   /** Días que lleva la Podre sin curarse: a los 7 mata y el muerto se alza. */
   dias_podre?: number;
+  /** Ya se le echó sal (solo una vez por herida). */
+  salada?: boolean;
   /** Días de convalecencia que le faltan (solo avanzan si está tratada; las leves avanzan solas). */
   dias_restantes: number;
   dias_abierta: number;

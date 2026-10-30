@@ -5,6 +5,7 @@ import { estadoTexto, fichaCriatura } from "./bestiario.js";
 import { donTirado } from "./magia.js";
 import { textoSustento } from "./sustento.js";
 import { textoTrampas } from "./trampas.js";
+import { textoSal } from "./sal.js";
 import { textoEnfermedades } from "./enfermedades.js";
 import { textoAgua } from "./agua.js";
 import { textoNaves } from "./naves.js";
@@ -94,6 +95,8 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   );
   const sust = pjs.map((x) => textoSustento(x, p).trim()).map((t, i) => (t ? `${pjs[i].nombre}: ${t.replace(/^Sustento: /, "")}` : "")).filter(Boolean);
   if (sust.length) partes.push(`## Sustento\n${sust.join("\n")}`);
+  const sl = textoSal(p);
+  if (sl) partes.push(sl);
   const en = textoEnfermedades(p);
   if (en) partes.push(en);
   const tr = textoTrampas(p);

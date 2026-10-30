@@ -35,6 +35,8 @@ export interface Personaje {
   jugador?: string;
   /** Enfermedades que sufre (ver enfermedades.ts) y si está aislado (no contagia ni se contagia). */
   enfermedades?: import("./enfermedades.js").Enfermedad[];
+  /** Recibió el rito de sal y fuego: descansa y no se alza. */
+  salado?: boolean;
   aislado?: boolean;
   /** Dotes elegidas (las que llevan opción: «id:opción»; ver dotes.ts) y la dote gratis del Humano del Faro. */
   dotes?: string[];
@@ -146,6 +148,8 @@ export interface Partida {
   /** PX ganados por derrotar criaturas y enemigos que aún no se han repartido: se reparten solos al cerrar el combate. */
   /** Trampas colocadas por el DM (ver trampas.ts). */
   trampas?: Record<string, import("./trampas.js").Trampa>;
+  /** Círculo de sal en pie (ver sal.ts). */
+  sal?: import("./sal.js").CirculoSal;
   /** Botes, balsas y barcos (ver naves.ts). */
   naves?: Record<string, import("./naves.js").Nave>;
   px_pendiente?: { total: number; bajas: string[] };
