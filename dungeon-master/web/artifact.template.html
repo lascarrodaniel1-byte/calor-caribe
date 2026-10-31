@@ -175,6 +175,22 @@
     box-shadow: inset 0 0 18px #8a6a3a55, 0 4px 10px #000a; transform: rotate(-.5deg);
   }
   .ficha:nth-child(even) { transform: rotate(.5deg); }
+  /* Los trozos pulsables de la ficha y su mini pop-up */
+  .ficha .chip { all: unset; cursor: pointer; border-bottom: 1px dotted #7a4a1c; color: #3a1d0a; font: inherit; border-radius: 2px; }
+  .ficha .chip:hover { background: #f0b45a66; }
+  .ficha .chip:focus-visible { outline: 2px solid var(--lumbre); outline-offset: 1px; }
+  .ayuda-pop {
+    position: fixed; z-index: 60; width: min(340px, calc(100vw - 24px)); max-height: min(60vh, 420px); overflow: auto;
+    background: linear-gradient(170deg, #f1e4c2, #dcc698); color: var(--tinta); border: 1px solid #7a5a2a; border-radius: 6px;
+    box-shadow: 0 8px 24px #000c, inset 0 0 14px #8a6a3a44; padding: 12px 14px 14px; font: 14px/1.5 var(--f-ui, inherit);
+  }
+  .ayuda-pop[hidden] { display: none; }
+  .ayuda-pop .ayuda-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .ayuda-pop .ayuda-cab strong { font: 700 16px/1.25 var(--f-letrero, inherit); color: #5a2410; overflow-wrap: anywhere; }
+  .ayuda-pop .ayuda-cab button { all: unset; cursor: pointer; font-size: 22px; line-height: 1; padding: 0 4px; color: #5a2410; }
+  .ayuda-pop .ayuda-cab button:focus-visible { outline: 2px solid var(--lumbre); }
+  .ayuda-pop p { margin: 0 0 6px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { .ayuda-pop { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; max-height: 55vh; } }
   .ficha::before { /* el clavo */
     content: ""; position: absolute; top: 6px; left: 50%; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #d9c7a0, #5a4a32 60%, #2a2016); box-shadow: 0 1px 2px #000;
@@ -536,6 +552,11 @@
       <button class="boton peligro" id="confirmar-reinicio" type="submit">Sí, borrar todo</button>
     </div>
   </form>
+</div>
+
+<div class="ayuda-pop" id="ayuda-pop" role="dialog" aria-labelledby="ayuda-titulo" hidden>
+  <div class="ayuda-cab"><strong id="ayuda-titulo"></strong><button type="button" id="ayuda-cerrar" aria-label="Cerrar">×</button></div>
+  <div id="ayuda-cuerpo"></div>
 </div>
 
 <div class="velo" id="velo-personaje" hidden>
@@ -1007,8 +1028,44 @@
     const pjs = Object.values(partida.personajes);
     cont.innerHTML = "";
     if (!pjs.length) { cont.innerHTML = '<p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p>'; return; }
-    for (const p of pjs) { const d = document.createElement("div"); d.className = "ficha"; d.textContent = V.fichaTexto(p); cont.append(d); }
+    for (const p of pjs) {
+      const d = document.createElement("div"); d.className = "ficha";
+      // Los trozos que se pueden consultar (clase, raza, objetos, hechizos, dotes, recursos, condiciones, heridas) son botones.
+      V.ayudaFicha.fichaClicable(p).forEach((linea, i, todas) => {
+        linea.forEach((seg) => {
+          if (!seg.k) { d.append(document.createTextNode(seg.t)); return; }
+          const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = seg.t;
+          b.dataset.pj = p.nombre; b.dataset.tipo = seg.k.tipo; b.dataset.nombre = seg.k.nombre; b.title = "Pulsa para ver qué es";
+          d.append(b);
+        });
+        if (i < todas.length - 1) d.append(document.createTextNode("\n"));
+      });
+      cont.append(d);
+    }
   }
+
+  // ------------------------------------------------------------ mini pop-up de ayuda de la ficha
+  const pop = () => $("ayuda-pop");
+  function cerrarAyuda() { pop().hidden = true; }
+  function abrirAyuda(boton) {
+    let a;
+    try { a = V.ayudaFicha.ayuda(partida, boton.dataset.pj, boton.dataset.tipo, boton.dataset.nombre); } catch { return; }
+    $("ayuda-titulo").textContent = a.titulo;
+    const cuerpo = $("ayuda-cuerpo"); cuerpo.innerHTML = "";
+    for (const linea of a.cuerpo) { const q = document.createElement("p"); q.textContent = linea; cuerpo.append(q); }
+    const el = pop(); el.hidden = false;
+    // Junto al botón pulsado, sin salirse de la pantalla (en móvil sale abajo como una hoja).
+    const r = boton.getBoundingClientRect();
+    const ancho = Math.min(340, window.innerWidth - 24);
+    el.style.left = Math.max(12, Math.min(r.left, window.innerWidth - ancho - 12)) + "px";
+    const alto = Math.min(el.offsetHeight, 420);
+    el.style.top = (r.bottom + 8 + alto > window.innerHeight ? Math.max(12, r.top - alto - 8) : r.bottom + 8) + "px";
+    $("ayuda-cerrar").focus({ preventScroll: true });
+  }
+  $("lista-fichas").addEventListener("click", (ev) => { const b = ev.target.closest?.("button.chip"); if (b) { ev.stopPropagation(); abrirAyuda(b); } });
+  $("ayuda-cerrar").onclick = cerrarAyuda;
+  document.addEventListener("click", (ev) => { if (!pop().hidden && !pop().contains(ev.target)) cerrarAyuda(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !pop().hidden) cerrarAyuda(); });
 
   // ------------------------------------------------------------ DM
   const INSTRUCCIONES_WEB = `

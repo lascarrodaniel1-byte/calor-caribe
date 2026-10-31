@@ -25,14 +25,14 @@ export interface Objeto {
 }
 
 type Clase = "arma" | "armadura" | "accesorio";
-interface Base {
+export interface Base {
   nombre: string;
   clase: Clase;
   detalle: string;
   precio: number;
 }
 
-const BASES: Base[] = [
+export const BASES: Base[] = [
   { nombre: "Daga", clase: "arma", detalle: "1d4 perforante, sutil, arrojadiza", precio: 2 },
   { nombre: "Espada corta", clase: "arma", detalle: "1d6 perforante, sutil", precio: 10 },
   { nombre: "Sable de abordaje", clase: "arma", detalle: "1d8 cortante, sutil, ligera (hoja corta y curva hecha para cubiertas atestadas: ventaja en una nave)", precio: 20 },
