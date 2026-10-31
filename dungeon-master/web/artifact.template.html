@@ -176,6 +176,7 @@
   }
   .ficha:nth-child(even) { transform: rotate(.5deg); }
   /* Los trozos pulsables de la ficha y su mini pop-up */
+  .boton.sobrio[aria-pressed="true"] { background: linear-gradient(180deg, #f0b45a, #c9791a); color: #2a1a0e; border-color: #8a5410; }
   .ficha .chip { all: unset; cursor: pointer; border-bottom: 1px dotted #7a4a1c; color: #3a1d0a; font: inherit; border-radius: 2px; }
   .ficha .chip:hover { background: #f0b45a66; }
   .ficha .chip:focus-visible { outline: 2px solid var(--lumbre); outline-offset: 1px; }
@@ -743,6 +744,7 @@
       frag.append(d);
     }
     registro.append(frag);
+    window.__refrescarAyudas?.();
     if (alFinal) cronica.scrollTop = cronica.scrollHeight;
     pintarEstado();
   }
@@ -1894,7 +1896,21 @@
   caja.addEventListener("input", ajustar);
   caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
   $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
-  document.querySelectorAll("[data-cmd]").forEach((b) => (b.onclick = () => enviar(b.dataset.cmd)));
+  // «Razas y clases», «Viales» y «Ayuda» se abren y se cierran: pulsarlos otra vez quita la explicación.
+  const abiertosCmd = new Map(); // comando → el texto que dejó en pantalla
+  window.__refrescarAyudas = () => document.querySelectorAll("[data-cmd]").forEach((b) => {
+    const t = abiertosCmd.get(b.dataset.cmd);
+    b.setAttribute("aria-pressed", t !== undefined && privados.includes(t) ? "true" : "false");
+  });
+  document.querySelectorAll("[data-cmd]").forEach((b) => (b.onclick = async () => {
+    const cmd = b.dataset.cmd, previo = abiertosCmd.get(cmd);
+    const i = previo === undefined ? -1 : privados.lastIndexOf(previo);
+    if (i >= 0) { privados.splice(i, 1); abiertosCmd.delete(cmd); pintar(); return; } // ya estaba abierto: se cierra
+    const antes = privados.length;
+    await enviar(cmd);
+    if (privados.length > antes) abiertosCmd.set(cmd, privados[privados.length - 1]);
+    window.__refrescarAyudas();
+  }));
   const abrirLateral = (destino) => {
     $("fichas").classList.add("abierto");
     $(destino).scrollIntoView({ block: "start" });
