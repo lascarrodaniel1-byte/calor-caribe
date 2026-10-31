@@ -423,8 +423,6 @@
       </div>
       <div class="atajos">
         <button class="boton" type="button" id="crear-personaje" hidden>📜 Crear personaje</button>
-        <button class="boton sobrio" type="button" data-cmd="/tirar 1d20">Tirar d20</button>
-        <button class="boton sobrio" type="button" data-cmd="/tirar 4d6kh3">4d6kh3</button>
         <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
         <button class="boton sobrio" type="button" data-cmd="/viales">Viales</button>
         <button class="boton sobrio" type="button" data-cmd="/ayuda">Ayuda</button>
@@ -495,9 +493,9 @@
     </ul>
     <h3>Los dados</h3>
     <ul>
-      <li><strong>Tirar d20</strong> lanza un dado de 20 caras, el que decide casi todo en D&amp;D: si aciertas un golpe, si convences a alguien, si esquivas una trampa. Al resultado se le suma tu bonificador (por ejemplo, +3 por tener Destreza 16) y se compara con una dificultad: CD 10 es fácil, 15 media y 20 muy difícil. Un 20 natural es un éxito brillante (en un ataque, un crítico) y un 1 natural, un desastre.</li>
       <li><strong>Cuándo usarlo:</strong> solo cuando el DM te diga que tires tú («tira un d20 para trepar el muro») o para decidir algo entre vosotros. Normalmente no hace falta: el DM tira por ti cada ataque, prueba y salvación con dados reales, y verás el resultado en las placas de madera. Si tiras porque te lo pidió, el DM usará tu resultado.</li>
-      <li><strong>4d6kh3</strong> sirve para crear el personaje: lanza 4 dados de 6 caras y se queda con los 3 más altos (<em>kh3</em> = <em>keep highest 3</em>). Ejemplo: sacas 5, 2, 6 y 3 → descartas el 2 → 5 + 6 + 3 = 14.</li>
+      <li><strong>El d20</strong> es un dado de 20 caras, el que decide casi todo en D&amp;D: si aciertas un golpe, si convences a alguien, si esquivas una trampa. Al resultado se le suma tu bonificador (por ejemplo, +3 por tener Destreza 16) y se compara con una dificultad: CD 10 es fácil, 15 media y 20 muy difícil. Un 20 natural es un éxito brillante (en un ataque, un crítico) y un 1 natural, un desastre.</li>
+      <li><strong>Los dados</strong> los tira el DM por vosotros (el resultado sale en la mesa). Al crear el personaje, el formulario tiene su propio botón para tirar 4d6kh3 (lanza 4 dados de 6 caras y se queda con los 3 más altos) y el DM tira antes el don arcano de cada personaje nuevo. Si queréis tirar a mano, escribid <strong>/tirar 1d20</strong>.</li>
       <li><strong>Cuándo usarlo:</strong> al crear tu personaje, si eliges tirar tus atributos en vez de usar la serie fija (15, 14, 13, 12, 10, 8). Pulsa el botón <strong>seis veces</strong>, una por atributo, y dile al DM dónde quieres cada número (por ejemplo, el 16 en Fuerza y el 8 en Carisma). Salen valores de 3 a 18; tirar es más arriesgado que la serie fija, pero puede darte un personaje excepcional.</li>
       <li>Todos los de la mesa ven tus tiradas: nadie puede hacer trampa.</li>
     </ul>
@@ -520,7 +518,7 @@
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
       <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
       <li>La magia es rara y siempre cobra un precio: calor, aliento, sangre, cordura o años de vida. El Hechicero es el único mago de verdad: estudió en una escuela de hechicería (solo entran nobles y ricos, y todas tienen licencia de la Inquisición), domina un tipo de magia —fuego, hielo, viento, agua, tierra, oscuridad, luz…— y aprende hasta tres con el nivel. Antes de crear a cada personaje, el DM tira un d20 para ver si nace con un don arcano: un 19 es el don físico (un cuerpo prodigioso) y un 20, el don mágico. Con el don mágico, el Hechicero domina todos los tipos y comprende cualquier hechizo con solo verlo. Un guerrero solo sabe magia si nace con el don mágico (es raro) o si llega a élite y la aprende en la historia. Los catalizadores (como la Piedra de brasa) y el bastón del hechicero pagan por ti.</li>
-      <li>«Tirar d20» y «/tirar» los ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
+      <li>«/tirar» lo ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
     </ul>
     <div class="botonera">
       <button class="boton" type="submit">Entendido, a la mesa</button>
@@ -1078,7 +1076,7 @@
 - Cuando aparezca algo que deba recordarse siempre (un PNJ con nombre, una promesa, una deuda, un secreto descubierto, un lugar clave), guárdalo además con anotar_mundo: las notas de campaña nunca se resumen.
 - Tu crónica (actualizar_cronica) es para tus notas privadas de DM: secretos, planes de los villanos, lo que aún no saben los jugadores. Se reescribe entera: copia lo que siga vigente y añade lo nuevo, en menos de 2500 caracteres.
 - Los resultados del motor se muestran solos a los jugadores: no copies tiradas ni hables de herramientas ni de JSON.
-- Si pides a un jugador que tire él mismo y lo hace con el botón de la mesa, su resultado aparece como «Tirada pública» entre los turnos: úsalo en lugar de tirar otra vez. Lo mismo con sus tiradas de 4d6kh3 al crear el personaje.
+- Si pides a un jugador que tire él mismo y lo hace con /tirar, su resultado aparece como «Tirada pública» entre los turnos: úsalo en lugar de tirar otra vez. Lo mismo con sus tiradas de 4d6kh3 al crear el personaje.
 
 `;
 
