@@ -219,6 +219,9 @@ export interface EstadoCombate {
   sorprendidos?: string[];
   /** Esgrimistas que ya usaron su ventaja de duelo en este combate. */
   duelos?: string[];
+  /** Jefes en cuya guarida se lucha, y qué acción de guarida usaron por última vez. */
+  guaridas?: string[];
+  guaridaUso?: Record<string, { ronda: number; ultima: string }>;
   plan?: { bando: string[]; calidad: CalidadPlan; leido_por: string[] };
 }
 

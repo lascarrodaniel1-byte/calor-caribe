@@ -13,8 +13,10 @@ import { CLASES, RAZAS } from "./mundo.js";
 import { RASGOS_NIVEL } from "./progresion.js";
 import { recursosDe } from "./recursos.js";
 import { ENFERMEDADES } from "./enfermedades.js";
+import { IDIOMAS } from "./idiomas.js";
+import { IDIOMAS_NOMBRES } from "./idiomas_base.js";
 
-export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos";
+export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma";
 export interface Segmento { t: string; k?: { tipo: TipoAyuda; nombre: string } }
 export interface Ayuda { titulo: string; cuerpo: string[] }
 
@@ -31,6 +33,7 @@ export function fichaClicable(p: Personaje): Segmento[][] {
   for (const r of recursosDe(p)) poner(r.def.nombre, "recurso");
   for (const c of p.condiciones) poner(c, "condicion");
   for (const h of p.heridas) poner(h.id, "herida");
+  for (const i of p.idiomas ?? []) poner(IDIOMAS_NOMBRES[i] ?? i, "idioma", i);
   poner(p.don === "fisico" ? "Don arcano FÍSICO" : p.don === "magico" ? "Don arcano MÁGICO" : "", "don");
   poner("Rasgos de nivel", "rasgos");
   fichas.sort((a, b) => b.texto.length - a.texto.length);
@@ -147,6 +150,10 @@ export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: str
       return { titulo: `${h.id}: ${h.estructura ?? h.ubicacion} (${h.gravedad})`, cuerpo: [h.descripcion, est ? `Afecta a: ${est.efecto}.` : "", `Estado: ${h.estado}${h.sangrando ? ", sangrando" : ""}${h.podre ? `, con PODRE (día ${h.dias_podre ?? 0}/7)` : ""}.`, h.estado === "sin tratar" ? "Hay que tratarla (tratar_herida) cuanto antes." : `Convalecencia: ${h.dias_restantes} días.`].filter(Boolean) };
     }
     case "don": return { titulo: p.don === "fisico" ? "Don arcano físico" : "Don arcano mágico", cuerpo: [p.don === "fisico" ? "Naciste con un cuerpo prodigioso: competencia +1 y FUE, DES y CON pueden llegar a 28." : "Naciste con talento para la magia: si eres Hechicero dominas todos los tipos; si no, la magia de tu estilo despierta con el tiempo."] };
+    case "idioma": {
+      const i = IDIOMAS.find((x) => x.id === nombre || x.nombre === nombre);
+      return i ? { titulo: i.nombre, cuerpo: [i.nota, `Lo hablan: ${i.quienes}.`, "Quien no lo habla no entiende a quien lo usa: solo capta el tono y los gestos. Se aprende con un maestro y unos 30 días."] } : { titulo: nombre, cuerpo: ["Idioma sin descripción."] };
+    }
     case "rasgos": return ayudaClase(p);
   }
 }

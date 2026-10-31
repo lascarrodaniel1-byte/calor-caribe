@@ -1,4 +1,5 @@
 // Estado persistente de la partida: historial de la conversación, fichas y notas del mundo.
+import { IDIOMAS_NOMBRES, idiomasIniciales } from "./idiomas_base.js";
 import { rotuloDote } from "./dotes_base.js";
 import type { Leyenda } from "./leyenda.js";
 import { textoLeyenda } from "./leyenda.js";
@@ -39,6 +40,8 @@ export interface Personaje {
   /** Recibió el rito de sal y fuego: descansa y no se alza. */
   salado?: boolean;
   aislado?: boolean;
+  /** Idiomas que habla (ids de idiomas.ts; si falta, solo Común). */
+  idiomas?: string[];
   /** Dotes elegidas (las que llevan opción: «id:opción»; ver dotes.ts) y la dote gratis del Humano del Faro. */
   dotes?: string[];
   dote_humano?: string;
@@ -205,6 +208,7 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.secuencia ??= secuenciaVacia();
   partida.mapa.lugares ??= {};
   partida.mapa.rastro ??= [];
+  for (const pj of Object.values(partida.personajes)) pj.idiomas ??= idiomasIniciales(pj).idiomas; // partidas anteriores a los idiomas
   migrarMapa(partida.mapa);
   for (const j of Object.values(partida.jefes)) {
     j.presagios ??= [];
@@ -246,6 +250,7 @@ export function fichaTexto(p: Personaje): string {
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
     p.enfermedades?.some((e) => e.etapa !== "incubando") ? `  Enfermo: ${p.enfermedades.filter((e) => e.etapa !== "incubando").map((e) => `${e.id.replace(/_/g, " ")} (${e.etapa})`).join(", ")}` : "",
+    p.idiomas?.length ? `  Idiomas: ${p.idiomas.map((i) => IDIOMAS_NOMBRES[i] ?? i).join(", ")}` : "",
     p.dotes?.length ? `  Dotes: ${p.dotes.map(rotuloDote).join(", ")}` : "",
     p.don === "fisico" ? "  Don arcano FÍSICO: competencia +1 y FUE, DES y CON hasta 28" : p.don === "magico" ? "  Don arcano MÁGICO" : "",
     "  " +

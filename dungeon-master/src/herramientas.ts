@@ -54,6 +54,8 @@ import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
 import { dote, tomarDote } from "./dotes.js";
 import { sal } from "./sal.js";
+import { avisoGuaridas, guarida } from "./guarida.js";
+import { idioma, idiomasIniciales } from "./idiomas.js";
 import { enfermedad, procesarEnfermedades } from "./enfermedades.js";
 import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
@@ -148,6 +150,7 @@ const esquemas = {
     escuelas_magia: z.array(z.enum(ESCUELAS)).max(2).optional().describe("Obsoleto (partidas antiguas): usa tipos_magia"),
     tipos_magia: z.array(z.enum(TIPOS_IDS)).max(1).optional().describe("Solo Hechicero: el tipo de magia con que empieza (el que enseña su escuela): fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curacion, proteccion, mente, adivinacion; sombra y necromancia son magia negra, sin licencia"),
     linaje: z.enum(["noble", "rico", "humilde"]).optional().describe("Solo Hechicero: solo los nobles o los ricos entran en las escuelas de hechicería, salvo quien nace con el don arcano (se incluye por fuerza mayor)"),
+    idiomas: z.array(z.string()).optional().describe("Idiomas extra (hasta el modificador de INT, uno más el Humano del Faro): comun, karak, marchito, hollin, varg, palido, ceniza, solar, cuervo o bajos"),
     dote: z.string().optional().describe("Solo Humano del Faro: su dote gratis (dote {accion: lista})"),
     opcion_dote: z.string().optional().describe("Opción de esa dote (Lengua de plata: persuasion o intimidacion)"),
     don_arcano: z.union([z.boolean(), z.enum(["fisico", "magico"])]).optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza el don (true = mágico). Si se omite, vale el que tiró el DM con tirar_don_arcano antes de crear al personaje"),
@@ -773,6 +776,20 @@ const esquemas = {
     terreno: z.enum(["camino", "abierto", "dificil"]),
     motivo: z.string().optional().describe("Adónde van"),
   }),
+  idioma: z.object({
+    accion: z.enum(["lista", "ver", "comprobar", "aprender"]),
+    quien: z.string().optional().describe("aprender: el personaje"),
+    quienes: z.array(z.string()).optional().describe("ver: de quién (por defecto, todos)"),
+    idioma: z.string().optional().describe("comun, karak, marchito, hollin, varg, palido, ceniza, solar, cuervo o bajos"),
+    maestro: z.string().optional().describe("aprender: quién o qué lo enseña"),
+    dias: z.number().int().min(1).max(365).optional().describe("aprender: días de estudio (30 por defecto)"),
+  }),
+  guarida: z.object({
+    accion: z.enum(["ver", "declarar", "actuar", "salir"]),
+    criatura: z.string().optional().describe("El jefe (Vaskar, el Juez, Ysolde, la Madre, el Que Golpea, Ilvara, Vaerth o Kharoth)"),
+    nombre_accion: z.string().optional().describe("actuar: la acción de guarida"),
+    objetivos: z.array(z.string()).optional().describe("actuar: por defecto, todos los personajes en pie"),
+  }),
   sal: z.object({
     accion: z.enum(["circulo", "lanzar", "herida", "cadaver", "romper"]),
     quien: z.string().describe("Quién usa la sal (debe llevar frascos de sal)"),
@@ -829,6 +846,10 @@ const descripciones: Record<Nombre, string> = {
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   viajar:
     "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
+  idioma:
+    "Idiomas: lista, ver los del grupo, comprobar quién entiende uno (quien no lo entiende oye sonidos sin sentido) o aprender uno con un maestro (30 días, prueba de INT).",
+  guarida:
+    "Combate en la guarida de un jefe: declararla y, en la iniciativa 20 de cada asalto, una acción de guarida (el lugar ataca) sin repetir la misma dos asaltos seguidos. ver enseña las acciones y los efectos regionales.",
   sal:
     "La sal de los frascos: círculo que frena a los no-muertos, lanzarla contra uno, salar una herida (la Podre retrocede 3 días) o el rito del cadáver (no se alza). Gasta frascos de sal del inventario.",
   enfermedad:
@@ -1203,10 +1224,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "enfermedades", "aislado", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         consumirDon?.();
+        p.idiomas = nuevoPj ? idiomasIniciales(p, e.idiomas).idiomas : previo?.idiomas ?? idiomasIniciales(p).idiomas;
         delete (p as unknown as Record<string, unknown>).dote;
         delete (p as unknown as Record<string, unknown>).opcion_dote;
         let dote_txt = "";
@@ -1737,7 +1759,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
-        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida)].join("\n");
+        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida), ...avisoGuaridas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "montura": {
@@ -1769,6 +1791,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.viajar>;
         const texto = viajar(partida, e);
         return { contenido: texto, aviso: `🥾 ${texto.split("\n")[0]}` };
+      }
+      case "idioma": {
+        const e = validado.data as z.infer<typeof esquemas.idioma>;
+        const r = idioma(partida, e);
+        return { contenido: r.texto, aviso: r.publico };
+      }
+      case "guarida": {
+        const e = validado.data as z.infer<typeof esquemas.guarida>;
+        const r = guarida(partida, e);
+        return { contenido: r.texto, aviso: r.publico };
       }
       case "sal": {
         const e = validado.data as z.infer<typeof esquemas.sal>;
