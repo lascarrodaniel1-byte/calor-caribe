@@ -734,7 +734,8 @@
   const porTurnos = () => T.porTurnos(jugadores, orden, ahora());
   // ¿Ya tiene ficha guardada este jugador? (Partidas antiguas sin dueño en las fichas: no se exige.)
   function tieneFicha(p, jugador) {
-    const fichas = Object.values(p?.personajes || {});
+    // Un personaje muerto no cuenta: quien lo perdió crea otro (con su propia tirada del don).
+    const fichas = Object.values(p?.personajes || {}).filter((f) => !(f.condiciones || []).includes("muerto"));
     if (!fichas.length) return false;
     if (!fichas.some((f) => f.jugador)) return true;
     const n = String(jugador || "").trim().toLowerCase();
@@ -767,6 +768,8 @@
   function actualizarBotonPersonaje() {
     const b = $("crear-personaje");
     if (b) b.hidden = !(db && !soloLectura && nombre && !tieneFicha(partida, nombre));
+    // Si el formulario está abierto, la tirada del DM puede haber llegado ahora.
+    if (form.construido && $("velo-personaje") && !$("velo-personaje").hidden && form.actualizar) form.actualizar();
   }
 
   function actualizarEntrada() {
@@ -1959,6 +1962,9 @@
     const texto = (id, max, ph) => { const i = document.createElement("input"); i.type = "text"; i.id = id; i.maxLength = max; if (ph) i.placeholder = ph; i.autocomplete = "off"; return i; };
 
     const donAviso = document.createElement("p"); donAviso.className = "ayuda"; donAviso.id = "pj-don"; raiz.append(donAviso);
+    const avisar = document.createElement("button"); avisar.type = "button"; avisar.className = "boton sobrio"; avisar.id = "pj-avisar"; avisar.textContent = "🎲 Avisar al DM para que tire mi don"; avisar.hidden = true;
+    avisar.onclick = () => { avisar.disabled = true; setTimeout(() => { avisar.disabled = false; }, 20000); $("velo-personaje").hidden = true; enviar(`${nombre} pide al DM que tire el don arcano de su nuevo personaje (tirar_don_arcano).`); };
+    raiz.append(avisar);
     raiz.append(campo("pj-nombre", "Nombre de tu personaje", texto("pj-nombre", 40, "No el tuyo de jugador")));
     const fila1 = document.createElement("div"); fila1.className = "fila";
     fila1.append(
@@ -2036,6 +2042,15 @@
       $("pj-clase-ayuda").textContent = clase ? `Dado de golpe d${clase.dado} · atributo principal ${clase.principal}. Equipo inicial: ${clase.equipo}` : "";
       const v = DF.veteranias.find((x) => x.nombre === $("pj-vet").value); $("pj-vet-ayuda").textContent = v ? v.nota : "";
       [["pj-per1"], ["pj-per2"]].forEach(([id]) => { const x = DF.personalidades.find((q) => q.nombre === $(id).value); $(id + "-ayuda").textContent = x ? x.nota : ""; });
+      // La tirada del don de ESTE personaje nuevo: la hace el DM antes; hasta entonces no se puede enviar la ficha.
+      const tirada = (partida?.tiradas_don || []).find((x) => String(x.jugador).trim().toLowerCase() === String(nombre).trim().toLowerCase() && x.estado === "pendiente");
+      $("enviar-personaje").disabled = !tirada;
+      $("pj-avisar").hidden = !!tirada;
+      $("pj-don").textContent = !tirada
+        ? "🎲 Esperando la tirada del DM para tu personaje nuevo. No puedes enviar la ficha hasta que el DM tire su don arcano."
+        : tirada.tipo === "fisico" ? `💪 Tu personaje nace con el don arcano FÍSICO (d20 = ${tirada.tirada}): un cuerpo prodigioso. Competencia +1 y FUE, DES y CON hasta 28.`
+        : tirada.tipo === "magico" ? `✨ Tu personaje nace con el don arcano MÁGICO (d20 = ${tirada.tirada}): talento para la magia. Si es Hechicero, domina todos los tipos.`
+        : `Tu personaje no nace con ningún don arcano (d20 = ${tirada.tirada}).`;
       $("pj-magia").hidden = !clase?.mago;
       $("pj-dotes").hidden = $("pj-raza").value !== "Humano del Faro";
       const dt = DF.dotes.find((d) => d.id === $("pj-dote").value);
@@ -2089,12 +2104,6 @@
     if (!nombre) { pedirNombre(); return; }
     if (!db || soloLectura) { privados.push("Para crear un personaje necesitas poder escribir en la partida."); pintar(); return; }
     construirFormulario();
-    {
-      // El don arcano lo tira el DM antes de crear el personaje: si ya está tirado, se lo recordamos.
-      const d = (partida?.dones || {})[String(nombre).trim().toLowerCase()];
-      const t = d?.tipo || (d ? (d.don ? "magico" : "ninguno") : "");
-      $("pj-don").textContent = t === "fisico" ? "💪 Naciste con el don arcano FÍSICO (el DM sacó 19): un cuerpo prodigioso. Competencia +1 y FUE, DES y CON hasta 28." : t === "magico" ? "✨ Naciste con el don arcano MÁGICO (el DM sacó 20): talento para la magia. Si eres Hechicero, dominas todos los tipos." : t === "ninguno" ? "No naciste con ningún don arcano (el DM tiró el dado)." : "El DM tirará un d20 para ver si naces con un don arcano (19 físico, 20 mágico) antes de que crees tu personaje.";
-    }
     $("error-personaje").hidden = true;
     $("velo-personaje").hidden = false;
     form.actualizar();

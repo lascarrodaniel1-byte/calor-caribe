@@ -2,7 +2,7 @@
 // la terminal, empaquetado para el navegador. El DM es Claude a través de la
 // capacidad "sample" del artifact, que llama al motor con la herramienta "motor".
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
-import { donTirado } from "./magia.js";
+import { tiradaPendiente } from "./magia.js";
 import { textoSustento } from "./sustento.js";
 import { textoTrampas } from "./trampas.js";
 import { textoSal } from "./sal.js";
@@ -48,13 +48,16 @@ export function textoFase(p: Partida, sinFicha?: string[]): string {
   const hayPj = Object.keys(p.personajes).length > 0;
   const pendientes = sinFicha ?? (hayPj ? [] : ["los jugadores"]);
   if (pendientes.length || !hayPj) {
-    const sinDon = pendientes.filter((n) => n !== "los jugadores" && !donTirado(p, n));
+    const reales = pendientes.filter((n) => n !== "los jugadores");
+    const sinDon = reales.filter((n) => !tiradaPendiente(p, n));
+    const conDon = reales.filter((n) => tiradaPendiente(p, n));
+    const perdieron = reales.filter((n) => Object.values(p.personajes).some((x) => x.jugador && x.jugador.toLowerCase() === n.toLowerCase() && x.condiciones.includes("muerto")));
     return [
       "## FASE DE LA MESA: CREACIÓN DE PERSONAJES",
       sinDon.length
-        ? `1) ANTES de crear ningún personaje, tira el don arcano de cada jugador que aún no lo tiene: ${sinDon.join(", ")} (tirar_don_arcano, un d20: 19 = don FÍSICO, 20 = don MÁGICO, el resto sin don). Anuncia a cada uno su resultado.`
-        : "1) Los dones arcanos ya están tirados (tirar_don_arcano); si llega un jugador nuevo, tira el suyo antes de que cree su personaje.",
-      `2) Cada jugador crea su personaje (📜 Crear personaje) sabiendo su don.${pendientes.length ? ` Aún sin ficha: ${pendientes.join(", ")}.` : ""}`,
+        ? `1) ANTES de que se cree cada personaje, tira SU don arcano (tirar_don_arcano, un d20: 19 = don FÍSICO, 20 = don MÁGICO, el resto sin don; una tirada por personaje nuevo): ${sinDon.join(", ")}. El formulario de cada jugador está BLOQUEADO hasta que tires. Anuncia a cada uno su resultado.${perdieron.length ? ` Han perdido a su personaje y crean otro (tirada nueva): ${perdieron.join(", ")}.` : ""}`
+        : `1) Los dones de los personajes nuevos ya están tirados${conDon.length ? ` (${conDon.join(", ")})` : ""}. Si un jugador pide la tirada o llega uno nuevo, tira la suya antes de que cree su personaje.`,
+      `2) Cada jugador crea su personaje (📜 Crear personaje) sabiendo su don.${reales.length ? ` Aún sin ficha: ${reales.join(", ")}.` : ""}`,
       "3) NO empieces la historia ni des la introducción al mundo hasta que todos tengan su ficha guardada.",
     ].join("\n");
   }

@@ -40,7 +40,7 @@ import {
   UBICACIONES,
 } from "./heridas.js";
 import { aprenderTipo, avisoLicencia, comprenderMagia } from "./hechicero.js";
-import { ajustarMaestriaHechicero, donTirado, tirarDonJugador, buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, TIPOS_IDS, tiposMax, tipoDe, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
+import { ajustarMaestriaHechicero, consumirTirada, historialDones, registrarDonForzado, tiradaPendiente, tirarDonJugador, buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, TIPOS_IDS, tiposMax, tipoDe, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
@@ -796,7 +796,8 @@ const esquemas = {
     opcion: z.string().optional(),
   }),
   tirar_don_arcano: z.object({
-    jugador: z.string().describe("El jugador (o el personaje) para quien se tira el don, ANTES de crear su personaje"),
+    jugador: z.string().describe("El jugador para quien se tira el don de su personaje NUEVO, ANTES de crear su personaje"),
+    historial: z.boolean().optional().describe("En vez de tirar, ver las tiradas de ese jugador y qué personaje consumió cada una"),
   }),
   anotar_mundo: z.object({
     nota: z.string().optional().describe("Hecho importante de la campaña, tal y como es AHORA: PNJ, misión, lugar, deuda, promesa…"),
@@ -835,7 +836,7 @@ const descripciones: Record<Nombre, string> = {
   dote:
     "Dotes: lista (todas), ver (las de un personaje) o elegir (la dote gratis del Humano del Faro; las demás se eligen en subir_nivel).",
   tirar_don_arcano:
-    "ANTES de crear el personaje de un jugador: el DM tira un d20 para ver si nace con un don arcano. 19 = don FÍSICO (cuerpo prodigioso), 20 = don MÁGICO (talento para la magia); cualquier otro resultado, sin don. Una sola tirada por jugador. Anuncia el resultado y luego guía la creación del personaje.",
+    "ANTES de crear cada personaje nuevo (también el que sustituye a uno muerto): el DM tira un d20 para ver si nace con un don arcano. 19 = don FÍSICO (cuerpo prodigioso), 20 = don MÁGICO (talento para la magia); cualquier otro resultado, sin don. Una tirada por cada personaje nuevo (si ya tiene una pendiente, devuelve esa). Anuncia el resultado y luego guía la creación del personaje.",
   terminar_combate: "Cierra el combate en curso (borra el orden de iniciativa y los PNJ sin ficha).",
   tirar_dados:
     "Tira dados de verdad. Úsala SIEMPRE que haya que tirar (ataques, daño, salvaciones, pruebas, iniciativa, " +
@@ -1153,17 +1154,23 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "guardar_personaje": {
         const e = validado.data as z.infer<typeof esquemas.guardar_personaje>;
         const previo = partida.personajes[e.nombre];
-        const nuevoEnClase = !previo || previo.clase !== e.clase; // volver a guardar la ficha de siempre no vuelve a tirar el don ni a comprobar el linaje
-        let tipoDon: "fisico" | "magico" | "ninguno" = previo && !nuevoEnClase ? previo.don ?? "ninguno" : "ninguno";
+        // Un personaje NUEVO (o el que sustituye a uno muerto) necesita su tirada del don, hecha ANTES por el DM; cambiar de clase o volver a guardar la ficha no tira nada.
+        const nuevoPj = !previo || previo.condiciones.includes("muerto");
+        const nuevoEnClase = nuevoPj || previo.clase !== e.clase; // volver a guardar la ficha de siempre no vuelve a comprobar el linaje
+        const jugadorDon = e.jugador ?? e.nombre;
+        let tipoDon: "fisico" | "magico" | "ninguno" = !nuevoPj && previo ? previo.don ?? "ninguno" : "ninguno";
         let tiradaDon = "";
-        if (nuevoEnClase) {
-          if (e.don_arcano !== undefined) tipoDon = e.don_arcano === true ? "magico" : e.don_arcano === false ? "ninguno" : e.don_arcano;
-          else {
-            // El DM debería haberlo tirado antes de crear al personaje; si no, se tira aquí (una sola vez por jugador).
-            const antes = donTirado(partida, e.jugador, e.nombre);
-            const { t } = antes ? { t: antes } : tirarDonJugador(partida, e.jugador ?? e.nombre);
-            tipoDon = t.tipo;
-            tiradaDon = (antes ? "" : "(Tirada hecha ahora: la próxima vez tira el don con tirar_don_arcano ANTES de crear al personaje.) ") + t.texto;
+        let consumirDon: (() => void) | undefined;
+        if (nuevoPj) {
+          if (e.don_arcano !== undefined) {
+            tipoDon = e.don_arcano === true ? "magico" : e.don_arcano === false ? "ninguno" : e.don_arcano;
+            consumirDon = () => registrarDonForzado(partida, jugadorDon, e.nombre, tipoDon);
+          } else {
+            const pend = tiradaPendiente(partida, jugadorDon);
+            if (!pend) throw new Error(`Antes de crear a ${e.nombre}, tira el don arcano de su personaje: tirar_don_arcano {jugador: «${jugadorDon}»}. Cada personaje nuevo tiene su propia tirada, hecha ANTES de guardar su ficha.`);
+            tipoDon = pend.tipo;
+            tiradaDon = pend.texto;
+            consumirDon = () => consumirTirada(partida, jugadorDon, e.nombre);
           }
         }
         const don = tipoDon === "magico";
@@ -1199,6 +1206,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "enfermedades", "aislado", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
+        consumirDon?.();
         delete (p as unknown as Record<string, unknown>).dote;
         delete (p as unknown as Record<string, unknown>).opcion_dote;
         let dote_txt = "";
@@ -1779,9 +1787,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "tirar_don_arcano": {
         const e = validado.data as z.infer<typeof esquemas.tirar_don_arcano>;
+        if (e.historial) { const h = historialDones(partida, e.jugador); return { contenido: h, aviso: null }; }
         const { t, nueva } = tirarDonJugador(partida, e.jugador);
         const lectura = t.tipo === "fisico" ? "Don FÍSICO: cuerpo prodigioso (competencia +1; FUE, DES y CON hasta 28). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : t.tipo === "magico" ? "Don MÁGICO: talento para la magia (si es Hechicero, domina todos los tipos; si es otra clase, la magia de su estilo despierta). Cuéntaselo y que lo tenga en cuenta al crear su personaje." : "Sin don arcano: un mortal corriente (si quiere ser Hechicero, necesitará linaje noble o rico).";
-        const txt = `${nueva ? "" : "(Ya estaba tirado) "}${e.jugador}: ${t.texto}. ${lectura}`;
+        const txt = `${nueva ? "" : "(Ya tenía una tirada pendiente: es la de su próximo personaje) "}${e.jugador}: ${t.texto}. ${lectura}\nCuando guarde su ficha, esta tirada queda usada; el siguiente personaje que cree necesitará otra.`;
         return { contenido: txt, aviso: `🎲 ${e.jugador}: ${t.texto}` };
       }
       case "terminar_combate": {

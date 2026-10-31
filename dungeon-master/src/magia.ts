@@ -321,25 +321,49 @@ export function tirarDon(): TiradaDon {
 
 const claveDon = (x: string) => x.toLowerCase().trim();
 
-/** El don ya tirado de un jugador o personaje (también las claves antiguas «nombre|raza»). */
-export function donTirado(partida: Partida, ...nombres: (string | undefined)[]): TiradaDon | undefined {
-  const dones = partida.dones ?? {};
-  for (const n of nombres) {
-    if (!n) continue;
-    const t = dones[claveDon(n)];
-    if (t) return { tipo: t.tipo ?? (t.don ? "magico" : "ninguno"), don: !!t.don, tirada: t.tirada, texto: t.texto };
-  }
-  const antigua = Object.keys(dones).find((k) => nombres.some((n) => n && k.startsWith(claveDon(n) + "|")));
-  return antigua ? { tipo: dones[antigua].tipo ?? (dones[antigua].don ? "magico" : "ninguno"), don: !!dones[antigua].don, tirada: dones[antigua].tirada, texto: dones[antigua].texto } : undefined;
+/** Una tirada del don: pertenece a un personaje nuevo (no al jugador). Pendiente hasta que un personaje la consume. */
+export interface RegistroDon extends TiradaDon {
+  id: number;
+  jugador: string;
+  estado: "pendiente" | "usada";
+  /** El personaje que la consumió. */
+  personaje?: string;
+  /** El DM fijó el don por el trasfondo (no hubo dado). */
+  forzada?: boolean;
 }
 
-/** El DM tira el don de un jugador (una sola vez: volver a pedirlo devuelve el mismo resultado). */
-export function tirarDonJugador(partida: Partida, jugador: string): { t: TiradaDon; nueva: boolean } {
-  const previo = donTirado(partida, jugador);
-  if (previo) return { t: previo, nueva: false };
-  const t = tirarDon();
-  (partida.dones ??= {})[claveDon(jugador)] = t;
+/** La tirada pendiente de un jugador (la de su próximo personaje), si el DM ya la hizo. */
+export function tiradaPendiente(partida: Partida, jugador: string): RegistroDon | undefined {
+  return (partida.tiradas_don ?? []).find((t) => claveDon(t.jugador) === claveDon(jugador) && t.estado === "pendiente");
+}
+
+/** El DM tira el don del personaje nuevo de un jugador. Si ya hay una pendiente la devuelve (cerrar el formulario no permite repetirla). */
+export function tirarDonJugador(partida: Partida, jugador: string): { t: RegistroDon; nueva: boolean } {
+  const previa = tiradaPendiente(partida, jugador);
+  if (previa) return { t: previa, nueva: false };
+  const lista = (partida.tiradas_don ??= []);
+  const t: RegistroDon = { ...tirarDon(), id: lista.length + 1, jugador, estado: "pendiente" };
+  lista.push(t);
   return { t, nueva: true };
+}
+
+/** El personaje nuevo consume su tirada. */
+export function consumirTirada(partida: Partida, jugador: string, personaje: string): void {
+  const t = tiradaPendiente(partida, jugador);
+  if (t) { t.estado = "usada"; t.personaje = personaje; }
+}
+
+/** Un don fijado por el DM por el trasfondo: queda en el historial, y cierra la tirada pendiente si la había. */
+export function registrarDonForzado(partida: Partida, jugador: string, personaje: string, tipo: Don | "ninguno"): void {
+  consumirTirada(partida, jugador, personaje);
+  const lista = (partida.tiradas_don ??= []);
+  lista.push({ id: lista.length + 1, jugador, tipo, don: tipo === "magico", texto: `Don fijado por el trasfondo: ${tipo}`, estado: "usada", personaje, forzada: true });
+}
+
+/** Las tiradas de un jugador (o de todos) y qué personaje consumió cada una. */
+export function historialDones(partida: Partida, jugador?: string): string {
+  const l = (partida.tiradas_don ?? []).filter((t) => !jugador || claveDon(t.jugador) === claveDon(jugador));
+  return l.length ? l.map((t) => `#${t.id} ${t.jugador}: ${t.tipo}${t.tirada ? ` (d20 ${t.tirada})` : ""}${t.forzada ? " [fijado]" : ""} — ${t.estado === "usada" ? `usada por ${t.personaje}` : "PENDIENTE"}`).join("\n") : "Aún no se ha tirado ningún don.";
 }
 
 /** La magia con la que empieza un personaje. Los guerreros, solo si tienen el don. */
@@ -721,7 +745,7 @@ La magia es rara y temida. La Inquisición persigue a los magos sin licencia y l
 - Maestría: profano (no lanza), iniciado (hasta círculo 1), adepto (2), maestro (3), archimago (4), ascendido (5, solo el Hechicero con don arcano a nivel 13+). Forzar un círculo por encima: CD +5 y precio doble. El círculo 5 solo lo intenta un archimago forzando, o lo lanza con soltura un ascendido.
 - Catalizadores (en el inventario; pásalo en catalizador): Piedra de brasa (calor), Ámbar de tormenta (aliento), Corazón de cuervo (sangre), Incienso de amapola gris (cordura), Reloj de arena de hueso (años; rarísimo), Diente de dios (todo; reliquia), Báculo de roble petrificado (permanente, −1 de calor) y el bastón del Hechicero (permanente; absorbe calor, aliento o cordura: 1 + un punto cada 4 niveles). Los demás son caros o raros: que cueste conseguirlos.
 - Afinidad de las razas: ${Object.entries(AFINIDAD).map(([r, a]) => `${r}: ${a.nota}`).join("; ")}.
-- Quién sabe magia: casi nadie. El Hechicero es el único mago de verdad (adepto, un tipo de magia al empezar y hasta tres con el nivel —el del don arcano, todos—, suma su competencia; ver las reglas del Hechicero). Un guerrero solo la usa si nació con el don arcano MÁGICO (el DM tira un d20 por jugador ANTES de crear su personaje: 19 = don físico, 20 = don mágico) o si es de élite y la aprendió en la historia con un maestro, un grimorio o un pacto, tras mucho esfuerzo (modificar_personaje con maestria "iniciado": recibe la magia de su estilo). Estilo de cada clase: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}. Entre los PNJ, igual: los soldados, aldeanos y mercaderes no saben magia; solo algunos veteranos de élite (inquisidores de alto rango, cazadores de brujas curtidos, caballeros de órdenes antiguas) y unos pocos dotados.
+- Quién sabe magia: casi nadie. El Hechicero es el único mago de verdad (adepto, un tipo de magia al empezar y hasta tres con el nivel —el del don arcano, todos—, suma su competencia; ver las reglas del Hechicero). Un guerrero solo la usa si nació con el don arcano MÁGICO (el DM tira un d20 por cada personaje nuevo ANTES de crearlo: 19 = don físico, 20 = don mágico) o si es de élite y la aprendió en la historia con un maestro, un grimorio o un pacto, tras mucho esfuerzo (modificar_personaje con maestria "iniciado": recibe la magia de su estilo). Estilo de cada clase: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}. Entre los PNJ, igual: los soldados, aldeanos y mercaderes no saben magia; solo algunos veteranos de élite (inquisidores de alto rango, cazadores de brujas curtidos, caballeros de órdenes antiguas) y unos pocos dotados.
 - Subir de maestría o aprender hechizos exige maestros, grimorios o pactos, y tiempo (modificar_personaje con maestria, agregar_escuelas o agregar_hechizos).
 - Hechizos de referencia por tipo de magia: ${TIPOS_MAGIA.map((t) => `${t.nombre}: ${HECHIZOS.filter((h) => tipoDe(h) === t.id).sort((a, b) => a.circulo - b.circulo).map((h) => `${h.nombre} (${h.circulo})`).join(", ")}`).join(" | ")}. Puedes improvisar otros con hechizo_nuevo, respetando escuela, círculo y precio.
 - Los PNJ magos pagan el mismo precio: que se note en la ficción (manos quemadas, labios azules, canas prematuras).`;

@@ -130,6 +130,8 @@ export interface Partida {
   creada: string;
   /** Don arcano que el DM tiró para cada jugador antes de crear su personaje (d20: 19 físico, 20 mágico); no se repite. `don` = tiene el mágico. */
   dones?: Record<string, { don: boolean; tipo?: "fisico" | "magico" | "ninguno"; tirada?: number; texto: string }>;
+  /** Tiradas del don por personaje nuevo (ver magia.ts): pendientes hasta que el personaje se guarda. */
+  tiradas_don?: import("./magia.js").RegistroDon[];
   historial: Anthropic.Beta.BetaMessageParam[];
   personajes: Record<string, Personaje>;
   notas_mundo: string[];
