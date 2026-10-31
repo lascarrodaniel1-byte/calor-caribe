@@ -177,6 +177,8 @@
   .ficha:nth-child(even) { transform: rotate(.5deg); }
   /* Los trozos pulsables de la ficha y su mini pop-up */
   .boton.sobrio[aria-pressed="true"] { background: linear-gradient(180deg, #f0b45a, #c9791a); color: #2a1a0e; border-color: #8a5410; }
+  .ficha .ausente-nota { font: 600 12px/1.3 var(--f-ui, inherit); color: #6a2a14; background: #c9a56e66; border: 1px dashed #7a4a1c; border-radius: 3px; padding: 3px 7px; margin-bottom: 8px; }
+  .ficha .ausente-nota[hidden] { display: none; }
   .ficha .chip { all: unset; cursor: pointer; border-bottom: 1px dotted #7a4a1c; color: #3a1d0a; font: inherit; border-radius: 2px; }
   .ficha .chip:hover { background: #f0b45a66; }
   .ficha .chip:focus-visible { outline: 2px solid var(--lumbre); outline-offset: 1px; }
@@ -822,10 +824,11 @@
       li.append(punto, nom);
       if (j.id === miId) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "tú"; li.append(e); }
       if (turnos_ && toca?.id === j.id) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = turnoVivo ? "responde el DM" : "su turno"; li.append(e); }
-      if (!T.activo(j, t)) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "ausente"; li.append(e); }
+      if (!T.activo(j, t)) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "ausente"; e.title = "Su personaje lo lleva el DM mientras no esté"; li.append(e); }
       else if (j.sinUsos) { const e = document.createElement("span"); e.className = "etiqueta"; e.textContent = "sin usos"; e.title = "Se le agotaron los usos de Claude: narran los demás"; li.append(e); }
       ul.append(li);
     }
+    marcarFichasAusentes();
 
     // Barra sobre el cuadro de texto: el orden y el aviso de turno.
     const barra = $("barra-turnos");
@@ -1029,7 +1032,8 @@
     cont.innerHTML = "";
     if (!pjs.length) { cont.innerHTML = '<p class="nota">Aún no hay personajes. El DM os guiará para crearlos.</p>'; return; }
     for (const p of pjs) {
-      const d = document.createElement("div"); d.className = "ficha";
+      const d = document.createElement("div"); d.className = "ficha"; d.dataset.jugador = p.jugador || "";
+      const nota = document.createElement("div"); nota.className = "ausente-nota"; nota.hidden = true; nota.textContent = "🤖 Su jugador está ausente: la lleva el DM"; d.append(nota);
       // Los trozos que se pueden consultar (clase, raza, objetos, hechizos, dotes, recursos, condiciones, heridas) son botones.
       V.ayudaFicha.fichaClicable(p).forEach((linea, i, todas) => {
         linea.forEach((seg) => {
@@ -1042,6 +1046,17 @@
       });
       cont.append(d);
     }
+    marcarFichasAusentes();
+  }
+
+  // Las fichas de quienes no están en la mesa llevan una nota: las lleva el DM mientras tanto.
+  function marcarFichasAusentes() {
+    const sinT = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const aqui = new Set(presentesAhora().map(sinT));
+    document.querySelectorAll("#lista-fichas .ficha").forEach((f) => {
+      const n = f.querySelector(".ausente-nota");
+      if (n) n.hidden = !(jugadores.length && f.dataset.jugador && !aqui.has(sinT(f.dataset.jugador)));
+    });
   }
 
   // ------------------------------------------------------------ mini pop-up de ayuda de la ficha
@@ -1107,6 +1122,22 @@
     return [...new Set(frases)].slice(-30);
   }
 
+  // Los jugadores que no están en la mesa (ausentes): sus personajes los lleva el DM como PNJ aliados mientras tanto.
+  let ausentesPrevios = new Set();
+  function presentesAhora(actuante) {
+    const t = ahora();
+    return [...jugadores.filter((j) => T.activo(j, t)).map((j) => j.nombre), nombre, actuante].filter(Boolean);
+  }
+  function bloqueDeAusentes(actuante) {
+    if (!jugadores.length) return ""; // sin lista de jugadores (vista suelta) no se puede saber quién falta
+    const presentes = presentesAhora(actuante);
+    const ausentes = V.turnos.personajesAusentes(partida, presentes);
+    const jugadoresAusentes = new Set(ausentes.map((n) => partida.personajes[n]?.jugador).filter(Boolean));
+    const volvieron = [...ausentesPrevios].filter((j) => !jugadoresAusentes.has(j));
+    ausentesPrevios = jugadoresAusentes;
+    return V.turnos.bloqueAusentes(partida, presentes, volvieron);
+  }
+
   function construirEntrada(acciones, infoTurno, correccion) {
     const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
@@ -1134,6 +1165,7 @@
         return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
       })() +
       (infoTurno ? `${T.bloqueTurnos(infoTurno)}\n\n` : "") +
+      (() => { const b = bloqueDeAusentes(infoTurno?.actuante); return b ? `${b}\n\n` : ""; })() +
       (correccion
         ? `# CORRECCIÓN DE LOS JUGADORES (hazles caso)\nTu respuesta anterior a esta acción tenía un error y se ha BORRADO con todos sus efectos (heridas, objetos, notas, ubicación): todo está como antes de ella.\nLo que estaba mal: ${correccion.texto || "no lo han dicho: revisa el tablero y la secuencia y evita cualquier contradicción."}\nLo que dijiste y NO debes repetir: «${correccion.malo}»\nRehaz el turno respetando la corrección y el tablero. ${correccion.tiradas?.length ? "LAS TIRADAS NO SE REPITEN: los dados que ya salieron vuelven a salir igual, en el mismo orden (corregir no sirve para intentar otra suerte ni para librarse de lo que ya pasó). Solo si el dato corregido es CLAVE para la acción que se tiró (por ejemplo, se tiró contra el objetivo equivocado o sin una circunstancia que cambiaba la ventaja o la dificultad) llama a reabrir_tiradas con el motivo, y los dados saldrán nuevos. Si el error era de narración, de consecuencia o de resultado, no la uses y respeta el resultado de los dados." : "Las tiradas se vuelven a hacer (esa respuesta no guardó sus dados)."}\n\n`
         : "") +

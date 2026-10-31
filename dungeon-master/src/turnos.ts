@@ -110,3 +110,32 @@ export function bloqueTurnos(t: InfoTurno): string {
 export function textoFueraDeTurno(quien: string): string {
   return `No es tu turno: le toca a ${quien}. Ve preparando tu acción en la caja de texto; podrás enviarla en cuanto te llegue la palabra.`;
 }
+
+// ------------------------------------------------------------------ jugadores ausentes
+const sinTildes = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+
+/** Personajes cuyo jugador no está en la mesa ahora (vivos y con ficha): los lleva el DM como si fueran PNJ aliados. */
+export function personajesAusentes(partida: { personajes: Record<string, { nombre: string; jugador?: string; condiciones: string[] }> }, presentes: string[]): string[] {
+  const aqui = new Set(presentes.map(sinTildes));
+  return Object.values(partida.personajes)
+    .filter((p) => p.jugador && !p.condiciones.includes("muerto") && !aqui.has(sinTildes(p.jugador)))
+    .map((p) => p.nombre);
+}
+
+/** Lo que se le dice al DM de los personajes de jugadores ausentes y de quien acaba de volver. */
+export function bloqueAusentes(partida: Parameters<typeof personajesAusentes>[0], presentes: string[], volvieron: string[] = []): string {
+  const llevados = personajesAusentes(partida, presentes);
+  const lineas: string[] = [];
+  if (llevados.length)
+    lineas.push(
+      "# PERSONAJES LLEVADOS POR EL DM (su jugador está ausente)",
+      `Los jugadores de ${llevados.map((n) => `${n} (${partida.personajes[n]?.jugador})`).join(", ")} no están en la mesa: mientras dure su ausencia tú llevas a sus personajes como PNJ aliados.`,
+      "- Tú tiras por ellos y decides sus acciones con las herramientas de siempre (atacar, prueba, hechizos…), en su iniciativa y sin esperar a nadie.",
+      "- Actúan acorde a su ficha, clase y personalidad, de forma cooperativa y prudente: siguen al grupo, ayudan en combate, se defienden y curan si pueden.",
+      "- No gastan recursos únicos ni objetos valiosos sin necesidad, y no toman decisiones irreversibles o de peso (jurar o romper un juramento, vender o regalar objetos, traicionar, aceptar un behelit, dar su nombre, subir de nivel eligiendo dote o aumento…): si se les plantea, quedan en suspenso o siguen lo que haga el grupo.",
+      "- No hablan largo por el jugador ni revelan sus secretos; no los sacrifiques sin motivo ni los protejas de más: corren los mismos riesgos que si estuvieran.",
+    );
+  if (volvieron.length)
+    lineas.push(`# HAN VUELTO A LA MESA: ${volvieron.join(", ")}. Recuperan el control de sus personajes: cuéntales en una o dos frases lo que hicieron mientras estaban fuera.`);
+  return lineas.join("\n");
+}
