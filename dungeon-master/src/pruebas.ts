@@ -115,11 +115,13 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   const efP = efectos(pj.condiciones);
   const hayD = !!d.desventaja || efP.pruebas === "desventaja" || (hab === "sigilo" && desventajaSigilo(pj)); // huesos que crujen (Segador, Deuda 5+)
   const ley = pj.leyenda?.coronada && d.conoce_su_nombre && ((hab === "persuasion" && pj.leyenda.tono !== "infamia") || (hab === "intimidacion" && pj.leyenda.tono !== "gloria"));
-  const ventajaDote = (hab === "sigilo" && tiene(pj, "pasos_de_gato")) || (!!hab && opcionDe(pj, "lengua_de_plata") === hab);
+  const motivoT = sinTildes(d.motivo ?? "");
+  const ventajaRaza = (hab === "sigilo" && pj.raza === "Mediano de Hollín" && /(tras|detras|entre|bajo la sombra de)[^.]*(criatura|ogro|gigante|caballo|bestia|grande|mas alt)/.test(motivoT)) || (hab === "percepcion" && pj.raza === "Varg" && /olor|olfat|huel|rastro|husme/.test(motivoT)); // Sigilo natural, Olfato de lobo
+  const ventajaDote = ventajaRaza || (hab === "sigilo" && tiene(pj, "pasos_de_gato")) || (!!hab && opcionDe(pj, "lengua_de_plata") === hab);
   const modoP = (d.ventaja || ley || ventajaDote) && !hayD ? "ventaja" : hayD && !(d.ventaja || ley || ventajaDote) ? "desventaja" : "normal";
   const m = mod(valor(pj, attr!));
   const comp = competencia(pj);
-  const deClase = hab ? (COMPETENCIAS_CLASE[pj.clase] ?? []).includes(hab) : false;
+  const deClase = hab ? (COMPETENCIAS_CLASE[pj.clase] ?? []).includes(hab) || (pj.raza === "Humano del Faro" && !!pj.habilidad_extra && clave(pj.habilidad_extra) === hab) : false; // el Humano suma una competencia de habilidad a la elección
   const competente = d.competente ?? deClase;
   const pericia = pj.clase === "Barbero-Cirujano" && hab === "medicina";
   const bonoComp = hab && competente ? comp * (pericia ? 2 : 1) : 0;

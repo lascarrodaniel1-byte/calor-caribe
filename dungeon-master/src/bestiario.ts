@@ -8,6 +8,7 @@ import { infligir, perderSangre, type Causa } from "./heridas.js";
 import { clase, raza } from "./mundo.js";
 import { ATRIBUTOS, marcarMuerto, salvacion, valor, type Atributo } from "./reglas.js";
 
+import { danoConResistencia } from "./rasgos.js";
 export interface Habilidad {
   nombre: string;
   descripcion: string;
@@ -973,11 +974,14 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
       continue;
     }
     if (danoTotal) {
-      const d = falla || !h.mitad_si_exito ? danoTotal.total : Math.floor(danoTotal.total / 2);
+      const dBruto = falla || !h.mitad_si_exito ? danoTotal.total : Math.floor(danoTotal.total / 2);
       if (falla || h.mitad_si_exito) {
         const estabaEnSuelo = p.pv <= 0;
         const pvAntes = p.pv;
+        const res = danoConResistencia(p, dBruto, h.tipo_dano);
+        const d = res.dano;
         p.pv = Math.max(0, p.pv - d);
+        if (res.nota) log.push(`  ${res.nota.trim()}`);
         if (estabaEnSuelo && d > 0) { const t = danoEnSuelo(p, d, false); if (t) log.push("  " + t); }
         else { const mi = muerteInstantanea(p, pvAntes, d); if (mi) log.push("  " + mi); }
         log.push(`  Recibe ${d} de daño (PV ${p.pv}).${p.pv === 0 ? " ¡Cae a 0 PV!" : ""}`);

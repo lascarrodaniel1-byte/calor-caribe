@@ -9,6 +9,7 @@ import { pvMaxEfectivo } from "./heridas.js";
 import { efectos } from "./condiciones.js";
 import { recuperarAgotamiento } from "./sustento.js";
 import { selloDe } from "./segador_base.js";
+import { agregarCondicion } from "./condiciones.js";
 
 export interface DefRecurso {
   nombre: string;
@@ -56,6 +57,23 @@ export const RECURSOS_CLASE: Record<string, DefRecurso[]> = {
   ],
 };
 
+/** Rasgos raciales con usos limitados. */
+export const RECURSOS_RAZA: Record<string, DefRecurso[]> = {
+  Varg: [{
+    nombre: "Furia de la luna", desde: 1, max: () => 1, recarga: "largo",
+    efecto: (p) => { p.luna = 10; return `${p.nombre} aúlla a la luna: +2 al daño de sus ataques cuerpo a cuerpo durante 1 minuto (10 asaltos). El programa lo aplica solo.`; },
+  }],
+  "Nacido Pálido": [
+    { nombre: "Mordisco vampírico", desde: 1, max: () => 1, recarga: "corto", efecto: (p) => `${p.nombre} muestra los colmillos. No hace falta gastarlo aquí: ataca con atacar {arma: «Mordisco vampírico»}; el programa gasta el uso, tira 1d4 + CON y le devuelve los PV que hiera.` },
+    { nombre: "Andar de araña", desde: 1, max: () => 1, recarga: "largo", efecto: (p) => { agregarCondicion(p.condiciones, "andar de araña"); return `${p.nombre} trepa por paredes y techos sin pruebas durante 1 minuto (condición «andar de araña»; se retira al descansar).`; } },
+  ],
+  Cenizo: [{
+    nombre: "Brasa interior", desde: 1, max: () => 1, recarga: "largo",
+    efecto: (p) => `${p.nombre} reúne la brasa: cauteriza una herida con la mano sin sufrir daño. Hazlo con tratar_herida {método: cauterizar}: es esa herramienta la que gasta el uso, no esta.`,
+  }],
+};
+ALDESCANSAR.push((p, tipo) => { if (p.luna !== undefined) delete p.luna; p.condiciones = p.condiciones.filter((c) => c !== "andar de araña"); void tipo; });
+
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
 const ALIENTO_LEYENDA: DefRecurso = {
@@ -67,7 +85,7 @@ const ALIENTO_LEYENDA: DefRecurso = {
 };
 
 export function recursosDe(p: Personaje): { def: DefRecurso; max: number; gastados: number }[] {
-  return [...(RECURSOS_CLASE[p.clase] ?? []), ...(p.leyenda?.coronada ? [ALIENTO_LEYENDA] : [])]
+  return [...(RECURSOS_CLASE[p.clase] ?? []), ...(RECURSOS_RAZA[p.raza] ?? []), ...(p.leyenda?.coronada ? [ALIENTO_LEYENDA] : [])]
     .filter((d) => p.nivel >= nvl(d.desde))
     .map((def) => ({ def, max: def.max(p), gastados: Math.min(def.max(p), p.gastados?.[def.nombre] ?? 0) }));
 }

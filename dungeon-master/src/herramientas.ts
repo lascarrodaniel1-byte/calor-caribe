@@ -76,6 +76,7 @@ import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, t
 import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
+import { danoConResistencia } from "./rasgos.js";
 const habilidad = z.object({
   nombre: z.string(),
   descripcion: z.string(),
@@ -154,11 +155,13 @@ const esquemas = {
     idiomas: z.array(z.string()).optional().describe("Idiomas extra (hasta el modificador de INT, uno más el Humano del Faro): comun, karak, marchito, hollin, varg, palido, ceniza, solar, cuervo o bajos"),
     dote: z.string().optional().describe("Solo Humano del Faro: su dote gratis (dote {accion: lista})"),
     opcion_dote: z.string().optional().describe("Opción de esa dote (Lengua de plata: persuasion o intimidacion)"),
+    habilidad_extra: z.string().optional().describe("Solo Humano del Faro: la habilidad en la que tiene competencia adicional (p. ej. percepcion, sigilo, persuasion)"),
     don_arcano: z.union([z.boolean(), z.enum(["fisico", "magico"])]).optional().describe("Solo si la historia lo exige (trasfondo pactado): fuerza el don (true = mágico). Si se omite, vale el que tiró el DM con tirar_don_arcano antes de crear al personaje"),
   }),
   modificar_personaje: z.object({
     nombre: z.string(),
     pv_cambio: z.number().int().optional().describe("Negativo para daño, positivo para curación"),
+    tipo_dano: z.string().optional().describe("Con pv_cambio negativo: el elemento del daño (fuego, veneno…). El Enano resiste el veneno y el Cenizo el fuego: el programa les aplica la mitad"),
     oro_cambio: z.number().int().optional(),
     agregar_objetos: z.array(z.string()).optional(),
     quitar_objetos: z.array(z.string()).optional(),
@@ -1249,7 +1252,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "habilidad_extra", "luna", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         consumirDon?.();
@@ -1257,6 +1260,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         delete (p as unknown as Record<string, unknown>).dote;
         delete (p as unknown as Record<string, unknown>).opcion_dote;
         let dote_txt = "";
+        if (p.raza === "Humano del Faro" && e.habilidad_extra) p.habilidad_extra = e.habilidad_extra;
+        if (nuevoPj && p.raza === "Humano del Faro" && !p.habilidad_extra) dote_txt += `\n🎓 Humano del Faro: tiene UNA competencia de habilidad adicional. Pregunta al jugador cuál y guárdala volviendo a guardar la ficha con habilidad_extra (percepcion, sigilo, persuasion…).`;
         if (nuevoEnClase && p.raza === "Humano del Faro" && !previo?.dote_humano) {
           if (e.dote) {
             try { dote_txt = `\n🎓 ${tomarDote(p, e.dote, e.opcion_dote)}`; p.dote_humano = p.dotes![p.dotes!.length - 1]; }
@@ -1292,8 +1297,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           cambios.push(`veteranía: ${p.veterania}`);
         }
         if (e.pv_cambio) {
-          p.pv = Math.max(0, Math.min(p.pv_max, p.pv + e.pv_cambio));
-          cambios.push(`${e.pv_cambio > 0 ? "+" : ""}${e.pv_cambio} PV (${p.pv}/${p.pv_max})`);
+          let cambio = e.pv_cambio, nota = "";
+          if (cambio < 0) { const r = danoConResistencia(p, -cambio, e.tipo_dano); cambio = -r.dano; nota = r.nota; }
+          p.pv = Math.max(0, Math.min(p.pv_max, p.pv + cambio));
+          cambios.push(`${cambio > 0 ? "+" : ""}${cambio} PV (${p.pv}/${p.pv_max})${nota}`);
         }
         if (e.oro_cambio) {
           p.oro = Math.max(0, p.oro + e.oro_cambio);

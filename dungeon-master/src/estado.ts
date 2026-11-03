@@ -48,6 +48,10 @@ export interface Personaje {
   /** Dotes elegidas (las que llevan opción: «id:opción»; ver dotes.ts) y la dote gratis del Humano del Faro. */
   dotes?: string[];
   dote_humano?: string;
+  /** Humano del Faro: la competencia de habilidad adicional de su raza. */
+  habilidad_extra?: string;
+  /** Varg: asaltos que le quedan de Furia de la luna (+2 al daño cuerpo a cuerpo). */
+  luna?: number;
   /** Don arcano de nacimiento: físico o mágico (el mágico es magia.don). */
   don?: "fisico" | "magico";
   /** Cuándo comió y bebió por última vez y el agotamiento ya cobrado (ver sustento.ts). */

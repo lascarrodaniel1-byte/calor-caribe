@@ -82,6 +82,11 @@ export function pasarAsaltoFuria(partida: Partida): string[] {
     p.furia!.asaltos -= 1;
     if (p.furia!.asaltos <= 0) out.push(terminarFuria(p, "se acaba (ha pasado un minuto)"));
   }
+  for (const p of Object.values(partida.personajes)) {
+    if (!p.luna) continue;
+    p.luna -= 1;
+    if (p.luna <= 0) { delete p.luna; out.push(`${p.nombre}: se apaga la Furia de la luna.`); }
+  }
   return out;
 }
 

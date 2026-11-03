@@ -19,6 +19,19 @@ export const desviaProyectiles = (p: Personaje): boolean => p.clase === "Flagela
 /** Sentido del peligro (Berserker, base nivel 2): ventaja en salvaciones de DES. */
 export const sentidoDelPeligro = (p: Personaje): boolean => p.clase === "Berserker de Ceniza" && p.nivel >= nvl(2);
 
+/** Resistencia racial al daño de un elemento (mitad de daño): el Enano al veneno, el Cenizo al fuego. */
+export function resisteRacial(p: Personaje, tipo?: string): string | null {
+  if (!tipo) return null;
+  if (p.raza === "Enano de Karak-Dûm" && /veneno|ponzo/i.test(tipo)) return "Resistencia enana al veneno";
+  if (p.raza === "Cenizo" && /fuego|llama|ígneo|igneo|quemadura/i.test(tipo)) return "Resistencia al fuego del Cenizo";
+  return null;
+}
+/** Aplica la resistencia racial a un daño: devuelve el daño final y la nota (vacía si no hay). */
+export function danoConResistencia(p: Personaje, dano: number, tipo?: string): { dano: number; nota: string } {
+  const r = resisteRacial(p, tipo);
+  return r ? { dano: Math.floor(dano / 2), nota: ` (${r}: ${dano} → ${Math.floor(dano / 2)})` } : { dano, nota: "" };
+}
+
 const MIEDO = /asust|miedo|terror|pavor|pánico|panico|intimid|aterr/i;
 const HECHIZO = /hechiz|encant|embrujo|domin(a|ar|io)|fascin/i;
 const VENENO = /veneno|ponzoñ|ponzon|toxin|envenen/i;
@@ -46,6 +59,11 @@ export function rasgosAutomaticos(p: Personaje): string[] {
   if (p.raza === "Humano del Faro") l.push("Obstinación (ventaja en salvaciones contra el miedo)");
   if (p.raza === "Mediano de Hollín") l.push("Valiente (ventaja en salvaciones contra el miedo)");
   if (p.raza === "Elfo Marchito") l.push("Ventaja en salvaciones contra ser hechizado");
-  if (p.raza === "Enano de Karak-Dûm") l.push("Ventaja en salvaciones contra veneno");
+  if (p.raza === "Enano de Karak-Dûm") l.push("Ventaja en salvaciones contra veneno y mitad de daño de veneno (en modificar_personaje pasa tipo_dano: \"veneno\")");
+  if (p.raza === "Cenizo") l.push("Resistencia al fuego (mitad de daño; en modificar_personaje pasa tipo_dano: \"fuego\"), Brasa interior (1 por descanso largo, la gasta tratar_herida cauterizar) y Llama sagrada (atacar con arma «Llama sagrada»)");
+  if (p.raza === "Varg") l.push("Mordisco (atacar con arma «Mordisco»: 1d6 + FUE sin pasar dano), Olfato de lobo (ventaja en Percepción si el motivo habla de olfato/rastro) y Furia de la luna (usar_recurso: +2 al daño cuerpo a cuerpo 10 asaltos)");
+  if (p.raza === "Nacido Pálido") l.push("Mordisco vampírico (atacar con arma «Mordisco vampírico»: 1d4 + CON y se cura lo que hiere; 1 por descanso corto) y Andar de araña (usar_recurso)");
+  if (p.raza === "Mediano de Hollín") l.push("Sigilo natural (ventaja en Sigilo si el motivo dice que se esconde tras una criatura más grande)");
+  if (p.raza === "Humano del Faro" && p.habilidad_extra) l.push(`Competencia extra en ${p.habilidad_extra}`);
   return l;
 }

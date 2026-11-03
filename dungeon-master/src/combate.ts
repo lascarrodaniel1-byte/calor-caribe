@@ -639,7 +639,36 @@ function tirarDano(expr: string, repetirBajos = false): { total: number; texto: 
   return { total: Math.max(0, total), texto: `${textos.join(" + ")} = ${Math.max(0, total)}` };
 }
 
+
+/** Mordisco, Mordisco vampírico y Llama sagrada: ataques de raza con daño propio. Devuelve los datos completados, o null si no es uno de ellos. */
+function ataqueRacial(partida: Partida, d: DatosAtaque): DatosAtaque | null {
+  const arma = (d.arma ?? "").toLowerCase().trim();
+  if (!arma) return null;
+  let at: Combatiente;
+  try { at = localizar(partida, d.atacante); } catch { return null; }
+  if (at.tipo !== "pj") return null;
+  const p = at.p;
+  if (/^mordisco vamp[ií]rico$/.test(arma)) {
+    if (p.raza !== "Nacido Pálido") throw new Error(`${p.nombre} no es un Nacido Pálido: no tiene Mordisco vampírico.`);
+    if ((p.gastados?.["Mordisco vampírico"] ?? 0) >= 1) throw new Error(`${p.nombre} ya usó su Mordisco vampírico (1 por descanso corto).`);
+    return { ...d, dano: d.dano ?? `1d4${signo(mod(valor(p, "con")))}`, atributo: d.atributo ?? (valor(p, "fue") >= valor(p, "des") ? "fue" : "des"), tipo_dano: d.tipo_dano ?? "punta", a_distancia: false };
+  }
+  if (/^mordisco$/.test(arma)) {
+    if (p.raza !== "Varg" && p.raza !== "Nacido Pálido") return null;
+    return { ...d, dano: d.dano ?? `1d6${signo(mod(valor(p, "fue")))}`, atributo: d.atributo ?? "fue", tipo_dano: d.tipo_dano ?? "punta", a_distancia: false };
+  }
+  if (/^llama sagrada$/.test(arma)) {
+    if (p.raza !== "Cenizo") throw new Error(`${p.nombre} no es un Cenizo: no conoce el truco Llama sagrada.`);
+    const dados = 1 + (p.nivel >= 5 ? 1 : 0) + (p.nivel >= 11 ? 1 : 0) + (p.nivel >= 17 ? 1 : 0);
+    return { ...d, dano: d.dano ?? `${dados}d8`, atributo: "sab", a_distancia: true, sin_contar: true };
+  }
+  return null;
+}
+
 export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
+  // Ataques raciales con su propio daño (si el DM no lo da): Mordisco del Varg y del Nacido Pálido, Llama sagrada del Cenizo.
+  const racial = ataqueRacial(partida, d);
+  if (racial) d = racial;
   if (d.dano && !/^[0-9dD+\-\s]+$/.test(d.dano)) throw new Error(`Daño no válido «${d.dano}»: usa solo dados y números, como «1d8+3» o «2d6+4+1d6» (el tipo de daño va en tipo_dano, no en el texto).`);
   const at = localizar(partida, d.atacante);
   const ob = localizar(partida, d.objetivo);
@@ -878,8 +907,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let dano = 0;
   let muerto: string | undefined;
   if (d.dano && (resultado === "impacto" || resultado === "critico" || resultado === "roce")) {
-    // En furia, +2 al daño cuerpo a cuerpo.
-    const furiaMas = at.tipo === "pj" && at.p.furia?.activa && !distancia ? 2 : 0;
+    // En furia, +2 al daño cuerpo a cuerpo (y otros +2 con la Furia de la luna del Varg).
+    const lunaMas = at.tipo === "pj" && (at.p.luna ?? 0) > 0 && !distancia ? 2 : 0;
+    const furiaMas = (at.tipo === "pj" && at.p.furia?.activa && !distancia ? 2 : 0) + lunaMas;
     // Castigo divino: dados de daño radiante (más contra no-muertos y malditos); gasta 5 PV de la reserva al impactar.
     let castigoStr = "";
     if (d.castigo && at.tipo === "pj") {
@@ -897,7 +927,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       if (herido) { presaStr = "+1d8"; tAt.presa = true; lineas.push("🎯 Presa marcada: +1d8 contra una criatura ya herida."); }
     }
     const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr + presaStr) : d.dano + castigoStr + presaStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
-    if (furiaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
+    if (furiaMas - lunaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
+    if (lunaMas) lineas.push("🌕 Furia de la luna: +2 al daño cuerpo a cuerpo.");
     const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
     lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
 
@@ -952,6 +983,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       if (dormidas.length) { lista.splice(0, lista.length, ...lista.filter((x) => !dormidas.includes(x))); lineas.push(`${ob.nombre} despierta con el golpe.`); }
     }
 
+    // Mordisco vampírico (Nacido Pálido): gasta su uso al herir y se cura lo que muerde.
+    if (at.tipo === "pj" && /^mordisco vamp[ií]rico$/i.test((d.arma ?? "").trim())) {
+      (at.p.gastados ??= {})["Mordisco vampírico"] = 1;
+      const cura = Math.max(0, Math.min(at.p.pv_max - at.p.pv, dano));
+      at.p.pv += cura;
+      lineas.push(`🩸 Mordisco vampírico: ${at.nombre} recupera ${cura} PV (${at.p.pv}/${at.p.pv_max}). Gasta su uso (vuelve con el descanso corto).`);
+    }
     if (ob.tipo === "criatura") {
       if (dano) lineas.push(danar(ob.j, dano));
       if (ob.j.pv <= 0) muerto = ob.j.nombre;

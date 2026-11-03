@@ -12,20 +12,28 @@ Los niveles de la tabla son los **reales** (tabla base + 2; ver `src/niveles.ts`
 | Raza | Rasgo | Estado |
 |---|---|---|
 | Humano del Faro | Obstinación (ventaja contra el miedo) | **AUTO** (salvaciones cuyo motivo hable de miedo/asustado/terror) |
-| | Competencia de habilidad adicional | DM (se elige al crear) |
+| | Competencia de habilidad adicional | **AUTO**: se guarda con `habilidad_extra` al crear la ficha y suma la competencia en esa habilidad |
 | Enano de Karak-Dûm | Ventaja en salvaciones contra veneno | **AUTO** (motivo con «veneno») |
-| | Resistencia al daño de veneno, visión en la oscuridad, hachas y martillos | DM |
+| | Resistencia al daño de veneno | **AUTO** en viales, habilidades de criaturas y `modificar_personaje {tipo_dano: "veneno"}` (mitad de daño) |
 | | Temple de combate (+1 cuerpo a cuerpo, −1 iniciativa) | **AUTO** |
+| | Visión en la oscuridad | Informativo: el motor no modela la luz |
+| | Competencia con hachas y martillos | No aplica: el motor no distingue competencia por arma |
 | Elfo Marchito | Ventaja contra ser hechizado | **AUTO** (motivo con hechizo/encantar/dominar) |
 | | Temple (+2 iniciativa, +1 distancia, +1 emboscadas) | **AUTO** |
-| | Visión en la oscuridad, Trance | DM |
+| | Visión en la oscuridad, Trance (4 h = dormir) | Informativo |
 | Mediano de Hollín | Afortunado (repite el 1 natural al atacar) y Valiente (ventaja contra el miedo) | **AUTO** |
-| | Sigilo natural | DM |
+| | Sigilo natural | **AUTO** (ventaja en Sigilo si el motivo dice que se esconde tras una criatura mayor) |
 | Varg | Temple (+1 iniciativa y cuerpo a cuerpo, −1 distancia, olfato +2 emboscadas) | **AUTO** |
-| | Mordisco, Furia de la luna | DM (el mordisco se ataca como arma «mordisco»: el motor lo trata como punta) |
+| | Olfato de lobo | **AUTO** (ventaja en Percepción si el motivo habla de olfato/rastro/olor) |
+| | Mordisco | **AUTO**: `atacar {arma: "Mordisco"}` sin `dano` tira 1d6 + FUE punta; no hay que empuñarlo |
+| | Furia de la luna | **AUTO**: `usar_recurso` (1 por descanso largo); +2 al daño cuerpo a cuerpo 10 asaltos |
 | Nacido Pálido | Temple (+2 iniciativa, +1 emboscadas) | **AUTO** |
-| | Visión, Mordisco vampírico, Andar de araña | DM |
-| Cenizo | Resistencia al fuego, Brasa interior, Llama sagrada | DM |
+| | Mordisco vampírico | **AUTO**: `atacar {arma: "Mordisco vampírico"}` gasta el uso (1 por descanso corto), tira 1d4 + CON y le cura lo que hiere |
+| | Andar de araña | HERRAMIENTA: `usar_recurso` lleva el uso y deja la condición hasta el descanso |
+| | Visión en la oscuridad | Informativo |
+| Cenizo | Resistencia al fuego | **AUTO** (`modificar_personaje {tipo_dano: "fuego"}` y habilidades de criaturas: mitad de daño) |
+| | Brasa interior | **AUTO**: `tratar_herida {método: cauterizar}` lo gasta (1 por descanso largo); con hierro candente sigue pudiendo cauterizar |
+| | Llama sagrada | **AUTO**: `atacar {arma: "Llama sagrada"}` tira SAB a distancia con 1d8 (2d8 nv. 5, 3d8 nv. 11, 4d8 nv. 17); es un truco y no gasta el ataque de la acción |
 
 ## Clases (nivel real en que se desbloquean)
 

@@ -253,7 +253,7 @@ export function ajustarAtaque(partida: Partida, d: { atacante: string; arma?: st
     arma = m.secundaria;
   } else if (!arma && m?.principal) arma = m.principal;
   const props = propiedades(arma);
-  if (m && d.arma && !d.mano_secundaria && !d.a_distancia && !/estaca/i.test(d.arma)) {
+  if (m && d.arma && !d.mano_secundaria && !d.a_distancia && !/estaca/i.test(d.arma) && !/^(mordisco( vamp[ií]rico)?|llama sagrada)$/i.test(d.arma.trim())) { // los ataques de raza no se empuñan
     const en = contiene(d.arma, m.principal) || contiene(d.arma, m.secundaria);
     if (!en) throw new Error(`${p.nombre} no empuña «${d.arma}»: lleva ${m.dosManos ? `${m.principal} a dos manos` : `${m.principal ?? "nada"} y ${m.secundaria ?? "nada"}`}. Usa empuñar antes.`);
   }

@@ -504,10 +504,15 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
     }
 
     case "cauterizar": {
-      const conMano = d.sanador?.raza === "Cenizo";
+      const brasaGastada = (d.sanador?.gastados?.["Brasa interior"] ?? 0) >= 1;
+      const conMano = d.sanador?.raza === "Cenizo" && (!brasaGastada || !d.recursos.includes("hierro candente"));
       const conBrasa = !conMano && !d.recursos.includes("hierro candente") && !!d.sanador?.magia?.hechizos.includes("Brasa cauterizadora") && esBarbero(d.sanador);
       if (!conMano && !conBrasa && !d.recursos.includes("hierro candente")) return "Para cauterizar hace falta hierro candente (o un Cenizo con su Brasa interior, o un Barbero-Cirujano con su Brasa cauterizadora).";
-      return cauterizarHerida(p, h, conMano ? "cenizo" : conBrasa ? "brasa" : "hierro", d.nombre_sanador);
+      if (conMano && brasaGastada) return `${d.nombre_sanador} ya usó su Brasa interior (1 por descanso largo). Con hierro candente sí puede cauterizar.`;
+      const usaBrasa = conMano && !brasaGastada;
+      const rc = cauterizarHerida(p, h, conMano ? "cenizo" : conBrasa ? "brasa" : "hierro", d.nombre_sanador);
+      if (usaBrasa && !/^No se puede/.test(rc)) (d.sanador!.gastados ??= {})["Brasa interior"] = 1;
+      return rc;
     }
 
     case "remedio raro": {
