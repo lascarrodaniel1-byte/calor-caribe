@@ -110,7 +110,7 @@ export function textoProgresion(p: Personaje): string {
   const s = pxSiguiente(p);
   const rango = p.clase === "Mercenario del Cuervo" ? `\n  Compañía del Cuervo Negro: ${p.mariscal ? `MARISCAL ${p.mariscal}` : `${rangoCompania(p.nivel).rango} (${rangoCompania(p.nivel).grado})`}` : "";
   const rasgos = p.rasgos?.length ? ` | Rasgos de nivel: ${p.rasgos.join("; ")}` : "";
-  return `${rango ? rango.slice(1) + "\n" : ""}  Experiencia: ${pxActual(p)}${s !== null ? `/${s} PX` : " PX (nivel máximo)"}${puedeSubir(p) ? " ⬆ PUEDE SUBIR DE NIVEL (subir_nivel)" : ""}${rasgos}`;
+  return `${rango ? rango.slice(1) + "\n" : ""}  Experiencia: ${pxActual(p)}${s !== null ? `/${s} PX` : " PX (nivel máximo)"}${puedeSubir(p) ? " ⬆ SUBIRÁ DE NIVEL EN CUANTO TERMINE ESTA ACCIÓN" : ""}${p.eleccion_pendiente?.length ? ` · ⬆ ELIGE: aumento de característica o dote del nivel ${p.eleccion_pendiente[0]} (eleccion_nivel)` : ""}${rasgos}`;
 }
 
 /** PX de un enemigo con ficha de PNJ que cae en combate, según su veteranía. */
@@ -199,6 +199,57 @@ export interface DatosSubirNivel {
   /** En los niveles de aumento: una dote en lugar del aumento de característica. */
   dote?: string;
   opcion?: string;
+  /** Subida automática: sube el nivel y deja la elección de aumento o dote pendiente. */
+  elegir_despues?: boolean;
+}
+
+/** Un aumento de característica (+2 a una o +1 a dos) O una dote, de un nivel 4, 8, 12, 16 o 19. Devuelve lo que cambió. */
+function aplicarEleccion(p: Personaje, nivel: number, d: { aumento?: Partial<Record<Atributo, number>>; dote?: string; opcion?: string }): string[] {
+  const cambio: string[] = [];
+  const a = d.dote ? [] : Object.entries(d.aumento ?? {}).filter(([, v]) => v);
+  if (d.dote && Object.values(d.aumento ?? {}).some((v) => v)) throw new Error("Elige una cosa o la otra: un aumento de característica O una dote.");
+  const malas = a.filter(([k]) => !(ATRIBUTOS as readonly string[]).includes(k)).map(([k]) => k);
+  if (malas.length) throw new Error(`Característica no válida: ${malas.join(", ")}. Usa fue, des, con, int, sab o car.`);
+  const suma = a.reduce((s, [, v]) => s + (v as number), 0);
+  if (!a.length && !d.dote) throw new Error(`El nivel ${nivel} da un aumento de característica o una dote: pasa aumento (+2 a una, o +1 a dos) o dote (dote {accion: lista} las enseña).`);
+  if (a.length && (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2))) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");
+  for (const [k, v] of a) {
+    // el don arcano no tiene techo: la INT del Hechicero con don mágico y la FUE, DES y CON de quien nació con el don físico llegan a 24 y 28 respectivamente
+    const tope = p.don === "fisico" && (k === "fue" || k === "des" || k === "con") ? 28 : p.clase === "Hechicero" && p.magia?.don && k === "int" ? 24 : 20;
+    if (p.atributos[k as Atributo] + (v as number) > tope) throw new Error(`${k.toUpperCase()} no puede pasar de ${tope}.`);
+  }
+  for (const [k, v] of a) {
+    p.atributos[k as Atributo] += v as number;
+    cambio.push(`${k.toUpperCase()} +${v}`);
+  }
+  if (d.dote) cambio.push(tomarDote(p, d.dote, d.opcion));
+  return cambio;
+}
+
+/** El jugador elige el aumento o la dote de un nivel que subió solo (el más antiguo pendiente). */
+export function eleccionNivel(partida: Partida, d: { quien: string; aumento?: Partial<Record<Atributo, number>>; dote?: string; opcion?: string }): string {
+  const p = Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === d.quien.toLowerCase() || x.jugador?.toLowerCase() === d.quien.toLowerCase());
+  if (!p) throw new Error(`No hay ningún personaje llamado «${d.quien}».`);
+  if (!p.eleccion_pendiente?.length) throw new Error(`${p.nombre} no tiene ninguna elección de nivel pendiente.`);
+  const nivel = p.eleccion_pendiente[0];
+  const cambio = aplicarEleccion(p, nivel, d);
+  p.eleccion_pendiente.shift();
+  if (!p.eleccion_pendiente.length) delete p.eleccion_pendiente;
+  return `${p.nombre} elige en el nivel ${nivel}: ${cambio.join(", ")}.${p.eleccion_pendiente?.length ? ` Le queda otra elección pendiente (nivel ${p.eleccion_pendiente[0]}).` : ""}`;
+}
+
+/** Quien tiene los PX del siguiente nivel sube solo (PV por el promedio, rasgos y competencia); la elección de aumento o dote queda pendiente. */
+export function subirAutomatico(partida: Partida): string[] {
+  const out: string[] = [];
+  for (const p of Object.values(partida.personajes)) {
+    if (p.condiciones.includes("muerto")) continue;
+    let vueltas = 0;
+    while (puedeSubir(p) && p.nivel < NIVEL_MAX && vueltas++ < 20) {
+      try { out.push(`${subirNivel(partida, { quien: p.nombre, pv: "promedio", elegir_despues: true })} (subida automática)`); }
+      catch (e) { out.push(`${p.nombre} debería subir de nivel pero no se pudo: ${(e as Error).message}`); break; }
+    }
+  }
+  return out;
 }
 
 export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
@@ -209,24 +260,13 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
   if (!puedeSubir(p) && !d.por_hito) throw new Error(`${p.nombre} lleva ${pxActual(p)} PX y necesita ${pxSiguiente(p)} para el nivel ${p.nivel + 1}. Dale experiencia (experiencia) o, si es un hito de la historia, pasa por_hito=true.`);
   const nuevo = p.nivel + 1;
   const cambioAtr: string[] = [];
-  if (NIVELES_AUMENTO.includes(nuevo)) {
-    const a = d.dote ? [] : Object.entries(d.aumento ?? {}).filter(([, v]) => v);
-    if (d.dote && Object.values(d.aumento ?? {}).some((v) => v)) throw new Error("Elige una cosa o la otra: un aumento de característica O una dote.");
-    const malas = a.filter(([k]) => !(ATRIBUTOS as readonly string[]).includes(k)).map(([k]) => k);
-    if (malas.length) throw new Error(`Característica no válida: ${malas.join(", ")}. Usa fue, des, con, int, sab o car.`);
-    const suma = a.reduce((s, [, v]) => s + (v as number), 0);
-    if (!a.length && !d.dote) throw new Error(`El nivel ${nuevo} da un aumento de característica o una dote: pasa aumento (+2 a una, o +1 a dos) o dote (dote {accion: lista} las enseña).`);
-    if (a.length && (suma !== 2 || a.some(([, v]) => (v as number) < 1 || (v as number) > 2))) throw new Error("El aumento son 2 puntos: +2 a una característica o +1 a dos distintas.");
-    for (const [k, v] of a) {
-      // el don arcano no tiene techo: la INT del Hechicero con don mágico y la FUE, DES y CON de quien nació con el don físico llegan a 24 y 28 respectivamente
-      const tope = p.don === "fisico" && (k === "fue" || k === "des" || k === "con") ? 28 : p.clase === "Hechicero" && p.magia?.don && k === "int" ? 24 : 20;
-      if (p.atributos[k as Atributo] + (v as number) > tope) throw new Error(`${k.toUpperCase()} no puede pasar de ${tope}.`);
-    }
-    for (const [k, v] of a) {
-      p.atributos[k as Atributo] += v as number;
-      cambioAtr.push(`${k.toUpperCase()} +${v}`);
-    }
-    if (d.dote) cambioAtr.push(tomarDote(p, d.dote, d.opcion));
+  const sinEleccion = !d.dote && !Object.values(d.aumento ?? {}).some((v) => v);
+  if (NIVELES_AUMENTO.includes(nuevo) && d.elegir_despues && sinEleccion) {
+    // Subida automática: el nivel se sube ya (PV, competencia, rasgos) y el jugador elige su aumento o dote después.
+    (p.eleccion_pendiente ??= []).push(nuevo);
+    cambioAtr.push(`(pendiente: el jugador elige un aumento de característica o una dote del nivel ${nuevo}: eleccion_nivel)`);
+  } else if (NIVELES_AUMENTO.includes(nuevo)) {
+    cambioAtr.push(...aplicarEleccion(p, nuevo, d));
   } else if ((d.dote || (d.aumento && Object.keys(d.aumento).length))) throw new Error(`El nivel ${nuevo} no da aumento de característica (solo en ${NIVELES_AUMENTO.join(", ")}).`);
   const c = CLASES.find((x) => x.nombre === p.clase);
   const dado = c?.dadoGolpe ?? 8;
@@ -284,5 +324,5 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
 export const REGLAS_PROGRESION = `## Experiencia y niveles
 - La experiencia es AUTOMÁTICA: cada criatura que muere suma sus PX según su peligro (1: 50, 2: 450, 3: 1800, 4: 5000, 5: 15000; los jefes, un 50 % más: cuanto más poderoso, mucho más) y cada enemigo con ficha de PNJ que cae, según su veteranía (recluta 25, curtido 50, veterano 150, leyenda 450); al cerrar el combate (terminar_combate) se reparten a partes iguales entre los personajes vivos. NO la repartas tú a mano por esos combates. Las criaturas que huyen o se perdonan no dan PX.
 - Cerrar un arco (trama cerrar_arco) da experiencia solo: a cada personaje, el 30 % de lo que le falta para el siguiente nivel (importancia: menor 15 %, normal 30 %, mayor 50 %, épica 80 %). Una misión menor o un encargo que no es un arco se premia con experiencia {accion: mision, importancia, motivo}. Para un desafío suelto, un buen plan o una escena memorable, usa experiencia {accion: dar, px}. En la ficha verás los PX y «⬆ PUEDE SUBIR DE NIVEL».
-- Sube de nivel con subir_nivel en un momento tranquilo (tras un descanso): el programa suma los PV (promedio o tirada), la competencia y los rasgos de clase hasta el nivel 5; en los niveles 4, 8, 12, 16 y 19 el jugador elige un aumento de característica (+2 a una o +1 a dos). No cambies el nivel a mano con modificar_personaje salvo para corregir un error.
+- Los NIVELES SUBEN SOLOS: en cuanto un personaje tiene los PX del siguiente nivel, el programa lo sube (PV por el promedio, competencia y rasgos de clase) y te lo cuenta; cuéntaselo al jugador con ceremonia. En los niveles 4, 8, 12, 16 y 19 el jugador elige un aumento de característica (+2 a una o +1 a dos) O una dote: la ficha muestra la elección pendiente; pregúntale y guárdala con eleccion_nivel {quien, aumento | dote, opcion} (si su jugador está ausente, queda pendiente hasta que vuelva). subir_nivel solo hace falta para subir por hito (por_hito) o con tirada de PV (pv: tirar). No cambies el nivel a mano con modificar_personaje salvo para corregir un error.
 - Los niveles dan poder lentamente: no regales niveles por hito más de uno cada varias sesiones.`;

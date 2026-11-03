@@ -42,6 +42,8 @@ export interface Personaje {
   aislado?: boolean;
   /** Idiomas que habla (ids de idiomas.ts; si falta, solo Común). */
   idiomas?: string[];
+  /** Niveles (4, 8, 12, 16, 19) ya subidos cuyo aumento de característica o dote aún no se ha elegido. */
+  eleccion_pendiente?: number[];
   /** Dotes elegidas (las que llevan opción: «id:opción»; ver dotes.ts) y la dote gratis del Humano del Faro. */
   dotes?: string[];
   dote_humano?: string;

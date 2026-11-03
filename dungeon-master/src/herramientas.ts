@@ -61,7 +61,7 @@ import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
 import { marcarTiempo, nave, pasarAsaltoNave, procesarTiempo } from "./naves.js";
 import { revisarSustento, sustento, viajar } from "./sustento.js";
-import { darExperiencia, PX_PNJ, repartirBajas, subirNivel } from "./progresion.js";
+import { darExperiencia, eleccionNivel, PX_PNJ, repartirBajas, subirAutomatico, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
 import { agregarCondicion, mismaCondicion } from "./condiciones.js";
@@ -479,6 +479,12 @@ const esquemas = {
     cantidad: z.number().int().min(1).max(50).optional().describe("por_criatura: cuántas"),
     motivo: z.string().optional(),
     quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
+  }),
+  eleccion_nivel: z.object({
+    quien: z.string(),
+    aumento: z.record(z.string(), z.number().int()).optional().describe("{fue: 2} o {des: 1, con: 1}"),
+    dote: z.string().optional().describe("En lugar del aumento: una dote (dote {accion: lista})"),
+    opcion: z.string().optional().describe("Opción de la dote (Lengua de plata: persuasion o intimidacion)"),
   }),
   subir_nivel: z.object({
     quien: z.string(),
@@ -972,6 +978,8 @@ const descripciones: Record<Nombre, string> = {
     "Una caída desde cierta altura: 1d6 de daño contundente por cada 3 m (máx. 20d6), derriba y puede herir.",
   experiencia:
     "Reparte puntos de experiencia al grupo (a partes iguales) por un combate, un desafío o un hito, o consulta cuántos lleva cada uno.",
+  eleccion_nivel:
+    "El jugador elige el aumento de característica (+2 a una o +1 a dos) o la dote de un nivel 4, 8, 12, 16 o 19 que su personaje ya subió solo. La ficha muestra cuándo hay una elección pendiente.",
   subir_nivel:
     "Sube de nivel a un personaje que ya tiene los PX (o por hito): suma PV, competencia, rasgos de clase y, en los niveles 4, 8, 12, 16 y 19, un aumento de característica.",
   salvacion_muerte:
@@ -1140,6 +1148,8 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   }
   const monturas = revisarMonturas(partida); // si cae la montura, el jinete cae con ella
   if (monturas.length) { r.contenido += `\n${monturas.join("\n")}`; r.aviso = [r.aviso, ...monturas.map((m) => `🐎 ${m.split("\n")[0]}`)].filter(Boolean).join("\n"); }
+  const niveles = subirAutomatico(partida); // quien tiene los PX del siguiente nivel sube solo
+  if (niveles.length) { r.contenido += `\n${niveles.join("\n")}`; r.aviso = [r.aviso, ...niveles.map((n) => n.split("\n")[0])].filter(Boolean).join("\n"); }
   const mal = procesarEnfermedades(partida); // el reloj hace avanzar las enfermedades
   if (mal.length) { r.contenido += `\n${mal.join("\n")}`; r.aviso = [r.aviso, ...mal.map((m) => `🤒 ${m}`)].filter(Boolean).join("\n"); }
   const hambre = revisarSustento(partida); // el reloj puede haber pasado de la hora de comer o beber
@@ -1680,6 +1690,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.experiencia>;
         const texto = darExperiencia(partida, e);
         return { contenido: texto, aviso: e.accion === "ver" ? null : `✨ ${texto.split("\n")[0]}` };
+      }
+      case "eleccion_nivel": {
+        const e = validado.data as z.infer<typeof esquemas.eleccion_nivel>;
+        const texto = eleccionNivel(partida, e as Parameters<typeof eleccionNivel>[1]);
+        return { contenido: texto, aviso: `⬆ ${texto}` };
       }
       case "subir_nivel": {
         const e = validado.data as z.infer<typeof esquemas.subir_nivel>;
