@@ -32,6 +32,7 @@ import type { RegistroEncuentro } from "./encuentros.js";
 import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
 
+import { nvl } from "./niveles.js";
 export interface Personaje {
   nombre: string;
   jugador?: string;
@@ -282,7 +283,7 @@ export function fichaTexto(p: Personaje): string {
     textoFlagelante(p),
     textoSegador(p),
     textoBarbero(p),
-    p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < 3 ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= 5 ? " · heridas rojas cerradas mientras dure" : ""}` : "",
+    p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < nvl(3) ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= nvl(5) ? " · heridas rojas cerradas mientras dure" : ""}` : "",
     p.condiciones.length ? `  Condiciones: ${p.condiciones.join(", ")}${textoEfectos(p.condiciones) ? ` → ${textoEfectos(p.condiciones)}` : ""}` : "",
     p.heridas.length ? `  Heridas:\n${p.heridas.map((h) => `    ${resumenHerida(h)}`).join("\n")}` : "",
     p.secuelas.length ? `  Secuelas: ${p.secuelas.join("; ")}` : "",

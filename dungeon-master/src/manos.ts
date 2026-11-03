@@ -6,6 +6,7 @@
 // - Pelea con dos armas: tras atacar con un arma ligera, la acción adicional ataca con otra arma ligera en la otra mano, sin
 //   sumar el modificador de característica al daño (salvo que sea negativo o tenga el estilo de lucha con dos armas).
 // - Estilos de lucha: arquería, defensa, duelo, lucha con arma a dos manos, protección y lucha con dos armas.
+import { nvl } from "./niveles.js";
 import { tiene } from "./dotes_base.js";
 import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, reconocerArma } from "./armadura.js";
@@ -189,9 +190,9 @@ export function empunar(partida: Partida, d: DatosEmpunar): string {
 
 export function estiloCombate(partida: Partida, d: { quien: string; estilo: Estilo }): string {
   const p = buscarPj(partida, d.quien);
-  const minimo: Record<string, number> = { "Mercenario del Cuervo": 1, "Caballero Juramentado": 2, "Cazador de Brujas": 2 };
+  const minimo: Record<string, number> = { "Mercenario del Cuervo": 1, "Caballero Juramentado": nvl(2), "Cazador de Brujas": nvl(2) };
   const nv = minimo[p.clase];
-  if (nv === undefined) throw new Error(`${p.nombre} (${p.clase}) no tiene un estilo de lucha que elegir (lo tienen el Mercenario, el Caballero desde el nivel 2 y el Cazador de Brujas desde el 2).`);
+  if (nv === undefined) throw new Error(`${p.nombre} (${p.clase}) no tiene un estilo de lucha que elegir (lo tienen el Mercenario, el Caballero y el Cazador de Brujas desde el nivel ${nvl(2)}).`);
   if (p.nivel < nv) throw new Error(`${p.nombre} aún no tiene estilo de lucha (nivel ${nv}).`);
   if (p.estilo) throw new Error(`${p.nombre} ya eligió ${NOMBRE_ESTILO[p.estilo as Estilo]}: no se cambia.`);
   p.estilo = d.estilo;
@@ -304,4 +305,4 @@ export const REGLAS_MANOS = `## Manos, armas de dos manos y dos armas (como el l
 - Un arma a dos manos (o una versátil empuñada con las dos) ocupa las dos manos: sin escudo ni segunda arma. El escudo da +2 a la CA mientras está en la mano; con un arma a dos manos, o sin él, la CA baja 2 (el programa la calcula). Ponerse o quitarse el escudo cuesta una acción; sacar o envainar un arma es una interacción gratuita por turno, y la segunda gasta la acción.
 - Pelea con dos armas (exige DES 13 o más, regla de la casa): tras atacar con una arma ligera, la acción adicional ataca con otra arma ligera en la otra mano (atacar {mano_secundaria: true}). No suma el modificador de característica al daño (el programa se lo quita de dano; ponlo como siempre), salvo que sea negativo o tenga el estilo de lucha con dos armas. Una sola acción adicional por asalto: Segundo aliento, la furia y este ataque compiten por ella. Idea de fondo: el arma a dos manos pega más fuerte (dados mayores), el arma de una mano deja la otra libre para lo que se quiera (escudo, antorcha, mano vacía…) y las dos armas pegan menos cada una pero dan más versatilidad.
 - Armas pesadas: desventaja para los de talla pequeña (los Medianos). Versátiles a dos manos: daño mayor. Rigidez de una herida: −1 con armas a dos manos.
-- Estilo de lucha (estilo_combate; Mercenario, Caballero desde nv. 2, Cazador desde nv. 2): arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas.`;
+- Estilo de lucha (estilo_combate; Mercenario, Caballero desde nv. 4, Cazador desde nv. 4): arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas.`;

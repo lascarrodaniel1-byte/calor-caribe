@@ -11,6 +11,7 @@ import { RECURSOS_CLASE, usarRecurso } from "./recursos.js";
 import { exigirLibre } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
 
+import { nvl } from "./niveles.js";
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const SIN_NERVIOS = /no-muerto|no muerto|ghul|espectro|vampiro|esqueleto|aut[oó]mata|constructo|hambriento|elemental|planta|vegetal/i;
 
@@ -30,7 +31,7 @@ RECURSOS_CLASE["Barbero-Cirujano"] = [
   {
     nombre: "Mano firme",
     desde: 1,
-    max: (p) => (p.nivel >= 5 ? 2 : 1),
+    max: (p) => (p.nivel >= nvl(5) ? 2 : 1),
     recarga: "largo",
     efecto: (p) => `${p.nombre} respira hondo y su pulso no tiembla: repite la tirada de tratamiento fallida.`,
   },
@@ -120,7 +121,7 @@ export function amputar(partida: Partida, d: { quien: string; paciente: string; 
   if (!b.inventario.some((x) => /sierra de huesos|herramientas de cirujano/i.test(x))) throw new Error(`${b.nombre} necesita su sierra de huesos o sus herramientas de cirujano.`);
   const anest = d.anestesia || (p.anestesia ?? 0) > 0;
   const cd = 15 + (anest ? 0 : 3);
-  const r = resolverPrueba(partida, { quien: b.nombre, habilidad: "medicina", cd, motivo: `amputar ${h.ubicacion} de ${p.nombre}${anest ? " (con anestesia)" : ""}`, bono: 2 + (b.nivel >= 2 ? 1 : 0) });
+  const r = resolverPrueba(partida, { quien: b.nombre, habilidad: "medicina", cd, motivo: `amputar ${h.ubicacion} de ${p.nombre}${anest ? " (con anestesia)" : ""}`, bono: 2 + (b.nivel >= nvl(2) ? 1 : 0) });
   p.anestesia = undefined;
   const lineas = [r.texto];
   if (!r.exito) {

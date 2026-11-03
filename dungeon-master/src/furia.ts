@@ -1,6 +1,6 @@
 // La furia del Berserker de Ceniza: un vestigio de la conexión con Æsir, el dios más antiguo. Al invocarla el pelo se vuelve del
-// color de la ceniza. Nivel 1-2: entra en trance y no distingue aliados de enemigos. Desde el nivel 3, el trance se
-// aclara. En el nivel 5 la furia cierra temporalmente las heridas rojas. Siempre: +2 al daño cuerpo a cuerpo, resistencia
+// color de la ceniza. Nivel 1-4: entra en trance y no distingue aliados de enemigos. Desde el nivel 5, el trance se
+// aclara. En el nivel 7 la furia cierra temporalmente las heridas rojas. Siempre: +2 al daño cuerpo a cuerpo, resistencia
 // al daño físico y las penalizaciones de las heridas no cuentan mientras dura. Siempre cobra su precio: INT y CAR
 // a la mitad (para +2 a FUE) mientras dura. Es el fuego de Æsir, el dios más antiguo.
 import { tirar } from "./dados.js";
@@ -12,6 +12,7 @@ import { agregarCondicion } from "./condiciones.js";
 import { salvacion } from "./reglas.js";
 import { RECURSOS_CLASE } from "./recursos.js";
 
+import { nvl } from "./niveles.js";
 RECURSOS_CLASE["Berserker de Ceniza"] = [
   { nombre: "Furia", adicional: true, desde: 1, max: (p) => usosFuria(p.nivel), recarga: "largo", efecto: (p) => entrarFuria(p) },
 ];
@@ -27,19 +28,19 @@ export interface Furia {
 export const ASALTOS_FURIA = 10;
 export const esBerserker = (p: Personaje) => p.clase === "Berserker de Ceniza";
 export const enFuria = (p: Personaje) => !!p.furia?.activa;
-/** Nivel 1-2: el trance lo ciega. */
-export const enTrance = (p: Personaje) => enFuria(p) && p.nivel < 3;
-/** Nivel 5: la furia cierra las heridas rojas mientras dura. */
-export const cierraRojas = (p: Personaje) => enFuria(p) && p.nivel >= 5;
-export const usosFuria = (nivel: number) => (nivel >= 12 ? 5 : nivel >= 6 ? 4 : nivel >= 3 ? 3 : 2);
+/** Nivel 1-4: el trance lo ciega. */
+export const enTrance = (p: Personaje) => enFuria(p) && p.nivel < nvl(3);
+/** Nivel 7: la furia cierra las heridas rojas mientras dura. */
+export const cierraRojas = (p: Personaje) => enFuria(p) && p.nivel >= nvl(5);
+export const usosFuria = (nivel: number) => (nivel >= nvl(12) ? 5 : nivel >= nvl(6) ? 4 : nivel >= nvl(3) ? 3 : 2);
 
 export function entrarFuria(p: Personaje): string {
   if (enFuria(p)) throw new Error(`${p.nombre} ya está en furia.`);
   p.furia = { activa: true, asaltos: ASALTOS_FURIA };
   const base = `${p.nombre} invoca la furia: su pelo se vuelve del color de la ceniza y los ojos le arden como brasas. Durante 1 minuto: +2 al modificador de FUE (a cambio, INT y CAR a la mitad), +2 al daño cuerpo a cuerpo, resistencia al daño contundente, cortante y perforante, y las penalizaciones de sus heridas no cuentan.`;
-  if (p.nivel < 3)
+  if (p.nivel < nvl(3))
     return `${base}\nEN TRANCE: a este nivel la furia lo ciega. No distingue aliados de enemigos: cada ataque suyo cae sobre quien tenga a su alcance, amigo o enemigo (el programa lo decide al atacar). Narra su mirada vacía y los gritos de sus compañeros intentando que vuelva en sí.`;
-  if (p.nivel >= 5) {
+  if (p.nivel >= nvl(5)) {
     const rojas = p.heridas.filter((h) => h.zona_vital === "roja");
     return `${base}\nLucidez de furia: distingue a aliados de enemigos. Sus heridas ROJAS se cierran mientras dura${rojas.length ? ` (${rojas.map((h) => h.id).join(", ")} dejan de sangrar y no avanzan)` : ""}: se reabrirán al terminar.`;
   }
@@ -121,5 +122,5 @@ export function textoFuria(p: Personaje): string {
 
 export const REGLAS_FURIA = `## Furia del Berserker de Ceniza
 - Se invoca con usar_recurso {recurso: "Furia"} (acción adicional; se acaba sola a los 10 asaltos o con usar_recurso {accion: terminar}). Mientras dura: el pelo se vuelve del color de la ceniza; INT y CAR a la mitad y +2 al modificador de FUE (se suma al bono base) (lo aplica el programa en todas las tiradas); +2 al daño cuerpo a cuerpo (lo suma atacar); resistencia al daño contundente, cortante y perforante (lo aplica atacar); las penalizaciones de las heridas no cuentan.
-- Niveles 1-2: es un TRANCE. No distingue aliados de enemigos: al atacar, el programa hace caer el golpe sobre cualquiera a su alcance. Narra su mirada vacía y a los compañeros intentando contenerlo. Desde el nivel 3 el trance se aclara. En el nivel 5 la furia cierra las heridas rojas mientras dura; al terminar se reabren.
-- Al acabar la furia, el programa pide salvación de CON: si falla, una herida moderada sin tratar se agrava (y, en nivel 5, las rojas reabiertas empeoran).`;
+- Niveles 1-4: es un TRANCE. No distingue aliados de enemigos: al atacar, el programa hace caer el golpe sobre cualquiera a su alcance. Narra su mirada vacía y a los compañeros intentando contenerlo. Desde el nivel 5 el trance se aclara. En el nivel 7 la furia cierra las heridas rojas mientras dura; al terminar se reabren.
+- Al acabar la furia, el programa pide salvación de CON: si falla, una herida moderada sin tratar se agrava (y, en nivel 7, las rojas reabiertas empeoran).`;

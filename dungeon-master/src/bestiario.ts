@@ -961,7 +961,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
     let falla = true;
     let margen = -99;
     if (h.salvacion && h.cd) {
-      const s = salvacion(p, h.salvacion, Math.max(5, h.cd - cdMenos), { ventaja: h.salvacion === "des" && esquivan.includes(p.nombre.toLowerCase()) }); // quien esquiva tiene ventaja en las salvaciones de DES
+      const s = salvacion(p, h.salvacion, Math.max(5, h.cd - cdMenos), { ventaja: h.salvacion === "des" && esquivan.includes(p.nombre.toLowerCase()), contra: `${h.nombre} ${h.descripcion}` }); // quien esquiva tiene ventaja en las salvaciones de DES
       falla = !s.exito;
       margen = s.margen;
       log.push(`· ${p.nombre}: ${s.texto}`);

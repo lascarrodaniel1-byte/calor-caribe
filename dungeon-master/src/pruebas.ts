@@ -109,7 +109,7 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
 
   if (salv) {
     const esquiva = attr === "des" && !!partida.combate?.turnos && Object.entries(partida.combate.turnos).some(([k, t]) => t.esquiva && k.toLowerCase() === pj.nombre.toLowerCase());
-    const s = salvacion(pj, attr!, d.cd, { extra: (d.bono ?? 0) + (attr === "des" ? (d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0) : 0), ventaja: d.ventaja || esquiva, desventaja: d.desventaja });
+    const s = salvacion(pj, attr!, d.cd, { extra: (d.bono ?? 0) + (attr === "des" ? (d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0) : 0), ventaja: d.ventaja || esquiva, desventaja: d.desventaja, contra: d.motivo });
     return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
   const efP = efectos(pj.condiciones);

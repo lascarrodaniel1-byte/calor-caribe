@@ -324,10 +324,10 @@ const esquemas = {
   descarga: z.object({
     quien: z.string().describe("El Segador"),
     objetivo: z.string(),
-    objetivo2: z.string().optional().describe("Nivel 5: el segundo rayo puede ir a otro objetivo"),
+    objetivo2: z.string().optional().describe("Nivel 7: el segundo rayo puede ir a otro objetivo"),
   }),
   sellar_alma: z.object({
-    quien: z.string().describe("El Segador (nivel 2+)"),
+    quien: z.string().describe("El Segador (nivel 4+)"),
     objetivo: z.string().describe("Al que acaba de herir con la guadaña"),
     habilidad: z.string().optional().describe("PJ: su habilidad firma (por defecto la principal de su clase); criatura/PNJ: el poder o rasgo que sellas"),
     con_sangre: z.boolean().optional().describe("Fuera de combate: true si acaba de herirlo con la guadaña"),
@@ -353,7 +353,7 @@ const esquemas = {
     nombre: z.string().optional().describe("Ojos del dios muerto, Presencia sepulcral, Voz de los muertos o Piel de hueso"),
   }),
   paso_elusivo: z.object({
-    quien: z.string().describe("El Flagelante (nivel 5+)"),
+    quien: z.string().describe("El Flagelante (nivel 7+)"),
   }),
   cadenas: z.object({
     quien: z.string().describe("El Flagelante"),
@@ -636,12 +636,13 @@ const esquemas = {
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
     nervio: z.enum(["brazo", "pierna", "columna"]).optional().describe("Barbero-Cirujano: golpea un nervio (−2, columna −3): si hiere, CON o brazo entumecido, pierna entumecida o paralizado un asalto"),
     dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
+    temerario: z.boolean().optional().describe("Berserker: false = NO ataca con temeridad. Por defecto el motor lo hace solo en sus ataques cuerpo a cuerpo de FUE (ventaja para él y para quien lo ataque hasta su próximo turno)"),
     golpe_demoledor: z.boolean().optional().describe("Dote Golpe demoledor: con arma pesada, −5 al ataque y +10 al daño"),
     duelo: z.boolean().optional().describe("Dote Esgrimista: es un duelo uno contra uno (ventaja en el primer ataque del combate)"),
     en_cubierta: z.boolean().optional().describe("PNJ o criatura que lucha sobre la cubierta de una nave: sus armas de cubierta (sable de abordaje…) dan ventaja"),
     reaccion: z.boolean().optional().describe("Ataque de oportunidad ya anunciado con reaccion (sin dano): resuelve aquí su único ataque cuerpo a cuerpo, sin exigir que siga al alcance"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
-    castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y suma dados de daño radiante"),
+    castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 4+): gasta 5 PV de su reserva y suma dados de daño radiante"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
@@ -924,9 +925,9 @@ const descripciones: Record<Nombre, string> = {
   guadana:
     "Segador: invoca (acción adicional) o despide la guadaña de huesos de Neter (1d10 cortante, alcance 3 m, a dos manos, ataca con CAR). Se ataca con atacar {arma: «Guadaña de Neter»}.",
   descarga:
-    "Segador: descarga sobrenatural (1d10 de fuerza a 36 m, ataque de CAR; dos rayos desde el nivel 5). Gasta un uso por descanso corto y suma Deuda de Neter.",
+    "Segador: descarga sobrenatural (1d10 de fuerza a 36 m, ataque de CAR; dos rayos desde el nivel 7). Gasta un uso por descanso corto y suma Deuda de Neter.",
   sellar_alma:
-    "Segador (nivel 2+, acción adicional): tras herir a un vivo con la guadaña este asalto, sella su alma (salvación de CAR): pierde su habilidad firma (la furia, el Ataque adicional…) mientras el Segador la sostenga. Suma 3 de Deuda.",
+    "Segador (nivel 4+, acción adicional): tras herir a un vivo con la guadaña este asalto, sella su alma (salvación de CAR): pierde su habilidad firma (la furia, el Ataque adicional…) mientras el Segador la sostenga. Suma 3 de Deuda.",
   liberar_alma:
     "Segador: libera un alma sellada por su voluntad o por un rito de las Hermanas; también cuando él muere.",
   entregar_almas:
@@ -934,9 +935,9 @@ const descripciones: Record<Nombre, string> = {
   hablar_con_muertos:
     "Segador: habla con un cadáver o espíritu (hasta tres preguntas, con lo que sabía en vida). Suma 1 de Deuda.",
   invocacion:
-    "Segador: ver, elegir (nivel 2: dos) o usar una invocación de Neter: Ojos del dios muerto, Presencia sepulcral, Voz de los muertos o Piel de hueso (+2 CA).",
+    "Segador: ver, elegir (nivel 4: dos) o usar una invocación de Neter: Ojos del dios muerto, Presencia sepulcral, Voz de los muertos o Piel de hueso (+2 CA).",
   paso_elusivo:
-    "Flagelante (nivel 5): declara su Paso elusivo (gasta su reacción) ANTES de que lo ataquen: el siguiente ataque que fuera a acertar se esquiva si su tirada de Acrobacias lo iguala o supera. Con el dolor al máximo (4/4) es una esquiva automática que no falla nunca y no hace falta declararla.",
+    "Flagelante (nivel 7): declara su Paso elusivo (gasta su reacción) ANTES de que lo ataquen: el siguiente ataque que fuera a acertar se esquiva si su tirada de Acrobacias lo iguala o supera. Con el dolor al máximo (4/4) es una esquiva automática que no falla nunca y no hace falta declararla.",
   cadenas:
     "Flagelante: lanza las cadenas (hasta 6 m) con prueba de Atletismo enfrentada para atar a un enemigo (agarrado) o atraerlo hasta su alcance; también soltarlo. Las criaturas de peligro 4+ no se arrastran.",
   estudiar_presa:
@@ -944,15 +945,15 @@ const descripciones: Record<Nombre, string> = {
   dardos:
     "Degollador: ver, reponer o impregnar los dardos de su cerbatana con un vial de Hiel de Víbora Gris o de Leche de Amapola Negra (3 dardos por vial). Se sopla con atacar {arma: «cerbatana»}.",
   forzar_acceso:
-    "Degollador (Entrar y salir): abre una ventana, puerta atrancada, cerradura, reja, cadenas o ataduras con ventaja en Juego de manos; desde el nivel 3 no falla hasta CD 15; desde el 2, en combate es acción adicional.",
+    "Degollador (Entrar y salir): abre una ventana, puerta atrancada, cerradura, reja, cadenas o ataduras con ventaja en Juego de manos; desde el nivel 5 no falla hasta CD 15; desde el 4, en combate es acción adicional.",
   aprender_tipo:
-    "Hechicero: estudia un nuevo tipo de magia en una escuela (el segundo desde el nivel 5, el tercero desde el 9). Las escuelas licenciadas dan licencia de la Inquisición; la sombra y la necromancia son magia negra. El del don arcano ya los domina todos.",
+    "Hechicero: estudia un nuevo tipo de magia en una escuela (el segundo desde el nivel 7, el tercero desde el 11). Las escuelas licenciadas dan licencia de la Inquisición; la sombra y la necromancia son magia negra. El del don arcano ya los domina todos.",
   comprender_magia:
     "Hechicero: comprende un hechizo o un tipo de magia aunque no lo domine (cómo funciona, qué cuesta, cómo se canaliza). Con el don arcano, si lo ha visto lanzar (visto=true), lo aprende al instante hasta el círculo que domina.",
   reabrir_tiradas:
     "SOLO al repetir un turno corregido por los jugadores: los dados que ya salieron se repiten igual. Llámala únicamente si el dato corregido es CLAVE para la acción que se tiró (se tiró contra el objetivo equivocado, sin una circunstancia que cambiaba la ventaja o la dificultad…); desde entonces los dados salen nuevos. Un error de narración, de consecuencia o de resultado no la justifica.",
   estilo_combate:
-    "Elige el estilo de lucha (arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas) de un Mercenario, un Caballero (nivel 2+) o un Cazador de Brujas (nivel 2+).",
+    "Elige el estilo de lucha (arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas) de un Mercenario, un Caballero (nivel 4+) o un Cazador de Brujas (nivel 4+).",
   papeles:
     "Cazador de Brujas: dispone papeles de runas alrededor de la zona de la pelea (apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos; a nivel alto curan), los recoge, escribe más, o los usa sobre un rival: clavándole uno con una estaca o, a distancia, con su sangre (tomar_sangre, marcar_sangre).",
   mascota:
@@ -1084,7 +1085,7 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
   }
-  // En trance de furia (nivel 1-2) el berserker no distingue aliados de enemigos.
+  // En trance de furia (niveles 1-4) el berserker no distingue aliados de enemigos.
   let aviso0 = "";
   if (!e.reaccion) {
     const red = redirigirTrance(partida, e.atacante, e.objetivo);
@@ -1560,7 +1561,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const pre = prepararDescarga(partida, e);
         const rs: { texto: string; aviso: string }[] = [];
         for (const a of pre.ataques) {
-          try { rs.push(ataqueCompleto(partida, a)); }
+          try { rs.push(ataqueCompleto(partida, { ...a, sin_contar: true })); }
           catch (err) { if (!rs.length) throw err; rs.push({ texto: `(El segundo rayo no se lanzó: ${(err as Error).message})`, aviso: `(El segundo rayo no se lanzó: ${(err as Error).message})` }); }
         }
         const nota = pre.gastar();

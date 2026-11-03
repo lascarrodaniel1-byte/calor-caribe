@@ -14,6 +14,7 @@ import { competencia, mod, signo, valor } from "./reglas.js";
 import { RECURSOS_CLASE } from "./recursos.js";
 import { exigirLibre, selloDe } from "./segador_base.js";
 
+import { nvl } from "./niveles.js";
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const SIN_SANGRE = /no-muerto|no muerto|ghul|espectro|vampiro|esqueleto|aut[oó]mata|constructo|hambriento|ceniza viva|elemental/i;
 
@@ -48,7 +49,7 @@ export function aplicarDolor(partida: Partida, e: DatosAtaque): { e: DatosAtaque
 /** Tras un golpe cuerpo a cuerpo que lo hiere, el Flagelante lo devuelve: (nivel de dolor)d4, una vez por asalto (nivel 2+). */
 export function devolverDolor(partida: Partida, e: DatosAtaque, r: ResultadoAtaque): string {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(e.objetivo));
-  if (!p || !esFlagelante(p) || p.nivel < 2 || e.a_distancia || motivoNoActua(p) || selloDe(p.sellos, "Comunión del dolor")) return "";
+  if (!p || !esFlagelante(p) || p.nivel < nvl(2) || e.a_distancia || motivoNoActua(p) || selloDe(p.sellos, "Comunión del dolor")) return "";
   if ((r.resultado !== "impacto" && r.resultado !== "critico") || !((r.dano ?? 0) > 0) || p.pv <= 0) return "";
   if (norm(e.atacante) === norm(p.nombre)) return "";
   const t = turnoDe(partida, p.nombre);
@@ -74,7 +75,7 @@ const ZONAS = ["roja", "ambar", "verde"];
 export function sangreAjena(partida: Partida, d: { quien: string; objetivo: string }): string {
   const p = flagelante(partida, d.quien);
   exigirLibre(p, "Sangre ajena");
-  if (p.nivel >= 3) throw new Error(`Desde el nivel 3 ${p.nombre} no necesita untarse la sangre: el mero contacto con la de un enemigo al que hiere cuerpo a cuerpo lo cura solo (pasivo, una vez por asalto).`);
+  if (p.nivel >= nvl(3)) throw new Error(`Desde el nivel 5 ${p.nombre} no necesita untarse la sangre: el mero contacto con la de un enemigo al que hiere cuerpo a cuerpo lo cura solo (pasivo, una vez por asalto).`);
   const motivo = puedeActuar({ tipo: "pj", nombre: p.nombre, p });
   if (motivo) throw new Error(motivo + ".");
   const c = localizar(partida, d.objetivo);
@@ -123,10 +124,10 @@ function sangreViva(c: ReturnType<typeof localizar>): boolean {
   return !SIN_SANGRE.test(naturaleza);
 }
 
-/** Nivel 3+: el mero contacto con la sangre de un enemigo al que hiere cuerpo a cuerpo lo cura (una vez por asalto, sin acción). */
+/** Nivel 5+: el mero contacto con la sangre de un enemigo al que hiere cuerpo a cuerpo lo cura (una vez por asalto, sin acción). */
 export function curacionPasiva(partida: Partida, e: DatosAtaque, r: ResultadoAtaque): string {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(e.atacante));
-  if (!p || !esFlagelante(p) || p.nivel < 3 || e.a_distancia || p.pv <= 0 || !partida.combate || selloDe(p.sellos, "Sangre ajena")) return "";
+  if (!p || !esFlagelante(p) || p.nivel < nvl(3) || e.a_distancia || p.pv <= 0 || !partida.combate || selloDe(p.sellos, "Sangre ajena")) return "";
   if (!((r.dano ?? 0) > 0) || (r.resultado !== "impacto" && r.resultado !== "critico" && r.resultado !== "roce")) return "";
   const c = localizar(partida, e.objetivo);
   if (c.nombre === p.nombre || !sangreViva(c)) return "";
@@ -182,11 +183,11 @@ export function cadenas(partida: Partida, d: { quien: string; objetivo: string; 
 
 // ------------------------------------------------------------------ paso elusivo
 
-/** Nivel 5: declara el Paso elusivo (gasta su reacción). Con el dolor al máximo no hace falta: se hace solo y no falla. */
+/** Nivel 7: declara el Paso elusivo (gasta su reacción). Con el dolor al máximo no hace falta: se hace solo y no falla. */
 export function pasoElusivo(partida: Partida, d: { quien: string }): string {
   const p = flagelante(partida, d.quien);
   if (!partida.combate) throw new Error("El Paso elusivo se usa en combate.");
-  if (!pasoElusivoActivo(p)) throw new Error(`${p.nombre} aún no tiene el Paso elusivo (nivel 5).`);
+  if (!pasoElusivoActivo(p)) throw new Error(`${p.nombre} aún no tiene el Paso elusivo (nivel 7).`);
   const motivo = puedeActuar({ tipo: "pj", nombre: p.nombre, p });
   if (motivo) throw new Error(motivo + ".");
   if (esquivaAutomatica(p)) return `${p.nombre} tiene el dolor al máximo (4/4): su esquiva es automática y no falla nunca; se hace sola ante el siguiente golpe, sin declararla.`;

@@ -1,6 +1,7 @@
 // Rasgos de clase con usos limitados (Segundo aliento, Acción súbita…): el programa lleva cuántos usos quedan y
 // los recupera con los descansos. El descanso corto dura una hora; el largo, ocho. Ninguno cura heridas: eso sigue
 // siendo cosa del sistema de heridas (pasar_tiempo).
+import { nvl } from "./niveles.js";
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { descansar as descansarMagia } from "./magia.js";
@@ -46,7 +47,11 @@ export const RECURSOS_CLASE: Record<string, DefRecurso[]> = {
       desde: 2,
       max: () => 1,
       recarga: "corto",
-      efecto: (p) => `${p.nombre} se lanza a la acción: puede hacer UNA acción más en este turno (además de su acción normal). No concede un segundo ataque adicional si su rasgo de Ataque adicional no lo permite.`,
+      efecto: (p, partida) => {
+        const turnos = partida?.combate?.turnos;
+        if (turnos) { const k = Object.keys(turnos).find((x) => norm(x) === norm(p.nombre)) ?? p.nombre; (turnos[k] ??= {}).subita = true; }
+        return `${p.nombre} se lanza a la acción: puede hacer UNA acción más en este turno (además de su acción normal). No concede un segundo ataque adicional si su rasgo de Ataque adicional no lo permite.`;
+      },
     },
   ],
 };
@@ -63,7 +68,7 @@ const ALIENTO_LEYENDA: DefRecurso = {
 
 export function recursosDe(p: Personaje): { def: DefRecurso; max: number; gastados: number }[] {
   return [...(RECURSOS_CLASE[p.clase] ?? []), ...(p.leyenda?.coronada ? [ALIENTO_LEYENDA] : [])]
-    .filter((d) => p.nivel >= d.desde)
+    .filter((d) => p.nivel >= nvl(d.desde))
     .map((def) => ({ def, max: def.max(p), gastados: Math.min(def.max(p), p.gastados?.[def.nombre] ?? 0) }));
 }
 

@@ -13,6 +13,7 @@ import { competencia, mod, salvacion, signo, valor } from "./reglas.js";
 import { ALDESCANSAR, RECURSOS_CLASE, recursosDe, usarRecurso } from "./recursos.js";
 import { capacidadAlmas, DEUDA_COBRO, esSegador, etapaDeuda, exigirLibre, FIRMAS, INVOCACIONES, multiplicadorDeuda, selloDe, type AlmaSellada } from "./segador_base.js";
 
+import { nvl } from "./niveles.js";
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const GUADANA = "Guadaña de Neter";
 
@@ -71,7 +72,7 @@ RECURSOS_CLASE["Segador"] = [
   {
     nombre: "Descarga sobrenatural",
     desde: 1,
-    max: (p) => (p.nivel >= 2 ? 2 : 1),
+    max: (p) => (p.nivel >= nvl(2) ? 2 : 1),
     recarga: "corto",
     efecto: (p) => `${p.nombre} canaliza la fuerza del dios muerto.`,
   },
@@ -104,10 +105,10 @@ export function guadana(partida: Partida, d: { quien: string; accion: "invocar" 
   }
   if (!tiene) p.inventario.push(GUADANA);
   p.manos = { principal: GUADANA, dosManos: true };
-  return `${p.nombre} invoca la guadaña: un hueso largo y blanco del dios muerto se cierra en sus manos${t ? " (acción adicional)" : ""}. Ataca con CAR, 1d10 cortante, alcance 3 m, a dos manos${p.nivel >= 3 ? ", mágica" : ""}.`;
+  return `${p.nombre} invoca la guadaña: un hueso largo y blanco del dios muerto se cierra en sus manos${t ? " (acción adicional)" : ""}. Ataca con CAR, 1d10 cortante, alcance 3 m, a dos manos${p.nivel >= nvl(3) ? ", mágica" : ""}.`;
 }
 
-/** Gasta un uso de la descarga y prepara los rayos (uno; dos desde el nivel 5). */
+/** Gasta un uso de la descarga y prepara los rayos (uno; dos desde el nivel 7). */
 export function prepararDescarga(partida: Partida, d: { quien: string; objetivo: string; objetivo2?: string }): { ataques: DatosAtaque[]; gastar: () => string; deuda: () => string } {
   const p = segador(partida, d.quien);
   const quieto = motivoNoActua(p);
@@ -115,7 +116,7 @@ export function prepararDescarga(partida: Partida, d: { quien: string; objetivo:
   exigirLibre(p, "Descarga sobrenatural");
   const uso = recursosDe(p).find((x) => x.def.nombre === "Descarga sobrenatural");
   if (!uso || uso.gastados >= uso.max) throw new Error(`${p.nombre} ya gastó la descarga sobrenatural (0/${uso?.max ?? 1}); la recupera con un descanso corto.`);
-  const rayos = p.nivel >= 5 ? 2 : 1;
+  const rayos = p.nivel >= nvl(5) ? 2 : 1;
   const base = { atacante: p.nombre, arma: "Descarga sobrenatural", dano: "1d10", a_distancia: true, atributo: "car" as const, tipo_dano: "contundente" as const };
   const ataques: DatosAtaque[] = [{ ...base, objetivo: d.objetivo }];
   if (rayos === 2) ataques.push({ ...base, objetivo: d.objetivo2 ?? d.objetivo });
@@ -153,7 +154,7 @@ export function sellarAlma(partida: Partida, d: { quien: string; objetivo: strin
   const p = segador(partida, d.quien);
   const quieto = motivoNoActua(p);
   if (quieto) throw new Error(`${quieto}: no puede sellar un alma.`);
-  if (p.nivel < 2) throw new Error(`${p.nombre} aún no sabe sellar almas (nivel 2).`);
+  if (p.nivel < nvl(2)) throw new Error(`${p.nombre} aún no sabe sellar almas (nivel 4).`);
   if ((p.almas ?? []).length >= capacidadAlmas(p.nivel)) throw new Error(`${p.nombre} ya sostiene ${capacidadAlmas(p.nivel)} alma(s) selladas (su límite): libera una con liberar_alma o entrégala a Neter.`);
   const c = localizar(partida, d.objetivo);
   if (c.nombre === p.nombre) throw new Error("No puede sellar su propia alma.");
@@ -293,8 +294,8 @@ export function invocacion(partida: Partida, d: { quien: string; accion: "ver" |
   const nombre = INVOCACIONES.find((x) => d.nombre && (norm(x).includes(norm(d.nombre)) || norm(d.nombre).includes(norm(x))));
   if (!nombre) throw new Error(`Di cuál: ${todas}.`);
   if (d.accion === "elegir") {
-    if (p.nivel < 2) throw new Error(`${p.nombre} aún no tiene invocaciones (nivel 2).`);
-    const max = p.nivel >= 9 ? 4 : p.nivel >= 5 ? 3 : 2;
+    if (p.nivel < nvl(2)) throw new Error(`${p.nombre} aún no tiene invocaciones (nivel 4).`);
+    const max = p.nivel >= nvl(9) ? 4 : p.nivel >= nvl(5) ? 3 : 2;
     if (elegidas.includes(nombre)) throw new Error(`${p.nombre} ya tiene ${nombre}.`);
     if (elegidas.length >= max) throw new Error(`${p.nombre} ya tiene sus ${max} invocaciones.`);
     elegidas.push(nombre);

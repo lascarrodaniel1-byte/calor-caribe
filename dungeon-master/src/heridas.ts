@@ -8,6 +8,7 @@ import { buscarEstructura, elegirEstructura, RELOJ_MAX, tirarValor, type Estruct
 import { raza, type RasgosCuracion } from "./mundo.js";
 import { marcarMuerto, salvacion, valor } from "./reglas.js";
 
+import { nvl } from "./niveles.js";
 export const GRAVEDADES = ["leve", "moderada", "grave", "critica"] as const;
 export const TIPOS = ["corte", "perforacion", "contusion", "quemadura", "mordedura", "necrotica"] as const;
 export const UBICACIONES = ["cabeza", "cuello", "torso", "abdomen", "brazo izquierdo", "brazo derecho", "pierna izquierda", "pierna derecha"] as const;
@@ -184,9 +185,9 @@ const SECUELAS: Record<Zona, { menor: string[]; permanente: string[] }> = {
 const NORMAL: RasgosCuracion = { infeccion: 0, recuperacion: 0, inmunePodre: false, magia: "normal", levesRapidas: false };
 const rasgos = (p: Personaje) => {
   const base = raza(p.raza)?.curacion ?? NORMAL;
-  // Salud divina (Caballero Juramentado, nivel 3+, con el juramento en pie): casi inmune a las infecciones comunes (no a la Podre).
+  // Salud divina (Caballero Juramentado, nivel 5+, con el juramento en pie): casi inmune a las infecciones comunes (no a la Podre).
   const j = p.juramento;
-  const r = p.clase === "Caballero Juramentado" && p.nivel >= 3 && j && !j.roto && !j.perdido ? { ...base, infeccion: base.infeccion + 5 } : base;
+  const r = p.clase === "Caballero Juramentado" && p.nivel >= nvl(3) && j && !j.roto && !j.perdido ? { ...base, infeccion: base.infeccion + 5 } : base;
   return tieneDote(p, "cicatrizado") ? { ...r, recuperacion: r.recuperacion + 2 } : r; // Cicatrizado: +2 a la recuperación
 };
 const modCON = (p: Personaje) => Math.floor((valor(p, "con") - 10) / 2);
@@ -482,8 +483,8 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       }
       p.ceniza += ceniza;
       if (ceniza) log.push(`${p.nombre} gana ${ceniza} de Ceniza (total ${p.ceniza}).`);
-      // Un Caballero Juramentado de nivel 5 o más, con el juramento en pie, expulsa la Podre con la luz de Ka'i.
-      const purga = h.podre && d.sanador?.clase === "Caballero Juramentado" && d.sanador.nivel >= 5 && !!d.sanador.juramento && !d.sanador.juramento.roto && !d.sanador.juramento.perdido;
+      // Un Caballero Juramentado de nivel 7 o más, con el juramento en pie, expulsa la Podre con la luz de Ka'i.
+      const purga = h.podre && d.sanador?.clase === "Caballero Juramentado" && d.sanador.nivel >= nvl(5) && !!d.sanador.juramento && !d.sanador.juramento.roto && !d.sanador.juramento.perdido;
       if (purga) {
         h.podre = false;
         log.push("☀ La luz de Ka'i, a través del Caballero, expulsa la Podre de la herida: la carne podrida se consume y la herida queda limpia.");
@@ -621,7 +622,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
         log.push(`Convalecencia: ${Math.ceil(h.dias_restantes)} días (con pasar_tiempo).`);
       } else if (natural === 1 || t.total <= cd - 5) {
         const dano = tirar(regla.danoComplicacion);
-        // Corte limpio (Barbero nivel 3+) o anestesia profunda: la complicación pega la mitad.
+        // Corte limpio (Barbero nivel 5+) o anestesia profunda: la complicación pega la mitad.
         const mitad = (barbero && (d.sanador?.nivel ?? 1) >= 3) || anestesiado >= 4;
         const total = mitad ? Math.ceil(dano.total / 2) : dano.total;
         p.pv = Math.max(0, p.pv - total);
@@ -691,8 +692,8 @@ export function avanzarAsaltos(p: Personaje, asaltos: number, esfuerzo = true): 
     }
   }
 
-  // La furia (nivel 5) cierra las heridas rojas mientras dura: no sangran ni gastan su reloj.
-  const cerradasPorFuria = p.furia?.activa && p.nivel >= 5;
+  // La furia (nivel 7) cierra las heridas rojas mientras dura: no sangran ni gastan su reloj.
+  const cerradasPorFuria = p.furia?.activa && p.nivel >= nvl(5);
   const sangran = p.heridas.filter((h) => h.sangrando && h.gravedad !== "leve" && !(cerradasPorFuria && h.zona_vital === "roja"));
   if (!sangran.length) return log.join("\n") || `${p.nombre} no tiene hemorragias activas.`;
   let pv = 0;

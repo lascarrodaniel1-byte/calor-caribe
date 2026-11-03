@@ -2,12 +2,13 @@
 // cuantos más votos jura, más poder tiene su magia y más duele romperlo.
 import type { Personaje } from "./estado.js";
 
+import { nvl } from "./niveles.js";
 export interface Voto {
   id: string;
   nombre: string;
   /** Qué promete. */
   promesa: string;
-  /** Qué ventaja concreta le da cuando cumple (desde el nivel 3). */
+  /** Qué ventaja concreta le da cuando cumple (desde el nivel 5). */
   ventaja: string;
 }
 
@@ -44,8 +45,8 @@ export const intensidad = (p: Personaje) => p.juramento?.votos.length ?? 0;
 export const juramentoActivo = (p: Personaje) => !!p.juramento && !p.juramento.roto && !p.juramento.perdido;
 /** Reserva de imposición de manos: nivel × (3 + 2 × votos). */
 export const reservaMax = (p: Personaje) => (juramentoActivo(p) ? p.nivel * (3 + 2 * intensidad(p)) : 0);
-/** Alcance del sentido divino: 18 m, 36 m desde el nivel 4. */
-export const alcanceSentido = (p: Personaje) => (p.nivel >= 4 ? 36 : 18);
+/** Alcance del sentido divino: 18 m, 36 m desde el nivel 6. */
+export const alcanceSentido = (p: Personaje) => (p.nivel >= nvl(4) ? 36 : 18);
 /** Dados extra del castigo divino: 2d8, 3d8 con tres votos, 4d8 con cinco. */
 export const dadosCastigo = (p: Personaje) => 2 + (intensidad(p) >= 5 ? 2 : intensidad(p) >= 3 ? 1 : 0);
 
@@ -56,6 +57,6 @@ export function textoJuramento(p: Personaje): string {
   const votos = j.votos.map((id) => VOTOS.find((v) => v.id === id)?.nombre ?? id).join(", ");
   if (j.perdido) return `  ✝ JURAMENTO PERDIDO para siempre (votos: ${votos}): ya no puede usar magia divina`;
   if (j.roto) return `  ⛓ JURAMENTO ROTO (${j.roto.voto}): sus poderes callan hasta que expíe. ${j.roto.consecuencia}`;
-  const perks = p.nivel >= 3 ? ` · ventajas: ${j.votos.map((id) => `${VOTOS.find((v) => v.id === id)?.nombre}: ${VOTOS.find((v) => v.id === id)?.ventaja}`).join("; ")}` : "";
+  const perks = p.nivel >= nvl(3) ? ` · ventajas: ${j.votos.map((id) => `${VOTOS.find((v) => v.id === id)?.nombre}: ${VOTOS.find((v) => v.id === id)?.ventaja}`).join("; ")}` : "";
   return `  ☀ Juramento a ${j.dios}: ${votos} (intensidad ${j.votos.length}/${MAX_VOTOS}) · reserva de imposición de manos ${j.reserva}/${reservaMax(p)} PV${perks}`;
 }

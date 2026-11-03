@@ -30,6 +30,7 @@ import * as regentes from "./regentes.js";
 import { mitigacion, textoRunas } from "./cazador.js";
 import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
 
+import { rasgosAutomaticos } from "./rasgos.js";
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
 
 /** Catálogo compacto de las acciones del motor, para el prompt del DM. */
@@ -100,6 +101,9 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
     `## Personajes jugadores${conFoco ? " (ficha completa solo del que actúa; la de los demás, con consultar_reglas {tema: \"ficha\", nombre})" : ""}\n` +
       (pjs.length ? pjs.map((x) => (conFoco && !esFoco(x) ? fichaCorta(x) : fichaTexto(x))).join(conFoco ? "\n" : "\n\n") : "Aún no hay personajes: hay que crearlos."),
   );
+  // Lo que el motor aplica solo: así el DM no lo repite ni lo da por olvidado.
+  const auto = pjs.map((x) => { const r = rasgosAutomaticos(x); return r.length ? `- ${x.nombre}: ${r.join("; ")}` : ""; }).filter(Boolean);
+  if (auto.length) partes.push(`## Rasgos que el MOTOR aplica solo (no los apliques a mano ni los repitas: ya cuentan en las tiradas)\n${auto.join("\n")}`);
   const sust = pjs.map((x) => textoSustento(x, p).trim()).map((t, i) => (t ? `${pjs[i].nombre}: ${t.replace(/^Sustento: /, "")}` : "")).filter(Boolean);
   if (sust.length) partes.push(`## Sustento\n${sust.join("\n")}`);
   const idm = textoIdiomas(p);

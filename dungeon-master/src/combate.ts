@@ -27,6 +27,8 @@ import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
+import { nvl } from "./niveles.js";
+import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
 
@@ -205,6 +207,14 @@ export interface EstadoTurno {
   heridos?: string[];
   /** Flagelante: ya sacó provecho de la sangre de un enemigo este asalto (curación pasiva). */
   sangre?: boolean;
+  /** Ataques de la acción de Atacar ya hechos este asalto (Ataque adicional: 2; Acción súbita: otra acción completa). */
+  ataques?: number;
+  /** Usó Acción súbita este asalto: tiene otra acción de Atacar. */
+  subita?: boolean;
+  /** Berserker: ronda en la que atacó con temeridad (los ataques contra él tienen ventaja hasta su próximo turno). */
+  temerario?: number;
+  /** Cazador de Brujas: ya usó la Presa marcada este asalto. */
+  presa?: boolean;
   /** Acción preparada: qué hará cuando ocurra el disparador (gasta su reacción). */
   preparada?: { disparador: string; accion: string };
 }
@@ -292,7 +302,7 @@ function bonoIniciativa(c: Combatiente): { bono: number; modo: Modo; detalle: st
   const of = c.tipo === "criatura" ? 0 : OFICIO[veteraniaCombatiente(c)].iniciativa;
   const estilo = c.tipo === "pj" ? (ESTILO_CLASE[c.p.clase] ?? SIN_ESTILO).iniciativa : 0;
   const des = c.tipo === "pj" ? valor(c.p, "des") : c.tipo === "criatura" ? desDeCriatura(c.j.definicion) : (c.n.des ?? 10);
-  const presciencia = (c.tipo === "criatura" && c.j.definicion.rasgos.some((r) => /ventaja en iniciativa/i.test(r))) || (c.tipo === "pj" && esDegollador(c.p) && c.p.nivel >= 3); // Filo del asesino
+  const presciencia = (c.tipo === "criatura" && c.j.definicion.rasgos.some((r) => /ventaja en iniciativa/i.test(r))) || (c.tipo === "pj" && esDegollador(c.p) && c.p.nivel >= nvl(3)); // Filo del asesino
   const pers = suma(personalidadDe(c), "iniciativa");
   const partes = [`DES ${signo(mod(des))}`, of ? `oficio ${signo(of)}` : "", t.iniciativa ? `temple ${signo(t.iniciativa)}` : "", estilo ? `clase ${signo(estilo)}` : "", pers ? `carácter ${signo(pers)}` : ""];
   return { bono: mod(des) + of + t.iniciativa + estilo + pers, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
@@ -413,7 +423,7 @@ export function siguienteAsalto(partida: Partida): string {
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
   // Lo que dura «hasta su próximo turno» (esquivar, ayudar, preparar, retirarse, correr, paso elusivo) NO caduca aquí: caduca cuando ese combatiente actúa de nuevo.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; }
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.ataques; delete t.subita; delete t.presa; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -556,7 +566,7 @@ export interface DatosAtaque {
   apuntar?: Ubicacion | "hueco";
   /** Cobertura del objetivo: media (+2 CA), tres_cuartos (+5) o total (no se le puede atacar). */
   cobertura?: "media" | "tres_cuartos" | "total";
-  /** Castigo divino del Caballero Juramentado (nivel 2+): gasta 5 PV de su reserva y añade dados de daño radiante. */
+  /** Castigo divino del Caballero Juramentado (nivel 4+): gasta 5 PV de su reserva y añade dados de daño radiante. */
   castigo?: boolean;
   /** Es un ataque hecho como reacción (en turno ajeno): no cuenta como su turno. */
   reaccion?: boolean;
@@ -572,6 +582,10 @@ export interface DatosAtaque {
   en_cubierta?: boolean;
   /** Golpe demoledor (dote): con arma pesada, −5 al ataque y +10 al daño. */
   golpe_demoledor?: boolean;
+  /** No es la acción de Atacar (un rayo de la Descarga sobrenatural): no cuenta para el Ataque adicional. */
+  sin_contar?: boolean;
+  /** Berserker: false = no ataca con temeridad (por defecto lo hace solo, con ventaja pero dándola a los enemigos). */
+  temerario?: boolean;
   /** Esgrimista (dote): es un duelo uno contra uno: ventaja en su primer ataque del combate. */
   duelo?: boolean;
 }
@@ -690,7 +704,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   // Primero las validaciones: si el ataque no puede hacerse, no se gasta nada (ni la ayuda ni la esquiva).
   if (d.castigo) {
     if (at.tipo !== "pj" || !esCaballero(at.p)) throw new Error("El castigo divino es solo del Caballero Juramentado.");
-    if (at.p.nivel < 2) throw new Error(`${at.nombre} aún no tiene el castigo divino (nivel 2).`);
+    if (at.p.nivel < nvl(2)) throw new Error(`${at.nombre} aún no tiene el castigo divino (nivel 4).`);
     if (selloDe(at.p.sellos, "Castigo divino")) throw new Error(`${at.nombre} tiene sellado su castigo divino (su alma está en manos de un Segador): no puede usarlo.`);
     if (!d.dano) throw new Error("El castigo divino suma dados al daño del ataque: pasa dano.");
     if (!juramentoActivo(at.p)) throw new Error(`${at.nombre} no tiene poder: ${at.p.juramento ? "su juramento está roto o perdido" : "aún no ha jurado"}.`);
@@ -711,6 +725,11 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   }
   const tAt = turnoDe(partida, at.nombre);
   const tOb = turnoDe(partida, ob.nombre);
+  // Ataque adicional: la acción de Atacar da 1 ataque, o 2 con el rasgo (la Acción súbita da otra acción completa).
+  if (at.tipo === "pj" && combate && !d.reaccion && !d.mano_secundaria && !d.sin_contar) {
+    const permitidos = ataquesPorAccion(at.p) * (tAt.subita ? 2 : 1);
+    if ((tAt.ataques ?? 0) >= permitidos) throw new Error(`${at.nombre} ya hizo ${tAt.ataques} ataque(s) este asalto (${ataquesPorAccion(at.p) > 1 ? "su Ataque adicional da 2 por acción" : "sin Ataque adicional solo hace 1 por acción"}${tAt.subita ? ", ya con la Acción súbita" : ""}). Si es un asalto nuevo usa siguiente_asalto; si no, elige otra cosa (Acción súbita, acción adicional, movimiento).`);
+  }
   // Empieza su turno: lo que hizo en el anterior (esquivar, retirarse, correr) ya no vale.
   if (!d.reaccion) { if (tAt.adicional !== "esquivar") tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; tAt.pasoElusivo = false; delete tAt.preparada; } // la esquiva del Degollador (acción adicional) no se pierde al atacar
   if (tAt.ayuda && (!tAt.ayuda.contra || igual(tAt.ayuda.contra, ob.nombre))) {
@@ -747,6 +766,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (d.duelo && at.tipo === "pj" && tiene(at.p, "esgrimista") && !distancia) {
     const usados = (combate ? (combate.duelos ??= []) : []);
     if (!usados.some((x) => igual(x, at.nombre))) { ventaja = true; usados.push(at.nombre); motivos.push("ventaja: duelo (Esgrimista, primer ataque)"); }
+  }
+  // Ataque temerario (Berserker): ventaja en sus ataques cuerpo a cuerpo de FUE, pero los ataques contra él la tienen hasta su próximo turno.
+  if (at.tipo === "pj" && combate && temerarioActivo(at.p) && d.temerario !== false && !distancia && (d.atributo ?? (valor(at.p, "des") > valor(at.p, "fue") ? "des" : "fue")) === "fue") {
+    ventaja = true; tAt.temerario = combate.ronda;
+    motivos.push("ventaja: ataque temerario (hasta su próximo turno, los ataques contra él tienen ventaja)");
+  }
+  if (ob.tipo === "pj" && combate && tOb.temerario !== undefined && (tOb.temerario === combate.ronda || (tOb.temerario + 1 === combate.ronda && actuaAntes(partida, at.nombre, ob.nombre)))) {
+    ventaja = true; motivos.push(`ventaja: ${ob.nombre} atacó con temeridad`);
   }
   const naval = ventajaNaval(partida, at.nombre, d.arma, distancia, d.en_cubierta);
   if (naval) { ventaja = true; motivos.push(naval); }
@@ -794,6 +821,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     desglose.push(`nervios ${signo(nervios)} (${presiones.join(", ")})`);
   }
 
+  if (at.tipo === "pj" && combate && !d.reaccion && !d.mano_secundaria && !d.sin_contar) tAt.ataques = (tAt.ataques ?? 0) + 1;
   let t = tirar(`1d20${signo(bono)}`, modo);
   let repetido = "";
   if (t.dados[0] === 1 && (of.repiteUno && at.tipo !== "criatura" || tp.repiteUno)) {
@@ -802,7 +830,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     repetido = ` (repite el 1: ${antes})`;
   }
   const natural = t.dados[0];
-  const umbralCritico = at.tipo === "criatura" ? 20 : of.critico;
+  const umbralCritico = at.tipo === "criatura" ? 20 : Math.min(of.critico, at.tipo === "pj" && criticoVeterano(at.p) ? 19 : 20); // Veterano de compañía: 19-20
   const margen = t.total - ca;
 
   let resultado: "torpeza" | "fallo" | "roce" | "impacto" | "critico";
@@ -813,7 +841,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   else if (at.tipo !== "criatura" && -margen <= of.roce) resultado = "roce";
   else resultado = "fallo";
 
-  // Flagelante (nivel 5): Paso elusivo. Con el dolor al máximo es una esquiva automática que no falla nunca; con menos, si la
+  // Flagelante (nivel 7): Paso elusivo. Con el dolor al máximo es una esquiva automática que no falla nunca; con menos, si la
   // declaró (herramienta paso_elusivo), tira Acrobacias contra el total del ataque. Gasta su reacción; no sorprendido ni incapacitado.
   let notaElusivo = "";
   if (ob.tipo === "pj" && pasoElusivoActivo(ob.p) && combate && !efOb.incapacitado && !sorprendido(ob.nombre) && ob.p.pv > 0 && ["impacto", "critico", "roce"].includes(resultado)) {
@@ -856,13 +884,19 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     let castigoStr = "";
     if (d.castigo && at.tipo === "pj") {
       const maldito = ob.tipo === "criatura" && /no-muerto|vampiro|espectro/i.test(`${ob.j.definicion.temple ?? ""} ${ob.j.definicion.nombre}`);
-      const descanso = maldito && at.p.nivel >= 3 && at.p.juramento?.votos.includes("descanso");
+      const descanso = maldito && at.p.nivel >= nvl(3) && at.p.juramento?.votos.includes("descanso");
       castigoStr = `+${dadosCastigo(at.p) + (maldito ? 1 : 0)}d8${descanso ? "+1d6" : ""}`;
       gastarReserva(at.p, 5);
       const uso = usoDivino(at.p);
       lineas.push(`☀ Castigo divino: +${castigoStr.slice(1)} de daño radiante${maldito ? " (contra lo maldito, un dado más)" : ""}; gasta 5 PV de su reserva (${at.p.juramento!.reserva}). ${uso}`);
     }
-    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr) : d.dano + castigoStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
+    // Presa marcada (Cazador de Brujas): una vez por turno, +1d8 contra una criatura que ya está herida.
+    let presaStr = "";
+    if (at.tipo === "pj" && presaMarcada(at.p) && !tAt.presa) {
+      const herido = ob.tipo === "criatura" ? ob.j.pv < ob.j.pv_max : ob.tipo === "pnj" ? ob.n.pv !== undefined && ob.n.pv_max !== undefined && ob.n.pv < ob.n.pv_max : ob.p.pv < ob.p.pv_max;
+      if (herido) { presaStr = "+1d8"; tAt.presa = true; lineas.push("🎯 Presa marcada: +1d8 contra una criatura ya herida."); }
+    }
+    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr + presaStr) : d.dano + castigoStr + presaStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
     if (furiaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
     lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
@@ -901,6 +935,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       const antes = dano;
       dano = Math.floor(dano / 2);
       lineas.push(`🔥 Furia: resiste el daño físico (${antes} → ${dano}).`);
+    }
+    // Desviar proyectiles (Flagelante): reacción automática que reduce el daño de un proyectil que lo alcanza.
+    if (dano > 0 && distancia && ob.tipo === "pj" && desviaProyectiles(ob.p) && combate && !tOb.reaccion && ob.p.pv > 0 && !efOb.incapacitado) {
+      const dv = tirar(`1d10+${mod(valor(ob.p, "des")) + ob.p.nivel}`);
+      const antes = dano;
+      dano = Math.max(0, dano - dv.total);
+      tOb.reaccion = true;
+      lineas.push(`🌀 Desviar proyectiles: ${ob.nombre} reduce el daño ${describir(dv)} (${antes} → ${dano}). Gasta su reacción.`);
     }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
     // Quien duerme despierta al recibir daño.
@@ -979,8 +1021,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       aviso += `\n${m}`;
     }
   }
-  // Senda de la Ceniza (nivel 3+): quien golpea cuerpo a cuerpo a un berserker en furia se quema.
-  if (ob.tipo === "pj" && ob.p.furia?.activa && ob.p.nivel >= 3 && !distancia && (resultado === "impacto" || resultado === "critico")) {
+  // Senda de la Ceniza (nivel 5+): quien golpea cuerpo a cuerpo a un berserker en furia se quema.
+  if (ob.tipo === "pj" && ob.p.furia?.activa && ob.p.nivel >= nvl(3) && !distancia && (resultado === "impacto" || resultado === "critico")) {
     const f = tirar("1d4").total;
     if (at.tipo === "pj") at.p.pv = Math.max(0, at.p.pv - f);
     else if (at.tipo === "criatura") { danar(at.j, f); if (at.j.pv <= 0 && !muerto) muerto = at.j.nombre; }

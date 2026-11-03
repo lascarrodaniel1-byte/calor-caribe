@@ -1,5 +1,5 @@
 // Experiencia y subida de nivel (reglas básicas de D&D 5e): tabla de PX, PV por nivel, aumentos de característica y
-// los rasgos de clase hasta el nivel 5. Más allá del 5 el programa sigue dando PV, competencia y aumentos, y el DM
+// los rasgos de clase hasta el nivel 7 (se desbloquean dos niveles después de la tabla base; ver niveles.ts). Más allá del 7 el programa sigue dando PV, competencia y aumentos, y el DM
 // diseña los rasgos de clase nuevos.
 import { tomarDote } from "./dotes.js";
 import { tiene } from "./dotes_base.js";
@@ -7,6 +7,7 @@ import { tirar } from "./dados.js";
 import { despertarMagia, ajustarMaestriaHechicero } from "./magia.js";
 import type { Partida, Personaje } from "./estado.js";
 import { CLASES } from "./mundo.js";
+import { nvl } from "./niveles.js";
 import { ATRIBUTOS, mod, valor, type Atributo } from "./reglas.js";
 
 /** PX necesarios para llegar a cada nivel (índice = nivel − 1). */
@@ -18,7 +19,7 @@ export const PX_PELIGRO: Record<number, number> = { 1: 50, 2: 450, 3: 1800, 4: 5
 /** Los jefes (criaturas únicas, con nombre propio) valen la mitad más que un monstruo del mismo peligro. */
 export const pxCriatura = (c: { peligro: number; categoria?: string }): number => Math.round((PX_PELIGRO[c.peligro] ?? 0) * (c.categoria === "jefe" ? 1.5 : 1));
 
-export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
+const RASGOS_BASE: Record<string, Record<number, string[]>> = {
   "Mercenario del Cuervo": {
     2: ["Acción súbita (1 por descanso corto): una acción adicional en su turno"],
     3: ["Veterano de compañía: los críticos con 19-20 en el d20"],
@@ -69,7 +70,7 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     9: ["Cuarta invocación; la Deuda de Neter pesa ×3"],
   },
   Hechicero: {
-    2: ["Recuperación arcana (usar_recurso, 1 vez al día; 2 desde el nivel 9): en cualquier momento, sin necesidad de descansar, recupera calor o aliento gastado igual a la mitad de su nivel (redondeando arriba); se recarga con el descanso largo"],
+    2: ["Recuperación arcana (usar_recurso, 1 vez al día; 2 desde el nivel 11): en cualquier momento, sin necesidad de descansar, recupera calor o aliento gastado igual a la mitad de su nivel (redondeando arriba); se recarga con el descanso largo"],
     3: ["Dominio de lo menor: sin catalizador, los hechizos dos círculos por debajo de su máximo no le cuestan nada y los de un círculo por debajo, la mitad. Su bastón sirve de catalizador (calor, aliento o cordura)"],
     5: ["Maestro: lanza hasta el círculo 3 con +4 al lanzamiento", "Segundo tipo de magia: puede estudiar otro tipo en una escuela (aprender_tipo); el del don arcano ya los domina todos"],
     9: ["Archimago: lanza hasta el círculo 4 con +6; Recuperación arcana dos veces al día", "Tercer tipo de magia (el máximo para quien estudió en escuela)"],
@@ -81,6 +82,11 @@ export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = {
     5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Mano firme (2/descanso largo)"],
   },
 };
+
+/** Rasgos de clase por nivel REAL: lo que la tabla base desbloquea en el nivel n llega en nvl(n) (dos niveles después; ver niveles.ts). */
+export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = Object.fromEntries(
+  Object.entries(RASGOS_BASE).map(([clase, t]) => [clase, Object.fromEntries(Object.entries(t).map(([n, r]) => [nvl(Number(n)), r]))]),
+);
 
 /** Los rangos de la Compañía del Cuervo Negro: el Mercenario asciende al subir de nivel. */
 export const RANGOS_COMPANIA: { desde: number; rango: string; grado: string; ventaja: string }[] = [

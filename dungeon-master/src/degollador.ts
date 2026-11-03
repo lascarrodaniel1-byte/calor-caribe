@@ -13,6 +13,7 @@ import { usarVial, type NombreVial } from "./viales.js";
 import { exigirLibre, selloDe } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
 
+import { nvl } from "./niveles.js";
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
 function degollador(partida: Partida, quien: string): Personaje {
@@ -201,17 +202,17 @@ export function forzarAcceso(partida: Partida, d: { quien: string; obstaculo: ke
   if (o.herramientas && !p.inventario.some((x) => /herramientas? de ladr[oó]n|ganz[uú]a/i.test(x))) throw new Error(`${p.nombre} necesita sus herramientas de ladrón para ${o.nombre}.`);
   const cd = d.cd ?? o.cd;
   const lineas: string[] = [];
-  // En combate: la acción; desde el nivel 2, acción adicional (Acción astuta).
+  // En combate: la acción; desde el nivel 4, acción adicional (Acción astuta).
   const t = turnoDe(partida, p);
   if (t) {
-    if (p.nivel >= 2) {
+    if (p.nivel >= nvl(2)) {
       if (t.adicional) throw new Error(`${p.nombre} ya usó su acción adicional este asalto (${t.adicional}).`);
       t.adicional = "forzar un acceso";
       lineas.push("Lo hace como acción adicional.");
     } else lineas.push("En combate gasta su acción.");
   }
   let exito: boolean;
-  if (p.nivel >= 3 && cd <= CD_ACCESO_SEGURO) {
+  if (p.nivel >= nvl(3) && cd <= CD_ACCESO_SEGURO) {
     exito = true;
     lineas.push(`Entrar y salir: con su oficio, ${o.nombre} (CD ${cd}) no se le resiste; no hace falta tirar.`);
   } else {

@@ -13,6 +13,7 @@ import { buscarLugar, rumboEntre } from "./mapa.js";
 import { distanciaPlano } from "./espacio.js";
 import { registrarPnj } from "./narrativa.js";
 
+import { nvl } from "./niveles.js";
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
 function cazador(partida: Partida, quien: string): Personaje {
@@ -223,7 +224,7 @@ export function registrarMagia(partida: Partida, d: Omit<RegistroMagia, "id">): 
   return r;
 }
 
-const GRADO = (nivel: number) => (nivel >= 10 ? 5 : nivel >= 7 ? 4 : nivel >= 5 ? 3 : nivel >= 3 ? 2 : 1);
+const GRADO = (nivel: number) => (nivel >= nvl(10) ? 5 : nivel >= nvl(7) ? 4 : nivel >= nvl(5) ? 3 : nivel >= nvl(3) ? 2 : 1);
 
 function infoRastro(partida: Partida, p: Personaje, r: RegistroMagia): string {
   const g = GRADO(p.nivel);

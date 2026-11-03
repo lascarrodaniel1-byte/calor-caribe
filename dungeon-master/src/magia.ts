@@ -10,6 +10,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { bajarZona, cauterizarHerida, infligir, perderSangre, pvMaxEfectivo, REGLAS } from "./heridas.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
+import { nvl } from "./niveles.js";
 export const ESCUELAS = ["elemental", "curacion", "necromancia", "mente", "proteccion", "sombra", "adivinacion"] as const;
 export type Escuela = (typeof ESCUELAS)[number];
 export const TRIBUTOS = ["calor", "aliento", "sangre", "cordura", "anios"] as const;
@@ -27,10 +28,10 @@ const MAESTRIA: Record<Maestria, { circulo: number; bono: number }> = {
   ascendido: { circulo: 5, bono: 8 },
 };
 
-/** La maestría que le corresponde a un Hechicero por su nivel: adepto, maestro (5), archimago (9) y ascendido (13). */
+/** La maestría que le corresponde a un Hechicero por su nivel: adepto, maestro (7), archimago (11) y ascendido (15). */
 export function maestriaHechicero(nivel: number, don = true): Maestria {
   // Solo quien nace con el don arcano llega a ascendido; el que estudió en una escuela se queda en archimago.
-  return nivel >= 13 && don ? "ascendido" : nivel >= 9 ? "archimago" : nivel >= 5 ? "maestro" : "adepto";
+  return nivel >= nvl(13) && don ? "ascendido" : nivel >= nvl(9) ? "archimago" : nivel >= nvl(5) ? "maestro" : "adepto";
 }
 
 /** Sube la maestría de un Hechicero a la de su nivel (nunca la baja). Devuelve la nueva si cambió. */
@@ -89,8 +90,8 @@ export const buscarTipo = (id: string): TipoMagia | undefined => TIPOS_MAGIA.fin
 export const tipoDe = (h: { escuela: Escuela; tema?: string }): string => (h.escuela === "elemental" ? (h.tema ?? "fuego") : h.escuela);
 /** La escuela de hechicería que enseña un tipo (todas con licencia de la Inquisición, salvo las de magia negra). */
 export const nombreEscuelaHechiceria = (tipo: string): string => `Escuela de ${buscarTipo(tipo)?.nombre ?? tipo}`;
-/** Cuántos tipos puede dominar un Hechicero de escuela: 1 al empezar, 2 desde el nivel 5 y 3 desde el 9. El del don, todos. */
-export const tiposMax = (nivel: number, don: boolean, extra = 0): number => (don ? TIPOS_MAGIA.length : (nivel >= 9 ? 3 : nivel >= 5 ? 2 : 1) + extra);
+/** Cuántos tipos puede dominar un Hechicero de escuela: 1 al empezar, 2 desde el nivel 7 y 3 desde el 11. El del don, todos. */
+export const tiposMax = (nivel: number, don: boolean, extra = 0): number => (don ? TIPOS_MAGIA.length : (nivel >= nvl(9) ? 3 : nivel >= nvl(5) ? 2 : 1) + extra);
 
 export interface Hechizo {
   nombre: string;
@@ -98,7 +99,7 @@ export interface Hechizo {
   circulo: number;
   /** Si no se indica, el de su escuela. */
   tributo?: Tributo;
-  /** Solo con nivel 9 o más, maestría de adepto o afinidad racial con la magia. */
+  /** Solo con nivel 11 o más, maestría de adepto o afinidad racial con la magia. */
   requiere_alto?: boolean;
   /** Tema de un hechizo elemental (el Berserker solo domina rayo y hielo). */
   tema?: "fuego" | "rayo" | "hielo" | "viento" | "oscuridad" | "agua" | "tierra" | "luz";
@@ -202,7 +203,7 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Romper la mente", escuela: "mente", circulo: 5, efecto: "Destroza la mente de un objetivo: 10d10 psíquico y, si falla por 5, queda en estado vegetativo", dados: "10d10", salvacion: "INT" },
   // Protección
   { nombre: "Vigor de ceniza", escuela: "proteccion", circulo: 1, efecto: "Durante 1 minuto, +2 a las pruebas y salvaciones de FUE y ventaja en agarrar y empujar (refuerzo)" },
-  { nombre: "Arma que regresa", escuela: "proteccion", circulo: 3, efecto: "Encanta un arma arrojadiza o de mano durante 1 hora: tras lanzarla vuelve a la mano del lanzador al final del turno. Exige nivel 9 o más, maestría de adepto o afinidad con la magia", requiere_alto: true },
+  { nombre: "Arma que regresa", escuela: "proteccion", circulo: 3, efecto: "Encanta un arma arrojadiza o de mano durante 1 hora: tras lanzarla vuelve a la mano del lanzador al final del turno. Exige nivel 11 o más, maestría de adepto o afinidad con la magia", requiere_alto: true },
   { nombre: "Piel de hierro", escuela: "proteccion", circulo: 1, efecto: "+2 a la CA del lanzador o de un aliado durante 10 minutos" },
   { nombre: "Escudo de sal", escuela: "proteccion", circulo: 2, efecto: "Durante 1 minuto, los no-muertos no pueden tocar al objetivo sin superar SAB" },
   { nombre: "Círculo de custodia", escuela: "proteccion", circulo: 3, efecto: "Un círculo de 6 m que ninguna criatura hostil puede cruzar durante 10 minutos", salvacion: "CAR" },
@@ -211,7 +212,7 @@ export const HECHIZOS: Hechizo[] = [
   { nombre: "Paso de sombra", escuela: "sombra", circulo: 1, efecto: "Se teletransporta hasta 9 m de una sombra a otra" },
   { nombre: "Manto de noche", escuela: "sombra", circulo: 2, efecto: "Invisible en penumbra u oscuridad durante 10 minutos" },
   { nombre: "Robar la sombra", escuela: "sombra", circulo: 3, efecto: "Arranca la sombra de un objetivo: queda aturdido y con desventaja 1 minuto", salvacion: "CAR" },
-  { nombre: "Camuflaje de sombra", escuela: "sombra", circulo: 3, requiere_alto: true, efecto: "Se funde con lo que lo rodea 10 minutos, también a plena luz: queda invisible y muy difícil de ver (quien lo busca necesita Percepción CD 20, y los ataques contra él tienen desventaja si lo adivinan). Se rompe si ataca o lanza un hechizo ofensivo. Exige nivel 9 o más, maestría de adepto o afinidad racial con la magia" },
+  { nombre: "Camuflaje de sombra", escuela: "sombra", circulo: 3, requiere_alto: true, efecto: "Se funde con lo que lo rodea 10 minutos, también a plena luz: queda invisible y muy difícil de ver (quien lo busca necesita Percepción CD 20, y los ataques contra él tienen desventaja si lo adivinan). Se rompe si ataca o lanza un hechizo ofensivo. Exige nivel 11 o más, maestría de adepto o afinidad racial con la magia" },
   { nombre: "Puerta negra", escuela: "sombra", circulo: 5, efecto: "Abre un paso entre dos sombras cualesquiera de Velmora durante 1 minuto" },
   // Adivinación
   { nombre: "Ojo de bruja", escuela: "adivinacion", circulo: 1, efecto: "Durante 10 minutos ve magia, no-muertos y malditos a 9 m" },
@@ -480,8 +481,8 @@ export function lanzar(p: Personaje, d: DatosLanzamiento): string {
     throw new Error(`Un Barbero-Cirujano solo domina de la magia elemental el fuego y el hielo leves para cauterizar y enfriar (hasta círculo 1): ${h.nombre} queda fuera.`);
   if (p.clase === "Degollador" && h.escuela === "elemental" && !(h.tema === "oscuridad" && h.circulo <= 1))
     throw new Error(`Un Degollador solo domina de la magia elemental la oscuridad menor (esconderse y cegar): ${h.nombre} queda fuera.`);
-  if (h.requiere_alto && p.nivel < 9 && MAESTRIAS.indexOf(m.maestria) < MAESTRIAS.indexOf("adepto") && !((AFINIDAD[p.raza]?.bono ?? 0) > 0))
-    throw new Error(`${h.nombre} exige nivel 9 o más, maestría de adepto o afinidad racial con la magia: ${p.nombre} (nivel ${p.nivel}, ${m.maestria}) aún no puede.`);
+  if (h.requiere_alto && p.nivel < nvl(9) && MAESTRIAS.indexOf(m.maestria) < MAESTRIAS.indexOf("adepto") && !((AFINIDAD[p.raza]?.bono ?? 0) > 0))
+    throw new Error(`${h.nombre} exige nivel ${nvl(9)} o más, maestría de adepto o afinidad racial con la magia: ${p.nombre} (nivel ${p.nivel}, ${m.maestria}) aún no puede.`);
   const conocido = d.hechizo_nuevo || m.hechizos.some((x) => x.toLowerCase() === h.nombre.toLowerCase());
   const log: string[] = [];
   const circulo = Math.max(h.circulo, Math.min(5, d.circulo ?? h.circulo));
@@ -730,19 +731,19 @@ export function descansar(p: Personaje, dias: number, calidad: string) {
 }
 
 export const REGLAS_HECHICERO = `## Hechicero (el sujeto más poderoso posible)
-- Escuelas de hechicería: solo los nobles o los ricos entran en ellas; quien nace con el don arcano es la excepción y lo incluyen por fuerza mayor. Cada escuela enseña UN tipo de magia —fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curación, protección, mente o adivinación— y todas tienen licencia de la Inquisición; la sombra y la necromancia son magia negra, sin licencia, y quien las practica es un hereje. El Hechicero (guardar_personaje con tipos_magia y linaje) empieza dominando un tipo, y con el nivel domina más: dos desde el 5, tres desde el 9 (aprender_tipo, con un maestro o una escuela). Cuanto más nivel y más círculos domina, más hechizos conoce de sus tipos. Su maestría sube con el nivel: adepto (círculo 2), maestro (5, círculo 3) y archimago (9, círculo 4).
+- Escuelas de hechicería: solo los nobles o los ricos entran en ellas; quien nace con el don arcano es la excepción y lo incluyen por fuerza mayor. Cada escuela enseña UN tipo de magia —fuego, rayo, hielo, viento, agua, tierra, oscuridad, luz, curación, protección, mente o adivinación— y todas tienen licencia de la Inquisición; la sombra y la necromancia son magia negra, sin licencia, y quien las practica es un hereje. El Hechicero (guardar_personaje con tipos_magia y linaje) empieza dominando un tipo, y con el nivel domina más: dos desde el 7, tres desde el 11 (aprender_tipo, con un maestro o una escuela). Cuanto más nivel y más círculos domina, más hechizos conoce de sus tipos. Su maestría sube con el nivel: adepto (círculo 2), maestro (5, círculo 3) y archimago (9, círculo 4).
 - Comprensión: cualquier Hechicero comprende cómo funciona cada tipo de magia y cada hechizo (comprender_magia), cuánto cuesta y cómo se canaliza, aunque no lo domine: comprender no es poder lanzar. Para lanzar un tipo hay que estudiarlo.
-- El don arcano MÁGICO (el DM lo tira antes de crear al personaje: d20, 20 = mágico, 19 = físico; el Hechicero que lo tiene es la excepción de linaje) hace del Hechicero el sujeto más poderoso posible, en potencia desde el primer día y en acto con los niveles: domina TODOS los tipos de magia con las mismas reglas y los mismos precios que los demás, comprende cómo se canaliza cada hechizo solo con verlo (comprender_magia con visto=true: lo aprende al instante hasta el círculo que domina), su maestría llega a ascendido (círculo 5, +8) en el nivel 13 y su INT, a 24. A nivel 13 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. El Hechicero de escuela es poderoso pero tiene techo (archimago, tres tipos).
+- El don arcano MÁGICO (el DM lo tira antes de crear al personaje: d20, 20 = mágico, 19 = físico; el Hechicero que lo tiene es la excepción de linaje) hace del Hechicero el sujeto más poderoso posible, en potencia desde el primer día y en acto con los niveles: domina TODOS los tipos de magia con las mismas reglas y los mismos precios que los demás, comprende cómo se canaliza cada hechizo solo con verlo (comprender_magia con visto=true: lo aprende al instante hasta el círculo que domina), su maestría llega a ascendido (círculo 5, +8) en el nivel 15 y su INT, a 24. A nivel 15 ninguna criatura, regente, leyenda ni héroe de otra clase lo iguala en poder puro (pueden tener más recursos, aliados o ventaja de terreno, no más poder). Los poderosos lo saben: la Inquisición, la Corte Pálida y los regentes lo temen, lo cazan o intentan atraerlo, aunque sea de nivel 1. El Hechicero de escuela es poderoso pero tiene techo (archimago, tres tipos).
 - Dominio de lo menor: sin catalizador, un hechizo dos círculos por debajo de su círculo máximo no le cuesta nada y uno de un círculo por debajo cuesta la mitad. El programa lo aplica solo. Con catalizador no hay descuento (el catalizador ya absorbe el precio).
 - Su bastón es catalizador permanente (pásalo en catalizador: «Bastón»): absorbe calor, aliento o cordura (1 + 1 cada 4 niveles); no sirve contra la sangre ni los años de vida.
-- Recuperación arcana (usar_recurso): en cualquier momento (sin descansar) recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 9).`;
+- Recuperación arcana (usar_recurso): en cualquier momento (sin descansar) recupera calor o aliento gastado igual a la mitad de su nivel; una vez al día (dos desde el nivel 11).`;
 
 export const REGLAS_MAGIA = `## Magia (usa lanzar_hechizo; el programa tira y cobra el precio)
 La magia es rara y temida. La Inquisición persigue a los magos sin licencia y la gente corriente no la ha visto nunca. Nunca es gratis: cada hechizo se cobra un tributo en quien lo lanza, mayor cuanto más alto es su círculo (0 = truco gratuito, 5 = prohibido).
 - Tributos por escuela: elemental → CALOR (fiebre, quemaduras internas; a 10, combustión); aire y protección → ALIENTO (jadeo, sin voz, asfixia); curación → SANGRE (PV y anemia); mente, sombra y adivinación → CORDURA (voces, pesadillas, delirio, locura); necromancia → AÑOS DE VIDA. Todo hechizo de círculo 4 o 5 cuesta además años de vida. Envejecer resta FUE y DES cada 10 años; con 50 años perdidos el corazón puede pararse.
 - El calor y el aliento bajan con unos asaltos de calma y desaparecen al descansar un día; la cordura vuelve despacio con descanso; los años no vuelven nunca.
 - Lanzar: d20 + atributo mágico + maestría (+ competencia si es Hechicero) + afinidad de la raza, contra CD 10 + 2 × círculo. Fallo: se paga la mitad. Pifia (1 natural o fallo por 5): precio doble y revés.
-- Maestría: profano (no lanza), iniciado (hasta círculo 1), adepto (2), maestro (3), archimago (4), ascendido (5, solo el Hechicero con don arcano a nivel 13+). Forzar un círculo por encima: CD +5 y precio doble. El círculo 5 solo lo intenta un archimago forzando, o lo lanza con soltura un ascendido.
+- Maestría: profano (no lanza), iniciado (hasta círculo 1), adepto (2), maestro (3), archimago (4), ascendido (5, solo el Hechicero con don arcano a nivel 15+). Forzar un círculo por encima: CD +5 y precio doble. El círculo 5 solo lo intenta un archimago forzando, o lo lanza con soltura un ascendido.
 - Catalizadores (en el inventario; pásalo en catalizador): Piedra de brasa (calor), Ámbar de tormenta (aliento), Corazón de cuervo (sangre), Incienso de amapola gris (cordura), Reloj de arena de hueso (años; rarísimo), Diente de dios (todo; reliquia), Báculo de roble petrificado (permanente, −1 de calor) y el bastón del Hechicero (permanente; absorbe calor, aliento o cordura: 1 + un punto cada 4 niveles). Los demás son caros o raros: que cueste conseguirlos.
 - Afinidad de las razas: ${Object.entries(AFINIDAD).map(([r, a]) => `${r}: ${a.nota}`).join("; ")}.
 - Quién sabe magia: casi nadie. El Hechicero es el único mago de verdad (adepto, un tipo de magia al empezar y hasta tres con el nivel —el del don arcano, todos—, suma su competencia; ver las reglas del Hechicero). Un guerrero solo la usa si nació con el don arcano MÁGICO (el DM tira un d20 por cada personaje nuevo ANTES de crearlo: 19 = don físico, 20 = don mágico) o si es de élite y la aprendió en la historia con un maestro, un grimorio o un pacto, tras mucho esfuerzo (modificar_personaje con maestria "iniciado": recibe la magia de su estilo). Estilo de cada clase: ${Object.entries(MAGIA_CLASE).filter(([c]) => c !== "Hechicero").map(([c, x]) => `${c}: ${x.hechizos.join(", ")}`).join("; ")}. Entre los PNJ, igual: los soldados, aldeanos y mercaderes no saben magia; solo algunos veteranos de élite (inquisidores de alto rango, cazadores de brujas curtidos, caballeros de órdenes antiguas) y unos pocos dotados.

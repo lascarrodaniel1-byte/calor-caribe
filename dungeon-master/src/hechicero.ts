@@ -5,11 +5,12 @@ import type { Partida, Personaje } from "./estado.js";
 import { buscarHechizo, buscarTipo, MAESTRIAS, nombreEscuelaHechiceria, sincronizarGrimorio, tipoDe, tiposMax, tiposDeEscuelas, type Hechizo } from "./magia.js";
 import { RECURSOS_CLASE } from "./recursos.js";
 
+import { nvl } from "./niveles.js";
 RECURSOS_CLASE["Hechicero"] = [
   {
     nombre: "Recuperación arcana",
     desde: 2,
-    max: (p) => (p.nivel >= 9 ? 2 : 1),
+    max: (p) => (p.nivel >= nvl(9) ? 2 : 1),
     recarga: "largo",
     efecto: (p) => {
       const m = p.magia;
@@ -34,7 +35,7 @@ function hechicero(partida: Partida, quien: string): Personaje {
   return p;
 }
 
-/** Aprende un nuevo tipo de magia en una escuela (nivel 5: el segundo; nivel 9: el tercero). El del don ya los domina todos. */
+/** Aprende un nuevo tipo de magia en una escuela (nivel 7: el segundo; nivel 11: el tercero). El del don ya los domina todos. */
 export function aprenderTipo(partida: Partida, d: { quien: string; tipo: string; maestro: string }): string {
   const p = hechicero(partida, d.quien);
   const m = p.magia!;
@@ -44,7 +45,7 @@ export function aprenderTipo(partida: Partida, d: { quien: string; tipo: string;
   m.tipos ??= tiposDeEscuelas(m.escuelas);
   if (m.tipos.includes(t.id)) throw new Error(`${p.nombre} ya domina la magia de ${t.nombre}.`);
   const max = tiposMax(p.nivel, false, tiene(p, "discipulo_de_escuela") ? 1 : 0);
-  if (m.tipos.length >= max) throw new Error(`${p.nombre} (nivel ${p.nivel}) solo puede dominar ${max} tipo(s) de magia y ya domina ${m.tipos.join(", ")}: el segundo llega en el nivel 5 y el tercero en el 9.`);
+  if (m.tipos.length >= max) throw new Error(`${p.nombre} (nivel ${p.nivel}) solo puede dominar ${max} tipo(s) de magia y ya domina ${m.tipos.join(", ")}: el segundo llega en el nivel 7 y el tercero en el 11.`);
   if (d.maestro.trim().length < 3) throw new Error("Di quién o qué escuela le enseña (maestro).");
   m.tipos.push(t.id);
   if (!m.escuelas.includes(t.escuela)) m.escuelas.push(t.escuela);

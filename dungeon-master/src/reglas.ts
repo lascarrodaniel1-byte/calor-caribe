@@ -5,6 +5,7 @@ import type { Personaje } from "./estado.js";
 import { clase } from "./mundo.js";
 import { efectos } from "./condiciones.js";
 
+import { sentidoDelPeligro, ventajaRacial } from "./rasgos.js";
 export type Atributo = "fue" | "des" | "con" | "int" | "sab" | "car";
 export const ATRIBUTOS = ["fue", "des", "con", "int", "sab", "car"] as const;
 
@@ -42,7 +43,7 @@ export function salvacion(
   p: Personaje,
   a: Atributo,
   cd: number,
-  opciones: { extra?: number; ventaja?: boolean; desventaja?: boolean } = {},
+  opciones: { extra?: number; ventaja?: boolean; desventaja?: boolean; /** Contra qué es (texto libre): activa las ventajas raciales (miedo, hechizo, veneno). */ contra?: string } = {},
 ): Salvacion {
   const ef = efectos(p.condiciones);
   if (ef.falla.has(a))
@@ -50,7 +51,8 @@ export function salvacion(
   const bono = mod(valor(p, a)) + (salvacionCompetente(p, a) ? competencia(p) : 0) + (opciones.extra ?? 0);
   const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv) || (a === "sab" && desventajaSab(p)); // la voz de Neter (Segador, Deuda 10+)
   // La fortaleza del Berserker (CON) y la esquiva del Degollador (DES): ventaja en esas salvaciones.
-  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza") || (a === "des" && p.clase === "Degollador");
+  const racial = ventajaRacial(p, opciones.contra);
+  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza") || (a === "des" && (p.clase === "Degollador" || sentidoDelPeligro(p))) || !!racial;
   const modo = vent && !desv ? "ventaja" : desv && !vent ? "desventaja" : "normal";
   const t = tirar(`1d20${signo(bono)}`, modo);
   const natural = t.dados[0];
@@ -60,7 +62,7 @@ export function salvacion(
     total: t.total,
     natural,
     margen: t.total - cd,
-    texto: `salvación de ${a.toUpperCase()} ${describir(t)}${modo !== "normal" ? ` (${modo})` : ""} vs CD ${cd} → ${exito ? "éxito" : "fallo"}`,
+    texto: `salvación de ${a.toUpperCase()} ${describir(t)}${modo !== "normal" ? ` (${modo}${racial && modo === "ventaja" ? `: ${racial}` : ""})` : ""} vs CD ${cd} → ${exito ? "éxito" : "fallo"}`,
   };
 }
 
