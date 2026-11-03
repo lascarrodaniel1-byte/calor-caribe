@@ -147,6 +147,8 @@ export function textoPlano(plano: Plano | undefined): string {
 export interface Reloj {
   /** Segundos desde las 00:00 del día 1. */
   segundos: number;
+  /** El reloj arrancó solo (día 1, 08:00) y el DM aún no lo ha fijado: la primera vez se puede poner en cualquier hora. */
+  auto?: boolean;
 }
 const DIA = 86400;
 
@@ -173,8 +175,10 @@ export function actualizarReloj(partida: Partida, d: DatosTiempo): string {
   if (d.fijar) {
     const dia = d.fijar.dia ?? (antes ? Math.floor(antes.segundos / DIA) + 1 : 1);
     const nuevo = (dia - 1) * DIA + d.fijar.hora * 3600 + (d.fijar.minuto ?? 0) * 60;
-    if (antes && nuevo < antes.segundos) throw new Error(`El tiempo no retrocede: ahora es ${textoReloj(antes)}. Usa avanzar, o corrige la hora solo hacia delante.`);
+    if (antes && !antes.auto && nuevo < antes.segundos) throw new Error(`El tiempo no retrocede: ahora es ${textoReloj(antes)}. Usa avanzar, o corrige la hora solo hacia delante.`);
     partida.reloj = { segundos: nuevo };
+    // La primera vez que el DM fija el reloj de verdad, nadie lleva horas sin comer ni beber: se cuenta desde ahí.
+    if (antes?.auto) for (const p of Object.values(partida.personajes)) if (p.sustento) { p.sustento.comida = nuevo; p.sustento.agua = nuevo; p.sustento.hambre = 0; p.sustento.sed = 0; }
   } else if (d.avanzar) {
     if (!antes) throw new Error("El reloj no está fijado: empieza con fijar {dia, hora, minuto}.");
     const s = (d.avanzar.segundos ?? 0) + (d.avanzar.minutos ?? 0) * 60 + (d.avanzar.horas ?? 0) * 3600 + (d.avanzar.dias ?? 0) * DIA;

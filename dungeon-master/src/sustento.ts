@@ -35,13 +35,19 @@ function subirAgotamiento(p: Personaje, causa: string): string {
 const ESTADOS_HAMBRE = /^(con hambre|famélico)/i, ESTADOS_SED = /^(con sed|deshidratado)/i;
 
 /** Pone (o quita) el estado de hambre y de sed que le toca por las horas que lleva sin comer y sin beber. */
-function ponerEstados(p: Personaje, horasSinComer: number, horasSinBeber: number): void {
+function ponerEstados(p: Personaje, horasSinComer: number, horasSinBeber: number): string[] {
   const lim = diasSinComer(p) * 24;
   const hambre = horasSinComer >= lim ? "famélico" : horasSinComer >= Math.max(24, lim / 2) ? "con hambre" : "";
   const sed = horasSinBeber >= 24 ? "deshidratado" : horasSinBeber >= 12 ? "con sed" : "";
+  const antesH = p.condiciones.find((c) => ESTADOS_HAMBRE.test(c)) ?? "", antesS = p.condiciones.find((c) => ESTADOS_SED.test(c)) ?? "";
   p.condiciones = p.condiciones.filter((c) => !ESTADOS_HAMBRE.test(c) && !ESTADOS_SED.test(c));
   if (hambre) p.condiciones.push(hambre);
   if (sed) p.condiciones.push(sed);
+  // Cuando se pasa de una etapa a otra, se avisa (a la mesa y al DM).
+  const avisos: string[] = [];
+  if (hambre && hambre !== antesH) avisos.push(hambre === "famélico" ? `🍖 ${p.nombre} está famélico: lleva ${Math.floor(horasSinComer)} h sin comer y ya no aguanta más (desventaja en ataques y pruebas; desde mañana, agotamiento).` : `🍖 ${p.nombre} tiene hambre: lleva ${Math.floor(horasSinComer)} h sin comer (desventaja en pruebas; aguanta ${lim} h).`);
+  if (sed && sed !== antesS) avisos.push(sed === "deshidratado" ? `💧 ${p.nombre} está deshidratado: lleva ${Math.floor(horasSinBeber)} h sin beber (desventaja en ataques y pruebas; desde dentro de un día, agotamiento).` : `💧 ${p.nombre} tiene sed: lleva ${Math.floor(horasSinBeber)} h sin beber (desventaja en pruebas).`);
+  return avisos;
 }
 
 /** Revisa el hambre y la sed con el reloj; devuelve lo que ha pasado desde la última vez. */
@@ -59,21 +65,31 @@ export function revisarSustento(partida: Partida): string[] {
     for (let i = s.sed; i < excesoS; i++) out.push(subirAgotamiento(p, `lleva ${sinBeber + 1} días sin beber`));
     s.hambre = Math.max(s.hambre, excesoH);
     s.sed = Math.max(s.sed, excesoS);
-    if (!p.condiciones.includes("muerto")) ponerEstados(p, (ahora - s.comida) / 3600, (ahora - s.agua) / 3600);
+    if (!p.condiciones.includes("muerto")) out.push(...ponerEstados(p, Math.max(0, (ahora - s.comida) / 3600), Math.max(0, (ahora - s.agua) / 3600)));
   }
   return out;
 }
 
 /** Cómo van de comida y agua (lo que ve el DM en el estado). */
 export function textoSustento(p: Personaje, partida: Partida): string {
-  if (!partida.reloj) return "";
-  const s = p.sustento;
-  if (!s) return "";
-  const h = Math.floor((partida.reloj.segundos - s.comida) / 3600), a = Math.floor((partida.reloj.segundos - s.agua) / 3600);
-  const limH = diasSinComer(p) * 24;
-  const avisos = [h >= limH ? "¡HAMBRE!" : h >= limH - 24 ? "hambre cerca" : "", a >= 24 ? "¡SED!" : a >= 16 ? "sed cerca" : ""].filter(Boolean);
-  if (h < 12 && a < 12 && !avisos.length) return "";
-  return `  Sustento: ${h} h sin comer, ${a} h sin beber${avisos.length ? ` — ${avisos.join(", ")}` : ""}`;
+  if (!partida.reloj || !p.sustento) return "";
+  const v = sustentoVisible(partida, p)!;
+  return `  Sustento: ${v.hambre.horas} h sin comer (el agotamiento empieza a las ${v.hambre.limite} h), ${v.sed.horas} h sin beber (a las ${v.sed.limite} h)${[v.hambre.estado, v.sed.estado].filter(Boolean).length ? ` — ${[v.hambre.estado, v.sed.estado].filter(Boolean).join(", ")}` : ""}`;
+}
+
+export interface Medidor { horas: number; limite: number; fraccion: number; estado: string; nivel: "bien" | "aviso" | "grave" }
+
+/** Cuánto llevan sin comer y sin beber, frente a lo que aguantan (para los medidores de la ficha y el estado del DM). */
+export function sustentoVisible(partida: Partida, p: Personaje): { hambre: Medidor; sed: Medidor } | null {
+  if (!partida.reloj) return null;
+  const s = p.sustento ?? { comida: partida.reloj.segundos, agua: partida.reloj.segundos };
+  const hh = Math.max(0, Math.floor((partida.reloj.segundos - s.comida) / 3600)), ha = Math.max(0, Math.floor((partida.reloj.segundos - s.agua) / 3600));
+  const limH = (diasSinComer(p) + 1) * 24, limA = (DIAS_SIN_BEBER + 1) * 24; // horas hasta que empieza el agotamiento
+  const estH = p.condiciones.find((c) => ESTADOS_HAMBRE.test(c)) ?? "", estA = p.condiciones.find((c) => ESTADOS_SED.test(c)) ?? "";
+  const limFam = diasSinComer(p) * 24;
+  const nivelH = hh >= limFam ? "grave" : hh >= Math.max(24, limFam / 2) ? "aviso" : "bien";
+  const nivelA = ha >= 24 ? "grave" : ha >= 12 ? "aviso" : "bien";
+  return { hambre: { horas: hh, limite: limH, fraccion: Math.min(1, hh / limH), estado: estH, nivel: nivelH }, sed: { horas: ha, limite: limA, fraccion: Math.min(1, ha / limA), estado: estA, nivel: nivelA } };
 }
 
 const CANTIDAD = /(?:\(\s*(\d+)\s*\)|[x×]\s*(\d+)|(\d+)\s*[x×])\s*$/i;
@@ -194,6 +210,6 @@ export function viajar(partida: Partida, d: DatosViaje): string {
 }
 
 export const REGLAS_SUSTENTO = `## Viaje, raciones, hambre y sed
-- El reloj (tiempo) cuenta el hambre y la sed solo: sin comer, un personaje aguanta 3 + mod. de CON días (mínimo 1) y después sube un nivel de agotamiento por cada día (y antes, el hambre pasa por dos estados con castigo: «con hambre» —desventaja en pruebas— a partir de la mitad del plazo y «famélico» —también en ataques— al cumplirlo); sin beber aguanta un día y luego sube un nivel por día («con sed» a las 12 h y «deshidratado» a las 24 h, con los mismos castigos). Comer o beber los quita. Al llegar a agotamiento 6, muere. Comer y beber (sustento {accion: comer|beber}) gasta una ración o una unidad de agua del inventario («Raciones de viaje (5)», «Odre de agua (2)»); si come en una posada o bebe de un río, pasa libre=true. Dale a cada personaje al empezar «Raciones de viaje (5)» y «Odre de agua (2)» si su equipo no las trae.
+- El reloj corre siempre (si no lo mueves en un turno, pasan 10 minutos de escena) y cuenta el hambre y la sed solo; fíjalo al empezar con tiempo fijar y avánzalo según lo que dure lo hecho. Cuando el programa avise de que alguien tiene hambre, sed, está famélico o deshidratado, narra los síntomas (estómago que ruge, boca seca, mareo) y recuérdales comer y beber. El hambre y la sed: sin comer, un personaje aguanta 3 + mod. de CON días (mínimo 1) y después sube un nivel de agotamiento por cada día (y antes, el hambre pasa por dos estados con castigo: «con hambre» —desventaja en pruebas— a partir de la mitad del plazo y «famélico» —también en ataques— al cumplirlo); sin beber aguanta un día y luego sube un nivel por día («con sed» a las 12 h y «deshidratado» a las 24 h, con los mismos castigos). Comer o beber los quita. Al llegar a agotamiento 6, muere. Comer y beber (sustento {accion: comer|beber}) gasta una ración o una unidad de agua del inventario («Raciones de viaje (5)», «Odre de agua (2)»); si come en una posada o bebe de un río, pasa libre=true. Dale a cada personaje al empezar «Raciones de viaje (5)» y «Odre de agua (2)» si su equipo no las trae.
 - Para ir de un sitio a otro usa viajar {horas, ritmo, terreno}: calcula los km (lento 3,2 km/h, normal 4,8, rápido 6,4; terreno difícil, la mitad), avanza el reloj y cobra la marcha forzada pasadas 8 horas (salvación de CON, CD 10 + horas de más, o agotamiento). Rápido: −5 a la Percepción pasiva y sin sigilo; lento: sigilo y forrajeo. Buscar comida por el camino es una prueba de Supervivencia (CD 10 fértil, 15 normal, 20 árido): si sale, comen con libre=true.
 - Un descanso largo quita un nivel de agotamiento solo si en el último día comió y bebió.`;

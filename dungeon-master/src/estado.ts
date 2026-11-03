@@ -210,6 +210,7 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.secuencia ??= secuenciaVacia();
   partida.mapa.lugares ??= {};
   partida.mapa.rastro ??= [];
+  partida.reloj ??= { segundos: 8 * 3600, auto: true }; // el tiempo siempre corre (el hambre, la sed y las enfermedades lo cuentan): empieza el día 1 a las 08:00
   for (const pj of Object.values(partida.personajes)) pj.idiomas ??= idiomasIniciales(pj).idiomas; // partidas anteriores a los idiomas
   migrarMapa(partida.mapa);
   for (const j of Object.values(partida.jefes)) {

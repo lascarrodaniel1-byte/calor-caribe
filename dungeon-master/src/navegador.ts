@@ -3,7 +3,7 @@
 // capacidad "sample" del artifact, que llama al motor con la herramienta "motor".
 import { estadoTexto, fichaCriatura } from "./bestiario.js";
 import { tiradaPendiente } from "./magia.js";
-import { textoSustento } from "./sustento.js";
+import { sustentoVisible, textoSustento } from "./sustento.js";
 import { textoTrampas } from "./trampas.js";
 import { textoSal } from "./sal.js";
 import { textoGuaridas } from "./guarida.js";
@@ -14,7 +14,7 @@ import { textoNaves } from "./naves.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
-import { ejecutar, herramientas } from "./herramientas.js";
+import { ejecutar, herramientas, tiempoDeTurno } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import * as narrativa from "./narrativa.js";
@@ -175,5 +175,5 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   return partes.join("\n\n");
 }
 
-export { ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

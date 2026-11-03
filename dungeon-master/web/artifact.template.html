@@ -177,6 +177,16 @@
   .ficha:nth-child(even) { transform: rotate(.5deg); }
   /* Los trozos pulsables de la ficha y su mini pop-up */
   .boton.sobrio[aria-pressed="true"] { background: linear-gradient(180deg, #f0b45a, #c9791a); color: #2a1a0e; border-color: #8a5410; }
+  .ficha .sustento { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; border-top: 1px dashed #7a4a1c88; padding-top: 8px; }
+  .ficha .medidor { all: unset; cursor: pointer; display: grid; grid-template-columns: 78px 1fr auto; align-items: center; gap: 8px; font: 600 12px/1.2 var(--f-ui, inherit); color: #3a1d0a; }
+  .ficha .medidor:hover { background: #f0b45a44; }
+  .ficha .medidor:focus-visible { outline: 2px solid var(--lumbre); outline-offset: 1px; }
+  .ficha .m-barra { height: 9px; border-radius: 5px; background: #8a6a3a44; border: 1px solid #7a4a1c88; overflow: hidden; }
+  .ficha .m-barra span { display: block; height: 100%; background: #6a8a3a; }
+  .ficha .medidor.aviso .m-barra span { background: #d29a2a; }
+  .ficha .medidor.grave .m-barra span { background: #a8321e; }
+  .ficha .medidor.grave .m-h { color: #8a2410; }
+  .ficha .m-h { white-space: nowrap; }
   .ficha .ausente-nota { font: 600 12px/1.3 var(--f-ui, inherit); color: #6a2a14; background: #c9a56e66; border: 1px dashed #7a4a1c; border-radius: 3px; padding: 3px 7px; margin-bottom: 8px; }
   .ficha .ausente-nota[hidden] { display: none; }
   .ficha .chip { all: unset; cursor: pointer; border-bottom: 1px dotted #7a4a1c; color: #3a1d0a; font: inherit; border-radius: 2px; }
@@ -1053,6 +1063,18 @@
         });
         if (i < todas.length - 1) d.append(document.createTextNode("\n"));
       });
+      // Medidores de hambre y sed: cuánto llevas sin comer y sin beber frente a lo que aguantas.
+      const sus = V.sustentoDe(partida, p);
+      if (sus && !(p.condiciones || []).includes("muerto")) {
+        const caja = document.createElement("div"); caja.className = "sustento";
+        for (const [clave, icono, nombreM, m] of [["hambre", "🍖", "Hambre", sus.hambre], ["sed", "💧", "Sed", sus.sed]]) {
+          const b = document.createElement("button"); b.type = "button"; b.className = "medidor " + m.nivel;
+          b.dataset.pj = p.nombre; b.dataset.tipo = "sustento"; b.dataset.nombre = clave; b.title = "Pulsa para ver cómo funciona";
+          b.innerHTML = `<span class="m-t">${icono} ${nombreM}</span><span class="m-barra"><span style="width:${Math.round(m.fraccion * 100)}%"></span></span><span class="m-h">${m.horas} h${m.estado ? " · " + escapar(m.estado) : ""}</span>`;
+          caja.append(b);
+        }
+        d.append(caja);
+      }
       cont.append(d);
     }
     marcarFichasAusentes();
@@ -1098,7 +1120,7 @@
     el.style.top = (r.bottom + 8 + alto > window.innerHeight ? Math.max(12, r.top - alto - 8) : r.bottom + 8) + "px";
     $("ayuda-cerrar").focus({ preventScroll: true });
   }
-  $("lista-fichas").addEventListener("click", (ev) => { const b = ev.target.closest?.("button.chip"); if (b) { ev.stopPropagation(); abrirAyuda(b); } });
+  $("lista-fichas").addEventListener("click", (ev) => { const b = ev.target.closest?.("button.chip, button.medidor"); if (b) { ev.stopPropagation(); abrirAyuda(b); } });
   $("ayuda-cerrar").onclick = cerrarAyuda;
   document.addEventListener("click", (ev) => { if (!pop().hidden && !pop().contains(ev.target)) cerrarAyuda(); });
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !pop().hidden) cerrarAyuda(); });
@@ -1691,6 +1713,7 @@
 
     // Al repetir un turno corregido, los dados que ya salieron vuelven a salir igual (salvo que el DM los reabra con motivo).
     V.dados.iniciarRegistroDados(correccion?.tiradas);
+    const relojAntes = copia.reloj?.segundos; // si el DM no lo mueve, pasan 10 minutos de escena
     ctl = new AbortController();
     try {
       const res = await sample(construirEntrada(acciones, infoTurno, correccion), {
@@ -1722,6 +1745,7 @@
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
+      for (const t of V.tiempoDeTurno(copia, relojAntes)) avisos.push({ pos: texto.length, texto: t }); // el tiempo corre aunque el DM no lo avance: hambre, sed, enfermedades…
       V.regentes.contarTurno(copia);
       V.narrativa.contarTurno(copia); // los arcos envejecen en su fase y los PNJ fuera de escena llevan un turno más sin moverse
       const { historial, ...sinHistorial } = copia;

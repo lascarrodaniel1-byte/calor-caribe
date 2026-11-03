@@ -1134,6 +1134,17 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
   return r;
 }
 
+/**
+ * Al acabar un turno de narración: si el DM no movió el reloj, pasan 10 minutos de escena (una conversación, un registro rápido) y se cuentan
+ * las consecuencias del tiempo (hambre, sed, enfermedades, fuego y agua). Así el tiempo corre aunque el DM se olvide de avanzarlo.
+ */
+export function tiempoDeTurno(partida: Partida, relojAntes?: number): string[] {
+  if (!partida.reloj) return [];
+  if (relojAntes !== undefined && partida.reloj.segundos !== relojAntes) return []; // el DM ya lo movió: las herramientas lo contaron
+  partida.reloj.segundos += 600;
+  return [...revisarSustento(partida), ...procesarEnfermedades(partida), ...procesarTiempo(partida)];
+}
+
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));

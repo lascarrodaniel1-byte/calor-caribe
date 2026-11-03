@@ -9,6 +9,7 @@ import { BASES } from "./equipo.js";
 import { fichaTexto, type Partida, type Personaje } from "./estado.js";
 import { buscarHechizo } from "./magia.js";
 import { propiedades } from "./manos.js";
+import { sustentoVisible } from "./sustento.js";
 import { CLASES, RAZAS } from "./mundo.js";
 import { NIVELES_AUMENTO, NIVEL_MAX, PX_NIVEL, pxActual, pxSiguiente, rangoCompania, RASGOS_NIVEL } from "./progresion.js";
 import { recursosDe } from "./recursos.js";
@@ -16,7 +17,7 @@ import { ENFERMEDADES } from "./enfermedades.js";
 import { IDIOMAS } from "./idiomas.js";
 import { IDIOMAS_NOMBRES } from "./idiomas_base.js";
 
-export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma" | "nivel";
+export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma" | "nivel" | "sustento";
 export interface Segmento { t: string; k?: { tipo: TipoAyuda; nombre: string } }
 export interface Tabla { cabecera: string[]; filas: string[][]; /** Fila (0 = la primera) que se resalta: el nivel actual. */ resaltar?: number }
 export interface Ayuda { titulo: string; cuerpo: string[]; tabla?: Tabla }
@@ -179,6 +180,15 @@ export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: str
       return i ? { titulo: i.nombre, cuerpo: [i.nota, `Lo hablan: ${i.quienes}.`, "Quien no lo habla no entiende a quien lo usa: solo capta el tono y los gestos. Se aprende con un maestro y unos 30 días."] } : { titulo: nombre, cuerpo: ["Idioma sin descripción."] };
     }
     case "nivel": return ayudaNiveles(p);
+    case "sustento": {
+      const v = sustentoVisible(partida, p);
+      if (!v) return { titulo: "Hambre y sed", cuerpo: ["El tiempo de la partida aún no corre."] };
+      const hambre = nombre === "hambre";
+      const m = hambre ? v.hambre : v.sed;
+      return hambre
+        ? { titulo: "Hambre", cuerpo: [`Llevas ${m.horas} h sin comer. Sin comer aguantas 3 + tu mod. de CON días (mínimo 1): a la mitad de ese plazo tienes hambre (desventaja en pruebas), al cumplirlo estás famélico (también en ataques) y a las ${m.limite} h el agotamiento sube un nivel por día. Comer lo quita.`, "Come con las raciones del inventario (se lo pides al DM) o en una posada, de la caza o del camino."] }
+        : { titulo: "Sed", cuerpo: [`Llevas ${m.horas} h sin beber. A las 12 h tienes sed (desventaja en pruebas), a las 24 h estás deshidratado (también en ataques) y a las ${m.limite} h el agotamiento sube un nivel por día. Beber lo quita.`, "Bebe del agua de tu odre (se lo pides al DM) o de un río, un pozo o una fuente."] };
+    }
     case "rasgos": return ayudaClase(p);
   }
 }
