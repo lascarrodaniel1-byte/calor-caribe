@@ -160,6 +160,8 @@ export interface Partida {
   sal?: import("./sal.js").CirculoSal;
   /** Botes, balsas y barcos (ver naves.ts). */
   naves?: Record<string, import("./naves.js").Nave>;
+  /** Libro de sucesos: lo que el DM ha ido registrando, con la hora (ver repaso.ts). */
+  sucesos?: string[];
   px_pendiente?: { total: number; bajas: string[] };
   /** Secuencia de turnos y asuntos pendientes (la escribe el DM al final de cada respuesta). */
   secuencia?: Secuencia;

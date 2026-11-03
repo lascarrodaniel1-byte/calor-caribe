@@ -371,6 +371,7 @@
         <option value="complex">Profundo (gasta más)</option>
       </select>
     </label>
+    <label class="control" for="repaso" title="Tras cada turno, el DM repasa si registró todo lo que narró (lugar, hora, PNJ, objetos, oro, heridas, promesas) y completa lo que falte. Gasta un poco más.">Repaso <input type="checkbox" id="repaso" checked></label>
     <button class="boton sobrio" id="ver-mesa" type="button" title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
     <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
     <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
@@ -1636,6 +1637,7 @@
     const ordenPrevio = { modo: orden.modo, turno: orden.turno, ronda: orden.ronda, desde: orden.desde };
     const avancesAntes = copia.trama?.avances ?? 0;
     let cronicaNueva = cronicaDM;
+    const llamadasTurno = []; // qué herramientas usó el DM en este turno (para el repaso)
     let texto = "";
     const avisos = [];
     const vivo = { narrando: true, por: infoTurno?.actuante || nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
@@ -1696,6 +1698,7 @@
             cronicaNueva = String(datos?.texto ?? "").slice(0, 5000);
             return { accion, resultado: "Crónica actualizada." };
           }
+          llamadasTurno.push(String(accion));
           if (accion === "guardar_personaje" && datos && !datos.jugador) datos.jugador = infoTurno?.actuante || nombre; // la ficha queda ligada a quien la juega
           const r = V.ejecutar(String(accion), datos ?? {}, copia);
           if (accion === "ubicacion") pintarMapa(copia);
@@ -1741,6 +1744,16 @@
         narracion: texto,
         marca,
       });
+      // REPASO: una segunda pasada, corta, en la que el DM registra lo que narró y no anotó (lugar, hora, PNJ, objetos, oro, heridas, promesas).
+      if ($("repaso").checked && sample) {
+        try {
+          const pistas = V.pistasDeRepaso(copia, { texto, llamadas: llamadasTurno, relojAntes });
+          const antesRepaso = llamadasTurno.length;
+          await sample(V.promptRepaso({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), texto, llamadas: [...new Set(llamadasTurno)], pistas, estado: V.estadoParaDM(copia, infoTurno?.actuante) }), { tools: [motor], modelTier: "quick", signal: ctl.signal, repaso: true });
+          // Queda anotado cuándo el repaso tuvo que completar el registro: así se ve cuánto se le olvida al DM.
+          if (llamadasTurno.length > antesRepaso && db) db.doc("repasos/r" + Date.now().toString(36)).set({ ts: Date.now(), pistas, completo: llamadasTurno.slice(antesRepaso) }).catch(() => {});
+        } catch { /* si el repaso falla no pasa nada: el turno ya está narrado */ }
+      }
       const deshacerOk = await guardarCopia;
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
@@ -2003,6 +2016,8 @@
   $("velo-mapa").onclick = (ev) => { if (ev.target === $("velo-mapa")) $("velo-mapa").hidden = true; };
   $("nivel").value = leer("velmora-nivel") || "quick";
   $("nivel").onchange = () => anotar("velmora-nivel", $("nivel").value);
+  $("repaso").checked = leer("velmora-repaso") !== "0";
+  $("repaso").onchange = () => anotar("velmora-repaso", $("repaso").checked ? "1" : "0");
 
   // ------------------------------------------------------------ reiniciar
   async function borrarColeccion(nombreCol) {

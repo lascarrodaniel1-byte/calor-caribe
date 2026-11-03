@@ -54,6 +54,7 @@ import { caida, maniobra } from "./maniobras.js";
 import { trampa } from "./trampas.js";
 import { dote, tomarDote } from "./dotes.js";
 import { sal } from "./sal.js";
+import { anotarSuceso, sucesoDeHerramienta } from "./repaso.js";
 import { avisoGuaridas, guarida } from "./guarida.js";
 import { idioma, idiomasIniciales } from "./idiomas.js";
 import { enfermedad, procesarEnfermedades } from "./enfermedades.js";
@@ -1149,6 +1150,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
   const r = ejecutarInterno(nombre, entrada, partida);
+  if (!r.error) for (const [n, a] of Object.entries(antes)) { const p = partida.personajes[n]; if (p && !a.muerto && p.condiciones.includes("muerto")) anotarSuceso(partida, `☠ ${n} muere`); }
   if (r.error || nombre === "salvacion_muerte") return r;
   // El tiempo normal también corre: fuego, agua que entra, tormenta y aire de los sumergidos. Lo que ya contó su propio tiempo solo deja la marca.
   const accion = (entrada as { accion?: string } | null)?.accion;
@@ -1159,6 +1161,7 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   }
   const monturas = revisarMonturas(partida); // si cae la montura, el jinete cae con ella
   if (monturas.length) { r.contenido += `\n${monturas.join("\n")}`; r.aviso = [r.aviso, ...monturas.map((m) => `🐎 ${m.split("\n")[0]}`)].filter(Boolean).join("\n"); }
+  sucesoDeHerramienta(partida, nombre, entrada, r.contenido, r.aviso ?? undefined); // el libro de sucesos
   const niveles = subirAutomatico(partida); // quien tiene los PX del siguiente nivel sube solo
   if (niveles.length) { r.contenido += `\n${niveles.join("\n")}`; r.aviso = [r.aviso, ...niveles.map((n) => n.split("\n")[0])].filter(Boolean).join("\n"); }
   const mal = procesarEnfermedades(partida); // el reloj hace avanzar las enfermedades
