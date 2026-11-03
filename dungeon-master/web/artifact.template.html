@@ -193,6 +193,15 @@
   .ayuda-pop .ayuda-cab button { all: unset; cursor: pointer; font-size: 22px; line-height: 1; padding: 0 4px; color: #5a2410; }
   .ayuda-pop .ayuda-cab button:focus-visible { outline: 2px solid var(--lumbre); }
   .ayuda-pop p { margin: 0 0 6px; overflow-wrap: anywhere; }
+  .ayuda-pop.ancho { width: min(560px, calc(100vw - 24px)); }
+  .ayuda-pop table { border-collapse: collapse; width: 100%; font-size: 12.5px; line-height: 1.35; margin-top: 6px; }
+  .ayuda-pop th { text-align: left; font-weight: 700; color: #5a2410; border-bottom: 2px solid #7a5a2a; padding: 3px 5px; position: sticky; top: 0; background: #e6d2a4; }
+  .ayuda-pop td { color: #2a1a0e; border-bottom: 1px solid #b89a6877; padding: 3px 5px; vertical-align: top; overflow-wrap: anywhere; }
+  .ayuda-pop td:nth-child(1), .ayuda-pop td:nth-child(3) { text-align: center; white-space: nowrap; }
+  .ayuda-pop td:nth-child(2) { text-align: right; white-space: nowrap; }
+  .ayuda-pop tr.actual td { background: #f0b45a88; font-weight: 700; }
+  .ayuda-pop tr.pasado td { opacity: .6; }
+  .ayuda-pop tr.actual td { color: #2a1a0e; }
   @media (max-width: 600px) { .ayuda-pop { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; max-height: 55vh; } }
   .ficha::before { /* el clavo */
     content: ""; position: absolute; top: 6px; left: 50%; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%;
@@ -1069,9 +1078,21 @@
     const cuerpo = $("ayuda-cuerpo"); cuerpo.innerHTML = "";
     for (const linea of a.cuerpo) { const q = document.createElement("p"); q.textContent = linea; cuerpo.append(q); }
     const el = pop(); el.hidden = false;
+    el.classList.toggle("ancho", !!a.tabla);
+    if (a.tabla) {
+      // La tablita de niveles: el actual resaltado y los ya conseguidos atenuados.
+      const tb = document.createElement("table");
+      const cab = document.createElement("tr"); a.tabla.cabecera.forEach((c) => { const th = document.createElement("th"); th.textContent = c; cab.append(th); }); tb.append(cab);
+      a.tabla.filas.forEach((f, i) => {
+        const tr = document.createElement("tr"); if (i === a.tabla.resaltar) tr.className = "actual"; else if (i < a.tabla.resaltar) tr.className = "pasado";
+        f.forEach((x) => { const td = document.createElement("td"); td.textContent = x; tr.append(td); }); tb.append(tr);
+      });
+      cuerpo.append(tb);
+      setTimeout(() => tb.querySelector("tr.actual")?.scrollIntoView({ block: "center" }), 0);
+    }
     // Junto al botón pulsado, sin salirse de la pantalla (en móvil sale abajo como una hoja).
     const r = boton.getBoundingClientRect();
-    const ancho = Math.min(340, window.innerWidth - 24);
+    const ancho = Math.min(a.tabla ? 560 : 340, window.innerWidth - 24);
     el.style.left = Math.max(12, Math.min(r.left, window.innerWidth - ancho - 12)) + "px";
     const alto = Math.min(el.offsetHeight, 420);
     el.style.top = (r.bottom + 8 + alto > window.innerHeight ? Math.max(12, r.top - alto - 8) : r.bottom + 8) + "px";

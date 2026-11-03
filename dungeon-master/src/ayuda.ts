@@ -10,15 +10,16 @@ import { fichaTexto, type Partida, type Personaje } from "./estado.js";
 import { buscarHechizo } from "./magia.js";
 import { propiedades } from "./manos.js";
 import { CLASES, RAZAS } from "./mundo.js";
-import { RASGOS_NIVEL } from "./progresion.js";
+import { NIVELES_AUMENTO, NIVEL_MAX, PX_NIVEL, pxActual, pxSiguiente, rangoCompania, RASGOS_NIVEL } from "./progresion.js";
 import { recursosDe } from "./recursos.js";
 import { ENFERMEDADES } from "./enfermedades.js";
 import { IDIOMAS } from "./idiomas.js";
 import { IDIOMAS_NOMBRES } from "./idiomas_base.js";
 
-export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma";
+export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma" | "nivel";
 export interface Segmento { t: string; k?: { tipo: TipoAyuda; nombre: string } }
-export interface Ayuda { titulo: string; cuerpo: string[] }
+export interface Tabla { cabecera: string[]; filas: string[][]; /** Fila (0 = la primera) que se resalta: el nivel actual. */ resaltar?: number }
+export interface Ayuda { titulo: string; cuerpo: string[]; tabla?: Tabla }
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
@@ -36,6 +37,8 @@ export function fichaClicable(p: Personaje): Segmento[][] {
   for (const i of p.idiomas ?? []) poner(IDIOMAS_NOMBRES[i] ?? i, "idioma", i);
   poner(p.don === "fisico" ? "Don arcano FÍSICO" : p.don === "magico" ? "Don arcano MÁGICO" : "", "don");
   poner("Rasgos de nivel", "rasgos");
+  poner(`nv. ${p.nivel}`, "nivel");
+  poner(`Experiencia: ${pxActual(p)}`, "nivel");
   fichas.sort((a, b) => b.texto.length - a.texto.length);
   return fichaTexto(p).split("\n").map((linea) => {
     const trozos: Segmento[] = [];
@@ -112,6 +115,27 @@ function ayudaClase(p: Personaje): Ayuda {
   return { titulo: `${c.nombre} (nivel ${p.nivel})`, cuerpo };
 }
 
+/** La tablita de niveles: PX, competencia y qué da cada uno a la clase del personaje. */
+function ayudaNiveles(p: Personaje): Ayuda {
+  const c = CLASES.find((x) => x.nombre === p.clase);
+  const rasgos = RASGOS_NIVEL[p.clase] ?? {};
+  const filas: string[][] = [];
+  for (let n = 1; n <= NIVEL_MAX; n++) {
+    const da: string[] = [];
+    for (const r of rasgos[n] ?? []) da.push(r.split(":")[0].replace(/\s*\(.*$/, ""));
+    if (NIVELES_AUMENTO.includes(n)) da.push("Aumento de característica (+2 a una o +1 a dos) o una dote");
+    if (p.clase === "Mercenario del Cuervo" && rangoCompania(n).rango !== rangoCompania(n - 1).rango && n > 1) da.push(`Ascenso: ${rangoCompania(n).rango}`);
+    da.push(n === 1 ? `PV iniciales (d${c?.dadoGolpe ?? 8})` : `+PV (d${c?.dadoGolpe ?? 8}: promedio ${Math.floor((c?.dadoGolpe ?? 8) / 2) + 1} + CON)`);
+    filas.push([String(n), String(PX_NIVEL[n - 1]), `+${2 + Math.floor((n - 1) / 4)}`, da.join(" · ")]);
+  }
+  const sig = pxSiguiente(p);
+  return {
+    titulo: `Niveles de ${p.clase}`,
+    cuerpo: [`Estás en el nivel ${p.nivel} con ${pxActual(p)} PX${sig !== null ? `; el nivel ${p.nivel + 1} llega a los ${sig} PX (te faltan ${Math.max(0, sig - pxActual(p))})` : " (nivel máximo)"}. Subes solo al reunir los PX.${p.eleccion_pendiente?.length ? ` Tienes pendiente elegir un aumento o una dote del nivel ${p.eleccion_pendiente[0]}.` : ""}`],
+    tabla: { cabecera: ["Nv.", "PX", "Comp.", "Qué te da"], filas, resaltar: p.nivel - 1 },
+  };
+}
+
 export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: string): Ayuda {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(pj));
   if (!p) throw new Error(`No hay ningún personaje «${pj}».`);
@@ -154,6 +178,7 @@ export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: str
       const i = IDIOMAS.find((x) => x.id === nombre || x.nombre === nombre);
       return i ? { titulo: i.nombre, cuerpo: [i.nota, `Lo hablan: ${i.quienes}.`, "Quien no lo habla no entiende a quien lo usa: solo capta el tono y los gestos. Se aprende con un maestro y unos 30 días."] } : { titulo: nombre, cuerpo: ["Idioma sin descripción."] };
     }
+    case "nivel": return ayudaNiveles(p);
     case "rasgos": return ayudaClase(p);
   }
 }
