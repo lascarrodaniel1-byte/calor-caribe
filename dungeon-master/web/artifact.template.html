@@ -262,6 +262,8 @@
   .lienzo { border: 6px solid #3b2616; box-shadow: 0 6px 16px #000a, inset 0 0 0 1px #00000055; background: #d9c49a; line-height: 0; }
   .lienzo svg { width: 100%; height: auto; display: block; }
   .lienzo .etiqueta-lugar { font: 700 23px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 6px; stroke-linejoin: round; }
+  .lienzo .etiqueta-dominio { font: 800 20px "Alegreya Sans", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; paint-order: stroke; stroke: #f6e8c4; stroke-width: 5px; stroke-linejoin: round; opacity: .92; }
+  .lienzo .leyenda-dominio { font: 700 17px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; }
   .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 26px; }
   .lienzo.plano { background: #e9d9b4; }
   .lienzo.plano .pl-etq { font: 700 12px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 3.5px; stroke-linejoin: round; }
@@ -942,6 +944,12 @@
     const partes = [];
     const K = V.ANCHO / 1260; // los tamaños de los símbolos están pensados para un lienzo de 1260 de ancho
     partes.push(`<image href="${MAPA_IMG}" width="${V.ANCHO}" height="${V.ALTO}" preserveAspectRatio="none"/>`);
+    // Fronteras de los regentes: el dominio de cada uno, con su linde en doble trazo y mojones en los vértices
+    for (const t of V.TERRITORIOS) {
+      const pts = t.puntos.map(([x, y]) => `${x},${y}`).join(" ");
+      const cx = t.puntos.reduce((a, [x]) => a + x, 0) / t.puntos.length, cy = t.puntos.reduce((a, [, y]) => a + y, 0) / t.puntos.length;
+      partes.push(`<g class="territorio" aria-label="${escapar(t.nombre)}"><polygon points="${pts}" fill="${t.color}" fill-opacity=".14" stroke="#f6e8c4" stroke-opacity=".75" stroke-width="7" stroke-linejoin="round"/><polygon points="${pts}" fill="none" stroke="${t.color}" stroke-width="3.2" stroke-dasharray="14 7" stroke-linejoin="round"/>${t.puntos.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.2" fill="${t.color}" stroke="#f6e8c4" stroke-width="1.6"/>`).join("")}<text class="etiqueta-dominio" x="${cx}" y="${cy + 44}" text-anchor="middle" fill="${t.color}">${escapar(t.nombre.replace("Dominio de ", ""))}</text></g>`);
+    }
     // Rosa de los vientos: el norte es siempre arriba
     partes.push(`<g transform="translate(${V.ANCHO - 62},62)" aria-label="Norte arriba"><circle r="34" fill="#f6e8c4" fill-opacity=".82" stroke="#3a2414" stroke-width="2.5"/><path d="M0,-27 L7,0 L0,5 L-7,0 Z" fill="#8a2a1e" stroke="#3a2414" stroke-width="1.5"/><path d="M0,27 L7,0 L0,-5 L-7,0 Z" fill="#3a2414" fill-opacity=".55"/><text y="-40" text-anchor="middle" font-family="Alegreya Sans, system-ui, sans-serif" font-size="19" font-weight="800" fill="#3a2414" stroke="#f6e8c4" stroke-width="4" paint-order="stroke">N</text></g>`);
     // Rastro de lo recorrido
@@ -967,6 +975,7 @@
       const izquierda = l.x > V.ANCHO - 190;
       partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -11 : 11)}" y="${l.y - 9}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
     }
+    partes.push(`<g transform="translate(18,${V.ALTO - 20 - V.TERRITORIOS.length * 22})"><rect x="-8" y="-16" width="236" height="${V.TERRITORIOS.length * 22 + 14}" rx="6" fill="#f6e8c4" fill-opacity=".82" stroke="#3a2414" stroke-width="1.5"/>${V.TERRITORIOS.map((t, i) => `<line x1="2" y1="${i * 22}" x2="30" y2="${i * 22}" stroke="${t.color}" stroke-width="3.2" stroke-dasharray="8 4"/><text class="leyenda-dominio" x="38" y="${i * 22 + 4}">${escapar(t.nombre.replace("Dominio de ", ""))}</text>`).join("")}</g>`);
     const svg = `<svg viewBox="0 0 ${V.ANCHO} ${V.ALTO}" role="img" aria-label="Mapa de Velmora con la posición del grupo">${partes.join("")}</svg>`;
     $("mapa").innerHTML = svg;
     $("mapa-grande").innerHTML = svg;

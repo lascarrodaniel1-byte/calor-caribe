@@ -167,6 +167,8 @@ export interface Partida {
   naves?: Record<string, import("./naves.js").Nave>;
   /** Libro de sucesos: lo que el DM ha ido registrando, con la hora (ver repaso.ts). */
   sucesos?: string[];
+  /** Qué capas de conocimiento ya son de dominio público (ver saber.ts). */
+  saber?: import("./saber.js").EstadoSaber;
   px_pendiente?: { total: number; bajas: string[] };
   /** Secuencia de turnos y asuntos pendientes (la escribe el DM al final de cada respuesta). */
   secuencia?: Secuencia;

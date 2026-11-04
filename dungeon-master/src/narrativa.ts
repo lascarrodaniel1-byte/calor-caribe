@@ -4,6 +4,7 @@
 // vueltas sobre el mismo punto.
 import type { Partida } from "./estado.js";
 
+import { rangoDe } from "./saber.js";
 export interface Pnj {
   nombre: string;
   rol: string;
@@ -14,6 +15,8 @@ export interface Pnj {
   /** Cómo está ahora: vivo, herido, muerto, capturado… */
   estado?: string;
   en_escena: boolean;
+  /** Rango de saber (vulgo, letrado, alto); si no se fija, sale de su rol (ver saber.ts). */
+  saber?: "vulgo" | "letrado" | "alto";
   /** Lo lleva a cabo cuando los protagonistas no lo ven: qué hace y hacia dónde va. Nadie se queda parado. */
   agenda?: string;
   /** Arco de la historia en el que incide. */
@@ -108,6 +111,7 @@ export interface DatosPnj {
   dijo?: string;
   agenda?: string;
   arco?: string;
+  saber?: "vulgo" | "letrado" | "alto";
 }
 
 export function registrarPnj(partida: Partida, d: DatosPnj): string {
@@ -123,6 +127,7 @@ export function registrarPnj(partida: Partida, d: DatosPnj): string {
   if (d.estado !== undefined) p.estado = d.estado;
   if (d.en_escena !== undefined) p.en_escena = d.en_escena;
   if (d.agenda !== undefined) p.agenda = d.agenda;
+  if (d.saber !== undefined) p.saber = d.saber;
   if (d.arco !== undefined) {
     p.arco = d.arco;
     const a = partida.trama?.arcos?.find((x) => igual(x.nombre, d.arco!));
@@ -147,7 +152,7 @@ export function registrarPnj(partida: Partida, d: DatosPnj): string {
 export function textoPnj(p: Pnj, corto = false): string {
   if (corto) return `${p.nombre} (${p.rol}${p.estado ? `, ${p.estado}` : ""}${p.actitud ? `, ${p.actitud}` : ""})`;
   return (
-    `${p.nombre} — ${p.rol || "?"}. Estado: ${p.estado || "vivo"}. Voz: ${p.voz || "?"}. Quiere: ${p.quiere || "?"}. Actitud: ${p.actitud || "?"}.` +
+    `${p.nombre} — ${p.rol || "?"} (saber: ${rangoDe(p.rol, p.saber)}). Estado: ${p.estado || "vivo"}. Voz: ${p.voz || "?"}. Quiere: ${p.quiere || "?"}. Actitud: ${p.actitud || "?"}.` +
     (p.agenda ? ` Agenda: ${p.agenda}.` : "") +
     (p.arco ? ` Arco: ${p.arco}.` : "") +
     (p.dicho.length ? ` Ya ha dicho: ${p.dicho.map((x) => `«${x}»`).join(" ")}` : "")

@@ -5,6 +5,7 @@
 import type { Partida } from "./estado.js";
 import { textoReloj } from "./espacio.js";
 
+import { fugasDeSaber } from "./saber.js";
 const MAX_SUCESOS = 80;
 
 const hora = (p: Partida) => (p.reloj ? textoReloj(p.reloj).replace(/ \(.*\)$/, "") : "");
@@ -75,6 +76,7 @@ export function pistasDeRepaso(partida: Partida, d: { texto: string; llamadas: s
     pistas.push("Alguien sale herido, envenenado o inconsciente y no registraste heridas ni condiciones (infligir_herida / condicion).");
   if (/\b(promete|prometen|jura|juran|acuerdan|se compromete|queda en|te debe|le debe|deuda|trato hecho)\b/i.test(t) && !usa("anotar_mundo", "pnj", "trama"))
     pistas.push("Hay una promesa, una deuda o un trato en la escena que no está anotado: anotar_mundo o la trama (para que no se olvide).");
+  for (const x of fugasDeSaber(partida, t)) pistas.push(`La narración parece soltar un secreto de «${x.nombre}» que el mundo aún no sabe: si ya es público (lo contó un testigo, lo publicaron los jugadores) regístralo con saber {accion: revelar, tema: «${x.nombre}»}; si fue un desliz, que ningún PNJ lo repita.`);
   return pistas;
 }
 

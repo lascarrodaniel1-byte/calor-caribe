@@ -77,6 +77,7 @@ import { ATRIBUTOS } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { danoConResistencia } from "./rasgos.js";
+import { accionSaber } from "./saber.js";
 const habilidad = z.object({
   nombre: z.string(),
   descripcion: z.string(),
@@ -664,6 +665,14 @@ const esquemas = {
     arco: z.string().optional().describe("Nombre del arco abierto en el que incide"),
     dijo: z.string().optional().describe("Lo importante que ha revelado, prometido o mentido en este turno (resumen corto)"),
     estado: z.string().optional().describe("Cómo está ahora: vivo, herido, muerto, capturado, huido, traidor… Cámbialo cuando cambie"),
+    saber: z.enum(["vulgo", "letrado", "alto"]).optional().describe("Cuánto sabe del mundo: vulgo (rumores), letrado (escribas, eruditos, sacerdotes, médicos: lo documentado) o alto (altos cargos: los asuntos de su facción). Si no lo pones sale de su rol"),
+  }),
+  saber: z.object({
+    accion: z.enum(["consultar", "revelar", "lista"]).describe("consultar: qué sabe un PNJ de un tema · revelar: un secreto ya es público · lista: los temas"),
+    tema: z.string().optional().describe("Un jefe, raza, facción o secreto (Juez Sin Ojos, Ysolde, varg, Falange…)"),
+    quien: z.string().optional().describe("El PNJ que habla (su rango sale de su rol) o, si no está registrado, su oficio"),
+    rango: z.enum(["vulgo", "letrado", "alto"]).optional().describe("Fuerza el rango de saber"),
+    capa: z.enum(["erudito", "restringido", "secreto"]).optional().describe("revelar: qué capa pasa a ser pública (por defecto, el secreto)"),
   }),
   trama: z.object({
     objetivo: z.string().optional().describe("Objetivo actual del grupo, en una frase CLARA y concreta: qué lograr, con quién o dónde, por qué importa y qué pasa si falla. Los jugadores lo ven siempre en la página"),
@@ -999,6 +1008,8 @@ const descripciones: Record<Nombre, string> = {
     "Reloj del mundo (día y hora): fíjalo al empezar y avánzalo cada turno según lo que dura la acción. Los asaltos y los días de reposo lo mueven solos.",
   prueba:
     "Prueba de habilidad, de característica o salvación de un personaje: aplica la característica correcta (rechaza la que no corresponde a la habilidad), la competencia de su clase y compara con la CD.",
+  saber:
+    "Qué sabe cada PNJ: el conocimiento tiene capas (público, rumor, erudito, restringido, secreto) y el rango de cada PNJ (vulgo, letrado, alto) decide cuáles conoce. consultar: antes de que un PNJ hable de un jefe, raza, facción o secreto. revelar: cuando la historia hace público un secreto. Escribas, eruditos y altos cargos saben más que el vulgo.",
   anotar_mundo:
     "Guarda un hecho importante de la campaña, o corrige uno anterior que ha cambiado (reemplaza) o que ya no es cierto (olvidar).",
 };
@@ -1778,6 +1789,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.atacar>;
         const r = ataqueCompleto(partida, e);
         return { contenido: r.texto, aviso: r.aviso };
+      }
+      case "saber": {
+        const e = validado.data as z.infer<typeof esquemas.saber>;
+        const texto = accionSaber(partida, e);
+        return { contenido: texto, aviso: e.accion === "revelar" ? `📜 ${texto}` : null };
       }
       case "pnj": {
         const e = validado.data as z.infer<typeof esquemas.pnj>;

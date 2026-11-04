@@ -48,6 +48,69 @@ const CENTROS_V1: Record<string, [number, number]> = {
 };
 export const NOMBRES_REGIONES = REGIONES.map((r) => r.nombre) as [string, ...string[]];
 
+/** El dominio de un regente sobre el mapa: sus fronteras (en píxeles de la ilustración). */
+export interface Territorio {
+  id: string;
+  /** Regente que lo manda (como en regentes.ts). */
+  regente: string;
+  /** Qué es: «la Inquisición de la Llama Gris»… */
+  nombre: string;
+  /** Región del mapa que ocupa (su centro del dominio). */
+  region: string;
+  color: string;
+  /** Capital o sede. */
+  sede: string;
+  /** Contorno de la frontera, en orden. */
+  puntos: [number, number][];
+  /** Cómo se nota al cruzar su frontera. */
+  frontera: string;
+}
+
+export const TERRITORIOS: Territorio[] = [
+  {
+    id: "llama_gris", regente: "Juez Sin Ojos", nombre: "Dominio de la Llama Gris", region: "Aldenmar", color: "#c0652a", sede: "la catedral de Aldenmar",
+    puntos: [[340, 340], [420, 305], [520, 300], [600, 300], [615, 380], [690, 440], [700, 510], [610, 555], [480, 560], [400, 525], [335, 440]],
+    frontera: "hogueras que nunca se apagan, hitos con el sello de la Llama Gris y patrullas de inquisidores que piden licencias",
+  },
+  {
+    id: "corte_palida", regente: "Ysolde", nombre: "Dominio de la Corte Pálida", region: "La Marca Hueca", color: "#5b3f9a", sede: "Vel Morhal",
+    puntos: [[540, 610], [640, 590], [790, 570], [805, 700], [800, 820], [760, 900], [680, 930], [610, 900], [570, 830], [545, 740]],
+    frontera: "postes con cuervos clavados, caminos que se vacían al caer la tarde y aldeas con las contraventanas cerradas: aquí se entra por invitación",
+  },
+  {
+    id: "hambrientos", regente: "Madre de los Hambrientos", nombre: "Dominio de los Hambrientos", region: "Las Ciénagas de Hollín", color: "#7c1d2e", sede: "las fosas de la Madre",
+    puntos: [[200, 640], [300, 620], [420, 630], [505, 640], [515, 740], [500, 830], [450, 900], [340, 925], [260, 900], [190, 820], [180, 720]],
+    frontera: "la niebla se espesa, los árboles aparecen marcados con huesos y no se oye nada hasta que se oye todo",
+  },
+];
+
+/** ¿Está el punto dentro del polígono? (trazado de rayos) */
+const dentro = (x: number, y: number, p: [number, number][]): boolean => {
+  let r = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const [xi, yi] = p[i], [xj, yj] = p[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) r = !r;
+  }
+  return r;
+};
+/** Territorio de un regente en el que está un punto del mapa, si lo hay. */
+export const territorioEn = (x: number, y: number): Territorio | undefined => TERRITORIOS.find((t) => dentro(x, y, t.puntos));
+export const territorioDe = (regente: string): Territorio | undefined => TERRITORIOS.find((t) => t.regente === regente);
+/** Fronteras que cruza un camino recto entre dos puntos (en el orden en que se cruzan). */
+export function fronterasEnCamino(a: { x: number; y: number }, b: { x: number; y: number }): string[] {
+  const pasos = 40, out: string[] = [];
+  let actual = territorioEn(a.x, a.y)?.id;
+  for (let i = 1; i <= pasos; i++) {
+    const t = territorioEn(a.x + ((b.x - a.x) * i) / pasos, a.y + ((b.y - a.y) * i) / pasos)?.id;
+    if (t !== actual) {
+      if (actual) out.push(`sale de ${TERRITORIOS.find((x) => x.id === actual)!.nombre}`);
+      if (t) out.push(`entra en ${TERRITORIOS.find((x) => x.id === t)!.nombre}`);
+      actual = t;
+    }
+  }
+  return out;
+}
+
 export const TIPOS_LUGAR = ["ciudad", "aldea", "posada", "fortaleza", "ruina", "mazmorra", "cueva", "templo", "bosque", "campamento", "camino", "puerto", "otro"] as const;
 export type TipoLugar = (typeof TIPOS_LUGAR)[number];
 
@@ -238,6 +301,8 @@ export function moverGrupo(m: EstadoMapa, d: DatosUbicacion): string {
   const partes: string[] = [];
   if (nuevo) partes.push(`Nuevo lugar en el mapa: ${lugar.nombre} (${lugar.region}${d.direccion ? `, al ${NOMBRE_DIRECCION[d.direccion]}` : ""}).`);
   if (movido) partes.push(`Corregido en el mapa: ${movido}`);
+  const terr = territorioEn(lugar.x, lugar.y);
+  if (terr) partes.push(`Territorio de ${terr.regente} (${terr.nombre}): ${terr.frontera}.`);
   if (nuevo && !d.direccion && (d.cerca_de || d.region)) partes.push("Aviso: no indicaste direccion (N, NE, E…): el sitio se ha puesto sin un rumbo concreto. Si queda «al norte/sur/…» de algo, vuelve a llamar con direccion para que el mapa sea fiel.");
   if (d.viajando_hacia) {
     const r = asegurarLugar(m, {
@@ -273,11 +338,16 @@ export function textoMapa(m: EstadoMapa): string {
   const lugares = Object.values(m.lugares)
     .map((l) => {
       // Rumbo desde el grupo (si hay posición): así «ve al norte» se dice con la dirección real.
-      const rumbo = pos && pos.id !== l.id ? ` → desde el grupo: ${rumboEntre(pos, l).texto}` : "";
+      const dom = territorioEn(l.x, l.y);
+      const rumbo0 = dom ? ` [${dom.nombre}]` : "";
+      const rumbo = rumbo0 + (pos && pos.id !== l.id ? ` → desde el grupo: ${rumboEntre(pos, l).texto}` : "");
       return `- ${l.nombre} (${l.tipo}, ${l.region})${rumbo}${l.descripcion ? `: ${l.descripcion}` : ""}`;
     })
     .join("\n");
-  return `El NORTE es ARRIBA del mapa (N arriba, S abajo, E derecha, O izquierda). Posición del grupo: ${donde}${lugares ? `\nLugares conocidos en el mapa (con su rumbo real desde el grupo; no mandes al norte a quien está al sur de su destino):\n${lugares}` : ""}`;
+  const terrAqui = pos ? territorioEn(pos.x, pos.y) : undefined;
+  const cruce = m.ruta && m.lugares[m.ruta.desde] && m.lugares[m.ruta.hasta] ? fronterasEnCamino(m.lugares[m.ruta.desde], m.lugares[m.ruta.hasta]) : [];
+  const fronteras = `\nFronteras de los regentes: ${TERRITORIOS.map((t) => `${t.nombre} (${t.regente}, en ${t.region})`).join("; ")}. Fuera de ellas, tierra sin regente. ${terrAqui ? `El grupo está DENTRO del ${terrAqui.nombre}.` : "El grupo no está en el dominio de ningún regente."}${cruce.length ? ` El viaje en curso ${cruce.join(" y ")}.` : ""}`;
+  return `El NORTE es ARRIBA del mapa (N arriba, S abajo, E derecha, O izquierda). Posición del grupo: ${donde}${fronteras}${lugares ? `\nLugares conocidos en el mapa (con su rumbo real desde el grupo; no mandes al norte a quien está al sur de su destino):\n${lugares}` : ""}`;
 }
 
 export const REGLAS_MAPA = `## Mapa (usa la acción ubicacion)
@@ -286,5 +356,6 @@ Los jugadores ven en todo momento un mapa de Velmora con la posición del grupo.
 - Cada vez que el grupo llegue a otro lugar (otra ciudad, una ruina, una cueva, un campamento), llama a ubicacion con ese lugar.
 - Cuando emprendan un viaje, llama a ubicacion con el lugar de partida y viajando_hacia el destino, y actualiza progreso (0 a 1) en las paradas del camino; al llegar, llama con el destino y sin viajando_hacia.
 - Reutiliza siempre el mismo nombre para el mismo sitio. Para un sitio nuevo, indica su región o cerca_de qué lugar conocido está, su tipo y SIEMPRE su direccion (N, NE, E, SE, S, SO, O, NO) y distancia (pegado, cerca, lejos, muy_lejos) respecto a ese lugar o al centro de su región. El NORTE es ARRIBA del mapa: «la garita norte» va al norte de la ciudad, no al sur. Si un sitio quedó mal colocado, vuelve a llamar con su nombre y la direccion correcta: se recoloca.
+- FRONTERAS: los dominios de los tres regentes (Aldenmar: la Llama Gris; La Marca Hueca: la Corte Pálida; las Ciénagas: los Hambrientos) tienen frontera en el mapa. Al cruzarla narra el cambio (hogueras e inquisidores, postes con cuervos, niebla y huesos) y que sus agentes se enteran de que el grupo ha entrado. Fuera de ellas, nadie manda.
 - En el estado ves el rumbo real de cada lugar desde el grupo: úsalo cuando mandes a alguien («al norte», «al suroeste»); si dices que algo queda al norte, comprueba que lo esté.
 No hace falta llamarla por moverse dentro del mismo edificio o la misma escena (eso es del plano de la escena).`;

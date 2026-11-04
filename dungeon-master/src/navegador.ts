@@ -16,7 +16,7 @@ import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida }
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
 import { ejecutar, herramientas, tiempoDeTurno } from "./herramientas.js";
-import { ALTO, ANCHO, REGIONES, textoMapa } from "./mapa.js";
+import { ALTO, ANCHO, REGIONES, TERRITORIOS, territorioEn, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import * as narrativa from "./narrativa.js";
 import { textoPnj, textoPnjsFuera, textoTrama } from "./narrativa.js";
@@ -183,4 +183,4 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
 }
 
 export { pistasDeRepaso, promptRepaso, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
-export { ALTO, ANCHO, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };
+export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

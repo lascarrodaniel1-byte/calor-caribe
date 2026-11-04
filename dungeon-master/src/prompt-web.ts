@@ -10,6 +10,7 @@ import { REGLAS_HERIDAS } from "./heridas.js";
 import { herramientas } from "./herramientas.js";
 import { REGLAS_HECHICERO, REGLAS_MAGIA } from "./magia.js";
 import { REGLAS_MAPA } from "./mapa.js";
+import { REGLAS_SABER } from "./saber.js";
 import { REGLAS_NARRATIVA } from "./narrativa.js";
 import { REGLAS_ESPACIO_TIEMPO } from "./espacio.js";
 import { REGLAS_ENCUENTROS } from "./encuentros.js";
@@ -97,6 +98,7 @@ const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
 - Viales (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra) con usar_vial: tema "viales".
 - Botín y objetos (normales, encantados, malditos ocultos, reliquias, legendarios) con generar_botin, crear_objeto y examinar_objeto: tema "equipo".
 - Criaturas y jefes con aparecer_criatura, danar_criatura, habilidad_criatura, presagio_criatura: tema "bestiario", o {tema: "criatura", nombre} para la ficha de una. Son una base: inventa las tuyas.
+- Qué sabe cada PNJ: antes de que hable de un jefe, una raza, una facción o un secreto, mira saber {accion: consultar, tema, quien} (el vulgo solo repite rumores; escribas, eruditos y altos cargos saben más; lo secreto no lo sabe nadie). Tema "saber" para las reglas.
 - Behelits y el Eclipse con behelit: tema "behelits" (antes de usarlos, léelo siempre).
 - Magia con lanzar_hechizo: rara, temida y cara. Cada hechizo se cobra calor, aliento, sangre, cordura o años de vida según escuela y círculo; los catalizadores absorben el precio; las razas tienen afinidades; el Hechicero es el único mago de verdad; un guerrero solo la usa si nació con el don (raro) o si es de élite y la aprendió con un maestro. Casi ningún PNJ sabe magia. Antes del primer hechizo de la partida, lee tema "magia".
 - Mapa: los jugadores ven siempre dónde está el grupo. Llama a ubicacion al empezar, al llegar a otro sitio y durante los viajes (con viajando_hacia y progreso). Reutiliza los nombres de los lugares.
@@ -193,6 +195,8 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return textoBestiario();
     case "mapa":
       return REGLAS_MAPA;
+    case "saber":
+      return REGLAS_SABER;
     case "magia":
       return REGLAS_MAGIA;
     case "clase": {
