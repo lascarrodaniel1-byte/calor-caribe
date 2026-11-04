@@ -375,6 +375,7 @@
     <button class="boton sobrio" id="ver-mesa" type="button" title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
     <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
     <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
+    <button class="boton sobrio" id="detener-dm" type="button" hidden title="Si el DM se queda colgado, córtalo: las acciones siguen en cola y puedes volver a pedirle que responda">⏹ Detener al DM</button>
     <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
   </header>
 
@@ -630,6 +631,12 @@
   let jugadores = [];       // quién se ha sentado a la mesa: [{id, nombre, entrada, visto}]
   let orden = V.turnos.ordenInicial(); // de quién es el turno: lo guarda quien narra, en «mesa/orden»
   let ctl = null;
+  /** Espera a `promesa`, pero se rinde en cuanto se cancela la señal: así un DM colgado no deja la mesa bloqueada. */
+  const conCorte = (promesa, signal) => Promise.race([promesa, new Promise((_, rechazar) => { if (signal.aborted) rechazar({ code: "cancelled" }); else signal.addEventListener("abort", () => rechazar({ code: "cancelled" }), { once: true }); })]);
+  let forzarReinicio = false;
+  let ultimaActividad = Date.now();
+  let repasoAbierto = false, repasoCerrado = false;
+  let cortadoPor = ""; // "usuario" o "sin_respuesta": por qué se cortó el turno
   const privados = [];      // respuestas de comandos que solo ve este jugador
   // Los avisos de fallo también quedan en la bitácora de errores (ver registrarError).
   const empujarPrivado = privados.push.bind(privados);
@@ -823,6 +830,7 @@
   }
 
   function pintarMesa() {
+    $("detener-dm").hidden = !narrandoYo;
     const t = ahora();
     const lista = T.ordenar(jugadores);
     const vigentes = lista.filter((j) => T.activo(j, t) || (t - (j.visto || 0) < 30 * 60000));
@@ -1595,6 +1603,7 @@
     } finally {
       clearInterval(renovar);
       narrandoYo = false;
+      try { pintarMesa(); } catch { /* sin pintar no pasa nada */ }
       await cadenaVivo;
       await enCadenaVivo(() => reintentar(() => ref.set({ narrando: false })));
       soltarTurnoNarrador(ref, holder);
@@ -1698,6 +1707,8 @@
             cronicaNueva = String(datos?.texto ?? "").slice(0, 5000);
             return { accion, resultado: "Crónica actualizada." };
           }
+          if (repasoCerrado) return { accion, resultado: "El repaso ya terminó: no se registra nada más.", error: true };
+          ultimaActividad = Date.now();
           llamadasTurno.push(String(accion));
           if (accion === "guardar_personaje" && datos && !datos.jugador) datos.jugador = infoTurno?.actuante || nombre; // la ficha queda ligada a quien la juega
           const r = V.ejecutar(String(accion), datos ?? {}, copia);
@@ -1718,14 +1729,19 @@
     V.dados.iniciarRegistroDados(correccion?.tiradas);
     const relojAntes = copia.reloj?.segundos; // si el DM no lo mueve, pasan 10 minutos de escena
     ctl = new AbortController();
+    cortadoPor = "";
+    repasoCerrado = false;
+    ultimaActividad = Date.now();
+    // Vigilante: si el DM lleva 3 minutos sin escribir ni registrar nada, se corta (las acciones siguen en cola).
+    const vigilante = setInterval(() => { if (Date.now() - ultimaActividad > 180000 && !ctl.signal.aborted) { cortadoPor = "sin_respuesta"; ctl.abort(); } }, 5000);
     try {
-      const res = await sample(construirEntrada(acciones, infoTurno, correccion), {
+      const res = await conCorte(sample(construirEntrada(acciones, infoTurno, correccion), {
         tools: [motor],
         modelTier: $("nivel").value,
         signal: ctl.signal,
         // La marca de secuencia del final no se enseña a los jugadores, ni siquiera mientras se escribe.
-        onText: ({ text }) => { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); },
-      });
+        onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* un fallo al pintar no debe romper la respuesta del DM */ } },
+      }), ctl.signal);
       const marca = V.secuencia.extraerMarca(res.text);
       texto = marca.limpio;
       clearTimeout(pendienteEscritura);
@@ -1745,14 +1761,20 @@
         marca,
       });
       // REPASO: una segunda pasada, corta, en la que el DM registra lo que narró y no anotó (lugar, hora, PNJ, objetos, oro, heridas, promesas).
-      if ($("repaso").checked && sample) {
+      if ($("repaso").checked && sample && !ctl.signal.aborted) {
+        const ctlR = new AbortController();
+        const alCortar = () => ctlR.abort();
+        ctl.signal.addEventListener("abort", alCortar, { once: true });
+        const limite = setTimeout(() => ctlR.abort(), 40000); // el repaso nunca puede retener el turno más de 40 s
+        repasoAbierto = true;
         try {
           const pistas = V.pistasDeRepaso(copia, { texto, llamadas: llamadasTurno, relojAntes });
           const antesRepaso = llamadasTurno.length;
-          await sample(V.promptRepaso({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), texto, llamadas: [...new Set(llamadasTurno)], pistas, estado: V.estadoParaDM(copia, infoTurno?.actuante) }), { tools: [motor], modelTier: "quick", signal: ctl.signal, repaso: true });
+          await conCorte(sample(V.promptRepaso({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), texto, llamadas: [...new Set(llamadasTurno)], pistas, estado: V.estadoParaDM(copia, infoTurno?.actuante) }), { tools: [motor], modelTier: "quick", signal: ctlR.signal, repaso: true }), ctlR.signal);
           // Queda anotado cuándo el repaso tuvo que completar el registro: así se ve cuánto se le olvida al DM.
           if (llamadasTurno.length > antesRepaso && db) db.doc("repasos/r" + Date.now().toString(36)).set({ ts: Date.now(), pistas, completo: llamadasTurno.slice(antesRepaso) }).catch(() => {});
-        } catch { /* si el repaso falla no pasa nada: el turno ya está narrado */ }
+        } catch { /* si el repaso falla o se pasa de tiempo no pasa nada: el turno ya está narrado */ }
+        finally { repasoAbierto = false; repasoCerrado = true; clearTimeout(limite); ctl.signal.removeEventListener("abort", alCortar); ctlR.abort(); }
       }
       const deshacerOk = await guardarCopia;
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
@@ -1803,10 +1825,13 @@
           : (MENSAJES_ERROR[e.code] + " Ahora mismo no hay otro jugador conectado que pueda narrar."));
         return false;
       }
+      if (cortadoPor === "sin_respuesta") { registrarError("dm", "el DM no respondió en 3 minutos (turno cortado)", e); privados.push("El DM no respondió en 3 minutos y se cortó. Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar."); return false; }
+      if (cortadoPor === "usuario") { privados.push("Has detenido al DM. Las acciones siguen en cola: pulsa «Que el DM responda» cuando quieras reintentar."); return false; }
       if (e?.code !== "cancelled") registrarError("dm", e?.message || e?.code || "error del DM", e);
       if (e?.code !== "cancelled") privados.push(MENSAJES_ERROR[e?.code] || "El DM se interrumpió (fallo de conexión). Las acciones siguen en cola: pulsa «Que el DM responda» para reintentar.");
       return false;
     } finally {
+      clearInterval(vigilante);
       V.dados.liberarDados(); // los dados fijados valen solo para este turno: nada que tire después (fichas, tiradas propias) los consume
     }
   }
@@ -2039,20 +2064,29 @@
     if (!nombre) pedirNombre(); else $("accion").focus();
   };
 
+  // Detener al DM: corta el turno en curso (y libera la mesa) si se queda colgado.
+  $("detener-dm").onclick = () => { if (ctl && narrandoYo) { cortadoPor = "usuario"; ctl.abort(); } };
   $("reiniciar").onclick = () => {
     $("error-reinicio").hidden = true;
     $("velo-reinicio").hidden = false;
     $("cancelar-reinicio").focus();
   };
-  $("cancelar-reinicio").onclick = () => { $("velo-reinicio").hidden = true; };
+  $("cancelar-reinicio").onclick = () => { $("velo-reinicio").hidden = true; forzarReinicio = false; };
   $("form-reinicio").onsubmit = async (ev) => {
     ev.preventDefault();
     const err = $("error-reinicio");
     if (!db) return;
     if (turnoVivo || narrandoYo) {
-      err.textContent = "El DM está narrando ahora mismo. Espera a que termine el turno y vuelve a intentarlo.";
-      err.hidden = false;
-      return;
+      // Si el DM se quedó colgado, la segunda pulsación lo corta y reinicia igualmente.
+      if (!forzarReinicio) {
+        forzarReinicio = true;
+        err.textContent = "El DM figura como narrando. Si lleva rato colgado, pulsa otra vez «Reiniciar» para cortarlo y reiniciar igualmente.";
+        err.hidden = false;
+        return;
+      }
+      if (ctl && narrandoYo) { cortadoPor = "usuario"; ctl.abort(); await new Promise((r) => setTimeout(r, 400)); }
+      narrandoYo = false; turnoVivo = null;
+      try { await db.doc("mesa/turno").set({ narrando: false }); } catch { /* ya no importa: se reinicia todo */ }
     }
     const boton = $("confirmar-reinicio");
     boton.disabled = true;
