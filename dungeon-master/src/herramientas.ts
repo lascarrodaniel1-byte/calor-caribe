@@ -1763,7 +1763,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "ubicacion": {
         const e = validado.data as z.infer<typeof esquemas.ubicacion>;
         const texto = moverGrupo(partida.mapa, { ...e, nombre: e.lugar });
-        return { contenido: texto, aviso: texto };
+        // Los avisos «Aviso: …» son instrucciones para el DM (corrige él solo con otra llamada): los jugadores no los ven.
+        const paraJugadores = texto.split("\n").filter((l) => !/^Aviso:/.test(l.trim())).join("\n").replace(/\s*Aviso: .*$/s, "").trim();
+        return { contenido: texto, aviso: paraJugadores || texto };
       }
       case "iniciativa": {
         const e = validado.data as z.infer<typeof esquemas.iniciativa>;
