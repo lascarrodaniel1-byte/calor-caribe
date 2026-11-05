@@ -64,21 +64,23 @@ export interface Territorio {
   puntos: [number, number][];
   /** Cómo se nota al cruzar su frontera. */
   frontera: string;
+  /** ¿Es público quién manda aquí? Solo entonces se nombra al regente a los jugadores. */
+  regentePublico: boolean;
 }
 
 export const TERRITORIOS: Territorio[] = [
   {
-    id: "llama_gris", regente: "Juez Sin Ojos", nombre: "Dominio de la Llama Gris", region: "Aldenmar", color: "#c0652a", sede: "la catedral de Aldenmar",
+    id: "llama_gris", regente: "Juez Sin Ojos", regentePublico: true, nombre: "Dominio de la Llama Gris", region: "Aldenmar", color: "#c0652a", sede: "la catedral de Aldenmar",
     puntos: [[340, 340], [420, 305], [520, 300], [600, 300], [615, 380], [690, 440], [700, 510], [610, 555], [480, 560], [400, 525], [335, 440]],
     frontera: "hogueras que nunca se apagan, hitos con el sello de la Llama Gris y patrullas de inquisidores que piden licencias",
   },
   {
-    id: "corte_palida", regente: "Ysolde", nombre: "Dominio de la Corte Pálida", region: "La Marca Hueca", color: "#5b3f9a", sede: "Vel Morhal",
+    id: "corte_palida", regente: "Ysolde", regentePublico: false, nombre: "Dominio de la Corte Pálida", region: "La Marca Hueca", color: "#5b3f9a", sede: "Vel Morhal",
     puntos: [[540, 610], [640, 590], [790, 570], [805, 700], [800, 820], [760, 900], [680, 930], [610, 900], [570, 830], [545, 740]],
     frontera: "postes con cuervos clavados, caminos que se vacían al caer la tarde y aldeas con las contraventanas cerradas: aquí se entra por invitación",
   },
   {
-    id: "hambrientos", regente: "Madre de los Hambrientos", nombre: "Dominio de los Hambrientos", region: "Las Ciénagas de Hollín", color: "#7c1d2e", sede: "las fosas de la Madre",
+    id: "hambrientos", regente: "Madre de los Hambrientos", regentePublico: false, nombre: "Dominio de los Hambrientos", region: "Las Ciénagas de Hollín", color: "#7c1d2e", sede: "las fosas de la Madre",
     puntos: [[200, 640], [300, 620], [420, 630], [505, 640], [515, 740], [500, 830], [450, 900], [340, 925], [260, 900], [190, 820], [180, 720]],
     frontera: "la niebla se espesa, los árboles aparecen marcados con huesos y no se oye nada hasta que se oye todo",
   },
@@ -302,7 +304,7 @@ export function moverGrupo(m: EstadoMapa, d: DatosUbicacion): string {
   if (nuevo) partes.push(`Nuevo lugar en el mapa: ${lugar.nombre} (${lugar.region}${d.direccion ? `, al ${NOMBRE_DIRECCION[d.direccion]}` : ""}).`);
   if (movido) partes.push(`Corregido en el mapa: ${movido}`);
   const terr = territorioEn(lugar.x, lugar.y);
-  if (terr) partes.push(`Territorio de ${terr.regente} (${terr.nombre}): ${terr.frontera}.`);
+  if (terr) partes.push(`${terr.regentePublico ? `Territorio de ${terr.regente} (${terr.nombre})` : terr.nombre}: ${terr.frontera}.`); // los regentes secretos no se nombran a los jugadores
   if (nuevo && !d.direccion && (d.cerca_de || d.region)) partes.push("Aviso: no indicaste direccion (N, NE, E…): el sitio se ha puesto sin un rumbo concreto. Si queda «al norte/sur/…» de algo, vuelve a llamar con direccion para que el mapa sea fiel.");
   if (d.viajando_hacia) {
     const r = asegurarLugar(m, {
@@ -346,7 +348,7 @@ export function textoMapa(m: EstadoMapa): string {
     .join("\n");
   const terrAqui = pos ? territorioEn(pos.x, pos.y) : undefined;
   const cruce = m.ruta && m.lugares[m.ruta.desde] && m.lugares[m.ruta.hasta] ? fronterasEnCamino(m.lugares[m.ruta.desde], m.lugares[m.ruta.hasta]) : [];
-  const fronteras = `\nFronteras de los regentes: ${TERRITORIOS.map((t) => `${t.nombre} (${t.regente}, en ${t.region})`).join("; ")}. Fuera de ellas, tierra sin regente. ${terrAqui ? `El grupo está DENTRO del ${terrAqui.nombre}.` : "El grupo no está en el dominio de ningún regente."}${cruce.length ? ` El viaje en curso ${cruce.join(" y ")}.` : ""}`;
+  const fronteras = `\nFronteras de los regentes: ${TERRITORIOS.map((t) => `${t.nombre} (${t.regente}${t.regentePublico ? "" : ", regente SECRETO: no lo nombres a los jugadores"}, en ${t.region})`).join("; ")}. Fuera de ellas, tierra sin regente. ${terrAqui ? `El grupo está DENTRO del ${terrAqui.nombre}.` : "El grupo no está en el dominio de ningún regente."}${cruce.length ? ` El viaje en curso ${cruce.join(" y ")}.` : ""}`;
   return `El NORTE es ARRIBA del mapa (N arriba, S abajo, E derecha, O izquierda). Posición del grupo: ${donde}${fronteras}${lugares ? `\nLugares conocidos en el mapa (con su rumbo real desde el grupo; no mandes al norte a quien está al sur de su destino):\n${lugares}` : ""}`;
 }
 

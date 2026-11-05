@@ -54,8 +54,8 @@ export const TEMAS: TemaSaber[] = [
   {
     id: "ysolde", nombre: "Ysolde y la Corte Pálida", claves: ["ysolde", "reina pálida", "corte pálida", "vel morhal", "dracone"], ambito: /palid|corte|vampir|vel morhal/,
     delata: /dracone|primus imperatus|mat[oó] a su padre/i,
-    publico: "Ysolde es la reina de la Corte Pálida, la nobleza vampírica de la Marca Hueca; las aldeas de la Marca viven bajo su yugo.",
-    rumor: "Cuentan que la Corte pide sangre a las aldeas a cambio de protegerlas de cosas peores; que la reina nunca duerme.",
+    publico: "La Corte Pálida es la nobleza vampírica de la Marca Hueca; las aldeas de la Marca viven bajo su yugo.",
+    rumor: "Se habla de una reina, Ysolde, que casi nadie ha visto. Cuentan que la Corte pide sangre a las aldeas a cambio de protegerlas de cosas peores; que la reina nunca duerme.",
     erudito: "Los registros de la Marca recuerdan que antes de la Corte hubo un solo señor pálido que unió a los demás; hoy la orden de Ysolde manda en sus castillos.",
     restringido: "Ysolde gobierna desde Vel Morhal por invitaciones y favores; los señores de la Corte le deben la vida (y la muerte) y la Inquisición es su rival.",
     secreto: "Un golpe de estado después de la Caída: Ysolde mató con su propia mano a su padre Dracone, el «Primus Imperatus», tras una fiera pelea, y absorbió su esencia vital.",
