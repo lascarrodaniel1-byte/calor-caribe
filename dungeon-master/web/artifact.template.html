@@ -1001,11 +1001,6 @@
     const svg = `<svg viewBox="0 0 ${V.ANCHO} ${V.ALTO}" role="img" aria-label="Mapa de Velmora con la posición del grupo">${partes.join("")}</svg>`;
     $("mapa").innerHTML = svg;
     $("mapa-grande").innerHTML = svg;
-    for (const cont of [$("mapa"), $("mapa-grande")]) {
-      // El nombre de un lugar con la etiqueta oculta aparece al pasar o pulsar, y se pone por encima de los demás
-      cont.onmouseover = (ev) => { const g = ev.target.closest?.(".lugar"); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); };
-      cont.onclick = (ev) => { const g = ev.target.closest?.(".lugar"); if (!g) return; const v = g.classList.toggle("ver"); if (v) g.parentNode.appendChild(g); };
-    }
 
     let titulo, detalle;
     if (ruta) {
@@ -2071,7 +2066,13 @@
   $("franja-mapa").onclick = () => abrirLateral("titulo-mapa");
   $("cerrar-fichas").onclick = () => { $("fichas").classList.remove("abierto"); };
   const ampliarMapa = () => { $("velo-mapa").hidden = false; $("cerrar-mapa").focus(); };
-  $("mapa").onclick = ampliarMapa;
+  $("mapa").onclick = ampliarMapa; // pulsar el mapa pequeño lo abre en grande (el zoom)
+  // El nombre de un lugar con la etiqueta oculta aparece al pasar el ratón y, en el mapa grande, también al pulsar el punto
+  // (se pone por encima de los demás). Son escuchas añadidas una vez: no pisan el onclick de ampliar.
+  const alPasar = (ev) => { const g = ev.target.closest?.(".lugar"); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); };
+  $("mapa").addEventListener("mouseover", alPasar);
+  $("mapa-grande").addEventListener("mouseover", alPasar);
+  $("mapa-grande").addEventListener("click", (ev) => { const g = ev.target.closest?.(".lugar"); if (!g) return; if (g.classList.toggle("ver")) g.parentNode.appendChild(g); });
   $("mapa").onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ampliarMapa(); } };
   $("cerrar-mapa").onclick = () => { $("velo-mapa").hidden = true; };
   $("velo-mapa").onclick = (ev) => { if (ev.target === $("velo-mapa")) $("velo-mapa").hidden = true; };
