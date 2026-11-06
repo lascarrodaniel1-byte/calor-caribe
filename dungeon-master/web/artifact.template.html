@@ -264,6 +264,9 @@
   .lienzo .etiqueta-lugar { font: 700 23px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 6px; stroke-linejoin: round; }
   .lienzo .etiqueta-dominio { font: 800 20px "Alegreya Sans", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; paint-order: stroke; stroke: #f6e8c4; stroke-width: 5px; stroke-linejoin: round; opacity: .92; }
   .lienzo .leyenda-dominio { font: 700 17px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; }
+  .lienzo .lugar { cursor: pointer; outline: none; }
+  .lienzo .lugar .oculta { opacity: 0; pointer-events: none; }
+  .lienzo .lugar:hover .oculta, .lienzo .lugar:focus .oculta, .lienzo .lugar.ver .oculta { opacity: 1; }
   .lienzo .etiqueta-lugar.actual { fill: #7a1d15; font-size: 26px; }
   .lienzo.plano { background: #e9d9b4; }
   .lienzo.plano .pl-etq { font: 700 12px "Alegreya Sans", system-ui, sans-serif; fill: #2a1a0e; paint-order: stroke; stroke: #f6e8c4; stroke-width: 3.5px; stroke-linejoin: round; }
@@ -953,8 +956,8 @@
     // Rosa de los vientos: el norte es siempre arriba
     partes.push(`<g transform="translate(${V.ANCHO - 62},62)" aria-label="Norte arriba"><circle r="34" fill="#f6e8c4" fill-opacity=".82" stroke="#3a2414" stroke-width="2.5"/><path d="M0,-27 L7,0 L0,5 L-7,0 Z" fill="#8a2a1e" stroke="#3a2414" stroke-width="1.5"/><path d="M0,27 L7,0 L0,-5 L-7,0 Z" fill="#3a2414" fill-opacity=".55"/><text y="-40" text-anchor="middle" font-family="Alegreya Sans, system-ui, sans-serif" font-size="19" font-weight="800" fill="#3a2414" stroke="#f6e8c4" stroke-width="4" paint-order="stroke">N</text></g>`);
     // Rastro de lo recorrido
-    const rastro = (m.rastro || []).map((id) => L[id]).filter(Boolean);
-    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#3a2414" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`);
+    const rastro = (m.rastro || []).slice(-6).map((id) => L[id]).filter(Boolean); // solo el tramo reciente: el mapa no se llena de líneas
+    if (rastro.length > 1) partes.push(`<polyline points="${rastro.map((l) => `${l.x},${l.y}`).join(" ")}" fill="none" stroke="#3a2414" stroke-opacity=".55" stroke-width="2.4" stroke-dasharray="2 8" stroke-linecap="round"/>`);
     // Viaje en curso
     let marca = pos ? { x: pos.x, y: pos.y } : null;
     if (ruta) {
@@ -968,17 +971,41 @@
       partes.push(`<circle class="onda" cx="${marca.x}" cy="${marca.y}" r="${19 * K * 1.5}" fill="none" stroke="#b02a1e" stroke-width="4"/>`);
       partes.push(`<circle cx="${marca.x}" cy="${marca.y}" r="${19 * K * 1.2}" fill="#9e2b25" stroke="#f6e8c4" stroke-width="3"/><circle cx="${marca.x}" cy="${marca.y}" r="${9 * K * 1.2}" fill="none" stroke="#e8a090" stroke-width="2"/>`);
     }
-    // Lugares
-    for (const l of Object.values(L)) {
-      const actual = (pos && l.id === pos.id && !ruta) || (ruta && l.id === ruta.hasta);
-      partes.push(`<circle cx="${l.x}" cy="${l.y}" r="${actual ? 7 : 6}" fill="#3a2414" stroke="#f6e8c4" stroke-width="2.5"/>`);
-      const izquierda = l.x > V.ANCHO - 190;
-      partes.push(`<text class="etiqueta-lugar${actual ? " actual" : ""}" x="${l.x + (izquierda ? -11 : 11)}" y="${l.y - 9}" text-anchor="${izquierda ? "end" : "start"}">${escapar(l.nombre)}</text>`);
+    // Lugares: puntos pequeños y etiquetas repartidas por prioridad sin pisarse; las que no caben salen al pasar el ratón o al pulsar el punto
+    const PESO = { ciudad: 60, fortaleza: 55, puerto: 50, templo: 45, aldea: 40, posada: 35, mazmorra: 30, cueva: 30, ruina: 28, bosque: 20, campamento: 12, camino: 8, otro: 5 };
+    const recientes = (m.rastro || []).slice(-4);
+    const esActual = (l) => (pos && l.id === pos.id && !ruta) || (ruta && l.id === ruta.hasta);
+    const prio = (l) => (esActual(l) ? 1000 : 0) + (ruta && l.id === ruta.desde ? 500 : 0) + (recientes.includes(l.id) ? 100 + recientes.indexOf(l.id) : 0) + (PESO[l.tipo] ?? 5);
+    const lista = Object.values(L).sort((a, b) => prio(b) - prio(a));
+    const ocupado = [];
+    const choca = (r) => r.x < 4 || r.y < 4 || r.x + r.w > V.ANCHO - 4 || r.y + r.h > V.ALTO - 4 || ocupado.some((o) => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
+    for (const l of lista) ocupado.push({ x: l.x - 9, y: l.y - 9, w: 18, h: 18 }); // los puntos
+    for (const t of V.TERRITORIOS) { const cx = t.puntos.reduce((a, [x]) => a + x, 0) / t.puntos.length, cy = t.puntos.reduce((a, [, y]) => a + y, 0) / t.puntos.length, w = t.nombre.length * 11; ocupado.push({ x: cx - w / 2, y: cy + 26, w, h: 24 }); }
+    if (marca) ocupado.push({ x: marca.x - 24, y: marca.y - 24, w: 48, h: 48 });
+    const dibujo = [];
+    for (const l of lista) {
+      const actual = esActual(l);
+      const tam = actual ? 26 : 20, w = l.nombre.length * tam * 0.53 + 10, h = tam + 4;
+      const cands = [
+        { x: l.x + 11, y: l.y - h + 6, a: "start" }, { x: l.x - 11 - w, y: l.y - h + 6, a: "end" },
+        { x: l.x - w / 2, y: l.y - h - 8, a: "middle" }, { x: l.x - w / 2, y: l.y + 10, a: "middle" },
+      ];
+      const elegido = cands.find((c) => !choca({ x: c.x, y: c.y, w, h })) || (actual ? cands[0] : null);
+      if (elegido) ocupado.push({ x: elegido.x, y: elegido.y, w, h });
+      const c = elegido || cands[0];
+      const tx = c.a === "start" ? c.x : c.a === "end" ? c.x + w : c.x + w / 2, ty = c.y + h - 6;
+      dibujo.push(`<g class="lugar" data-id="${escapar(l.id)}" tabindex="0"><title>${escapar(l.nombre)} (${escapar(l.tipo)}, ${escapar(l.region)})</title><circle cx="${l.x}" cy="${l.y}" r="14" fill="transparent"/><circle cx="${l.x}" cy="${l.y}" r="${actual ? 6.5 : 4.5}" fill="${actual ? "#7a1d15" : "#3a2414"}" stroke="#f6e8c4" stroke-width="2"/><text class="etiqueta-lugar${actual ? " actual" : ""}${elegido ? "" : " oculta"}" style="font-size:${tam}px" x="${tx}" y="${ty}" text-anchor="${c.a}">${escapar(l.nombre)}</text></g>`);
     }
+    partes.push(...dibujo.reverse()); // las de más prioridad quedan encima
     partes.push(`<g transform="translate(18,${V.ALTO - 20 - V.TERRITORIOS.length * 22})"><rect x="-8" y="-16" width="236" height="${V.TERRITORIOS.length * 22 + 14}" rx="6" fill="#f6e8c4" fill-opacity=".82" stroke="#3a2414" stroke-width="1.5"/>${V.TERRITORIOS.map((t, i) => `<line x1="2" y1="${i * 22}" x2="30" y2="${i * 22}" stroke="${t.color}" stroke-width="3.2" stroke-dasharray="8 4"/><text class="leyenda-dominio" x="38" y="${i * 22 + 4}">${escapar(t.nombre.replace("Dominio de ", ""))}</text>`).join("")}</g>`);
     const svg = `<svg viewBox="0 0 ${V.ANCHO} ${V.ALTO}" role="img" aria-label="Mapa de Velmora con la posición del grupo">${partes.join("")}</svg>`;
     $("mapa").innerHTML = svg;
     $("mapa-grande").innerHTML = svg;
+    for (const cont of [$("mapa"), $("mapa-grande")]) {
+      // El nombre de un lugar con la etiqueta oculta aparece al pasar o pulsar, y se pone por encima de los demás
+      cont.onmouseover = (ev) => { const g = ev.target.closest?.(".lugar"); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); };
+      cont.onclick = (ev) => { const g = ev.target.closest?.(".lugar"); if (!g) return; const v = g.classList.toggle("ver"); if (v) g.parentNode.appendChild(g); };
+    }
 
     let titulo, detalle;
     if (ruta) {
