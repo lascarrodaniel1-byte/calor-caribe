@@ -83,6 +83,12 @@ export const TEMAS: TemaSaber[] = [
     secreto: "Æsir fue el dios más antiguo; su fuego sobrevive como vestigio en los Berserkers de Ceniza, que lo invocan en su furia.",
   },
   {
+    id: "caidos", nombre: "Ulfhedinn y hombres oso (berserkers caídos)", claves: ["ulfhedinn", "hombre oso", "hombres oso", "berserkers caidos"],
+    publico: "Se cuentan historias de ulfhedinn y de hombres oso: guerreros con la piel de un lobo o de un oso, grises y de ojos de brasa, que aparecen de noche y destrozan lo que encuentran.",
+    rumor: "La leyenda dice que fueron berserkers que murieron durante el uso de la furia.",
+    erudito: "Es cierto: un Berserker de Ceniza que muere en plena furia sin que nadie le dé el rito de sal y fuego se alza sin salir de ella. El rito sobre su cuerpo caído lo deja descansar.",
+  },
+  {
     id: "podre", nombre: "La Podre", claves: ["podre", "hambriento", "mordisco"], 
     publico: "La Podre pudre la carne y luego la voluntad: el que muere de ella se alza como Hambriento. Una herida con Podre no se cura sola.",
     erudito: "No se cura con magia divina: hay que cortar la carne podrida, cauterizar o hallar remedios raros; sin curar mata en siete días.",

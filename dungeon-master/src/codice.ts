@@ -82,7 +82,7 @@ function entradaDe(p: Partida, c: Criatura): EntradaCodice {
   }
   if (tema?.rumor) secciones.push({ titulo: "Lo que se dice (rumor)", texto: tema.rumor });
   secciones.push(r.vistas > 0 ? { titulo: "Cómo ataca", texto: c.ataques.join(" · ") } : { titulo: "Cómo ataca", bloqueada: "Hay que enfrentarse a ella para saberlo." });
-  secciones.push(r.derrotadas > 0 ? { titulo: "Rasgos y puntos débiles", texto: c.rasgos.join(" · ") } : { titulo: "Rasgos y puntos débiles", bloqueada: "Se descubre al derrotarla (o con la ayuda de un erudito)." });
+  secciones.push(r.derrotadas > 0 ? { titulo: "Rasgos y puntos débiles", texto: c.rasgos.filter((x) => !/^Origen \(secreto/.test(x)).join(" · ") } : { titulo: "Rasgos y puntos débiles", bloqueada: "Se descubre al derrotarla (o con la ayuda de un erudito)." });
   const conErudito = r.derrotadas > 0 || sabe("erudito");
   if (tema?.erudito) secciones.push(conErudito ? { titulo: "Lo que dicen los eruditos", texto: tema.erudito } : { titulo: "Lo que dicen los eruditos", bloqueada: "Los escribas y eruditos saben más: derrótala o pregúntales." });
   if (tema?.restringido && sabe("restringido")) secciones.push({ titulo: "Lo que sólo saben unos pocos", texto: tema.restringido });
