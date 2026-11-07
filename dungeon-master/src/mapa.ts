@@ -97,7 +97,6 @@ const dentro = (x: number, y: number, p: [number, number][]): boolean => {
 };
 /** Territorio de un regente en el que está un punto del mapa, si lo hay. */
 export const territorioEn = (x: number, y: number): Territorio | undefined => TERRITORIOS.find((t) => dentro(x, y, t.puntos));
-export const territorioDe = (regente: string): Territorio | undefined => TERRITORIOS.find((t) => t.regente === regente);
 /** Fronteras que cruza un camino recto entre dos puntos (en el orden en que se cruzan). */
 export function fronterasEnCamino(a: { x: number; y: number }, b: { x: number; y: number }): string[] {
   const pasos = 40, out: string[] = [];

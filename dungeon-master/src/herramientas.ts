@@ -78,6 +78,7 @@ import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { danoConResistencia } from "./rasgos.js";
 import { accionSaber } from "./saber.js";
+import { nvl } from "./niveles.js";
 const habilidad = z.object({
   nombre: z.string(),
   descripcion: z.string(),
@@ -1085,6 +1086,7 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
   // Cerbatana del Degollador: a distancia (30 m), 1 de daño y un dardo de la reserva.
   const soplo = /cerbatana/i.test(e.arma ?? "") ? prepararSoplo(partida, e) : null;
   if (soplo) e = soplo.e;
+  if (/^llama sagrada$/i.test((e.arma ?? "").trim())) e = { ...e, a_distancia: true }; // el truco del Cenizo es a distancia (18 m)
   if (e.nervio && !esBarberoC(Object.values(partida.personajes).find((x) => x.nombre.toLowerCase() === e.atacante.toLowerCase()) ?? ({} as never)))
     throw new Error("Solo un Barbero-Cirujano sabe golpear los nervios.");
   // Segador: la guadaña ataca con CAR.
@@ -1095,7 +1097,7 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
   const dist = e.reaccion ? null : distanciaPlano(partida, e.atacante, e.objetivo); // el ataque de oportunidad se hace justo al salir del alcance
   if (dist) {
     const asta = /alabarda|guada|lanza|pica|jabalina larga|l[aá]tigo|urumi|cadenas/i.test(e.arma ?? "");
-    const alcance = soplo ? ALCANCE_CERBATANA : /descarga sobrenatural/i.test(e.arma ?? "") ? 36 : e.a_distancia ? 120 : asta ? 3 : 2;
+    const alcance = soplo ? ALCANCE_CERBATANA : /descarga sobrenatural/i.test(e.arma ?? "") ? 36 : /^llama sagrada$/i.test((e.arma ?? "").trim()) ? 18 : e.a_distancia ? 120 : asta ? 3 : 2;
     if (dist.metros > alcance)
       throw new Error(`${dist.a} está a ${dist.metros} m al ${NOMBRES_DIR[dist.dir]} de ${dist.de}: ${e.a_distancia ? "fuera del alcance de ese ataque" : `fuera de alcance cuerpo a cuerpo (${alcance} m)`}. Muévelo antes con plano (mover hacia) o elige otro ataque.`);
   }
@@ -1373,7 +1375,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           if (quieto) throw new Error(`${quieto}: no puede tratar heridas.`);
           if (esBarberoC(sanador)) exigirLibre(sanador, "Cirugía");
         }
-        const costeReserva = h.podre && (sanador?.nivel ?? 0) >= 5 ? 10 : 5;
+        const costeReserva = h.podre && (sanador?.nivel ?? 0) >= nvl(5) ? 10 : 5;
         const reservaAntes = sanador?.juramento?.reserva;
         if (e.metodo === "magia divina" && sanador?.clase === "Caballero Juramentado") gastarReserva(sanador, costeReserva); // cerrar una herida cuesta 5 PV de su reserva (10 si además expulsa la Podre)
         const conKit = !!sanador && esBarberoC(sanador) && e.recursos.includes("kit de sanador");

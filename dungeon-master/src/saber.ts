@@ -32,8 +32,9 @@ const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 export function rangoDe(rol: string, explicito?: Rango): Rango {
   if (explicito) return explicito;
   const r = norm(rol);
-  if (/(inquisidor (mayor|superior|general)|gran |alto |consejer|mariscal|capitan|comandante|noble|duque|conde|baron|lord|lady|senor|regente|reina|rey|alcalde|gobernador|obispo|prelado|magistrad|juez|general|jefe de|lider|maestre de|cabecilla|matriarca|patriarca|sumo)/.test(r)) return "alto";
-  if (/(escriba|erudit|cronista|archivista|bibliotecari|escolar|sabio|maestre|sacerdot|clerigo|monje|monja|hermana de la sutura|hechicer|mago|bruj|cartografo|historiador|tutor|profesor|inquisidor|medico|cirujan|boticari|alquimista|notario|escribano|trovador|bardo|guia de)/.test(r)) return "letrado";
+  // Palabras enteras: «condenado» no es «conde» ni «tendero general» es un general.
+  if (/\b(inquisidor (mayor|superior|general)|pontifice|senador|alguacil (mayor|jefe|general)|fiscal inquisidor|gran [a-z]+|alto cargo|alta cargo|consejer[oa]|mariscal|capitan[a]?|comandante|noble|duque(sa)?|conde(sa)?|baron(esa)?|lord|lady|senor(a)?|regente|reina|rey|alcalde|gobernador[a]?|obispo|prelado|magistrad[oa]|juez|general de [a-z ]+|jefe de [a-z ]+|lider|maestre de [a-z ]+|cabecilla|matriarca|patriarca|sumo [a-z]+)\b/.test(r)) return "alto";
+  if (/\b(escriba|erudit[oa]|cronista|archivista|bibliotecari[oa]|escolar|sabi[oa]|maestre|sacerdot[ea]|clerigo|monje|monja|hermana de la sutura|hechicer[oa]|mago|maga|bruj[oa]|cartografo|historiador[a]?|tutor[a]?|profesor[a]?|inquisidor[a]?|medico|cirujan[oa]|boticari[oa]|alquimista|notario|escribano|jurista|abogad[oa]|trovador|bardo|guia de [a-z ]+)\b/.test(r)) return "letrado";
   return "vulgo";
 }
 
@@ -44,7 +45,7 @@ const VE: Record<Rango, Capa[]> = { vulgo: ["publico"], letrado: ["publico", "er
 export const TEMAS: TemaSaber[] = [
   {
     id: "juez", nombre: "El Juez Sin Ojos", claves: ["juez sin ojos", "juez", "primer inquisidor"], ambito: /inquisi|llama gris|juez|catedral/,
-    delata: /hijo de ka'?i|le arrancó los ojos|se arrancó los ojos|catedral (hundida|sumergida)|rayo de luz solar/i,
+    delata: /hijo de ka'?i|le arrancó los ojos|se arrancó los ojos|catedral (hundida|sumergida)/i,
     publico: "Es el Primer Inquisidor: lleva la Inquisición de la Llama Gris y casi nadie lo ve; sus sentencias llegan selladas.",
     rumor: "Dicen que no tiene ojos y que aun así lo ve todo; que no es del todo humano; que juzga a los muertos y a los dioses.",
     erudito: "Los archivos lo sitúan antes de la Caída: es el primer Inquisidor y se le atribuye una mirada que distingue lo divino de lo maldito.",
@@ -76,7 +77,7 @@ export const TEMAS: TemaSaber[] = [
     secreto: "Vaskar, mago negro traicionero de la época de los dioses, quiso robar la esencia de Kashi a través de uno de sus hijos (un lobo que cazó); Kashi lo maldijo dormido y lo volvió lobo para siempre. Hoy vaga por el Velo Rojo; la única reliquia real es la Falange de Kashi, y no rompe su maldición.",
   },
   {
-    id: "aesir", nombre: "Æsir y el fuego viejo", claves: ["aesir", "æsir", "fuego viejo", "berserker", "ceniza"], delata: /\baesir\b|æsir/i,
+    id: "aesir", nombre: "Æsir y el fuego viejo", claves: ["aesir", "æsir", "fuego viejo", "berserker"], delata: /\baesir\b|æsir/i,
     publico: "Los Berserkers de Ceniza son guerreros que entran en una furia que ennegrece su pelo; los eligen de niños.",
     rumor: "Dicen que el fuego de su furia viene de un dios que nadie nombra.",
     secreto: "Æsir fue el dios más antiguo; su fuego sobrevive como vestigio en los Berserkers de Ceniza, que lo invocan en su furia.",
@@ -135,9 +136,12 @@ export function buscarTema(texto: string): TemaSaber | undefined {
   const n = norm(texto);
   if (!n) return undefined;
   const todos = todosLosTemas();
+  // Las claves cortas y genéricas (lobo, juez, madre, enano…) solo valen como consulta exacta; dentro de una frase se exigen palabras enteras de 5 letras o más.
+  const palabra = (clave: string, t: string) => clave.length >= 5 && new RegExp(`(^|[^a-z0-9])${clave.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`).test(t);
   return todos.find((t) => norm(t.id) === n || norm(t.nombre) === n)
     ?? todos.find((t) => t.claves.some((k) => norm(k) === n))
-    ?? todos.find((t) => norm(t.nombre).includes(n) || t.claves.some((k) => norm(k).includes(n) || n.includes(norm(k))));
+    ?? todos.find((t) => t.claves.some((k) => palabra(norm(k), n)))
+    ?? todos.find((t) => norm(t.nombre).includes(n) && n.length >= 4);
 }
 
 export interface EstadoSaber {

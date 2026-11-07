@@ -640,7 +640,7 @@
   const conCorte = (promesa, signal) => Promise.race([promesa, new Promise((_, rechazar) => { if (signal.aborted) rechazar({ code: "cancelled" }); else signal.addEventListener("abort", () => rechazar({ code: "cancelled" }), { once: true }); })]);
   let forzarReinicio = false;
   let ultimaActividad = Date.now();
-  let repasoAbierto = false, repasoCerrado = false;
+  let repasoCerrado = false;
   let cortadoPor = ""; // "usuario" o "sin_respuesta": por qué se cortó el turno
   const privados = [];      // respuestas de comandos que solo ve este jugador
   // Los avisos de fallo también quedan en la bitácora de errores (ver registrarError).
@@ -1792,21 +1792,22 @@
         marca,
       });
       // REPASO: una segunda pasada, corta, en la que el DM registra lo que narró y no anotó (lugar, hora, PNJ, objetos, oro, heridas, promesas).
-      if ($("repaso").checked && sample && !ctl.signal.aborted) {
+      // Solo se repasa cuando el programa detecta algo que la narración cuenta y el DM no registró: sin pistas no hay segunda llamada.
+      const pistas = $("repaso").checked && sample && !ctl.signal.aborted ? V.pistasDeRepaso(copia, { texto, llamadas: llamadasTurno, relojAntes }) : [];
+      if (pistas.length) {
         const ctlR = new AbortController();
         const alCortar = () => ctlR.abort();
         ctl.signal.addEventListener("abort", alCortar, { once: true });
         const limite = setTimeout(() => ctlR.abort(), 40000); // el repaso nunca puede retener el turno más de 40 s
-        repasoAbierto = true;
         try {
-          const pistas = V.pistasDeRepaso(copia, { texto, llamadas: llamadasTurno, relojAntes });
           const antesRepaso = llamadasTurno.length;
           await conCorte(sample(V.promptRepaso({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), texto, llamadas: [...new Set(llamadasTurno)], pistas, estado: V.estadoParaDM(copia, infoTurno?.actuante) }), { tools: [motor], modelTier: "quick", signal: ctlR.signal, repaso: true }), ctlR.signal);
           // Queda anotado cuándo el repaso tuvo que completar el registro: así se ve cuánto se le olvida al DM.
           if (llamadasTurno.length > antesRepaso && db) db.doc("repasos/r" + Date.now().toString(36)).set({ ts: Date.now(), pistas, completo: llamadasTurno.slice(antesRepaso) }).catch(() => {});
         } catch { /* si el repaso falla o se pasa de tiempo no pasa nada: el turno ya está narrado */ }
-        finally { repasoAbierto = false; repasoCerrado = true; clearTimeout(limite); ctl.signal.removeEventListener("abort", alCortar); ctlR.abort(); }
+        finally { repasoCerrado = true; clearTimeout(limite); ctl.signal.removeEventListener("abort", alCortar); ctlR.abort(); }
       }
+      if (ctl.signal.aborted) throw { code: "cancelled" }; // «Detener al DM» durante el repaso: el turno no se guarda
       const deshacerOk = await guardarCopia;
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
@@ -2104,6 +2105,7 @@
   // Detener al DM: corta el turno en curso (y libera la mesa) si se queda colgado.
   $("detener-dm").onclick = () => { if (ctl && narrandoYo) { cortadoPor = "usuario"; ctl.abort(); } };
   $("reiniciar").onclick = () => {
+    forzarReinicio = false;
     $("error-reinicio").hidden = true;
     $("velo-reinicio").hidden = false;
     $("cancelar-reinicio").focus();

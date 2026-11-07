@@ -6,7 +6,7 @@ import type { Partida } from "./estado.js";
 import { textoReloj } from "./espacio.js";
 
 import { fugasDeSaber } from "./saber.js";
-const MAX_SUCESOS = 80;
+const MAX_SUCESOS = 40; // el libro viaja en cada guardado de la partida: corto
 
 const hora = (p: Partida) => (p.reloj ? textoReloj(p.reloj).replace(/ \(.*\)$/, "") : "");
 

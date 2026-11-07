@@ -969,7 +969,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     }
     // Desviar proyectiles (Flagelante): reacción automática que reduce el daño de un proyectil que lo alcanza.
     if (dano > 0 && distancia && ob.tipo === "pj" && desviaProyectiles(ob.p) && combate && !tOb.reaccion && ob.p.pv > 0 && !efOb.incapacitado) {
-      const dv = tirar(`1d10+${mod(valor(ob.p, "des")) + ob.p.nivel}`);
+      const dv = tirar(`1d10${signo(mod(valor(ob.p, "des")) + ob.p.nivel)}`);
       const antes = dano;
       dano = Math.max(0, dano - dv.total);
       tOb.reaccion = true;

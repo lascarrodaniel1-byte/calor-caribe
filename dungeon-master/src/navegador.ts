@@ -102,7 +102,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
       (pjs.length ? pjs.map((x) => (conFoco && !esFoco(x) ? fichaCorta(x) : fichaTexto(x))).join(conFoco ? "\n" : "\n\n") : "Aún no hay personajes: hay que crearlos."),
   );
   // Lo que el motor aplica solo: así el DM no lo repite ni lo da por olvidado.
-  const auto = pjs.map((x) => { const r = rasgosAutomaticos(x); return r.length ? `- ${x.nombre}: ${r.join("; ")}` : ""; }).filter(Boolean);
+  const auto = (conFoco ? pjs.filter(esFoco) : pjs).map((x) => { const r = rasgosAutomaticos(x); return r.length ? `- ${x.nombre}: ${r.join("; ")}` : ""; }).filter(Boolean);
   if (auto.length) partes.push(`## Rasgos que el MOTOR aplica solo (no los apliques a mano ni los repitas: ya cuentan en las tiradas)\n${auto.join("\n")}`);
   const sust = pjs.map((x) => textoSustento(x, p).trim()).map((t, i) => (t ? `${pjs[i].nombre}: ${t.replace(/^Sustento: /, "")}` : "")).filter(Boolean);
   if (sust.length) partes.push(`## Sustento\n${sust.join("\n")}`);

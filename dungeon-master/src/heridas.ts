@@ -539,7 +539,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       if (ent) mods.push(`${d.entorno} ${signo(ent)}`);
       bono += ent;
       if (barbero) {
-        const mano = 2 + ((d.sanador?.nivel ?? 1) >= 2 ? 1 : 0);
+        const mano = 2 + ((d.sanador?.nivel ?? 1) >= nvl(2) ? 1 : 0);
         bono += mano;
         mods.push(`Barbero-Cirujano +${mano}`);
         if (d.entorno === "en combate") { bono += 2; mods.push("Triaje +2 (el combate le pesa la mitad)"); }
@@ -628,7 +628,7 @@ export function tratar(p: Personaje, h: Herida, d: DatosTratamiento): string {
       } else if (natural === 1 || t.total <= cd - 5) {
         const dano = tirar(regla.danoComplicacion);
         // Corte limpio (Barbero nivel 5+) o anestesia profunda: la complicación pega la mitad.
-        const mitad = (barbero && (d.sanador?.nivel ?? 1) >= 3) || anestesiado >= 4;
+        const mitad = (barbero && (d.sanador?.nivel ?? 1) >= nvl(3)) || anestesiado >= 4;
         const total = mitad ? Math.ceil(dano.total / 2) : dano.total;
         p.pv = Math.max(0, p.pv - total);
         h.mod_recuperacion -= 1;

@@ -21,6 +21,8 @@ export interface DefRecurso {
   efecto: (p: Personaje, partida?: Partida) => string;
   /** Se usa con una acción adicional: solo una por asalto en combate. */
   adicional?: boolean;
+  /** Lo gasta el motor al usarlo en su sitio (atacar, tratar_herida): usar_recurso no lo gasta. */
+  automatico?: string;
 }
 
 // Otros módulos (furia.ts) añaden aquí los suyos al cargarse, para no crear ciclos de importación.
@@ -64,15 +66,15 @@ export const RECURSOS_RAZA: Record<string, DefRecurso[]> = {
     efecto: (p) => { p.luna = 10; return `${p.nombre} aúlla a la luna: +2 al daño de sus ataques cuerpo a cuerpo durante 1 minuto (10 asaltos). El programa lo aplica solo.`; },
   }],
   "Nacido Pálido": [
-    { nombre: "Mordisco vampírico", desde: 1, max: () => 1, recarga: "corto", efecto: (p) => `${p.nombre} muestra los colmillos. No hace falta gastarlo aquí: ataca con atacar {arma: «Mordisco vampírico»}; el programa gasta el uso, tira 1d4 + CON y le devuelve los PV que hiera.` },
+    { nombre: "Mordisco vampírico", desde: 1, max: () => 1, recarga: "corto", automatico: "atacar {arma: «Mordisco vampírico»}", efecto: (p) => `${p.nombre} muestra los colmillos. No hace falta gastarlo aquí: ataca con atacar {arma: «Mordisco vampírico»}; el programa gasta el uso, tira 1d4 + CON y le devuelve los PV que hiera.` },
     { nombre: "Andar de araña", desde: 1, max: () => 1, recarga: "largo", efecto: (p) => { agregarCondicion(p.condiciones, "andar de araña"); return `${p.nombre} trepa por paredes y techos sin pruebas durante 1 minuto (condición «andar de araña»; se retira al descansar).`; } },
   ],
   Cenizo: [{
-    nombre: "Brasa interior", desde: 1, max: () => 1, recarga: "largo",
+    nombre: "Brasa interior", desde: 1, max: () => 1, recarga: "largo", automatico: "tratar_herida {metodo: cauterizar}",
     efecto: (p) => `${p.nombre} reúne la brasa: cauteriza una herida con la mano sin sufrir daño. Hazlo con tratar_herida {método: cauterizar}: es esa herramienta la que gasta el uso, no esta.`,
   }],
 };
-ALDESCANSAR.push((p, tipo) => { if (p.luna !== undefined) delete p.luna; p.condiciones = p.condiciones.filter((c) => c !== "andar de araña"); void tipo; });
+ALDESCANSAR.push((p) => { delete p.luna; const i = p.condiciones.indexOf("andar de araña"); if (i >= 0) p.condiciones.splice(i, 1); });
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
@@ -118,6 +120,7 @@ export function usarRecurso(partida: Partida, d: { quien: string; recurso: strin
   const sello = selloDe(p.sellos, r.def.nombre);
   if (sello) throw new Error(`${p.nombre} tiene sellada su ${r.def.nombre} (su alma está en manos de ${sello.por}): no puede usarla hasta que la liberen.`);
   if (efectos(p.condiciones).incapacitado) throw new Error(`${p.nombre} está incapacitado: no puede usar ${r.def.nombre}.`);
+  if (r.def.automatico) throw new Error(`${r.def.nombre} no se gasta con usar_recurso: el programa lo gasta solo al usarlo con ${r.def.automatico}.`);
   if (r.gastados >= r.max) throw new Error(`${p.nombre} ya gastó ${r.def.nombre} (0/${r.max}); lo recupera con un ${r.def.recarga === "corto" ? "descanso corto o largo" : "descanso largo"}.`);
   // Acción adicional: solo una por asalto en combate.
   let turno: { adicional?: string } | undefined;
