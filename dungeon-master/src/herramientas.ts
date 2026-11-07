@@ -79,6 +79,7 @@ import { NOMBRES_VIALES, usarVial } from "./viales.js";
 import { danoConResistencia } from "./rasgos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
+import { actualizarCodice, criaturasEnEscena, descubrirCodice } from "./codice.js";
 const habilidad = z.object({
   nombre: z.string(),
   descripcion: z.string(),
@@ -669,11 +670,12 @@ const esquemas = {
     saber: z.enum(["vulgo", "letrado", "alto"]).optional().describe("Cuánto sabe del mundo: vulgo (rumores), letrado (escribas, eruditos, sacerdotes, médicos: lo documentado) o alto (altos cargos: los asuntos de su facción). Si no lo pones sale de su rol"),
   }),
   saber: z.object({
-    accion: z.enum(["consultar", "revelar", "lista"]).describe("consultar: qué sabe un PNJ de un tema · revelar: un secreto ya es público · lista: los temas"),
+    accion: z.enum(["consultar", "revelar", "descubrir", "lista"]).describe("consultar: qué sabe un PNJ de un tema · revelar: un secreto ya es público · descubrir: el GRUPO averigua algo de una criatura (sale en su bestiario) · lista: los temas"),
     tema: z.string().optional().describe("Un jefe, raza, facción o secreto (Juez Sin Ojos, Ysolde, varg, Falange…)"),
     quien: z.string().optional().describe("El PNJ que habla (su rango sale de su rol) o, si no está registrado, su oficio"),
     rango: z.enum(["vulgo", "letrado", "alto"]).optional().describe("Fuerza el rango de saber"),
-    capa: z.enum(["erudito", "restringido", "secreto"]).optional().describe("revelar: qué capa pasa a ser pública (por defecto, el secreto)"),
+    capa: z.enum(["erudito", "restringido", "secreto"]).optional().describe("revelar o descubrir: qué capa pasa a ser pública o conocida por el grupo (por defecto, el secreto)"),
+    texto: z.string().optional().describe("descubrir: lo que el grupo ha averiguado (una frase corta) para su bestiario"),
   }),
   trama: z.object({
     objetivo: z.string().optional().describe("Objetivo actual del grupo, en una frase CLARA y concreta: qué lograr, con quién o dónde, por qué importa y qué pasa si falla. Los jugadores lo ven siempre en la página"),
@@ -1010,7 +1012,7 @@ const descripciones: Record<Nombre, string> = {
   prueba:
     "Prueba de habilidad, de característica o salvación de un personaje: aplica la característica correcta (rechaza la que no corresponde a la habilidad), la competencia de su clase y compara con la CD.",
   saber:
-    "Qué sabe cada PNJ: el conocimiento tiene capas (público, rumor, erudito, restringido, secreto) y el rango de cada PNJ (vulgo, letrado, alto) decide cuáles conoce. consultar: antes de que un PNJ hable de un jefe, raza, facción o secreto. revelar: cuando la historia hace público un secreto. Escribas, eruditos y altos cargos saben más que el vulgo.",
+    "Qué sabe cada PNJ y qué sabe el grupo de las criaturas (su bestiario): el conocimiento tiene capas (público, rumor, erudito, restringido, secreto) y el rango de cada PNJ (vulgo, letrado, alto) decide cuáles conoce. consultar: antes de que un PNJ hable de un jefe, raza, facción o secreto. revelar: cuando la historia hace público un secreto. descubrir {tema: nombre de la criatura, capa y/o texto}: el grupo averigua algo de ella (lo que le cuenta un erudito, una pista, un hallazgo) y su bestiario se actualiza; enfrentarse a una criatura y derrotarla ya lo actualiza solo. Escribas, eruditos y altos cargos saben más que el vulgo.",
   anotar_mundo:
     "Guarda un hecho importante de la campaña, o corrige uno anterior que ha cambiado (reemplaza) o que ya no es cierto (olvidar).",
 };
@@ -1166,7 +1168,9 @@ export function tiempoDeTurno(partida: Partida, relojAntes?: number): string[] {
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
+  const enEscena = criaturasEnEscena(partida);
   const r = ejecutarInterno(nombre, entrada, partida);
+  if (!r.error) actualizarCodice(partida, enEscena); // el bestiario del grupo aprende de lo que ve y derrota
   if (!r.error) for (const [n, a] of Object.entries(antes)) { const p = partida.personajes[n]; if (p && !a.muerto && p.condiciones.includes("muerto")) anotarSuceso(partida, `☠ ${n} muere`); }
   if (r.error || nombre === "salvacion_muerte") return r;
   // El tiempo normal también corre: fuego, agua que entra, tormenta y aire de los sumergidos. Lo que ya contó su propio tiempo solo deja la marca.
@@ -1794,8 +1798,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "saber": {
         const e = validado.data as z.infer<typeof esquemas.saber>;
-        const texto = accionSaber(partida, e);
-        return { contenido: texto, aviso: e.accion === "revelar" ? `📜 ${texto}` : null };
+        const texto = e.accion === "descubrir" ? descubrirCodice(partida, e) : accionSaber(partida, e);
+        return { contenido: texto, aviso: e.accion === "revelar" || e.accion === "descubrir" ? `📖 ${texto}` : null };
       }
       case "pnj": {
         const e = validado.data as z.infer<typeof esquemas.pnj>;

@@ -31,6 +31,7 @@ import { mitigacion, textoRunas } from "./cazador.js";
 import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
 
 import { rasgosAutomaticos } from "./rasgos.js";
+import { bestiarioGrupo } from "./codice.js";
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
 
 /** Catálogo compacto de las acciones del motor, para el prompt del DM. */
@@ -182,5 +183,5 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   return partes.join("\n\n");
 }
 
-export { pistasDeRepaso, promptRepaso, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { bestiarioGrupo, pistasDeRepaso, promptRepaso, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

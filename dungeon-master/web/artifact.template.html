@@ -274,6 +274,27 @@
   .lienzo.plano text.pl-menor { font: 600 10px "Alegreya Sans", system-ui, sans-serif; fill: #6b5233; }
   .plano-pie { font: 400 14px var(--f-ui); color: var(--apagado); margin: 6px 0 0; }
   .lienzo.ampliable { cursor: zoom-in; }
+  .punto-nuevo { color: #e0502a; font-weight: 700; }
+  .velo .bestiario { width: min(860px, 100%); max-height: 100%; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; color: var(--tinta); font: 17px/1.45 var(--f-narracion); background: linear-gradient(170deg, #eddcb6, #d2ba8a); box-shadow: inset 0 0 30px #8a6a3a77, 0 10px 40px #000; }
+  .bestiario .cabecera-bestiario { justify-content: flex-start; align-items: center; }
+  .bestiario .cabecera-bestiario h2 { flex: 1 1 auto; }
+  .bestiario input[type=search], .bestiario select { font: 16px var(--f-narracion); color: var(--tinta); background: #f4e8cc; border: 1px solid #6b4a2a; border-radius: 3px; padding: 6px 8px; min-height: 0; }
+  .bestiario input[type=search] { flex: 1 1 180px; min-width: 0; }
+  .bestiario details { border: 1px solid #8a6a3a; border-radius: 4px; background: #f4e8cc99; }
+  .bestiario summary { cursor: pointer; padding: 9px 12px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; list-style: none; }
+  .bestiario summary::-webkit-details-marker { display: none; }
+  .bestiario summary b { font: 400 21px/1.2 var(--f-letrero); color: #5a1d12; }
+  .bestiario .etiqueta { font-size: 14px; color: #5a4128; }
+  .bestiario .peligro { color: #8a2a1e; letter-spacing: 1px; }
+  .bestiario .conocimiento { margin-left: auto; font-size: 13px; color: #5a4128; white-space: nowrap; }
+  .bestiario .conocimiento i { font-style: normal; color: #7a3a1a; letter-spacing: 1px; }
+  .bestiario .nota { text-align: left; font-size: 15px; color: #5a4128; }
+  .bestiario .nuevo { color: #e0502a; font-weight: 700; font-size: 13px; }
+  .bestiario .cuerpo { padding: 2px 14px 12px; display: flex; flex-direction: column; gap: 9px; }
+  .bestiario .cuerpo h4 { margin: 0; font: 700 14px var(--f-narracion); letter-spacing: .05em; text-transform: uppercase; color: #5a1d12; }
+  .bestiario .cuerpo p { margin: 0; }
+  .bestiario .bloqueada { color: #7a6a52; font-style: italic; }
+  .bestiario .nota-grupo { border-left: 3px solid #b8873a; padding-left: 9px; }
   .velo .mapa-grande { width: min(1100px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
   .velo .mapa-grande .lienzo svg { width: auto; max-width: 100%; max-height: 82vh; margin: 0 auto; }
   .velo .mapa-grande .lienzo { text-align: center; background: #1b110a; }
@@ -379,6 +400,7 @@
     <label class="control" for="repaso" title="Tras cada turno, el DM repasa si registró todo lo que narró (lugar, hora, PNJ, objetos, oro, heridas, promesas) y completa lo que falte. Gasta un poco más.">Repaso <input type="checkbox" id="repaso" checked></label>
     <button class="boton sobrio" id="ver-mesa" type="button" title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
     <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
+    <button class="boton sobrio" id="ver-bestiario" type="button" title="Lo que el grupo sabe de los monstruos y jefes">📖 Bestiario<span id="bestiario-nuevo" class="punto-nuevo" hidden title="Hay entradas actualizadas"> ●</span></button>
     <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
     <button class="boton sobrio" id="detener-dm" type="button" hidden title="Si el DM se queda colgado, córtalo: las acciones siguen en cola y puedes volver a pedirle que responda">⏹ Detener al DM</button>
     <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
@@ -474,6 +496,24 @@
     <input type="text" id="nombre" maxlength="30" autocomplete="nickname" required>
     <button class="boton" type="submit">Sentarse a la mesa</button>
   </form>
+</div>
+
+<div class="velo" id="velo-bestiario" hidden>
+  <div class="bestiario" role="dialog" aria-label="Bestiario del grupo">
+    <div class="botonera cabecera-bestiario">
+      <h2>📖 Bestiario</h2>
+      <input id="bestiario-buscar" type="search" placeholder="Buscar criatura…" aria-label="Buscar criatura">
+      <select id="bestiario-orden" aria-label="Orden">
+        <option value="az">A–Z</option>
+        <option value="menos">Menos conocidos primero</option>
+        <option value="peligro">Más peligrosos primero</option>
+      </select>
+      <button class="boton sobrio" id="cerrar-bestiario" type="button">Cerrar</button>
+    </div>
+    <p class="nota">Lo que sabe el grupo. Cada ficha crece al enfrentaros a la criatura, al derrotarla o cuando averiguáis algo de ella.</p>
+    <div id="bestiario-lista"></div>
+    <p class="nota" id="bestiario-ocultos"></p>
+  </div>
 </div>
 
 <div class="velo" id="velo-mapa" hidden>
@@ -1084,6 +1124,8 @@
   function pintarFichas() {
     pintarObjetivo(partida);
     pintarMapa(partida);
+    pintarBestiarioInsignia();
+    if (!$("velo-bestiario").hidden) pintarBestiario();
     pintarPlano(partida);
     pintarSecuencia();
     const cont = $("lista-fichas");
@@ -2066,6 +2108,60 @@
   $("ver-mesa").onclick = () => abrirLateral("titulo-mesa");
   $("franja-mapa").onclick = () => abrirLateral("titulo-mapa");
   $("cerrar-fichas").onclick = () => { $("fichas").classList.remove("abierto"); };
+  // ------------------------------------------------------------ bestiario del grupo
+  function visto() { try { return JSON.parse(leer("velmora-bestiario-visto") || "{}"); } catch { return {}; } }
+  function pintarBestiarioInsignia() {
+    try {
+      const v = visto();
+      const { entradas } = V.bestiarioGrupo(partida);
+      const hayNuevas = entradas.some((e) => (v[e.nombre] ?? 0) < e.version && e.version > 0);
+      $("bestiario-nuevo").hidden = !hayNuevas;
+    } catch { /* sin insignia no pasa nada */ }
+  }
+  function pintarBestiario() {
+    const { entradas, ocultos } = V.bestiarioGrupo(partida);
+    const v = visto();
+    const q = $("bestiario-buscar").value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const orden = $("bestiario-orden").value;
+    const lista = entradas.filter((e) => !q || (e.nombre + " " + e.region + " " + e.categoria).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
+    lista.sort(orden === "menos" ? (a, b) => a.conocido / a.total - b.conocido / b.total || a.nombre.localeCompare(b.nombre, "es") : orden === "peligro" ? (a, b) => b.peligro - a.peligro || a.nombre.localeCompare(b.nombre, "es") : (a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    const cont = $("bestiario-lista");
+    const abiertas = new Set([...cont.querySelectorAll("details[open]")].map((d) => d.dataset.nombre));
+    cont.textContent = "";
+    for (const e of lista) {
+      const d = document.createElement("details");
+      d.dataset.nombre = e.nombre;
+      if (abiertas.has(e.nombre)) d.open = true;
+      const s = document.createElement("summary");
+      const b = document.createElement("b"); b.textContent = e.nombre;
+      const et = document.createElement("span"); et.className = "etiqueta"; et.textContent = e.categoria === "jefe" ? "jefe" : e.categoria === "bestia" ? "bestia" : "monstruo";
+      const pe = document.createElement("span"); pe.className = "peligro"; pe.title = "Peligro " + e.peligro + " de 5"; pe.textContent = "☠".repeat(e.peligro);
+      const ba = document.createElement("span"); ba.className = "conocimiento"; ba.title = "Cuánto sabe el grupo de ella";
+      const i = document.createElement("i"); i.textContent = "◆".repeat(e.conocido) + "◇".repeat(Math.max(0, e.total - e.conocido)); ba.append(i);
+      s.append(b, et, pe);
+      if ((v[e.nombre] ?? 0) < e.version && e.version > 0) { const n = document.createElement("span"); n.className = "nuevo"; n.textContent = "● actualizada"; s.append(n); }
+      s.append(ba);
+      const cu = document.createElement("div"); cu.className = "cuerpo";
+      const reg = document.createElement("p"); reg.className = "etiqueta"; reg.textContent = "Zona: " + e.region + (e.vistas ? ` · enfrentada ${e.vistas} ${e.vistas === 1 ? "vez" : "veces"}` : "") + (e.derrotadas ? ` · derrotada ${e.derrotadas}` : ""); cu.append(reg);
+      for (const sec of e.secciones) {
+        const h = document.createElement("h4"); h.textContent = sec.titulo;
+        const p = document.createElement("p"); if (sec.bloqueada) { p.className = "bloqueada"; p.textContent = "🔒 " + sec.bloqueada; } else p.textContent = sec.texto || "";
+        cu.append(h, p);
+      }
+      if (e.notas.length) { const h = document.createElement("h4"); h.textContent = "Lo que habéis averiguado"; cu.append(h); for (const n of e.notas) { const p = document.createElement("p"); p.className = "nota-grupo"; p.textContent = n; cu.append(p); } }
+      d.append(s, cu);
+      d.addEventListener("toggle", () => { if (d.open) { const vv = visto(); vv[e.nombre] = e.version; anotar("velmora-bestiario-visto", JSON.stringify(vv)); const n = s.querySelector(".nuevo"); if (n) n.remove(); pintarBestiarioInsignia(); } });
+      cont.append(d);
+    }
+    if (!lista.length) cont.innerHTML = '<p class="nota">Ninguna criatura coincide.</p>';
+    $("bestiario-ocultos").textContent = ocultos ? `🔒 Quedan ${ocultos} criaturas por descubrir: los jefes aparecen cuando el grupo los conoce.` : "";
+  }
+  $("ver-bestiario").onclick = () => { pintarBestiario(); $("velo-bestiario").hidden = false; $("bestiario-buscar").focus(); };
+  $("cerrar-bestiario").onclick = () => { $("velo-bestiario").hidden = true; };
+  $("velo-bestiario").onclick = (ev) => { if (ev.target === $("velo-bestiario")) $("velo-bestiario").hidden = true; };
+  $("bestiario-buscar").oninput = pintarBestiario;
+  $("bestiario-orden").onchange = pintarBestiario;
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !$("velo-bestiario").hidden) $("velo-bestiario").hidden = true; });
   const ampliarMapa = () => { $("velo-mapa").hidden = false; $("cerrar-mapa").focus(); };
   $("mapa").onclick = ampliarMapa; // pulsar el mapa pequeño lo abre en grande (el zoom)
   // El nombre de un lugar con la etiqueta oculta aparece al pasar el ratón y, en el mapa grande, también al pulsar el punto

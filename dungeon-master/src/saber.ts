@@ -130,7 +130,12 @@ function temasDeBestiario(): TemaSaber[] {
   });
 }
 let cacheBestiario: TemaSaber[] | null = null;
-export const todosLosTemas = (): TemaSaber[] => [...TEMAS, ...(cacheBestiario ??= temasDeBestiario().filter((b) => !TEMAS.some((t) => t.claves.some((k) => norm(k) === norm(b.nombre)))))];
+/** ¿Alguno de los temas escritos a mano ya cubre a esta criatura (por nombre completo o por una palabra clave de 5+ letras)? Entonces manda el escrito a mano: el de la ficha podría filtrar su secreto. */
+const cubiertoAMano = (nombre: string): boolean => {
+  const n = norm(nombre);
+  return TEMAS.some((t) => t.claves.some((k) => { const c = norm(k); return c === n || (c.length >= 5 && new RegExp(`(^|[^a-z0-9])${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`).test(n)); }));
+};
+export const todosLosTemas = (): TemaSaber[] => [...TEMAS, ...(cacheBestiario ??= temasDeBestiario().filter((b) => !cubiertoAMano(b.nombre)))];
 
 export function buscarTema(texto: string): TemaSaber | undefined {
   const n = norm(texto);
@@ -191,7 +196,7 @@ export function fugasDeSaber(p: Partida, texto: string): TemaSaber[] {
 }
 
 export interface DatosSaber {
-  accion: "consultar" | "revelar" | "lista";
+  accion: "consultar" | "revelar" | "descubrir" | "lista";
   tema?: string;
   quien?: string;
   rango?: Rango;
