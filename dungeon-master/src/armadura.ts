@@ -39,6 +39,7 @@ export const PIEZAS: Record<string, Pieza> = {
   // Naturales
   pellejo: { nombre: "pellejo grueso", regiones: TODO, metal: false, prot: { corte: 1, punta: 1, contundente: 1 } },
   escamas_naturales: { nombre: "escamas", regiones: TODO, metal: true, prot: { corte: 4, punta: 3, contundente: 1 } },
+  piedra: { nombre: "cuerpo de piedra", regiones: TODO, metal: false, prot: { corte: 5, punta: 4, contundente: 1 } },
   hueso: { nombre: "cuerpo de hueso", regiones: TODO, metal: false, prot: { corte: 2, punta: 4, contundente: -2 } },
 };
 export const NOMBRES_PIEZAS = Object.keys(PIEZAS) as [string, ...string[]];
