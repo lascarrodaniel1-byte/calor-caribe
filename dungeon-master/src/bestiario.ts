@@ -75,6 +75,8 @@ export interface Regente {
 
 export interface Criatura {
   nombre: string;
+  /** Otros nombres con los que se la busca (hombre lobo, etc.). */
+  alias?: string[];
   /** Su historia: origen, enemistades, pistas para revelarla. Solo la conoce el DM. */
   trasfondo?: Trasfondo;
   /** Si gobierna un dominio: sus subordinados, y que puede enviarlos o llevarlos consigo. */
@@ -405,6 +407,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ulfhedinn",
+    alias: ["Hombre lobo"],
     temple: "no-muerto",
     personalidad: ["temerario"],
     blindaje: ["pellejo"],
@@ -412,14 +415,15 @@ export const BESTIARIO: Criatura[] = [
     peligro: 3,
     region: "Las Agujas de Vahl, el Bosque de Velo Rojo y los campos donde cayeron bandas de berserkers",
     descripcion:
-      "Un guerrero con la piel de un lobo de ceniza echada sobre la espalda y la cabeza, de pelo y carne grises, ojos de brasa y la boca llena de espuma. Aúlla antes de golpear, no siente el frío ni las heridas y se lanza a cuatro patas contra lo primero que ve. Aparecen de noche, solos o en bandas.",
+      "Un hombre lobo: cuerpo de guerrero cubierto de pelo gris ceniza que ya no se distingue de la piel, hocico con colmillos, ojos de brasa y la boca llena de espuma. Aúlla antes de golpear, no siente el frío ni las heridas y se lanza a cuatro patas contra lo primero que ve. Aparecen de noche, solos o en bandas.",
     ca: 14,
     pv: "10d8+30",
     velocidad: "12 m (14 m si carga a cuatro patas)",
     atributos: "FUE 19 DES 15 CON 17 INT 7 SAB 10 CAR 8",
     ataques: ["Hacha de guerra: +7, 1d12+4 cortante", "Mordisco (si tiene a la víctima agarrada): +7, 2d6+4 perforante"],
     rasgos: [
-      "Origen (secreto del DM): un Berserker de Ceniza que murió durante su furia y no recibió el rito de sal y fuego; se alzó sin salir de ella. Con piel de lobo",
+      "Origen (secreto del DM): un Berserker de Ceniza que murió durante su furia vistiendo una piel de lobo y no recibió el rito de sal y fuego: se alzó sin salir de ella y la piel se le fundió con la carne, hasta hacerlo un hombre lobo. No es un Varg ni sufre su maldición: es otra, la de su propia furia",
+      "Piel fusionada: el pelo y el hocico son suyos y no se arrancan; ataca con garras y mordisco además del hacha",
       "Furia sin fin: nunca sale de la furia (+2 al daño cuerpo a cuerpo, resistencia al daño de corte, punta y contundente no mágico, ignora las penalizaciones de sus heridas)",
       "En trance: no distingue aliados de enemigos; cada ataque cae sobre quien tenga a su alcance (el DM lo decide al azar entre los cercanos)",
       "No-muerto: inmune a veneno, miedo y agotamiento; no siente dolor ni se cura; vulnerable al fuego de la Llama Gris",
@@ -431,7 +435,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Carga a cuatro patas", descripcion: "Embiste a un objetivo al menos 6 m en línea recta: derriba si falla.", salvacion: "fue", cd: 14, dano: "2d8+4", tipo_dano: "contundente", condicion: "derribado", recarga: 5 },
       { nombre: "Ceniza de la furia", descripcion: "El fuego viejo de su pelo prende a quien lo toca.", salvacion: "con", cd: 14, dano: "2d6", tipo_dano: "fuego", ceniza: 1, recarga: 5 },
     ],
-    botin: "Piel de lobo de ceniza (abriga contra el frío y puede pasar por disfraz de varg), hacha de guerra, un colmillo con el nombre de su banda grabado y, a veces, la señal de Ceniza que llevaba al morir",
+    botin: "Colmillos y garras (trofeos que la Inquisición paga por los de varg), una piel de lobo gris (se puede desollar: abriga contra el frío y puede pasar por disfraz de varg), hacha de guerra y, a veces, la señal de Ceniza que llevaba al morir",
   },
   {
     nombre: "Hombre oso",
@@ -442,14 +446,15 @@ export const BESTIARIO: Criatura[] = [
     peligro: 3,
     region: "Las Agujas de Vahl y el Bosque de Velo Rojo; claros y campos de berserkers caídos",
     descripcion:
-      "Un gigante con la piel de un oso echada sobre la espalda y la cabeza, el pelo y la carne grises, ojos de brasa y los brazos hinchados como troncos. Camina encorvado, ruge en lugar de hablar y destroza lo que encuentra. Se oye venir por el crujido de ramas y el olor a ceniza.",
+      "Un hombre oso: un gigante cubierto de pelo gris ceniza que ya no se distingue de la piel, de hocico romo y garras como hoces, ojos de brasa y los brazos hinchados como troncos. Camina encorvado, ruge en lugar de hablar y destroza lo que encuentra. Se oye venir por el crujido de ramas y el olor a ceniza.",
     ca: 15,
     pv: "13d10+39",
     velocidad: "12 m",
     atributos: "FUE 21 DES 10 CON 19 INT 6 SAB 10 CAR 7",
     ataques: ["Garras (x2): +8, 2d6+5 cortante", "Mordisco: +8, 2d8+5 perforante", "Hacha de leñador: +8, 1d12+5 cortante"],
     rasgos: [
-      "Origen (secreto del DM): un Berserker de Ceniza que murió durante su furia con una piel de oso y no recibió el rito de sal y fuego; se alzó sin salir de ella",
+      "Origen (secreto del DM): un Berserker de Ceniza que murió durante su furia vistiendo una piel de oso y no recibió el rito de sal y fuego: se alzó sin salir de ella y la piel se le fundió con la carne, hasta hacerlo un hombre oso. No es un cambiaformas: no puede volver a ser hombre",
+      "Piel fusionada: el pelo y el hocico son suyos y no se arrancan; ataca con garras y mordisco además del hacha",
       "Furia sin fin: nunca sale de la furia (+2 al daño cuerpo a cuerpo, resistencia al daño de corte, punta y contundente no mágico, ignora las penalizaciones de sus heridas)",
       "En trance: no distingue aliados de enemigos; cada ataque cae sobre quien tenga a su alcance (el DM lo decide al azar entre los cercanos)",
       "No-muerto: inmune a veneno, miedo y agotamiento; no siente dolor ni se cura; vulnerable al fuego de la Llama Gris",
@@ -461,7 +466,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Rugido de furia", descripcion: "Un rugido que se oye a un kilómetro; todos a 9 m.", salvacion: "sab", cd: 14, condicion: "asustado 1 minuto", recarga: 6 },
       { nombre: "Ceniza de la furia", descripcion: "El fuego viejo de su pelo prende a quien lo toca.", salvacion: "con", cd: 15, dano: "2d6", tipo_dano: "fuego", ceniza: 1, recarga: 5 },
     ],
-    botin: "Piel de oso (abriga muchísimo), garras como adornos y, a veces, la señal de Ceniza que llevaba al morir",
+    botin: "Garras y colmillos (trofeos), una piel de oso gris (se puede desollar: abriga muchísimo) y, a veces, la señal de Ceniza que llevaba al morir",
   },
   {
     nombre: "Gárgola",
@@ -1327,7 +1332,7 @@ export const BESTIARIO: Criatura[] = [
 
 export function buscarCriatura(nombre: string): Criatura | undefined {
   const n = nombre.toLowerCase();
-  return BESTIARIO.find((c) => c.nombre.toLowerCase() === n) ?? BESTIARIO.find((c) => c.nombre.toLowerCase().includes(n));
+  return BESTIARIO.find((c) => c.nombre.toLowerCase() === n) ?? BESTIARIO.find((c) => c.alias?.some((a) => a.toLowerCase() === n)) ?? BESTIARIO.find((c) => c.nombre.toLowerCase().includes(n));
 }
 
 export function fichaCriatura(c: Criatura): string {

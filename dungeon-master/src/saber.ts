@@ -83,10 +83,10 @@ export const TEMAS: TemaSaber[] = [
     secreto: "Æsir fue el dios más antiguo; su fuego sobrevive como vestigio en los Berserkers de Ceniza, que lo invocan en su furia.",
   },
   {
-    id: "caidos", nombre: "Ulfhedinn y hombres oso (berserkers caídos)", claves: ["ulfhedinn", "hombre oso", "hombres oso", "berserkers caidos"],
-    publico: "Se cuentan historias de ulfhedinn y de hombres oso: guerreros con la piel de un lobo o de un oso, grises y de ojos de brasa, que aparecen de noche y destrozan lo que encuentran.",
+    id: "caidos", nombre: "Hombres lobo y hombres oso (berserkers caídos)", claves: ["ulfhedinn", "hombre lobo", "hombres lobo", "hombre oso", "hombres oso", "berserkers caidos"],
+    publico: "Se cuentan historias de ulfhedinn (hombres lobo) y de hombres oso: bestias grises de ojos de brasa, mitad guerrero y mitad animal, que aparecen de noche y destrozan lo que encuentran.",
     rumor: "La leyenda dice que fueron berserkers que murieron durante el uso de la furia.",
-    erudito: "Es cierto: un Berserker de Ceniza que muere en plena furia sin que nadie le dé el rito de sal y fuego se alza sin salir de ella. El rito sobre su cuerpo caído lo deja descansar.",
+    erudito: "Es cierto: un Berserker de Ceniza que muere en plena furia, con la piel de lobo o de oso puesta, sin que nadie le dé el rito de sal y fuego, se alza sin salir de ella y la piel se le funde con el cuerpo: así nacen los hombres lobo y los hombres oso. No son varg. El rito sobre su cuerpo caído los deja descansar.",
   },
   {
     id: "podre", nombre: "La Podre", claves: ["podre", "hambriento", "mordisco"], 
