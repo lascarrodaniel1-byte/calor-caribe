@@ -324,6 +324,21 @@
     .franja span:last-child { color: var(--lumbre); text-decoration: underline dotted; white-space: nowrap; }
   }
 
+  /* Cabecera compacta y menús desplegables: más sitio para la pizarra */
+  .barra { position: relative; flex-wrap: nowrap; gap: 8px; padding: 8px 12px; }
+  .barra .estado { flex: 1 1 0; }
+  .barra .boton.compacto { font-size: 15px; padding: 6px 11px; }
+  .menu-panel { position: absolute; right: 12px; top: calc(100% + 6px); z-index: 25; display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 230px; max-width: min(92vw, 320px); padding: 12px; background: linear-gradient(180deg, #5a3a24, #3b2616); border: 2px solid var(--nogal); border-radius: 6px; box-shadow: 0 10px 28px #000c; }
+  .menu-panel[hidden] { display: none; }
+  .menu-panel .control { justify-content: space-between; font-size: 16px; }
+  .menu-panel .boton { text-align: left; }
+  .menu-panel.arriba { top: auto; bottom: calc(100% + 6px); right: auto; left: 0; min-width: 200px; }
+  .atajos { position: relative; }
+  .fila-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .fila-meta .turnos-barra { margin-bottom: 0; flex: 1 1 320px; }
+  .fila-meta .atajos { flex: 0 1 auto; margin-left: auto; }
+  .redaccion { padding-block: 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+
   /* La barra de la taberna */
   .redaccion {
     padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding-inline: 16px;
@@ -381,9 +396,14 @@
     .resultado, .privado { font-size: 14px; padding: 12px 14px; }
     .barra { gap: 8px; padding: 8px 12px; }
     .barra h1 { font-size: 21px; }
-    .barra .estado { order: 10; flex-basis: 100%; font-size: 14px; }
+    .barra .estado { font-size: 13px; }
+    .barra .etq { display: none; }
+    .barra h1 { font-size: 19px; white-space: nowrap; }
     .barra .boton { font-size: 14px; padding: 6px 10px; }
     .barra .control { font-size: 0; gap: 0; }
+    .barra .menu-panel .control { font-size: 15px; gap: 8px; }
+    .barra .estado { display: none; }
+    .barra h1 { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 17px; }
     .barra select { font-size: 14px; padding: 4px 6px; }
     .vacio h2 { font-size: 32px; }
   }
@@ -393,23 +413,26 @@
   <header class="barra">
     <h1>Mesa de Velmora</h1>
     <div class="estado" id="estado"><span class="vela"></span><span id="estado-texto">Encendiendo las velas…</span></div>
-    <label class="control" for="nivel">DM
-      <select id="nivel">
-        <option value="quick" selected>Rápido (gasta menos)</option>
-        <option value="default">Equilibrado</option>
-        <option value="complex">Profundo (gasta más)</option>
-      </select>
-    </label>
-    <label class="control" for="repaso" title="Tras cada turno, el DM repasa si registró todo lo que narró (lugar, hora, PNJ, objetos, oro, heridas, promesas) y completa lo que falte. Gasta un poco más.">Repaso <input type="checkbox" id="repaso" checked></label>
-    <button class="boton sobrio" id="ver-mesa" type="button" title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
-    <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
-    <button class="boton sobrio" id="ver-bestiario" type="button" title="Lo que el grupo sabe de los monstruos y jefes">📖 Bestiario<span id="bestiario-nuevo" class="punto-nuevo" hidden title="Hay entradas actualizadas"> ●</span></button>
-    <button class="boton sobrio" id="ver-fichas" type="button">Fichas</button>
-    <button class="boton sobrio" id="detener-dm" type="button" hidden title="Si el DM se queda colgado, córtalo: las acciones siguen en cola y puedes volver a pedirle que responda">⏹ Detener al DM</button>
-    <button class="boton sobrio" id="exportar-partida" type="button" hidden title="Guarda esta partida en un archivo para poder retomarla más tarde">📤 Exportar</button>
-    <button class="boton sobrio" id="importar-partida" type="button" hidden title="Carga una partida exportada (reemplaza la actual)">📥 Importar</button>
-    <input type="file" id="archivo-importar" accept=".json,application/json" hidden>
-    <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
+    <button class="boton sobrio compacto" id="ver-mesa" type="button" title="Jugadores conectados ahora mismo">👥 <span id="num-mesa">1</span></button>
+    <button class="boton sobrio compacto" id="ver-bestiario" type="button" title="Lo que el grupo sabe de los monstruos y jefes">📖<span class="etq"> Bestiario</span><span id="bestiario-nuevo" class="punto-nuevo" hidden title="Hay entradas actualizadas"> ●</span></button>
+    <button class="boton sobrio compacto" id="ver-fichas" type="button">Fichas</button>
+    <button class="boton sobrio compacto" id="detener-dm" type="button" hidden title="Si el DM se queda colgado, córtalo: las acciones siguen en cola y puedes volver a pedirle que responda">⏹<span class="etq"> Detener al DM</span></button>
+    <button class="boton sobrio compacto" id="menu-barra" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu-panel" title="Más opciones">☰</button>
+    <div class="menu-panel" id="menu-panel" role="menu" hidden>
+      <label class="control" for="nivel">DM
+        <select id="nivel">
+          <option value="quick" selected>Rápido (gasta menos)</option>
+          <option value="default">Equilibrado</option>
+          <option value="complex">Profundo (gasta más)</option>
+        </select>
+      </label>
+      <label class="control" for="repaso" title="Tras cada turno, el DM repasa si registró lo que narró y lo que el programa detecta que falta, y completa lo que falte. Gasta un poco más.">Repaso <input type="checkbox" id="repaso" checked></label>
+      <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
+      <button class="boton sobrio" id="exportar-partida" type="button" hidden title="Guarda esta partida en un archivo para poder retomarla más tarde">📤 Exportar partida</button>
+      <button class="boton sobrio" id="importar-partida" type="button" hidden title="Carga una partida exportada (reemplaza la actual)">📥 Importar partida</button>
+      <input type="file" id="archivo-importar" accept=".json,application/json" hidden>
+      <button class="boton sobrio" id="reiniciar" type="button" hidden>Reiniciar</button>
+    </div>
   </header>
 
   <button class="franja" id="franja-mapa" type="button"><span id="franja-texto">📍 Sin ubicación todavía</span><span>Ver mapa</span></button>
@@ -472,19 +495,24 @@
 
   <footer class="redaccion">
     <div class="columna">
-      <div class="turnos-barra" id="barra-turnos" hidden>
-        <div class="orden" id="orden-turnos" aria-label="Orden de los turnos"></div>
-        <div class="aviso-turno" id="aviso-turno" role="status"></div>
-        <button class="boton sobrio" id="pasar-turno" type="button" hidden>Pasar turno</button>
-        <button class="boton sobrio" id="saltar-turno" type="button" hidden></button>
-      </div>
-      <div class="atajos">
-        <button class="boton" type="button" id="crear-personaje" hidden>📜 Crear personaje</button>
-        <button class="boton sobrio" type="button" id="llevar-personaje" hidden title="Lleva el personaje de un jugador que no está, sin crear el tuyo">🎭 Llevar un personaje ausente</button>
-        <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
-        <button class="boton sobrio" type="button" data-cmd="/viales">Viales</button>
-        <button class="boton sobrio" type="button" data-cmd="/ayuda">Ayuda</button>
-        <button class="quien" id="quien" type="button"></button>
+      <div class="fila-meta">
+        <div class="turnos-barra" id="barra-turnos" hidden>
+          <div class="orden" id="orden-turnos" aria-label="Orden de los turnos"></div>
+          <div class="aviso-turno" id="aviso-turno" role="status"></div>
+          <button class="boton sobrio" id="pasar-turno" type="button" hidden>Pasar turno</button>
+          <button class="boton sobrio" id="saltar-turno" type="button" hidden></button>
+        </div>
+        <div class="atajos">
+          <button class="boton" type="button" id="crear-personaje" hidden>📜 Crear personaje</button>
+          <button class="boton sobrio" type="button" id="llevar-personaje" hidden title="Lleva el personaje de un jugador que no está, sin crear el tuyo">🎭 Llevar un personaje ausente</button>
+          <button class="boton sobrio" type="button" id="menu-ayudas" aria-haspopup="true" aria-expanded="false" aria-controls="panel-ayudas" title="Razas y clases, viales y ayuda">❔ Ayudas</button>
+          <div class="menu-panel arriba" id="panel-ayudas" role="menu" hidden>
+            <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
+            <button class="boton sobrio" type="button" data-cmd="/viales">Viales</button>
+            <button class="boton sobrio" type="button" data-cmd="/ayuda">Ayuda</button>
+          </div>
+          <button class="quien" id="quien" type="button"></button>
+        </div>
       </div>
       <form class="escribir" id="form-accion">
         <label for="accion" hidden>Tu acción</label>
@@ -2148,6 +2176,15 @@
     if (privados.length > antes) abiertosCmd.set(cmd, privados[privados.length - 1]);
     window.__refrescarAyudas();
   }));
+  // Menús desplegables (☰ arriba, ❔ abajo): cierran al elegir, al pulsar fuera o con Esc.
+  [["menu-barra", "menu-panel"], ["menu-ayudas", "panel-ayudas"]].forEach(([bt, pn]) => {
+    const b = $(bt), p = $(pn);
+    const poner = (abierto) => { p.hidden = !abierto; b.setAttribute("aria-expanded", String(abierto)); };
+    b.addEventListener("click", (e) => { e.stopPropagation(); poner(p.hidden); });
+    p.addEventListener("click", (e) => { if (e.target.closest("button")) setTimeout(() => poner(false), 0); });
+    document.addEventListener("click", (e) => { if (!p.hidden && !p.contains(e.target)) poner(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !p.hidden) { poner(false); b.focus(); } });
+  });
   const abrirLateral = (destino) => {
     $("fichas").classList.add("abierto");
     $(destino).scrollIntoView({ block: "start" });
