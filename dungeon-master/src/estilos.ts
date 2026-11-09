@@ -2,8 +2,9 @@
 // Un estilo es una tradición con un principio pasivo y tres técnicas (Iniciado, Practicante, Maestro).
 // El Haemajitsu (Flagelante) y Contracorriente (Kuru) son especiales; el resto se aprende con un maestro o por la clase.
 import type { Partida, Personaje } from "./estado.js";
-import type { Combatiente, DatosAtaque } from "./combate.js";
+import type { DatosAtaque } from "./combate.js";
 import { nvl } from "./niveles.js";
+import { artesDe, maestria, NOMBRE_MAESTRIA } from "./estilos_base.js";
 import { mod, signo, valor } from "./reglas.js";
 
 export interface Tecnica { nombre: string; efecto: string }
@@ -33,10 +34,10 @@ export const ESTILOS: Estilo[] = [
   },
   {
     id: "callejon", nombre: "Callejón de Aldenmar", centro: "control y juego sucio",
-    principio: "Aprovecha lo que haya a mano y el momento: ventaja en maniobras contra rivales ocupados, aturdidos o sin guardia.",
+    principio: "Aprovecha lo que haya a mano y el momento: ventaja en las maniobras (agarrar, empujar, lanzar) contra un rival derribado, cegado, aturdido, agarrado, asustado, dormido, sorprendido, desarmado o incapacitado (automático).",
     tecnicas: [
       { nombre: "Llave y zancadilla", efecto: "derriba o agarra con ventaja a quien ya está en combate con otro" },
-      { nombre: "Arena y codo", efecto: "cega o aturde un instante a un rival (salvación de CON, CD 8 + competencia + FUE/DES)" },
+      { nombre: "Arena y codo", efecto: "maniobra {tipo: sucio}: salvación de CON (CD 8 + competencia + mejor de Atletismo o Acrobacias) o queda cegado hasta el final de su siguiente turno (automático)" },
       { nombre: "Arrastre", efecto: "agarra al rival y lo usa de escudo: los ataques a distancia contra él se los lleva el rival" },
     ],
     ensena: "Los bajos fondos de Aldenmar (Degolladores, tabernas)", clases: ["Degollador", "Cazador de Brujas"],
@@ -53,20 +54,20 @@ export const ESTILOS: Estilo[] = [
   },
   {
     id: "danza", nombre: "Danza marchita", centro: "evasión y contragolpe",
-    principio: "Siglos de reflejos: +2 a la iniciativa y mueve el cuerpo antes que el golpe.",
+    principio: "Siglos de reflejos: +2 a la iniciativa (automático) y mueve el cuerpo antes que el golpe.",
     tecnicas: [
-      { nombre: "Paso de hoja", efecto: "esquiva: ventaja en salvaciones de DES y los ataques contra él con desventaja si no se ha movido de su sitio" },
-      { nombre: "Contragolpe", efecto: "reacción: cuando un ataque cuerpo a cuerpo le falla, ataca de vuelta" },
-      { nombre: "Cien pasos", efecto: "se mueve sin provocar ataques de oportunidad" },
+      { nombre: "Paso de hoja", efecto: "esquiva: ventaja en las salvaciones de DES (automático)" },
+      { nombre: "Contragolpe", efecto: "reacción: cuando un ataque cuerpo a cuerpo le falla, el programa avisa del ataque de respuesta (atacar con reaccion: true) y gasta su reacción (automático)" },
+      { nombre: "Cien pasos", efecto: "se mueve sin provocar ataques de oportunidad (automático)" },
     ],
     ensena: "Los Elfos Marchitos", clases: ["Cazador de Brujas"],
   },
   {
     id: "cuervo", nombre: "Filo del Cuervo", centro: "armas y formación",
-    principio: "Combate con lo que empuña y con quien tiene al lado: cada aliado adyacente al objetivo le da +1 al ataque (máximo +2).",
+    principio: "Combate con lo que empuña y con quien tiene al lado: cada aliado junto al objetivo (a 1,5 m, en el plano) le da +1 al ataque cuerpo a cuerpo, máximo +2 (automático).",
     tecnicas: [
-      { nombre: "Desarmar", efecto: "ataque que, si impacta, obliga a soltar el arma (salvación de FUE o DES)" },
-      { nombre: "Cuña", efecto: "ventaja en el ataque si un aliado flanquea al objetivo" },
+      { nombre: "Desarmar", efecto: "atacar con desarmar: true; si impacta, el rival salva (la mejor de FUE o DES) o suelta el arma (automático)" },
+      { nombre: "Cuña", efecto: "ventaja en el ataque si hay un aliado junto al objetivo (automático)" },
       { nombre: "Muralla de cuervos", efecto: "reacción: cubre a un aliado adyacente y recibe el golpe por él con ventaja de defensa" },
     ],
     ensena: "La Compañía del Cuervo Negro", clases: ["Mercenario del Cuervo", "Caballero Juramentado"],
@@ -101,28 +102,7 @@ export function buscarEstilo(n: string): Estilo | undefined {
   return ESTILOS.find((e) => e.id === x || norm(e.nombre) === x) ?? ESTILOS.find((e) => norm(e.nombre).includes(x) || x.includes(e.id));
 }
 
-/** Los estilos que conoce un personaje (el Flagelante lleva el Haemajitsu de serie). */
-export function artesDe(p: Personaje): string[] {
-  const l = [...(p.artes ?? [])];
-  if (p.clase === "Flagelante" && !l.includes("haemajitsu")) l.unshift("haemajitsu");
-  return l;
-}
-export const tieneArte = (p: Personaje, id: string) => artesDe(p).includes(id);
-
-/** ¿Domina este estilo un combatiente? (PJ por ficha; criatura por su plantilla; «todos» salvo Haemajitsu y Contracorriente.) */
-export function arteDeCombatiente(c: Combatiente, id: string): boolean {
-  if (c.tipo === "pj") return tieneArte(c.p, id);
-  if (c.tipo === "criatura") { const a = c.j.definicion.artes ?? []; return a.includes(id) || (a.includes("todos") && id !== "haemajitsu" && id !== "contracorriente"); }
-  return false;
-}
-/** Maestría de un combatiente: PJ por nivel, criatura (Kuru) siempre Maestro. */
-export const maestriaDe = (c: Combatiente): 1 | 2 | 3 => (c.tipo === "pj" ? maestria(c.p) : 3);
-
-/** Maestría: Iniciado de entrada, Practicante a nivel 3 (+2 de desplazamiento) y Maestro a nivel 7 (+2). */
-export function maestria(p: Personaje): 1 | 2 | 3 {
-  return p.nivel >= nvl(7) ? 3 : p.nivel >= nvl(3) ? 2 : 1;
-}
-export const NOMBRE_MAESTRIA = ["", "Iniciado", "Practicante", "Maestro"];
+export { artesDe, tieneArte, maestria, NOMBRE_MAESTRIA, arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 
 /** Cuántos estilos puede conocer: uno; dos con INT o SAB 14+ y un segundo maestro. */
 export const cupoDeArtes = (p: Personaje, segundoMaestro: boolean) => 1 + (segundoMaestro && (valor(p, "int") >= 14 || valor(p, "sab") >= 14) ? 1 : 0);
@@ -168,7 +148,8 @@ export const REGLAS_ARTES = `## Artes marciales (estilos)
 - Presa de Hollín: el programa da ventaja al agarrar y al lanzar a quien lo practica, y a su favor cuando alguien intenta zafarse. Lances con la herramienta maniobra {tipo: lanzar, lance: cadera | hombro | molino} sobre alguien que ya tiene agarrado: cadera (Iniciado) lo derriba; hombro (Practicante) lo estampa (1d6) y puede lanzarlo contra otro enemigo cercano (contra); molino (Maestro) lo arroja 3 m (2d6). Piedra de Karak: ventaja en las pruebas contra empujar y lanzar.
 - Contracorriente: reacción automática de quien lo domina (Kuru): reduce el daño que le llega; si lo anula, avisa del contraataque que debes hacer tú (atacar con reaccion: true y ventaja: true).
 - Kuru domina todos los estilos normales y copia al verlos: si ve usar una técnica, la puede usar en su turno siguiente; tras verla dos veces en el mismo combate, la conserva hasta el final. No copia el Haemajitsu a la ligera (es sangre propia de Haema).
-- Los demás efectos de los estilos (Callejón, Danza, Filo del Cuervo y las técnicas de Piedra) los aplicas tú con criterio usando lo que dice cada técnica en el catálogo.`;
+- Danza marchita (automático): +2 a la iniciativa, ventaja en salvaciones de DES, Contragolpe (avisa del ataque de respuesta si le falla un cuerpo a cuerpo) y, de Maestro, Cien pasos (no provoca ataques de oportunidad). Filo del Cuervo (automático): +1 por aliado junto al objetivo (máx. +2), Cuña (ventaja con un aliado junto) y atacar {desarmar: true}. Callejón de Aldenmar (automático): ventaja en maniobras contra rivales distraídos y maniobra {tipo: sucio} (arena y codo, desde Practicante).
+- Lo que sigue siendo cosa tuya: Fluir y Corriente carmesí del Haemajitsu, Muralla de cuervos, Arrastre, Postura de muro, Golpe de yunque, Montaña, Palanca y Sumisión de la Presa: aplícalos con criterio según el catálogo.`;
 
 // ------------------------------------------------------------------ la herramienta arte_marcial
 export interface DatosArte {

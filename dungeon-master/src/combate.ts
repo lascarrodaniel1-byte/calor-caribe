@@ -12,7 +12,7 @@ import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
 import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
-import { competencia, mod, signo, valor } from "./reglas.js";
+import { competencia, mod, salvacion, signo, valor } from "./reglas.js";
 import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js";
 import { gastarReserva, usoDivino } from "./juramento.js";
 import { autoManos, caEfectiva, propiedades } from "./manos.js";
@@ -25,10 +25,11 @@ import { ajusteAgua, estaSumergido } from "./agua.js";
 import { ventajaMontada } from "./montura.js";
 import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
-import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
+import { agregarCondicion, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 import { nvl } from "./niveles.js";
-import { arteDeCombatiente } from "./estilos.js";
+import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
+import { distanciaPlano } from "./espacio.js";
 import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
@@ -309,7 +310,9 @@ function bonoIniciativa(c: Combatiente): { bono: number; modo: Modo; detalle: st
   const presciencia = (c.tipo === "criatura" && c.j.definicion.rasgos.some((r) => /ventaja en iniciativa/i.test(r))) || (c.tipo === "pj" && esDegollador(c.p) && c.p.nivel >= nvl(3)); // Filo del asesino
   const pers = suma(personalidadDe(c), "iniciativa");
   const partes = [`DES ${signo(mod(des))}`, of ? `oficio ${signo(of)}` : "", t.iniciativa ? `temple ${signo(t.iniciativa)}` : "", estilo ? `clase ${signo(estilo)}` : "", pers ? `carácter ${signo(pers)}` : ""];
-  return { bono: mod(des) + of + t.iniciativa + estilo + pers, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
+  const danza = arteDeCombatiente(c, "danza") ? 2 : 0; // Danza marchita: +2 a la iniciativa
+  if (danza) partes.push("Danza marchita +2");
+  return { bono: mod(des) + of + t.iniciativa + estilo + pers + danza, modo: presciencia ? "ventaja" : "normal", detalle: partes.filter(Boolean).join(", ") };
 }
 
 /** Si la iniciativa falla (un nombre que no existe, una táctica mal dada), el combate en curso se queda como estaba. */
@@ -576,6 +579,8 @@ export interface DatosAtaque {
   reaccion?: boolean;
   /** Pelea con dos armas: ataca con el arma ligera de la mano secundaria (acción adicional). */
   mano_secundaria?: boolean;
+  /** Filo del Cuervo (técnica Desarmar): si impacta, el rival salva (FUE o DES) o suelta el arma. */
+  desarmar?: boolean;
   /** Estilo de lucha con arma a dos manos: repite los 1 y 2 de los dados de daño. */
   repetir_bajos?: boolean;
   /** Barbero-Cirujano: golpea un nervio (brazo, pierna o columna) en lugar de buscar una herida: puede incapacitar. */
@@ -727,8 +732,19 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const cobBono = d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0;
   const ca = cobBono + (d.ca ?? (ob.tipo === "pj" ? caEfectiva(ob.p) : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
 
+  // Filo del Cuervo: +1 al ataque por cada aliado adyacente al objetivo (máx. +2) y, desde Practicante (Cuña), ventaja si hay uno.
+  let aliadosCuervo = 0;
+  if (at.tipo === "pj" && arteDeCombatiente(at, "cuervo") && !distancia) {
+    for (const o of Object.values(partida.personajes)) {
+      if (o.nombre === at.nombre || o.condiciones.includes("muerto") || o.pv <= 0) continue;
+      const dd = distanciaPlano(partida, o.nombre, ob.nombre);
+      if (dd && dd.metros <= 2) aliadosCuervo++;
+    }
+    if (aliadosCuervo) { const b = Math.min(2, aliadosCuervo); bono += b; desglose.push(`Filo del Cuervo ${signo(b)} (${aliadosCuervo} aliado(s) junto al objetivo)`); }
+  }
   // Ventaja y desventaja
   let ventaja = !!d.ventaja;
+  if (aliadosCuervo && maestriaDe(at) >= 2) { ventaja = true; }
   let desventaja = !!d.desventaja;
   const motivos: string[] = [];
   const combate = partida.combate;
@@ -895,6 +911,11 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       `${describir(t)}${modo !== "normal" ? ` (${modo})` : ""}${repetido} [${desglose.join(", ")}] vs CA ${ca}`,
   ];
   if (motivos.length) lineas.push(motivos.join("; "));
+  // Danza marchita, Contragolpe (Practicante): si un ataque cuerpo a cuerpo le falla, contraataca como reacción.
+  if (["fallo", "torpeza"].includes(resultado) && !distancia && combate && !tOb.reaccion && !efOb.incapacitado && arteDeCombatiente(ob, "danza") && maestriaDe(ob) >= 2 && (ob.tipo !== "pj" || ob.p.pv > 0) && !sorprendido(ob.nombre)) {
+    tOb.reaccion = true;
+    lineas.push(`💃 Contragolpe (Danza marchita): el golpe de ${at.nombre} no le llega y ${ob.nombre} responde. 👉 Haz su ataque ya con atacar {atacante: «${ob.nombre}», objetivo: «${at.nombre}», reaccion: true}. Gasta su reacción.`);
+  }
   if (primero && at.tipo !== "criatura" && torpezaBase > 1) lineas.push(`Actúa antes que ${ob.nombre}: no se enreda.`);
   if (torpeza > 1) lineas.push(`Torpeza con 1-${torpeza} natural.`);
 
@@ -987,6 +1008,16 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       tOb.reaccion = true;
       lineas.push(`🌊 Contracorriente: ${ob.nombre} desvía el ${distancia ? "proyectil" : "golpe"} ${describir(dv)} (${antes} → ${dano}). Gasta su reacción.`);
       if (dano === 0) lineas.push(`👉 CONTRAATAQUE de ${ob.nombre}: ataca ya a ${at.nombre} con atacar {atacante: «${ob.nombre}», objetivo: «${at.nombre}», reaccion: true, ventaja: true}${distancia ? " (si era un proyectil pequeño, puede devolverlo: a distancia)" : ""}.`);
+    }
+    // Filo del Cuervo, Desarmar: si impacta, el rival salva (la mejor de FUE o DES) o suelta el arma.
+    if (d.desarmar) {
+      if (at.tipo !== "pj" || !arteDeCombatiente(at, "cuervo")) throw new Error(`${at.nombre} no domina el Filo del Cuervo: no puede desarmar.`);
+      const cdD = 8 + competencia(at.p) + Math.max(mod(valor(at.p, "fue")), mod(valor(at.p, "des")));
+      let sal: { exito: boolean; texto: string };
+      if (ob.tipo === "pj") { const s2 = salvacion(ob.p, valor(ob.p, "fue") >= valor(ob.p, "des") ? "fue" : "des", cdD, { extra: 0 }); sal = s2; }
+      else { const s3 = tirar(`1d20${signo(ob.tipo === "criatura" ? Math.max(mod(Number(/FUE\s+(\d+)/i.exec(ob.j.definicion.atributos)?.[1] ?? 10)), mod(Number(/DES\s+(\d+)/i.exec(ob.j.definicion.atributos)?.[1] ?? 10))) : 0)}`); sal = { exito: s3.total >= cdD, texto: `salvación ${describir(s3)} contra CD ${cdD}` }; }
+      if (sal.exito) lineas.push(`🗡 Desarmar: ${ob.nombre} aguanta el arma (${sal.texto}).`);
+      else { agregarCondicion(condsDe(ob), "desarmado"); lineas.push(`🗡 Desarmar: ${ob.nombre} suelta el arma (${sal.texto}); recogerla le cuesta una acción y, mientras, ataca sin ella.`); }
     }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
     // Quien duerme despierta al recibir daño.

@@ -1,6 +1,7 @@
 // Acciones de combate (esquivar, correr, retirarse, ayudar, preparar…), reacciones y ataques de oportunidad de las
 // reglas básicas de D&D 5e. El programa lleva quién ha usado su reacción este asalto, quién esquiva o se retiró y quién
 // ayuda a quién, y avisa cuando un movimiento sobre el plano provoca un ataque de oportunidad.
+import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { tiene } from "./dotes_base.js";
 import type { Partida } from "./estado.js";
 import { esDegollador } from "./degollador_base.js";
@@ -146,6 +147,7 @@ export function provocados(partida: Partida, antes: Record<string, { x: number; 
     const pd = despues[m.nombre] ?? despues[Object.keys(despues).find((x) => igual(x, m.nombre)) ?? ""];
     if (!pa || !pd || (pa.x === pd.x && pa.y === pd.y)) continue;
     if (turnoDe(partida, m.nombre).retirada) continue;
+    if (arteDeCombatiente(m, "danza") && maestriaDe(m) === 3) continue; // Danza marchita, Cien pasos: se mueve sin provocar
     for (const o of combatientes) {
       if (o === m || bando(o) === bando(m)) continue;
       const oa = antes[o.nombre] ?? antes[Object.keys(antes).find((x) => igual(x, o.nombre)) ?? ""];

@@ -6,6 +6,7 @@ import { clase } from "./mundo.js";
 import { efectos } from "./condiciones.js";
 
 import { sentidoDelPeligro, ventajaRacial } from "./rasgos.js";
+import { tieneArte } from "./estilos_base.js";
 export type Atributo = "fue" | "des" | "con" | "int" | "sab" | "car";
 export const ATRIBUTOS = ["fue", "des", "con", "int", "sab", "car"] as const;
 
@@ -52,7 +53,7 @@ export function salvacion(
   const desv = !!opciones.desventaja || ef.salvDesv || (a === "des" && ef.salvDesDesv) || (a === "sab" && desventajaSab(p)); // la voz de Neter (Segador, Deuda 10+)
   // La fortaleza del Berserker (CON) y la esquiva del Degollador (DES): ventaja en esas salvaciones.
   const racial = ventajaRacial(p, opciones.contra);
-  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza") || (a === "des" && (p.clase === "Degollador" || sentidoDelPeligro(p))) || !!racial;
+  const vent = !!opciones.ventaja || (a === "con" && p.clase === "Berserker de Ceniza") || (a === "des" && (p.clase === "Degollador" || sentidoDelPeligro(p) || tieneArte(p, "danza"))) || !!racial;
   const modo = vent && !desv ? "ventaja" : desv && !vent ? "desventaja" : "normal";
   const t = tirar(`1d20${signo(bono)}`, modo);
   const natural = t.dados[0];

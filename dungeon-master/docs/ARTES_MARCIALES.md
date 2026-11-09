@@ -74,3 +74,9 @@ La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase
 - **Piedra de Karak (parcial):** ventaja en las pruebas contra empujar y lanzar.
 - **Contracorriente (automático para Kuru):** reacción única por asalto que reduce el daño (2d10+7) y, si lo anula, avisa del contraataque con ventaja.
 - **Kuru:** `artes: ["todos", "contracorriente"]`; la copia «al verlo» y el resto de técnicas (Callejón, Danza, Filo del Cuervo, Fluir/Corriente carmesí, etc.) las aplica el DM con las reglas del catálogo (`REGLAS_ARTES`).
+
+### Segunda tanda (automatizada)
+- **Danza marchita:** +2 a la iniciativa, ventaja en salvaciones de DES, **Contragolpe** (si un ataque cuerpo a cuerpo le falla, avisa del ataque de respuesta y gasta su reacción) y, de Maestro, **Cien pasos** (no provoca ataques de oportunidad).
+- **Filo del Cuervo:** +1 al ataque por cada aliado junto al objetivo (máx. +2, hace falta plano), **Cuña** (ventaja con un aliado junto, desde Practicante) y **Desarmar** (`atacar {desarmar: true}`: si impacta, salvación de FUE o DES o suelta el arma).
+- **Callejón de Aldenmar:** ventaja en maniobras contra rivales distraídos (derribado, cegado, aturdido, agarrado, asustado, dormido, sorprendido, desarmado, incapacitado) y **Arena y codo** (`maniobra {tipo: sucio}`, Practicante: salvación de CON o cegado hasta el final de su siguiente turno).
+- Siguen a cargo del DM: Fluir y Corriente carmesí (Haemajitsu), Muralla de cuervos, Arrastre, Postura de muro, Golpe de yunque, Montaña, Palanca y Sumisión.

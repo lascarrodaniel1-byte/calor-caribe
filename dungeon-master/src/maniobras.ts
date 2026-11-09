@@ -11,15 +11,15 @@ import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
 import { danoEnSuelo } from "./muerte.js";
 import { danar } from "./bestiario.js";
-import { arteDeCombatiente, maestriaDe } from "./estilos.js";
-import { competencia, marcarMuerto, mod, signo, valor } from "./reglas.js";
+import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
+import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
 export const COBERTURA = {
   media: { ca: 2, nombre: "cobertura media (muro bajo, mueble grande, otra criatura)" },
   tres_cuartos: { ca: 5, nombre: "cobertura de tres cuartos (rastrillo, tronera, tronco grueso)" },
 } as const;
 
-function atributoCriatura(texto: string, a: "FUE" | "DES"): number {
+function atributoCriatura(texto: string, a: "FUE" | "DES" | "CON"): number {
   const m = new RegExp(`${a}\\s+(\\d+)`, "i").exec(texto);
   return m ? Number(m[1]) : 10;
 }
@@ -47,7 +47,7 @@ const sinAccion = (c: Combatiente): string | null => puedeActuar(c);
 export interface DatosManiobra {
   atacante: string;
   objetivo: string;
-  tipo: "agarrar" | "empujar" | "escapar" | "lanzar";
+  tipo: "agarrar" | "empujar" | "escapar" | "lanzar" | "sucio";
   /** lanzar (Presa de Hollín, sobre quien ya tiene agarrado): cadera (lo derriba), hombro (lo estampa, y puede lanzarlo contra otro) o molino (3 m). */
   lance?: "cadera" | "hombro" | "molino";
   /** lanzar con hombro: contra qué otro enemigo cercano (a 1,5 m) lo estampa. */
@@ -109,7 +109,20 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
     if (maestriaDe(at) < need) throw new Error(`${at.nombre} no tiene aún la maestría para el lance «${d.lance ?? "cadera"}» (hace falta ${need === 3 ? "Maestro" : "Practicante"}).`);
     if (!condsDe(ob).some((x) => reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${at.nombre}\\)`, "i").test(x))) throw new Error(`${ob.nombre} no está agarrado por ${at.nombre}: primero agárralo (maniobra agarrar).`);
   }
-  const hayV = !!d.ventaja || (presaAt && (d.tipo === "agarrar" || d.tipo === "lanzar")) || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
+  // Callejón de Aldenmar: ventaja en las maniobras contra un rival ocupado, aturdido o sin guardia.
+  const callejonAt = arteDeCombatiente(at, "callejon");
+  const distraido = efO.incapacitado || condsDe(ob).some((x) => /derribad|cegad|aturdid|apresad|agarrad|asustad|dormid|sorprendid|desarmad/i.test(x)) || !!partida.combate?.sorprendidos?.some((x) => igual(x, ob.nombre));
+  if (d.tipo === "sucio") {
+    if (!callejonAt) throw new Error(`${at.nombre} no domina el Callejón de Aldenmar: no conoce esos golpes sucios.`);
+    if (maestriaDe(at) < 2) throw new Error(`${at.nombre} aún no tiene la maestría para Arena y codo (hace falta Practicante).`);
+    const cd = 8 + (at.tipo === "pj" ? competencia(at.p) : 4) + Math.max(bonoManiobra(at, "atletismo", d.bono_atacante).bono, bonoManiobra(at, "acrobacias", d.bono_atacante).bono);
+    let exito: boolean, txt: string;
+    if (ob.tipo === "pj") { const sv = salvacion(ob.p, "con", cd); exito = sv.exito; txt = sv.texto; }
+    else { const m = ob.tipo === "criatura" ? mod(atributoCriatura(ob.j.definicion.atributos, "CON")) : 0; const tt = tirar(`1d20${signo(m)}`); exito = tt.total >= cd; txt = `salvación de CON ${describir(tt)} contra CD ${cd}`; }
+    if (exito) return `${at.nombre} le tira arena y un codazo a ${ob.nombre}: ${txt} → aguanta y parpadea (CD ${cd}).`;
+    return `${at.nombre} le tira arena y un codazo a ${ob.nombre}: ${txt} → falla (CD ${cd}). ${aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "cegado", nota: "arena y codo; hasta el final de su siguiente turno" }).split("\n")[0]}`;
+  }
+  const hayV = !!d.ventaja || (callejonAt && distraido && d.tipo !== "escapar") || (presaAt && (d.tipo === "agarrar" || d.tipo === "lanzar")) || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
   const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";
   const ta = tirar(`1d20${signo(aA.bono)}`, modoA);
   const incapObjetivo = efO.incapacitado;
