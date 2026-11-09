@@ -100,8 +100,8 @@ export const RAZAS: Raza[] = [
     nombre: "Tritón de las Mareas",
     descripcion:
       "Gente de piel azul pizarra o verde mar, con branquias bajo las orejas, dedos palmeados y ojos de pez: viven en los estuarios, las costas y los ríos negros de Hollín, en aldeas de caracolas y cascos hundidos. Se dicen hermanos de los ahogados que sí supieron volver. Desconfían de las sirenas, y las sirenas, de ellos: algo se rompió entre las dos gentes del agua hace mucho.",
-    atributos: "+2 CON, +1 CAR",
-    rasgos: ["Anfibio: respira aire y agua; bajo el agua no se ahoga y nada con soltura (sin desventaja al luchar sumergido)", "Nada 9 m por asalto; en tierra, 9 m", "Visión en la oscuridad (18 m), también en aguas turbias", "Resistencia al daño de frío", "Piel que pide agua: pasado un día entero lejos del agua, se agrieta (desventaja en pruebas de CON hasta que se moje)"],
+    atributos: "+2 CON, +1 FUE",
+    rasgos: ["Anfibio: respira aire y agua; bajo el agua no se ahoga y nada con soltura (sin desventaja al luchar sumergido)", "Nada 9 m por asalto; en tierra, 9 m", "Visión en la oscuridad (18 m), también en aguas turbias", "Resistencia al daño de frío", "Piel que pide agua: en tierra tiene sed el doble de rápido (sin beber, con sed a las 6 h, deshidratado a las 12 h y agotamiento al cabo de un día de tierra seca…) y, tras un día entero sin mojarse, la piel se agrieta (desventaja en pruebas de característica hasta que se moje)"],
     curacion: { ...CURACION_NORMAL, infeccion: 1 },
     notaCuracion: "+1 en salvaciones contra infección (la sal limpia las heridas).",
   },

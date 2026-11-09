@@ -6,6 +6,25 @@ import { salvacion, marcarMuerto, mod, valor } from "./reglas.js";
 import { textoReloj } from "./espacio.js";
 
 const DIA = 86400;
+/** El Tritón de las Mareas se seca en tierra: la sed corre el doble de rápido mientras no está en el agua. */
+export const FACTOR_SED_TRITON = 2;
+const esTriton = (p: Personaje) => p.raza === "Tritón de las Mareas";
+/** Segundos «de sed» que lleva: los reales desde que bebió, más los extra por estar en tierra (Tritón). */
+const segSinBeber = (p: Personaje, s: Sustento, ahora: number) => Math.max(0, ahora - s.agua) + (esTriton(p) ? s.seco ?? 0 : 0);
+const ES_PIEL = /^piel reseca/i;
+/** Un Tritón en tierra acumula sed extra y, tras un día sin mojarse, se le reseca la piel. */
+function secarTriton(p: Personaje, s: Sustento, ahora: number): string[] {
+  if (!esTriton(p)) return [];
+  const dt = Math.max(0, ahora - (s.visto ?? ahora));
+  s.visto = ahora;
+  const enAgua = !!p.sumergido;
+  if (enAgua) s.mojado = ahora; else { s.seco = (s.seco ?? 0) + dt * (FACTOR_SED_TRITON - 1); s.mojado ??= ahora - dt; }
+  const reseca = !enAgua && ahora - (s.mojado ?? ahora) >= DIA;
+  const tiene = p.condiciones.some((c) => ES_PIEL.test(c));
+  if (reseca && !tiene) { p.condiciones.push("piel reseca"); return [`🐟 La piel de ${p.nombre} se agrieta: lleva un día entero sin mojarse (desventaja en pruebas de característica hasta que se sumerja).`]; }
+  if (!reseca && tiene) { p.condiciones = p.condiciones.filter((c) => !ES_PIEL.test(c)); return [`💧 ${p.nombre} se moja y la piel se le recompone.`]; }
+  return [];
+}
 /** Días que se aguanta sin comer: 3 + mod. de CON (mínimo 1). Sin beber, un día entero. */
 export const diasSinComer = (p: Personaje) => Math.max(1, 3 + mod(valor(p, "con")));
 export const DIAS_SIN_BEBER = 1;
@@ -17,6 +36,11 @@ export interface Sustento {
   /** Niveles de agotamiento ya cobrados por el hambre y por la sed desde entonces. */
   hambre: number;
   sed: number;
+  /** Tritón: segundos de sed extra acumulados por estar en tierra (la sed corre al doble). */
+  seco?: number;
+  /** Tritón: última vez que el reloj se revisó y última vez que se mojó del todo. */
+  visto?: number;
+  mojado?: number;
 }
 
 const vivos = (partida: Partida) => Object.values(partida.personajes).filter((p) => !p.condiciones.includes("muerto"));
@@ -58,14 +82,16 @@ export function revisarSustento(partida: Partida): string[] {
   for (const p of vivos(partida)) {
     const s = estado(partida, p);
     const sinComer = Math.floor((ahora - s.comida) / DIA);
-    const sinBeber = Math.floor((ahora - s.agua) / DIA);
+    const piel = secarTriton(p, s, ahora);
+    const sinBeber = Math.floor(segSinBeber(p, s, ahora) / DIA);
     const excesoH = Math.max(0, sinComer - diasSinComer(p));
     const excesoS = Math.max(0, sinBeber - DIAS_SIN_BEBER);
     for (let i = s.hambre; i < excesoH; i++) out.push(subirAgotamiento(p, `lleva ${sinComer} días sin comer`));
     for (let i = s.sed; i < excesoS; i++) out.push(subirAgotamiento(p, `lleva ${sinBeber + 1} días sin beber`));
     s.hambre = Math.max(s.hambre, excesoH);
     s.sed = Math.max(s.sed, excesoS);
-    if (!p.condiciones.includes("muerto")) out.push(...ponerEstados(p, Math.max(0, (ahora - s.comida) / 3600), Math.max(0, (ahora - s.agua) / 3600)));
+    if (!p.condiciones.includes("muerto")) out.push(...ponerEstados(p, Math.max(0, (ahora - s.comida) / 3600), segSinBeber(p, s, ahora) / 3600));
+    out.push(...piel);
   }
   return out;
 }
@@ -83,7 +109,7 @@ export interface Medidor { horas: number; limite: number; fraccion: number; esta
 export function sustentoVisible(partida: Partida, p: Personaje): { hambre: Medidor; sed: Medidor } | null {
   if (!partida.reloj) return null;
   const s = p.sustento ?? { comida: partida.reloj.segundos, agua: partida.reloj.segundos };
-  const hh = Math.max(0, Math.floor((partida.reloj.segundos - s.comida) / 3600)), ha = Math.max(0, Math.floor((partida.reloj.segundos - s.agua) / 3600));
+  const hh = Math.max(0, Math.floor((partida.reloj.segundos - s.comida) / 3600)), ha = Math.floor(segSinBeber(p, p.sustento ?? { comida: 0, agua: partida.reloj.segundos, hambre: 0, sed: 0 }, partida.reloj.segundos) / 3600);
   const limH = (diasSinComer(p) + 1) * 24, limA = (DIAS_SIN_BEBER + 1) * 24; // horas hasta que empieza el agotamiento
   const estH = p.condiciones.find((c) => ESTADOS_HAMBRE.test(c)) ?? "", estA = p.condiciones.find((c) => ESTADOS_SED.test(c)) ?? "";
   const limFam = diasSinComer(p) * 24;
@@ -141,7 +167,7 @@ export function sustento(partida: Partida, d: DatosSustento): string {
   for (const p of pjs) {
     const s = estado(partida, p);
     if (d.accion === "ver") {
-      const h = Math.floor((ahora - s.comida) / 3600), a = Math.floor((ahora - s.agua) / 3600);
+      const h = Math.floor((ahora - s.comida) / 3600), a = Math.floor(segSinBeber(p, s, ahora) / 3600);
       lineas.push(`${p.nombre}: ${h} h sin comer (aguanta ${diasSinComer(p)} días), ${a} h sin beber (aguanta ${DIAS_SIN_BEBER} día)${s.hambre || s.sed ? ` · agotamiento por hambre ${s.hambre}, por sed ${s.sed}` : ""}. Provisiones: ${p.inventario.filter((x) => /raci[oó]n|provisi|agua|odre|cantimplora/i.test(x)).join(", ") || "ninguna"}.`);
       continue;
     }
@@ -154,7 +180,7 @@ export function sustento(partida: Partida, d: DatosSustento): string {
     } else {
       const gastado = d.libre ? "una fuente" : gastarUnidad(p, /agua|odre|cantimplora/i, "Odre vacío");
       if (!gastado) { lineas.push(`${p.nombre}: no tiene qué beber (sin agua ni odre lleno; si bebe de un río o un pozo, pasa libre=true).`); continue; }
-      s.agua = ahora; s.sed = 0;
+      s.agua = ahora; s.sed = 0; s.seco = 0;
       p.condiciones = p.condiciones.filter((c) => !ESTADOS_SED.test(c));
       lineas.push(`${p.nombre} bebe (${gastado}).`);
     }

@@ -61,7 +61,7 @@ export function rasgosAutomaticos(p: Personaje): string[] {
   if (p.raza === "Mediano de Hollín") l.push("Valiente (ventaja en salvaciones contra el miedo)");
   if (p.raza === "Elfo Marchito") l.push("Ventaja en salvaciones contra ser hechizado");
   if (p.raza === "Enano de Karak-Dûm") l.push("Ventaja en salvaciones contra veneno y mitad de daño de veneno (en modificar_personaje pasa tipo_dano: \"veneno\")");
-  if (p.raza === "Tritón de las Mareas") l.push("Anfibio (agua sumergir: no se ahoga ni gasta aire y nada de verdad, sin desventaja al luchar), Resistencia al frío (mitad de daño; en modificar_personaje pasa tipo_dano: \"frío\")");
+  if (p.raza === "Tritón de las Mareas") l.push("Anfibio (agua sumergir: no se ahoga ni gasta aire y nada de verdad, sin desventaja al luchar), Resistencia al frío (mitad de daño; en modificar_personaje pasa tipo_dano: \"frío\") y Piel que pide agua (en tierra la sed corre al doble y tras un día sin mojarse sale «piel reseca»: lo lleva el reloj, no lo repitas)");
   if (p.raza === "Cenizo") l.push("Resistencia al fuego (mitad de daño; en modificar_personaje pasa tipo_dano: \"fuego\"), Brasa interior (1 por descanso largo, la gasta tratar_herida cauterizar) y Llama sagrada (atacar con arma «Llama sagrada»)");
   if (p.raza === "Varg") l.push("Mordisco (atacar con arma «Mordisco»: 1d6 + FUE sin pasar dano), Olfato de lobo (ventaja en Percepción si el motivo habla de olfato/rastro) y Furia de la luna (usar_recurso: +2 al daño cuerpo a cuerpo 10 asaltos)");
   if (p.raza === "Nacido Pálido") l.push("Mordisco vampírico (atacar con arma «Mordisco vampírico»: 1d4 + CON y se cura lo que hiere; 1 por descanso corto) y Andar de araña (usar_recurso)");

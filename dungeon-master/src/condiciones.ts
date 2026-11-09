@@ -47,6 +47,7 @@ export const CATALOGO: Condicion[] = [
   { id: "hambre2", nombre: "famélico", patron: /^famélic|^famelic/i, regla: "ya no aguanta sin comer: débil y mareado, desventaja en ataques y pruebas de característica, y el agotamiento empieza a subir cada día; desaparece al comer", ataca: "desventaja", pruebas: "desventaja" },
   { id: "sed1", nombre: "con sed", patron: /^con sed/i, regla: "lleva medio día sin beber: la boca seca y el dolor de cabeza dan desventaja en pruebas de característica; desaparece al beber", pruebas: "desventaja" },
   { id: "sed2", nombre: "deshidratado", patron: /^deshidratad/i, regla: "lleva un día sin beber: mareo y calambres, desventaja en ataques y pruebas de característica, y el agotamiento sube cada día; desaparece al beber", ataca: "desventaja", pruebas: "desventaja" },
+  { id: "piel", nombre: "piel reseca", patron: /^piel reseca/i, regla: "Tritón que lleva un día entero sin mojarse: la piel se agrieta y duele; desventaja en pruebas de característica hasta que se sumerja", pruebas: "desventaja" },
   { id: "inconsciente", nombre: "inconsciente", patron: /inconsciente|dormid[oa]\b|en coma/i, regla: "incapacitado, tirado, sin moverse ni enterarse; suelta lo que sostiene; falla las salvaciones de FUE y DES; los ataques contra él tienen ventaja y los cuerpo a cuerpo a quemarropa son críticos", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja", critCuerpo: true },
 ];
 
