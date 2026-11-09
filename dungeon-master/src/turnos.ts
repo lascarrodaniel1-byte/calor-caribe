@@ -86,10 +86,15 @@ export interface InfoTurno {
   cierraRonda: boolean;
   /** El actuante aún no tiene personaje guardado. */
   creando?: boolean;
+  /** Personajes de jugadores ausentes que el actuante lleva ahora (control prestado). */
+  controla?: { personaje: string; dueno: string }[];
 }
 
 /** Lo que se le dice al DM de la secuencia, para que narre una acción cada vez y dé la palabra bien. */
 export function bloqueTurnos(t: InfoTurno): string {
+  const lleva = t.controla?.length
+    ? [`${t.actuante} LLEVA ahora ${t.controla.map((c) => `a ${c.personaje} (cuyo jugador, ${c.dueno}, está ausente)`).join(" y ")}: sus acciones son las de ${t.controla.length === 1 ? "ese personaje" : "esos personajes"}. Aplica lo que diga a ${t.controla.map((c) => c.personaje).join(" / ")} (tiras, daños, objetos y heridas son de ${t.controla.length === 1 ? "él" : "ellos"}), no a un personaje propio de ${t.actuante}.`]
+    : [];
   if (t.creando)
     return [
       "# TURNOS (la mesa juega por turnos: una acción cada vez, en orden)",
@@ -99,6 +104,7 @@ export function bloqueTurnos(t: InfoTurno): string {
   return [
     "# TURNOS (la mesa juega por turnos: una acción cada vez, en orden)",
     `Orden de la ronda ${t.ronda}: ${t.orden.join(" → ")}.`,
+    ...lleva,
     `Acaba de actuar: ${t.actuante}. Narra SOLO su acción y su consecuencia inmediata (tiradas, heridas, lo que dicen los PNJ). No hables, decidas ni muevas a los demás jugadores, y no avances el tiempo más allá de lo que dura su acción.`,
     t.cierraRonda
       ? `${t.actuante} es el último de la ronda: tras narrar su acción, cierra la ronda: el mundo responde (los enemigos y los PNJ actúan, pasa el tiempo, la amenaza avanza) y la trama avanza un paso. Luego da la palabra a ${t.siguiente}, que abre la ronda siguiente.`
@@ -114,18 +120,52 @@ export function textoFueraDeTurno(quien: string): string {
 // ------------------------------------------------------------------ jugadores ausentes
 const sinTildes = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
-/** Personajes cuyo jugador no está en la mesa ahora (vivos y con ficha): los lleva el DM como si fueran PNJ aliados. */
-export function personajesAusentes(partida: { personajes: Record<string, { nombre: string; jugador?: string; condiciones: string[] }> }, presentes: string[]): string[] {
+/** Quién lleva a qué personaje: personaje → jugador que lo lleva (control prestado, mientras su dueño está ausente). */
+export type Controles = Record<string, string>;
+type PartidaT = { personajes: Record<string, { nombre: string; jugador?: string; condiciones: string[] }> };
+
+/** Control prestado que vale AHORA: el personaje está vivo, su dueño ausente y quien lo lleva presente. Al volver el dueño, el control se le devuelve solo. */
+export function controlesVigentes(partida: PartidaT, presentes: string[], controles: Controles = {}): Record<string, string> {
   const aqui = new Set(presentes.map(sinTildes));
+  const out: Record<string, string> = {};
+  for (const [nombre, quien] of Object.entries(controles)) {
+    const p = partida.personajes[nombre];
+    if (!p || !quien || p.condiciones.includes("muerto")) continue;
+    if (p.jugador && aqui.has(sinTildes(p.jugador))) continue; // su dueño está aquí
+    if (!aqui.has(sinTildes(quien))) continue; // quien lo llevaba se fue
+    out[nombre] = quien;
+  }
+  return out;
+}
+
+/** Personajes que lleva un jugador por control prestado. */
+export const personajesLlevadosPor = (partida: PartidaT, jugador: string, presentes: string[], controles: Controles = {}): string[] =>
+  Object.entries(controlesVigentes(partida, presentes, controles)).filter(([, q]) => sinTildes(q) === sinTildes(jugador)).map(([n]) => n);
+
+/** Personajes cuyo jugador está ausente y que ningún otro jugador lleva (los lleva el DM como PNJ aliados). */
+export function personajesAusentes(partida: PartidaT, presentes: string[], controles: Controles = {}): string[] {
+  const aqui = new Set(presentes.map(sinTildes));
+  const prestados = controlesVigentes(partida, presentes, controles);
   return Object.values(partida.personajes)
-    .filter((p) => p.jugador && !p.condiciones.includes("muerto") && !aqui.has(sinTildes(p.jugador)))
+    .filter((p) => p.jugador && !p.condiciones.includes("muerto") && !aqui.has(sinTildes(p.jugador)) && !prestados[p.nombre])
     .map((p) => p.nombre);
 }
 
+/** Personajes que un jugador podría tomar: de jugadores ausentes, vivos y sin otro jugador que los lleve ya. */
+export function personajesTomables(partida: PartidaT, presentes: string[], controles: Controles = {}): string[] {
+  return personajesAusentes(partida, presentes, controles);
+}
+
 /** Lo que se le dice al DM de los personajes de jugadores ausentes y de quien acaba de volver. */
-export function bloqueAusentes(partida: Parameters<typeof personajesAusentes>[0], presentes: string[], volvieron: string[] = []): string {
-  const llevados = personajesAusentes(partida, presentes);
+export function bloqueAusentes(partida: PartidaT, presentes: string[], volvieron: string[] = [], controles: Controles = {}): string {
+  const llevados = personajesAusentes(partida, presentes, controles);
+  const prestados = Object.entries(controlesVigentes(partida, presentes, controles));
   const lineas: string[] = [];
+  if (prestados.length)
+    lineas.push(
+      "# PERSONAJES LLEVADOS POR OTRO JUGADOR (control prestado)",
+      ...prestados.map(([n, q]) => `- ${n} (de ${partida.personajes[n]?.jugador}, ausente) lo lleva ahora ${q}: ${q} decide sus acciones. No lo muevas tú ni hables por él; si ${partida.personajes[n]?.jugador} vuelve, recupera el control.`),
+    );
   if (llevados.length)
     lineas.push(
       "# PERSONAJES LLEVADOS POR EL DM (su jugador está ausente)",
