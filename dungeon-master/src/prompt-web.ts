@@ -17,6 +17,7 @@ import { REGLAS_ENCUENTROS } from "./encuentros.js";
 import { REGLAS_MANOS } from "./manos.js";
 import { REGLAS_DEGOLLADOR } from "./degollador_base.js";
 import { REGLAS_FLAGELANTE } from "./flagelante_base.js";
+import { REGLAS_ARTES } from "./estilos.js";
 import { REGLAS_SEGADOR } from "./segador_base.js";
 import { REGLAS_BARBERO } from "./barbero_base.js";
 import { REGLAS_CAZADOR } from "./cazador.js";
@@ -164,7 +165,7 @@ export function sistemaWeb(clases?: string[]): string {
   const clase = (c: string) => (!presentes || presentes.has(c) ? REGLAS_DE_CLASE[c] : "");
   const ausentes = presentes ? Object.keys(REGLAS_DE_CLASE).filter((c) => !presentes.has(c)) : [];
   return [
-    BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_RECURSOS,
+    BASE, INTERPRETACION, REGLAS_ESPACIO_TIEMPO, REGLAS_PRUEBAS, REGLAS_ENCUENTROS, REGLAS_CONDICIONES, REGLAS_ACCIONES, REGLAS_MUERTE, REGLAS_PROGRESION, REGLAS_MANIOBRAS, REGLAS_ARTES, REGLAS_RECURSOS,
     clase("Berserker de Ceniza"), clase("Caballero Juramentado"), clase("Cazador de Brujas"), clase("Degollador"), clase("Flagelante"), clase("Segador"), clase("Barbero-Cirujano"),
     REGLAS_HECHICERO, REGLAS_MANOS, REGLAS_SUSTENTO, REGLAS_TRAMPAS, REGLAS_IDIOMAS, REGLAS_GUARIDA, REGLAS_ENFERMEDADES, REGLAS_DOTES, REGLAS_MONTURA, REGLAS_AGUA, REGLAS_NAVES, REGLAS_LEYENDA, REGLAS_REGENTES, REGLAS_NARRATIVA, MUNDO, razasYClasesCortas(), COMBATE, HERIDAS, RESTO,
     ausentes.length ? `## Reglas de clases que ahora no están en la mesa\nNo se cargan para ahorrar espacio (${ausentes.join(", ")}). Si un personaje u otro caso las necesita, léelas con consultar_reglas {tema: "clase", nombre: "<clase>"}.` : "",

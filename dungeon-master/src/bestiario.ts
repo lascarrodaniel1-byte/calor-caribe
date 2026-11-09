@@ -86,6 +86,8 @@ export interface Criatura {
   peligro: 1 | 2 | 3 | 4 | 5;
   /** Valor de desafío (VD) orientativo, derivado del peligro. Es informativo: las reglas siguen usando el peligro. */
   vd?: string;
+  /** Estilos de artes marciales que domina (ids de estilos.ts); «todos» = los domina todos (Kuru). */
+  artes?: string[];
   region: string;
   descripcion: string;
   ca: number;
@@ -1272,6 +1274,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Kuru, el Cazador de Leyendas",
+    artes: ["todos", "contracorriente"],
     temple: "cazador de leyendas",
     personalidad: ["calculador", "paranoico"],
     blindaje: ["gambeson", "escamas", "yelmo"],
@@ -1295,6 +1298,8 @@ export const BESTIARIO: Criatura[] = [
       "ESCURRIDIZO: se desengancha sin provocar ataques de oportunidad, se mueve al doble de velocidad sin provocar y puede esconderse como acción adicional aunque lo estén mirando (humo, sombras, tumulto). Ventaja en salvaciones contra apresado, derribado, asustado y cegado",
       "Retirada calculada: la primera vez que cae por debajo de la mitad de sus PV rompe el combate (trampa de humo o cuerda, y huye) si le queda alguna salida; solo muere si se la cierran. Vuelve en otro encuentro con una adaptación más y sabiendo cómo lucha cada uno de sus rivales",
       "Cazador de leyendas: ventaja en ataques contra criaturas de peligro 3 o más, contra magos y contra quien porte reliquias o Ceniza; nota lo legendario a un kilómetro. Estudia a su presa antes de atacar: en la primera ronda tiene ventaja en iniciativa si pudo observar al grupo",
+      "ARTES MARCIALES: domina todos los estilos (Callejón, Piedra de Karak, Danza marchita, Filo del Cuervo, Presa de Hollín; el Haemajitsu solo si la historia lo justifica) y copia al verlos: si ve usar una técnica, la usa en su turno siguiente y, tras verla dos veces en el combate, la conserva hasta el final",
+      "CONTRACORRIENTE (su estilo único): una vez por asalto, cuando un ataque (proyectil, arma o golpe) le va a alcanzar, lo desvía y reduce el daño (2d10+7); si lo anula, contraataca en la misma reacción con ventaja; con un proyectil pequeño puede devolverlo",
       "2 acciones legendarias por ronda (moverse sin provocar, lanzar un cuchillo, esconderse)",
       "Resistencia legendaria (2/día)",
       "Sin rencor ni prisa: habla con calma, ofrece tratos y abandona un combate perdido; no sacrifica su vida por una pieza",

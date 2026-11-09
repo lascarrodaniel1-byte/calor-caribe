@@ -10,6 +10,8 @@ import { esBarberoC } from "./barbero_base.js";
 import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablarConMuertos, invocacion, liberarAlma, liberarSiMuere, prepararDescarga, sellarAlma } from "./segador.js";
 import { esSegador, exigirLibre } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
+import { arteMarcial } from "./estilos.js";
+import { haemajitsu } from "./estilos.js";
 import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
@@ -287,7 +289,9 @@ const esquemas = {
   maniobra: z.object({
     atacante: z.string(),
     objetivo: z.string(),
-    tipo: z.enum(["agarrar", "empujar", "escapar"]),
+    tipo: z.enum(["agarrar", "empujar", "escapar", "lanzar"]).describe("lanzar: Presa de Hollín, sobre alguien que ya tiene agarrado (con lance)"),
+    lance: z.enum(["cadera", "hombro", "molino"]).optional().describe("lanzar: cadera (derriba), hombro (lo estampa, 1d6; puede ir contra otro) o molino (3 m, 2d6)"),
+    contra: z.string().optional().describe("lanzar con hombro: el otro enemigo cercano (1,5 m) contra el que lo estampa"),
     efecto: z.enum(["derribar", "alejar"]).optional().describe("empujar: derribarlo o apartarlo 1,5 m"),
     bono_atacante: z.number().int().optional().describe("Atletismo total del atacante (obligatorio solo para PNJ sin datos)"),
     bono_objetivo: z.number().int().optional().describe("Atletismo/Acrobacias total del objetivo (obligatorio solo para PNJ sin datos)"),
@@ -407,6 +411,15 @@ const esquemas = {
     radio: z.number().min(2).max(20).optional().describe("colocar al aire libre: radio del círculo en metros"),
     cantidad: z.number().int().min(1).max(40).optional().describe("escribir: cuántas hojas"),
     objetivo: z.string().optional().describe("clavar: a quién le clava un papel con una estaca; tomar_sangre / marcar_sangre: de quién es la sangre (marcar_sangre lo marca a distancia)"),
+  }),
+  arte_marcial: z.object({
+    accion: z.enum(["catalogo", "ver", "aprender"]),
+    quien: z.string().optional().describe("ver / aprender: el personaje"),
+    arte: z.string().optional().describe("aprender: Haemajitsu, Callejón de Aldenmar, Piedra de Karak, Danza marchita, Filo del Cuervo, Presa de Hollín o Contracorriente"),
+    via: z.enum(["clase", "maestro", "historia"]).optional().describe("aprender: por su clase, con un maestro o porque la historia lo justifica"),
+    maestro: z.string().optional().describe("aprender con maestro: quién lo enseña"),
+    motivo: z.string().optional().describe("aprender con maestro o por historia: cómo y por qué (tiempo y esfuerzo, o la razón en la ficción)"),
+    segundo: z.boolean().optional().describe("aprender: es un segundo estilo (segundo maestro e INT o SAB 14+)"),
   }),
   mascota: z.object({
     quien: z.string(),
@@ -971,6 +984,8 @@ const descripciones: Record<Nombre, string> = {
     "Elige el estilo de lucha (arquería, defensa, duelo, lucha con arma a dos manos, protección o lucha con dos armas) de un Mercenario, un Caballero (nivel 4+) o un Cazador de Brujas (nivel 4+).",
   papeles:
     "Cazador de Brujas: dispone papeles de runas alrededor de la zona de la pelea (apagan la regeneración y quitan CD a los poderes de brujas, hechiceros y no-muertos; a nivel alto curan), los recoge, escribe más, o los usa sobre un rival: clavándole uno con una estaca o, a distancia, con su sangre (tomar_sangre, marcar_sangre).",
+  arte_marcial:
+    "Artes marciales: catálogo de los estilos (Haemajitsu, Callejón de Aldenmar, Piedra de Karak, Danza marchita, Filo del Cuervo, Presa de Hollín y Contracorriente), lo que sabe un personaje, o aprender un estilo por su clase, con un maestro o por historia.",
   mascota:
     "Cazador de Brujas: elige su mascota (halcón o ratón, a elección del jugador) o consulta lo que hace.",
   rastro_magico:
@@ -1119,6 +1134,9 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
   e = presa.e;
   if (presa.nota) aviso0 = [aviso0, presa.nota].filter(Boolean).join("\n");
   // Flagelante: la comunión del dolor suma de +1 a +4 al daño según lo cerca que esté de la muerte.
+  const hj = haemajitsu(partida, e); // golpe sin armas del Flagelante = maza (antes de sumar la comunión del dolor)
+  e = hj.e;
+  if (hj.nota) aviso0 = [aviso0, hj.nota].filter(Boolean).join("\n");
   const dolor = aplicarDolor(partida, e);
   e = dolor.e;
   if (dolor.nota) aviso0 = [aviso0, dolor.nota].filter(Boolean).join("\n");
@@ -1269,7 +1287,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "habilidad_extra", "luna", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "habilidad_extra", "luna", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "artes", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         consumirDon?.();
@@ -1668,6 +1686,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.papeles>;
         const texto = papeles(partida, e, (d) => ataqueCompleto(partida, d));
         return { contenido: texto, aviso: `📜 ${texto.split("\n")[0]}` };
+      }
+      case "arte_marcial": {
+        const e = validado.data as z.infer<typeof esquemas.arte_marcial>;
+        const texto = arteMarcial(partida, e);
+        return { contenido: texto, aviso: e.accion === "aprender" ? `🥋 ${texto.split("\n")[0]}` : null };
       }
       case "mascota": {
         const e = validado.data as z.infer<typeof esquemas.mascota>;

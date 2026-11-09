@@ -1,6 +1,6 @@
 # Artes marciales de Velmora — modelo (borrador)
 
-Estado: **modelo propuesto, sin implementar.** Lo que dijo el usuario es canon; lo demás es «decisión mía, a confirmar».
+Estado: **confirmado e implementado** (`src/estilos.ts`; ver «Implementación» al final). Lo que dijo el usuario es canon; lo demás es «decisión mía, a confirmar».
 
 ## Canon (lo que ha pedido el usuario)
 - 4 o 5 estilos, cada uno centrado en algo distinto; **más uno centrado en agarres y llaves, que también se puede aprender con las clases** (6 en total).
@@ -16,7 +16,7 @@ Estado: **modelo propuesto, sin implementar.** Lo que dijo el usuario es canon; 
 ## Modelo general (propuesto)
 Un **estilo** no es una clase: es una tradición con un principio y tres técnicas.
 - **Principio** (pasivo, siempre activo, sin coste): la «lógica» del estilo. Pocos números; explica *por qué* funciona.
-- **Tres técnicas** por niveles de maestría: **Iniciado → Practicante → Maestro** (se desbloquean con `nvl()` como el resto de rasgos de desbloqueo: p. ej. nv. 3 / 7 / 11 reales en la mesa).
+- **Tres técnicas** por niveles de maestría: **Iniciado → Practicante → Maestro** (Iniciado al aprenderlo; Practicante a nivel 3 y Maestro a nivel 7 de la tabla, con el desplazamiento de +2 → niveles 5 y 9 en la mesa).
 - **Aprender (dos vías, propuesto):** (a) con un maestro del estilo, tiempo (varias jornadas por maestría) y la dote «Discípulo de <estilo>»; (b) **por la clase:** las clases marciales ofrecen un estilo propio como rasgo (ver tabla), sin dote ni maestro, al ritmo del nivel. **Un personaje conoce un solo estilo** (dos con INT o SAB 14+ y un segundo maestro). Cada maestría exige la anterior.
 - Las técnicas usan lo que ya hay: maniobras, heridas, condiciones y el temple de combate. No hay recursos nuevos.
 
@@ -49,10 +49,10 @@ Cada clase marcial puede tomar un estilo como rasgo (sin dote ni maestro):
 La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase marcial por esta vía.
 
 ## Haemajitsu en detalle (canon + decisiones)
-- **Pasivo:** al golpear sin armas, el Flagelante *siempre* lo hace como con una **maza**: daño **1d6 + mod.** (sube de 1d4), **contundente y brutal** (agrava la herida, penetra protección como la maza). No gasta acción ni recurso, pero **sí sangre propia** (confirmado). Propuesto: cada asalto en que golpea con él pierde **1 PV** (nunca lo baja de 1 PV por sí solo; «sangre ajena» lo repone). Así la Comunión del dolor y Sangre ajena encajan: más herido, más daño, y se cura con la sangre de otros.
+- **Pasivo:** al golpear sin armas, el Flagelante *siempre* lo hace como con una **maza**: daño **1d6 + mod.** (sube de 1d4), **contundente y brutal** (agrava la herida, penetra protección como la maza). No gasta acción ni recurso, pero **sí sangre propia** (confirmado), **sin quitar vida**: es su forma de pelear, la sangre fluye por sus puntos de contacto (confirmado). Sangre ajena y la Comunión del dolor siguen aparte.
 - **La lógica (sin bonus nuevo):** la sangre se concentra en el punto de contacto y fluye a gran velocidad. Eso *explica* tres cosas ya existentes: que su puño pegue como un arma pesada, que no se rompa los nudillos (sin daño propio al golpear) y por qué la Comunión del dolor le da más daño cuanto más herido.
 - **Casi exclusivo (confirmado):** es el estilo de los Flagelantes; otro personaje solo puede aprenderlo **si la historia lo justifica** (un maestro de Haema, un rito, una deuda de sangre) y pagaría también con sangre propia.
-- **Pregunta abierta:** ¿el dado sube con el nivel (1d6 → 1d8)?
+- **El dado sube con el nivel (confirmado):** 1d6 (como una maza) → 1d8 → 1d10 → 1d12 (con el desplazamiento de +2).
 
 ## Kuru y los estilos (propuesto)
 - **Los domina todos** los estilos normales y además **Contracorriente**, el suyo (propuesto); el Haemajitsu no lo copia a la ligera: es sangre propia y un don de Haema (como cualquiera, solo si la historia lo justifica).
@@ -66,3 +66,11 @@ La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase
 4. Técnicas como opciones de `atacar`/`maniobras`/reacciones.
 5. Kuru: reglas de copia en su ficha de jefe y en el estado del DM.
 6. Bestiario/saber: capa de saber (los estilos como conocimiento «erudito»).
+
+## Implementación (hecha)
+- `src/estilos.ts`: los 7 estilos, `arte_marcial` (catálogo / ver / aprender por clase, maestro o historia; un estilo, dos con INT o SAB 14+ y segundo maestro) y la ficha (`artes`).
+- **Haemajitsu (automático):** golpe sin armas del Flagelante = «puño de Haema (como una maza)», dado por nivel, contundente y brutal, antes de sumar la Comunión del dolor; sin coste de PV.
+- **Presa de Hollín (automático):** ventaja al agarrar y al lanzar, ventaja para quien se zafa de él si lo desvía; lances con `maniobra {tipo: lanzar, lance: cadera|hombro|molino, contra}` (hombro 1d6 y puede estamparlo contra otro; molino 6 m de caída = 2d6 y lo aparta 3 m), con maestría (Practicante, Maestro).
+- **Piedra de Karak (parcial):** ventaja en las pruebas contra empujar y lanzar.
+- **Contracorriente (automático para Kuru):** reacción única por asalto que reduce el daño (2d10+7) y, si lo anula, avisa del contraataque con ventaja.
+- **Kuru:** `artes: ["todos", "contracorriente"]`; la copia «al verlo» y el resto de técnicas (Callejón, Danza, Filo del Cuervo, Fluir/Corriente carmesí, etc.) las aplica el DM con las reglas del catálogo (`REGLAS_ARTES`).

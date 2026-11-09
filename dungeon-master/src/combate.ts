@@ -28,6 +28,7 @@ import { bloqueoDeSal } from "./sal.js";
 import { efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
 
 import { nvl } from "./niveles.js";
+import { arteDeCombatiente } from "./estilos.js";
 import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
@@ -977,6 +978,15 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       dano = Math.max(0, dano - dv.total);
       tOb.reaccion = true;
       lineas.push(`🌀 Desviar proyectiles: ${ob.nombre} reduce el daño ${describir(dv)} (${antes} → ${dano}). Gasta su reacción.`);
+    }
+    // Contracorriente (Kuru): reacción que desvía cualquier ataque (proyectil, arma o golpe) y, si lo anula, contraataca.
+    if (dano > 0 && combate && !tOb.reaccion && arteDeCombatiente(ob, "contracorriente") && !efOb.incapacitado && (ob.tipo !== "pj" || ob.p.pv > 0)) {
+      const dv = tirar(ob.tipo === "pj" ? `1d10${signo(mod(valor(ob.p, "des")) + ob.p.nivel)}` : "2d10+7");
+      const antes = dano;
+      dano = Math.max(0, dano - dv.total);
+      tOb.reaccion = true;
+      lineas.push(`🌊 Contracorriente: ${ob.nombre} desvía el ${distancia ? "proyectil" : "golpe"} ${describir(dv)} (${antes} → ${dano}). Gasta su reacción.`);
+      if (dano === 0) lineas.push(`👉 CONTRAATAQUE de ${ob.nombre}: ataca ya a ${at.nombre} con atacar {atacante: «${ob.nombre}», objetivo: «${at.nombre}», reaccion: true, ventaja: true}${distancia ? " (si era un proyectil pequeño, puede devolverlo: a distancia)" : ""}.`);
     }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
     // Quien duerme despierta al recibir daño.

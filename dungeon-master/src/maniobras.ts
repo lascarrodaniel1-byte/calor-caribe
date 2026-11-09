@@ -11,6 +11,7 @@ import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
 import { danoEnSuelo } from "./muerte.js";
 import { danar } from "./bestiario.js";
+import { arteDeCombatiente, maestriaDe } from "./estilos.js";
 import { competencia, marcarMuerto, mod, signo, valor } from "./reglas.js";
 
 export const COBERTURA = {
@@ -46,7 +47,11 @@ const sinAccion = (c: Combatiente): string | null => puedeActuar(c);
 export interface DatosManiobra {
   atacante: string;
   objetivo: string;
-  tipo: "agarrar" | "empujar" | "escapar";
+  tipo: "agarrar" | "empujar" | "escapar" | "lanzar";
+  /** lanzar (Presa de Hollín, sobre quien ya tiene agarrado): cadera (lo derriba), hombro (lo estampa, y puede lanzarlo contra otro) o molino (3 m). */
+  lance?: "cadera" | "hombro" | "molino";
+  /** lanzar con hombro: contra qué otro enemigo cercano (a 1,5 m) lo estampa. */
+  contra?: string;
   /** empujar: derribarlo o apartarlo 1,5 m. */
   efecto?: "derribar" | "alejar";
   /** Bono total de Atletismo del atacante / de la defensa del objetivo (obligatorio solo para PNJ sin datos). */
@@ -96,16 +101,47 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
     if (t.adicional) throw new Error(`${at.nombre} ya usó su acción adicional este asalto (${t.adicional}).`);
     t.adicional = d.escudo ? "empujón con escudo" : "agarrar (Pendenciero)";
   }
-  const hayV = !!d.ventaja || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
+  // Estilos: Presa de Hollín (ventaja al agarrar y lanzar) y Piedra de Karak (el que se defiende, contra empujar y lanzar).
+  const presaAt = arteDeCombatiente(at, "presa"), presaOb = arteDeCombatiente(ob, "presa"), piedraOb = arteDeCombatiente(ob, "piedra");
+  if (d.tipo === "lanzar") {
+    if (!presaAt) throw new Error(`${at.nombre} no domina la Presa de Hollín: sin ese estilo no puede lanzar (arte_marcial aprender).`);
+    const need = d.lance === "molino" ? 3 : d.lance === "hombro" ? 2 : 1;
+    if (maestriaDe(at) < need) throw new Error(`${at.nombre} no tiene aún la maestría para el lance «${d.lance ?? "cadera"}» (hace falta ${need === 3 ? "Maestro" : "Practicante"}).`);
+    if (!condsDe(ob).some((x) => reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${at.nombre}\\)`, "i").test(x))) throw new Error(`${ob.nombre} no está agarrado por ${at.nombre}: primero agárralo (maniobra agarrar).`);
+  }
+  const hayV = !!d.ventaja || (presaAt && (d.tipo === "agarrar" || d.tipo === "lanzar")) || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
   const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";
   const ta = tirar(`1d20${signo(aA.bono)}`, modoA);
   const incapObjetivo = efO.incapacitado;
-  const modoD = efO.pruebas === "desventaja" ? "desventaja" : "normal";
+  const ventajaDef = (presaOb && d.tipo === "escapar") || (piedraOb && (d.tipo === "empujar" || d.tipo === "lanzar"));
+  const modoD = efO.pruebas === "desventaja" && !ventajaDef ? "desventaja" : ventajaDef && efO.pruebas !== "desventaja" ? "ventaja" : "normal";
   const td = tirar(`1d20${signo(def.bono)}`, modoD);
   const gana = !incapObjetivo && ta.total > td.total || (incapObjetivo && ta.total >= 0);
   const cabecera = `${at.nombre} (${aA.hab} ${describir(ta)}${modoA !== "normal" ? `, ${modoA}` : ""}) contra ${ob.nombre} (${def.hab} ${describir(td)}${modoD !== "normal" ? `, ${modoD}` : ""})${incapObjetivo ? " — está incapacitado: no se resiste" : ""}`;
   if (!gana) return `${cabecera} → FALLA${ta.total === td.total ? " (empate: todo sigue igual)" : ""}.`;
 
+  if (d.tipo === "lanzar") {
+    const lance = d.lance ?? "cadera";
+    const suelta = condsDe(ob).filter((x) => !(reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${at.nombre}\\)`, "i").test(x)));
+    condsDe(ob).splice(0, condsDe(ob).length, ...suelta);
+    const partes = [`${cabecera} → ¡LO LANZA (${lance === "cadera" ? "cadera" : lance === "hombro" ? "por encima del hombro" : "de molino"})! ${ob.nombre} ya no está agarrado.`];
+    if (lance === "cadera") partes.push(aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "derribado" }).split("\n")[0]);
+    else if (lance === "hombro") {
+      partes.push(caida(partida, { quien: ob.nombre, metros: 3 }));
+      if (d.contra) {
+        const otro = localizar(partida, d.contra);
+        const dist2 = distanciaPlano(partida, ob.nombre, otro.nombre);
+        if (dist2 && dist2.metros > 2) partes.push(`${otro.nombre} está a ${dist2.metros} m de ${ob.nombre}: demasiado lejos para estamparlo contra él (el lance cae al suelo).`);
+        else partes.push(`${ob.nombre} se estrella contra ${otro.nombre}:`, caida(partida, { quien: otro.nombre, metros: 3 }));
+      }
+    } else {
+      partes.push(caida(partida, { quien: ob.nombre, metros: 6 }));
+      if (partida.plano && Object.keys(partida.plano.puntos).some((k) => igual(k, ob.nombre)) && Object.keys(partida.plano.puntos).some((k) => igual(k, at.nombre))) {
+        try { partes.push(actualizarPlano(partida, { mover: [{ nombre: ob.nombre, de: at.nombre, metros: 3 }] }).split("\n")[0]); } catch { /* sin plano utilizable */ }
+      }
+    }
+    return partes.join("\n");
+  }
   if (d.tipo === "agarrar") {
     const r = aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "agarrado", nota: `por ${at.nombre}` });
     return `${cabecera} → ¡AGARRA! ${r.split("\n")[0]} Mientras lo sujeta, ${at.nombre} tiene una mano ocupada; si queda incapacitado o lo apartan, lo suelta.`;

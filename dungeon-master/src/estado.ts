@@ -7,6 +7,7 @@ import type { Runas, RegistroMagia } from "./cazador_base.js";
 import { textoCazador } from "./cazador_base.js";
 import { textoDegollador, type Dardos } from "./degollador_base.js";
 import { textoFlagelante } from "./flagelante_base.js";
+import { textoArtes } from "./estilos.js";
 import { textoSegador, type AlmaSellada, type Sello } from "./segador_base.js";
 import { textoBarbero } from "./barbero_base.js";
 import { textoManos } from "./manos.js";
@@ -112,6 +113,8 @@ export interface Personaje {
   /** Papeles de runas del Cazador de Brujas (ver cazador.ts). */
   papeles?: { hojas: number; estacas: number };
   mascota?: { tipo: "halcon" | "raton"; nombre: string };
+  /** Estilos de artes marciales que conoce (ver estilos.ts); el Flagelante lleva el Haemajitsu de serie. */
+  artes?: string[];
   /** Degollador: a quién estudió (su primer ataque contra él lleva ventaja) y los dardos de su cerbatana. */
   presa?: { objetivo: string; usada: boolean };
   /** Segador: su Deuda con Neter, las almas que lleva selladas y sus invocaciones. */
@@ -289,6 +292,7 @@ export function fichaTexto(p: Personaje): string {
     textoCazador(p),
     textoDegollador(p),
     textoFlagelante(p),
+    textoArtes(p),
     textoSegador(p),
     textoBarbero(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < nvl(3) ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= nvl(5) ? " · heridas rojas cerradas mientras dure" : ""}` : "",
