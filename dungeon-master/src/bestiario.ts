@@ -797,6 +797,35 @@ export const BESTIARIO: Criatura[] = [
     botin: "Escamas (amuleto contra el agua), arpones de hueso y las joyas de los ahogados en su guarida",
   },
   {
+    nombre: "Hombre lagarto",
+    alias: ["Hombres lagarto", "Lagarto", "Saurio"],
+    temple: "bestia",
+    personalidad: ["calculador"],
+    blindaje: ["escamas_naturales"],
+    categoria: "monstruo",
+    peligro: 2,
+    region: "Ciénagas de Hollín, orillas de los ríos negros y ruinas anegadas; tribus en túmulos de barro",
+    descripcion:
+      "Un humanoide de dos metros cubierto de escamas pardas y verdes, hocico largo de dientes finos, ojos de rendija y cola gruesa que le da el equilibrio. Frío de sangre y de ánimo: no odia, calcula. Viven en tribus en túmulos de barro y cañas, cazan con lanzas de hueso y mazas de raíz, tejen redes y no desperdician nada: lo que muere se come, sea suyo o ajeno. No rezan a los dioses (nunca los conocieron) y no se asustan de la Ceniza; sí del fuego y del frío, que los vuelve lentos. Comercian, a su manera, con quien les lleve sal o hierro.",
+    ca: 15,
+    pv: "5d8+5",
+    velocidad: "9 m, nadar 9 m",
+    atributos: "FUE 15 DES 10 CON 13 INT 7 SAB 12 CAR 7",
+    ataques: ["Maza de raíz: +4, 1d8+2 contundente", "Lanza de hueso: +4, 1d6+2 perforante (también a distancia 6/18 m)", "Mordisco: +4, 1d6+2 perforante"],
+    rasgos: [
+      "Anfibio: respira aire y, aguantando la respiración 15 minutos, también bajo el agua; nada igual de bien",
+      "Piel gruesa: escamas naturales (CA 15 sin armadura)",
+      "Sangre fría: con frío intenso o fuego a su alrededor se vuelve lento (velocidad a la mitad); en un clima helado, desventaja en ataques",
+      "Cazan en grupo: ventaja en ataques si hay otro hombre lagarto a 3 m del objetivo",
+      "Nada se desperdicia: tras un combate come a los caídos; si se lo ofrecen, un cadáver fresco o un buen trato puede comprar un paso seguro",
+      "Sigilo de ciénaga: ventaja en Sigilo entre cañas, barro y agua turbia",
+    ],
+    habilidades: [
+      { nombre: "Red de caza", descripcion: "Lanza una red a 6 m que lo ata al barro.", salvacion: "fue", cd: 12, condicion: "apresado", recarga: 6 },
+    ],
+    botin: "Escamas (valen un poco a los curtidores), lanzas de hueso, redes de caza y, en el túmulo, lo que arrastraron los ahogados: hierro, sal y baratijas",
+  },
+  {
     nombre: "Arpía",
     temple: "bestia",
     categoria: "monstruo",
@@ -1363,7 +1392,7 @@ export const BESTIARIO: Criatura[] = [
 
 /** VD (valor de desafío) orientativo de cada criatura. Propuesto, a confirmar: es solo informativo (las reglas siguen usando el peligro 1–5). */
 export const VD: Record<string, string> = {
-  Hambriento: "1", "Lobo de Ceniza": "1/2", Duende: "1", "Ghul de las fosas": "2", Ogro: "3", "Gárgola": "2", "Arpía": "2", "Hombre pez": "3",
+  Hambriento: "1", "Lobo de Ceniza": "1/2", Duende: "1", "Ghul de las fosas": "2", Ogro: "3", "Gárgola": "2", "Arpía": "2", "Hombre pez": "3", "Hombre lagarto": "3",
   "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", "Banshee del Velo": "5", Ulfhedinn: "5", "Hombre oso": "6",
   "Golem de carne": "5", "Elemental de fuego": "5", "Elemental de agua": "6", "Elemental de aire": "5", Grifo: "5", Sirena: "5",
   "Gigante de hueso": "10", "Dragón joven de ceniza": "11", "Apóstol": "12", Wendigo: "9", "Golem de piedra": "10", "Elemental de tierra": "9",
