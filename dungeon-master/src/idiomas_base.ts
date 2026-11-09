@@ -1,7 +1,7 @@
 // Nombres de los idiomas (sin dependencias, para la ficha).
-export const IDIOMAS_NOMBRES: Record<string, string> = { comun: "Común", karak: "Lengua de Karak", marchito: "Susurro marchito", hollin: "Jerga de Hollín", varg: "Aullido varg", palido: "Lengua pálida", ceniza: "Habla de ceniza", solar: "Sol viejo", cuervo: "Código del Cuervo", bajos: "Argot de Aldenmar" };
+export const IDIOMAS_NOMBRES: Record<string, string> = { comun: "Común", karak: "Lengua de Karak", marchito: "Susurro marchito", hollin: "Jerga de Hollín", varg: "Aullido varg", palido: "Lengua pálida", ceniza: "Habla de ceniza", solar: "Sol viejo", cuervo: "Código del Cuervo", bajos: "Argot de Aldenmar", mareas: "Canto de las mareas" };
 
-const POR_RAZA: Record<string, string> = { "Enano de Karak-Dûm": "karak", "Elfo Marchito": "marchito", "Mediano de Hollín": "hollin", Varg: "varg", "Nacido Pálido": "palido", Cenizo: "ceniza" };
+const POR_RAZA: Record<string, string> = { "Enano de Karak-Dûm": "karak", "Elfo Marchito": "marchito", "Mediano de Hollín": "hollin", Varg: "varg", "Nacido Pálido": "palido", Cenizo: "ceniza", "Tritón de las Mareas": "mareas" };
 const POR_CLASE: Record<string, string> = { "Mercenario del Cuervo": "cuervo", "Caballero Juramentado": "solar", "Cazador de Brujas": "solar", Hechicero: "solar", Degollador: "bajos" };
 
 

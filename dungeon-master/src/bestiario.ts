@@ -84,6 +84,8 @@ export interface Criatura {
   categoria: "bestia" | "monstruo" | "jefe";
   /** 1 (peligro común) a 5 (mata a un grupo entero si se descuida). */
   peligro: 1 | 2 | 3 | 4 | 5;
+  /** Valor de desafío (VD) orientativo, derivado del peligro. Es informativo: las reglas siguen usando el peligro. */
+  vd?: string;
   region: string;
   descripcion: string;
   ca: number;
@@ -758,12 +760,41 @@ export const BESTIARIO: Criatura[] = [
       "Canto: los que lo oigan sin tapones en los oídos deben resistir o se acercan sin pensar",
       "Ventaja en Percepción y Sigilo en el agua",
       "Vulnerable al hierro cálido y a la sal en abundancia (le quema la piel)",
+      "Variante: los hombres pez, su otra cara, la sirven en bancos bajo el agua",
     ],
     habilidades: [
       { nombre: "Canto de sirena", descripcion: "Un canto que oyen todos a 36 m; quien lo oiga camina hacia el agua.", salvacion: "sab", cd: 14, condicion: "hechizado 1 minuto", recarga: 5 },
       { nombre: "Arrastrar", descripcion: "Agarra a un objetivo en la orilla y lo arrastra bajo el agua.", salvacion: "fue", cd: 13, dano: "2d6+2", tipo_dano: "contundente", condicion: "agarrado", recarga: 6 },
     ],
     botin: "Perlas, joyas de los ahogados y, a veces, una escama que sirve de amuleto contra el agua",
+  },
+  {
+    nombre: "Hombre pez",
+    alias: ["Hombres pez", "Pez-hombre"],
+    temple: "bestia",
+    personalidad: ["temerario"],
+    blindaje: ["escamas_naturales"],
+    categoria: "monstruo",
+    peligro: 2,
+    region: "Costas, puertos, estuarios y los ríos negros de Hollín; bajo las aguas donde canta una sirena",
+    descripcion:
+      "La otra cara de las sirenas: cuerpo erguido de hombre cubierto de escamas verdegrises, aletas en la espalda y los antebrazos, boca ancha de dientes finos y ojos sin párpados. No cantan ni hablan: gorgotean. Cazan en bancos, esperan bajo el agua a que alguien se acerque a la orilla —atraído, casi siempre, por una sirena— y lo arrastran. Donde hay una sirena hay hombres pez; donde hay hombres pez, casi siempre hay una sirena cerca.",
+    ca: 13,
+    pv: "6d8+6",
+    velocidad: "6 m, nadar 12 m",
+    atributos: "FUE 14 DES 13 CON 13 INT 6 SAB 10 CAR 6",
+    ataques: ["Garras: +4, 1d6+2 cortante", "Mordisco: +4, 1d6+2 perforante", "Arpón de hueso (a distancia 9 m, solo si tiene dónde apoyarse): +4, 1d8+2 perforante"],
+    rasgos: [
+      "Anfibio: respira aire y agua; fuera del agua, velocidad 6 m y desventaja en pruebas tras una hora",
+      "Bancos: ventaja en ataques si hay otro hombre pez a 3 m del objetivo",
+      "Sirviente de la sirena: obedece a la sirena que lo guía (ignora su canto) y la defiende antes que a sí mismo",
+      "Ventaja en Percepción y Sigilo en el agua",
+      "Vulnerable a la sal en abundancia y al hierro cálido, como las sirenas",
+    ],
+    habilidades: [
+      { nombre: "Arrastrar", descripcion: "Agarra a un objetivo en la orilla y tira de él hacia el agua.", salvacion: "fue", cd: 12, dano: "1d6+2", tipo_dano: "contundente", condicion: "agarrado", recarga: 6 },
+    ],
+    botin: "Escamas (amuleto contra el agua), arpones de hueso y las joyas de los ahogados en su guarida",
   },
   {
     nombre: "Arpía",
@@ -1330,6 +1361,19 @@ export const BESTIARIO: Criatura[] = [
   },
 ];
 
+/** VD (valor de desafío) orientativo de cada criatura. Propuesto, a confirmar: es solo informativo (las reglas siguen usando el peligro 1–5). */
+export const VD: Record<string, string> = {
+  Hambriento: "1", "Lobo de Ceniza": "1/2", Duende: "1", "Ghul de las fosas": "2", Ogro: "3", "Gárgola": "2", "Arpía": "2", "Hombre pez": "3",
+  "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", "Banshee del Velo": "5", Ulfhedinn: "5", "Hombre oso": "6",
+  "Golem de carne": "5", "Elemental de fuego": "5", "Elemental de agua": "6", "Elemental de aire": "5", Grifo: "5", Sirena: "5",
+  "Gigante de hueso": "10", "Dragón joven de ceniza": "11", "Apóstol": "12", Wendigo: "9", "Golem de piedra": "10", "Elemental de tierra": "9",
+  Djinn: "11", Hidra: "10", Leshen: "9", Moira: "9", Lich: "16",
+  "Hugin, el Pensamiento": "12", "Munin, la Memoria": "11", "Vaskar, el Lobo del Eclipse": "15", "El Juez Sin Ojos": "14", "Ysolde, la Reina Pálida": "16",
+  "La Madre de los Hambrientos": "16", "El Que Golpea Bajo la Piedra": "18", "Ilvara, la Tejedora de Mañanas": "15", "Vaerth, el Sin Rostro": "16",
+  "Kharoth, Dragón Antiguo del Sol Herido": "24", "Kuru, el Cazador de Leyendas": "15",
+};
+for (const c of BESTIARIO) c.vd = VD[c.nombre];
+
 export function buscarCriatura(nombre: string): Criatura | undefined {
   const n = nombre.toLowerCase();
   return BESTIARIO.find((c) => c.nombre.toLowerCase() === n) ?? BESTIARIO.find((c) => c.alias?.some((a) => a.toLowerCase() === n)) ?? BESTIARIO.find((c) => c.nombre.toLowerCase().includes(n));
@@ -1337,7 +1381,7 @@ export function buscarCriatura(nombre: string): Criatura | undefined {
 
 export function fichaCriatura(c: Criatura): string {
   return [
-    `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5 (${c.region})`,
+    `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5${c.vd ? `, VD ${c.vd}` : ""} (${c.region})`,
     c.descripcion,
     `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}${c.blindaje?.length ? ` · blindaje: ${c.blindaje.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
@@ -1518,7 +1562,7 @@ function tipoHerida(t?: string) {
 export function textoBestiario(): string {
   const porCat = (cat: Criatura["categoria"][]) =>
     BESTIARIO.filter((c) => cat.includes(c.categoria))
-      .map((c) => `- ${c.nombre} (peligro ${c.peligro}, ${c.region}): ${c.descripcion}`)
+      .map((c) => `- ${c.nombre} (peligro ${c.peligro}${c.vd ? `, VD ${c.vd}` : ""}, ${c.region}): ${c.descripcion}`)
       .join("\n");
   return `## Bestiario de referencia
 Esto es una base, no un límite. Puedes y debes inventar criaturas nuevas cuando la aventura lo pida (harpías, gólems, hidras, krakens de ciénaga, nigromantes, caballeros caídos, demonios menores, enjambres, lo que sea), coherentes con Velmora. Para criaturas con habilidades peligrosas, regístralas con aparecer_criatura (con "definicion") para que el programa lleve sus PV y resuelva sus habilidades. Las criaturas sencillas puedes llevarlas tú con tirar_dados.

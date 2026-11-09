@@ -12,6 +12,8 @@ export interface Sumergido {
   /** Asaltos que aguanta sin aire antes de caer a 0 PV (se cuentan cuando aire llega a 0). */
   sinAire: number;
   nadador?: boolean;
+  /** Respira bajo el agua (Tritón): no gasta aire ni se ahoga. */
+  anfibio?: boolean;
   /** Segundos del reloj hasta los que ya se le ha contado el aire. */
   marca?: number;
 }
@@ -35,6 +37,13 @@ export function alAgua(partida: Partida, nombres: string[], nadador = false): st
     if (estaSumergido(conds)) { out.push(`${c.nombre} ya está bajo el agua.`); continue; }
     agregarCondicion(conds, nadador ? "sumergido (nadador)" : "sumergido");
     if (c.tipo === "pj") {
+      if (c.p.raza === "Tritón de las Mareas") {
+        agregarCondicion(conds, "sumergido (nadador)");
+        c.p.sumergido = { aire: 0, sinAire: 0, nadador: true, anfibio: true };
+        c.p.nave = undefined;
+        out.push(`${c.nombre} se sumerge: es un Tritón, respira bajo el agua y nada con soltura (no gasta aire).`);
+        continue;
+      }
       const r = respiracion(c.p);
       c.p.sumergido = { ...r, nadador: nadador || tiene(c.p, "marinero") };
       c.p.nave = undefined;
@@ -66,7 +75,7 @@ export function gastarAireDe(_partida: Partida, p: Personaje, asaltos: number): 
   const out: string[] = [];
   {
     const s = p.sumergido;
-    if (!s || p.condiciones.includes("muerto")) return out;
+    if (!s || s.anfibio || p.condiciones.includes("muerto")) return out;
     for (let i = 0; i < asaltos; i++) {
       if (s.aire > 0) { s.aire--; if (s.aire === 0) out.push(`${p.nombre} se queda sin aire: le quedan ${s.sinAire} asalto(s) de ahogo.`); continue; }
       if (p.pv <= 0) { marcarMuerto(p); out.push(`☠ ${p.nombre} se ahoga.`); break; }
@@ -108,7 +117,7 @@ export function agua(partida: Partida, d: DatosAgua): string {
   const todos = Object.values(partida.personajes).filter((p) => !p.condiciones.includes("muerto"));
   if (d.accion === "ver") {
     const l = todos.filter((p) => p.sumergido);
-    return l.length ? l.map((p) => `${p.nombre}: ${p.sumergido!.aire > 0 ? `${p.sumergido!.aire} asaltos de aire` : `SIN AIRE (${p.sumergido!.sinAire} asaltos)`}${p.pv <= 0 ? " — a 0 PV" : ""}`).join("\n") : "Nadie está bajo el agua.";
+    return l.length ? l.map((p) => `${p.nombre}: ${p.sumergido!.anfibio ? "respira bajo el agua" : p.sumergido!.aire > 0 ? `${p.sumergido!.aire} asaltos de aire` : `SIN AIRE (${p.sumergido!.sinAire} asaltos)`}${p.pv <= 0 ? " — a 0 PV" : ""}`).join("\n") : "Nadie está bajo el agua.";
   }
   const nombres = d.quienes?.length ? d.quienes : todos.map((p) => p.nombre);
   if (d.accion === "sumergir") return alAgua(partida, nombres, d.nadador).join("\n");
@@ -121,7 +130,7 @@ export function agua(partida: Partida, d: DatosAgua): string {
 export function textoAgua(partida: Partida): string {
   const l = Object.values(partida.personajes).filter((p) => p.sumergido);
   if (!l.length) return "";
-  return `## Bajo el agua\n${l.map((p) => `- ${p.nombre}: ${p.sumergido!.aire > 0 ? `${p.sumergido!.aire} asaltos de aire` : `¡SIN AIRE! ${p.sumergido!.sinAire} asalto(s) de ahogo`}${p.sumergido!.nadador ? " (nadador)" : ""}`).join("\n")}`;
+  return `## Bajo el agua\n${l.map((p) => `- ${p.nombre}: ${p.sumergido!.anfibio ? "respira bajo el agua" : p.sumergido!.aire > 0 ? `${p.sumergido!.aire} asaltos de aire` : `¡SIN AIRE! ${p.sumergido!.sinAire} asalto(s) de ahogo`}${p.sumergido!.nadador ? " (nadador)" : ""}`).join("\n")}`;
 }
 
 export const REGLAS_AGUA = `## Combate bajo el agua

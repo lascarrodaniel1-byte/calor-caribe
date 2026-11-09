@@ -26,6 +26,7 @@ export interface EntradaCodice {
   nombre: string;
   categoria: Criatura["categoria"];
   peligro: number;
+  vd?: string;
   region: string;
   secciones: SeccionCodice[];
   notas: string[];
@@ -90,7 +91,7 @@ function entradaDe(p: Partida, c: Criatura): EntradaCodice {
   const conocido = secciones.filter((s) => !s.bloqueada).length + (r.notas.length ? 1 : 0);
   const total = secciones.length + (r.notas.length ? 1 : 0);
   return {
-    nombre: c.nombre, categoria: c.categoria, peligro: c.peligro, region: c.region, secciones, notas: r.notas, vistas: r.vistas, derrotadas: r.derrotadas,
+    nombre: c.nombre, categoria: c.categoria, peligro: c.peligro, vd: c.vd, region: c.region, secciones, notas: r.notas, vistas: r.vistas, derrotadas: r.derrotadas,
     conocido, total, version: r.vistas + r.derrotadas * 2 + r.capas.length * 3 + r.notas.length * 2 + reveladas.length * 3,
   };
 }

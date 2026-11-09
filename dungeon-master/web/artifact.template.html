@@ -2220,7 +2220,7 @@
       const s = document.createElement("summary");
       const b = document.createElement("b"); b.textContent = e.nombre;
       const et = document.createElement("span"); et.className = "etiqueta"; et.textContent = e.categoria === "jefe" ? "jefe" : e.categoria === "bestia" ? "bestia" : "monstruo";
-      const pe = document.createElement("span"); pe.className = "peligro"; pe.title = "Peligro " + e.peligro + " de 5"; pe.textContent = "☠".repeat(e.peligro);
+      const pe = document.createElement("span"); pe.className = "peligro"; pe.title = "Peligro " + e.peligro + " de 5" + (e.vd ? " · VD " + e.vd : ""); pe.textContent = "☠".repeat(e.peligro);
       const ba = document.createElement("span"); ba.className = "conocimiento"; ba.title = "Cuánto sabe el grupo de ella";
       const i = document.createElement("i"); i.textContent = "◆".repeat(e.conocido) + "◇".repeat(Math.max(0, e.total - e.conocido)); ba.append(i);
       s.append(b, et, pe);

@@ -87,6 +87,7 @@ export const TEMPLES: Record<string, Temple> = {
   Varg: { deteccion: 2, iniciativa: 1, cuerpo: 1, distancia: -1, torpeza: 0, nota: "instinto de lobo: +1 iniciativa y cuerpo a cuerpo, −1 a distancia; su olfato da +2 para notar emboscadas" },
   "Nacido Pálido": { deteccion: 1, iniciativa: 2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "reflejos de depredador (+2 iniciativa)" },
   Cenizo: { iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "serenos: sin ventajas ni vicios" },
+  "Tritón de las Mareas": { deteccion: 1, iniciativa: 0, cuerpo: 0, distancia: 1, torpeza: 0, nota: "pacientes y atentos a la corriente (+1 para notar emboscadas), certeros con arpón y jabalina (+1 a distancia)" },
   "no-muerto torpe": { deteccion: -2, sinNervios: true, iniciativa: -3, cuerpo: 0, distancia: -2, torpeza: 1, nota: "carne muerta sin mente: −3 iniciativa, una torpeza más, sin nervios, −2 para notar emboscadas" },
   constructo: { sinNervios: true, deteccion: -1, iniciativa: -2, cuerpo: 0, distancia: 0, torpeza: 0, nota: "hecho, no nacido: −2 iniciativa, sin nervios, obedece sin dudar" },
   elemental: { sinNervios: true, iniciativa: 0, cuerpo: 0, distancia: 0, torpeza: 0, nota: "fuerza sin mente: sin nervios ni miedo" },

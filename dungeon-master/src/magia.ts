@@ -271,6 +271,7 @@ export const AFINIDAD: Record<string, AfinidadRaza> = {
   "Mediano de Hollín": { bono: 0, nota: "sin afinidad; su suerte también vale para lanzar" },
   Varg: { bono: -2, descuento: { calor: -1 }, nota: "−2 a lanzar; la magia le hierve la sangre (+1 de calor)" },
   "Nacido Pálido": { bono: 1, escuelas: { necromancia: 2 }, anios: 0.5, nota: "+1 a lanzar, +2 en necromancia; envejece la mitad" },
+  "Tritón de las Mareas": { bono: 0, escuelas: { elemental: 1 }, nota: "+1 en elemental (agua y frío)" },
   Cenizo: { bono: 0, escuelas: { elemental: 2 }, descuento: { calor: 1 }, nota: "+2 en elemental; el calor le cuesta 1 menos" },
 };
 
