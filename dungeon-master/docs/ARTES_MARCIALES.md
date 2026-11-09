@@ -28,7 +28,15 @@ Un **estilo** no es una clase: es una tradición con un principio y tres técnic
 | **Piedra de Karak** | Resistencia y anclaje | Pies clavados: no lo derriban ni empujan con facilidad y devuelve el empujón | Postura de muro (CA) / Golpe de yunque (aplasta armadura) / Montaña (inmóvil, agarra y no cede) | Enanos de Karak-Dûm |
 | **Danza marchita** | Evasión y contragolpe | Siglos de reflejos: mueve el cuerpo antes que el golpe; gana iniciativa | Paso de hoja (esquiva) / Contragolpe (reacción tras fallo rival) / Cien pasos (se mueve sin provocar) | Elfos Marchitos |
 | **Filo del Cuervo** | Armas y formación | Combate con lo que empuña: desarmar y trabajar en equipo con aliados | Desarmar / Cuña (ventaja si un aliado flanquea) / Muralla de cuervos (cubre a un aliado) | Compañía del Cuervo Negro |
-| **Presa de Hollín** | Agarres y llaves | Quien agarra no suelta: sus presas son ventaja y no le estorba el tamaño del rival (agarra hasta dos tallas mayores); mantenerlas no le cuesta la mano | Llave (agarrar como parte del ataque) / Palanca (dislocar: herida y desventaja al miembro) / Sumisión (apresado: solo se libra con éxito en prueba enfrentada; ahoga o rinde) | Barqueros y ladrones de cadáveres de Hollín (Medianos), fosos de lucha de Aldenmar; **por clase:** Mercenario del Cuervo, Berserker, Degollador |
+| **Presa de Hollín** | Agarres y llaves | Quien agarra no suelta: sus presas son ventaja y no le estorba el tamaño del rival (agarra hasta dos tallas mayores); mantenerlas no le cuesta la mano | Llave (agarrar como parte del ataque) / Palanca (dislocar: herida y desventaja al miembro) / Sumisión (apresado: solo se libra con éxito en prueba enfrentada; ahoga o rinde). **Lances** (proyecciones) en las tres maestrías: **Cadera** (nv. Iniciado: derriba a quien tiene agarrado), **Lance por encima del hombro** (Practicante: lo lanza al suelo o contra otro enemigo a 1,5 m; daño contundente por caída y derribado) y **Lance de molino** (Maestro: arroja al agarrado hasta 3 m, también contra obstáculos o desde un borde) | Barqueros y ladrones de cadáveres de Hollín (Medianos), fosos de lucha de Aldenmar; **por clase:** Mercenario del Cuervo, Berserker, Degollador |
+
+## Estilo único de Kuru (canon + propuesta)
+- **Canon:** Kuru tiene un estilo único, basado en **desviar ataques —proyectiles, armas o golpes— y contraatacar**.
+- **Nombre (mío):** **Contracorriente**. Nadie más lo conoce; solo se aprendería si Kuru lo enseña (la historia lo justifica).
+- **Principio (propuesto):** reacción, una vez por asalto por cada rival: cuando un ataque le va a alcanzar (a distancia, con arma o desarmado) puede **desviarlo** y reducir el daño; si lo desvía por completo, **contraataca** como parte de la misma reacción.
+- **Técnicas:** **Desvío** (reduce el daño de un proyectil, arma o golpe; con un proyectil pequeño lo **devuelve**), **Contracorriente** (si el desvío funciona, ataque de respuesta con ventaja) y **Remolino** (varios rivales a la vez: desvía y contraataca a cada uno una vez).
+- **Encaje con lo que ya tiene:** se suma a ADAPTACIÓN y ESCURRIDIZO; es la versión de maestro del «Desviar proyectiles» del Flagelante (que solo reduce un proyectil, sin contraataque).
+- Está **además** de dominar los demás estilos (ver abajo).
 
 ## Estilos por clase (propuesto)
 Cada clase marcial puede tomar un estilo como rasgo (sin dote ni maestro):
@@ -47,7 +55,7 @@ La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase
 - **Pregunta abierta:** ¿el dado sube con el nivel (1d6 → 1d8)?
 
 ## Kuru y los estilos (propuesto)
-- **Los domina todos** los estilos normales (propuesto); el Haemajitsu no lo copia a la ligera: es sangre propia y un don de Haema (como cualquiera, solo si la historia lo justifica).
+- **Los domina todos** los estilos normales y además **Contracorriente**, el suyo (propuesto); el Haemajitsu no lo copia a la ligera: es sangre propia y un don de Haema (como cualquiera, solo si la historia lo justifica).
 - **Copiar al verlos:** amplía ADAPTACIÓN: si ve a alguien usar una técnica, en su turno siguiente puede usarla; tras verla 2 veces en el combate, ya la tiene hasta el final. Regla de mesa: sólo copia lo que ve en el momento, no lo guarda para siempre.
 - **Jugadores:** NO copian al verlos (esto es solo de Kuru).
 
