@@ -47,7 +47,7 @@ const sinAccion = (c: Combatiente): string | null => puedeActuar(c);
 export interface DatosManiobra {
   atacante: string;
   objetivo: string;
-  tipo: "agarrar" | "empujar" | "escapar" | "lanzar" | "sucio";
+  tipo: "agarrar" | "empujar" | "escapar" | "lanzar" | "sucio" | "palanca" | "sumision";
   /** lanzar (Presa de Hollín, sobre quien ya tiene agarrado): cadera (lo derriba), hombro (lo estampa, y puede lanzarlo contra otro) o molino (3 m). */
   lance?: "cadera" | "hombro" | "molino";
   /** lanzar con hombro: contra qué otro enemigo cercano (a 1,5 m) lo estampa. */
@@ -103,6 +103,12 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   }
   // Estilos: Presa de Hollín (ventaja al agarrar y lanzar) y Piedra de Karak (el que se defiende, contra empujar y lanzar).
   const presaAt = arteDeCombatiente(at, "presa"), presaOb = arteDeCombatiente(ob, "presa"), piedraOb = arteDeCombatiente(ob, "piedra");
+  if (d.tipo === "palanca" || d.tipo === "sumision") {
+    if (!presaAt) throw new Error(`${at.nombre} no domina la Presa de Hollín: sin ese estilo no conoce esas llaves (arte_marcial aprender).`);
+    const need = d.tipo === "sumision" ? 3 : 2;
+    if (maestriaDe(at) < need) throw new Error(`${at.nombre} aún no tiene la maestría para ${d.tipo === "sumision" ? "la Sumisión" : "la Palanca"} (hace falta ${need === 3 ? "Maestro" : "Practicante"}).`);
+    if (!condsDe(ob).some((x) => reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${at.nombre}\\)`, "i").test(x))) throw new Error(`${ob.nombre} no está agarrado por ${at.nombre}: primero agárralo (maniobra agarrar).`);
+  }
   if (d.tipo === "lanzar") {
     if (!presaAt) throw new Error(`${at.nombre} no domina la Presa de Hollín: sin ese estilo no puede lanzar (arte_marcial aprender).`);
     const need = d.lance === "molino" ? 3 : d.lance === "hombro" ? 2 : 1;
@@ -124,7 +130,7 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   }
   // Piedra de Karak, Montaña (Maestro): nada lo mueve de su sitio.
   if (piedraOb && maestriaDe(ob) === 3 && (d.tipo === "empujar" || d.tipo === "lanzar")) return `${at.nombre} intenta ${d.tipo === "lanzar" ? "lanzar" : "empujar"} a ${ob.nombre}, pero es una montaña: Piedra de Karak (Maestro), no se mueve ni cae.`;
-  const hayV = !!d.ventaja || (callejonAt && distraido && d.tipo !== "escapar") || (presaAt && (d.tipo === "agarrar" || d.tipo === "lanzar")) || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
+  const hayV = !!d.ventaja || (callejonAt && distraido && d.tipo !== "escapar") || (presaAt && (d.tipo === "agarrar" || d.tipo === "lanzar" || d.tipo === "palanca" || d.tipo === "sumision")) || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
   const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";
   const ta = tirar(`1d20${signo(aA.bono)}`, modoA);
   const incapObjetivo = efO.incapacitado;
@@ -135,6 +141,14 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   const cabecera = `${at.nombre} (${aA.hab} ${describir(ta)}${modoA !== "normal" ? `, ${modoA}` : ""}) contra ${ob.nombre} (${def.hab} ${describir(td)}${modoD !== "normal" ? `, ${modoD}` : ""})${incapObjetivo ? " — está incapacitado: no se resiste" : ""}`;
   if (!gana) return `${cabecera} → FALLA${ta.total === td.total ? " (empate: todo sigue igual)" : ""}.`;
 
+  if (d.tipo === "palanca") {
+    const r = aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "brazo entumecido", nota: `dislocado por la palanca de ${at.nombre}` }).split("\n")[0];
+    return `${cabecera} → ¡PALANCA! ${ob.nombre} sigue agarrado y le dislocan un miembro: ${r} (desventaja en sus ataques y pruebas hasta que se lo curen).`;
+  }
+  if (d.tipo === "sumision") {
+    const r = aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "sometido", nota: `sumisión de ${at.nombre}` }).split("\n")[0];
+    return `${cabecera} → ¡SUMISIÓN! ${r} ${ob.nombre} queda inmovilizado en la llave de ${at.nombre}: velocidad 0 y desventaja en ataques y pruebas (también para zafarse).`;
+  }
   if (d.tipo === "lanzar") {
     const lance = d.lance ?? "cadera";
     const suelta = condsDe(ob).filter((x) => !(reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${at.nombre}\\)`, "i").test(x)));
@@ -162,7 +176,7 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
     return `${cabecera} → ¡AGARRA! ${r.split("\n")[0]} Mientras lo sujeta, ${at.nombre} tiene una mano ocupada; si queda incapacitado o lo apartan, lo suelta.`;
   }
   if (d.tipo === "escapar") {
-    const resto = condsDe(at).filter((x) => reconocer(x)?.id !== "agarrado");
+    const resto = condsDe(at).filter((x) => reconocer(x)?.id !== "agarrado" && !/^sometid[oa].*sumisi[oó]n de/i.test(x));
     condsDe(at).splice(0, condsDe(at).length, ...resto);
     return `${cabecera} → ¡SE ZAFA! ${at.nombre} ya no está agarrado.`;
   }

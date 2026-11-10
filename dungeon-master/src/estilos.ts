@@ -3,8 +3,7 @@
 // El Haemajitsu (Flagelante) y Contracorriente (Kuru) son especiales; el resto se aprende con un maestro o por la clase.
 import type { Partida, Personaje } from "./estado.js";
 import type { DatosAtaque } from "./combate.js";
-import { nvl } from "./niveles.js";
-import { artesDe, maestria, NOMBRE_MAESTRIA } from "./estilos_base.js";
+import { artesDe, dadoHaemajitsu, maestria, NOMBRE_MAESTRIA } from "./estilos_base.js";
 import { mod, signo, valor } from "./reglas.js";
 
 export interface Tecnica { nombre: string; efecto: string }
@@ -27,8 +26,8 @@ export const ESTILOS: Estilo[] = [
     principio: "Sangre propia acumulada en los puntos de contacto y liberada a gran velocidad: sus golpes sin armas pegan como una maza (daño por nivel, contundentes y brutales) y sus manos no se rompen. Pasivo, sin coste en PV: es su forma de pelear.",
     tecnicas: [
       { nombre: "Puño de Haema", efecto: "golpe que agrava la herida como una maza (pasivo, siempre activo)" },
-      { nombre: "Fluir", efecto: "reacción: endurece una zona al ser golpeado y reduce el daño del golpe con la sangre en el punto de contacto (el DM lo aplica con la Comunión del dolor)" },
-      { nombre: "Corriente carmesí", efecto: "el golpe rompe guardia y penetra armadura: el rival sufre desventaja en su siguiente defensa o su armadura no cuenta" },
+      { nombre: "Fluir", efecto: "reacción (solo cuerpo a cuerpo): la sangre acude al punto del golpe y reduce su daño en un dado de Haemajitsu + mod. CON, mínimo 1 (automático)" },
+      { nombre: "Corriente carmesí", efecto: "sus golpes se resuelven como un martillo de guerra: rompen la guardia, penetran y agravan la herida más hondo que una maza (automático)" },
     ],
     ensena: "Los Flagelantes de Haema", clases: ["Flagelante"], soloHistoria: true,
   },
@@ -38,7 +37,7 @@ export const ESTILOS: Estilo[] = [
     tecnicas: [
       { nombre: "Llave y zancadilla", efecto: "derriba o agarra con ventaja a quien ya está en combate con otro" },
       { nombre: "Arena y codo", efecto: "maniobra {tipo: sucio}: salvación de CON (CD 8 + competencia + mejor de Atletismo o Acrobacias) o queda cegado hasta el final de su siguiente turno (automático)" },
-      { nombre: "Arrastre", efecto: "agarra al rival y lo usa de escudo: los ataques a distancia contra él se los lleva el rival" },
+      { nombre: "Arrastre", efecto: "si tiene agarrado a alguien, los ataques a distancia contra él se los lleva el agarrado (automático)" },
     ],
     ensena: "Los bajos fondos de Aldenmar (Degolladores, tabernas)", clases: ["Degollador", "Cazador de Brujas"],
   },
@@ -68,7 +67,7 @@ export const ESTILOS: Estilo[] = [
     tecnicas: [
       { nombre: "Desarmar", efecto: "atacar con desarmar: true; si impacta, el rival salva (la mejor de FUE o DES) o suelta el arma (automático)" },
       { nombre: "Cuña", efecto: "ventaja en el ataque si hay un aliado junto al objetivo (automático)" },
-      { nombre: "Muralla de cuervos", efecto: "reacción: cubre a un aliado adyacente y recibe el golpe por él con ventaja de defensa" },
+      { nombre: "Muralla de cuervos", efecto: "reacción: si golpean cuerpo a cuerpo a un aliado a 1,5 m de él y del atacante, recibe él el golpe y el atacante tiene desventaja (automático)" },
     ],
     ensena: "La Compañía del Cuervo Negro", clases: ["Mercenario del Cuervo", "Caballero Juramentado"],
   },
@@ -77,8 +76,8 @@ export const ESTILOS: Estilo[] = [
     principio: "Quien agarra no suelta: ventaja al agarrar y al lanzar, y quien intenta zafarse de él tiene que ganarle con desventaja. Mantener la presa no le cuesta la mano. Es el estilo «abierto»: lo puede tomar cualquier clase marcial.",
     tecnicas: [
       { nombre: "Llave y Cadera", efecto: "agarra como parte del ataque; Cadera: derriba a quien tiene agarrado (maniobra lanzar, lance cadera)" },
-      { nombre: "Palanca y Lance por encima del hombro", efecto: "disloca (herida y desventaja al miembro); Lance por encima del hombro: lo estampa en el suelo (1d6 y derribado) o contra otro enemigo a 1,5 m (maniobra lanzar, lance hombro)" },
-      { nombre: "Sumisión y Lance de molino", efecto: "apresado hasta ganar una prueba enfrentada; Lance de molino: lo arroja hasta 3 m (2d6 y derribado, maniobra lanzar, lance molino)" },
+      { nombre: "Palanca y Lance por encima del hombro", efecto: "Palanca (maniobra {tipo: palanca} sobre un agarrado, Practicante): disloca un miembro (brazo entumecido: desventaja en ataques y pruebas) (automático); Lance por encima del hombro: lo estampa en el suelo (1d6 y derribado) o contra otro enemigo a 1,5 m (maniobra lanzar, lance hombro)" },
+      { nombre: "Sumisión y Lance de molino", efecto: "Sumisión (maniobra {tipo: sumision} sobre un agarrado, Maestro): queda «sometido» (velocidad 0, desventaja en ataques y pruebas, también para zafarse) (automático); Lance de molino: lo arroja hasta 3 m (2d6 y derribado, maniobra lanzar, lance molino)" },
     ],
     ensena: "Barqueros y ladrones de cadáveres de Hollín, y los fosos de lucha de Aldenmar",
     clases: ["Mercenario del Cuervo", "Berserker de Ceniza", "Degollador", "Cazador de Brujas", "Caballero Juramentado", "Flagelante"],
@@ -102,16 +101,12 @@ export function buscarEstilo(n: string): Estilo | undefined {
   return ESTILOS.find((e) => e.id === x || norm(e.nombre) === x) ?? ESTILOS.find((e) => norm(e.nombre).includes(x) || x.includes(e.id));
 }
 
-export { artesDe, tieneArte, maestria, NOMBRE_MAESTRIA, arteDeCombatiente, maestriaDe } from "./estilos_base.js";
+export { artesDe, dadoHaemajitsu, tieneArte, maestria, NOMBRE_MAESTRIA, arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 
 /** Cuántos estilos puede conocer: uno; dos con INT o SAB 14+ y un segundo maestro. */
 export const cupoDeArtes = (p: Personaje, segundoMaestro: boolean) => 1 + (segundoMaestro && (valor(p, "int") >= 14 || valor(p, "sab") >= 14) ? 1 : 0);
 
 // ------------------------------------------------------------------ Haemajitsu: golpes sin armas del Flagelante
-/** El dado de los golpes del Flagelante crece con el nivel: 1d6 (como una maza), 1d8, 1d10 y 1d12. */
-export function dadoHaemajitsu(p: Personaje): string {
-  return p.nivel >= nvl(13) ? "1d12" : p.nivel >= nvl(9) ? "1d10" : p.nivel >= nvl(5) ? "1d8" : "1d6";
-}
 const SIN_ARMAS = /^(pu[ñn]os?|sin armas?|desarmad[oa]|golpes?|pu[ñn]etazos?|patadas?|codazos?|rodillazos?|haemajitsu|pu[ñn]o de haema)$/i;
 
 /** Antes de atacar: el golpe sin armas de un Flagelante es siempre un golpe de Haemajitsu (maza: contundente y brutal). */
@@ -123,8 +118,8 @@ export function haemajitsu(partida: Partida, e: DatosAtaque): { e: DatosAtaque; 
   const attr = e.atributo ?? (valor(p, "des") > valor(p, "fue") ? "des" : "fue");
   const dado = dadoHaemajitsu(p);
   return {
-    e: { ...e, arma: "puño de Haema (como una maza)", dano: `${dado}${signo(mod(valor(p, attr)))}`, tipo_dano: "contundente", atributo: attr },
-    nota: `🩸 Haemajitsu: la sangre de ${p.nombre} se agolpa en el puño y el golpe pega como una maza (${dado}${signo(mod(valor(p, attr)))} contundente; hiere más hondo).`,
+    e: { ...e, arma: maestria(p) >= 3 ? "puño de Haema (corriente carmesí, como un martillo de guerra)" : "puño de Haema (como una maza)", dano: `${dado}${signo(mod(valor(p, attr)))}`, tipo_dano: "contundente", atributo: attr },
+    nota: `🩸 Haemajitsu: la sangre de ${p.nombre} se agolpa en el puño y el golpe pega como una maza (${dado}${signo(mod(valor(p, attr)))} contundente; hiere más hondo)${maestria(p) >= 3 ? "; Corriente carmesí: rompe la guardia y aplasta la armadura como un martillo" : ""}.`,
   };
 }
 
@@ -149,7 +144,7 @@ export const REGLAS_ARTES = `## Artes marciales (estilos)
 - Contracorriente: reacción automática de quien lo domina (Kuru): reduce el daño que le llega; si lo anula, avisa del contraataque que debes hacer tú (atacar con reaccion: true y ventaja: true).
 - Kuru domina todos los estilos normales y copia al verlos: si ve usar una técnica, la puede usar en su turno siguiente; tras verla dos veces en el mismo combate, la conserva hasta el final. No copia el Haemajitsu a la ligera (es sangre propia de Haema).
 - Danza marchita (automático): +2 a la iniciativa, ventaja en salvaciones de DES, Contragolpe (avisa del ataque de respuesta si le falla un cuerpo a cuerpo) y, de Maestro, Cien pasos (no provoca ataques de oportunidad). Filo del Cuervo (automático): +1 por aliado junto al objetivo (máx. +2), Cuña (ventaja con un aliado junto) y atacar {desarmar: true}. Callejón de Aldenmar (automático): ventaja en maniobras contra rivales distraídos y maniobra {tipo: sucio} (arena y codo, desde Practicante).
-- Lo que sigue siendo cosa tuya: Fluir y Corriente carmesí del Haemajitsu, Muralla de cuervos, Arrastre, y Palanca y Sumisión de la Presa: aplícalos con criterio según el catálogo.`;
+- Presa de Hollín, sobre quien ya tiene agarrado: maniobra {tipo: palanca} (Practicante: brazo dislocado) y {tipo: sumision} (Maestro: «sometido»). Haemajitsu: Fluir (reacción que reduce el daño cuerpo a cuerpo) y Corriente carmesí (Maestro: sus golpes cuentan como un martillo). Filo del Cuervo, Muralla de cuervos (Maestro, reacción automática de cobertura a un aliado adyacente) y Callejón, Arrastre (Maestro, escudo humano contra ataques a distancia). Ya no queda ninguna técnica sin automatizar.`;
 
 // ------------------------------------------------------------------ la herramienta arte_marcial
 export interface DatosArte {

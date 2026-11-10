@@ -288,7 +288,7 @@ const esquemas = {
   maniobra: z.object({
     atacante: z.string(),
     objetivo: z.string(),
-    tipo: z.enum(["agarrar", "empujar", "escapar", "lanzar", "sucio"]).describe("lanzar: Presa de Hollín, sobre alguien que ya tiene agarrado (con lance); sucio: Callejón de Aldenmar (Practicante), arena y codo: salvación de CON o queda cegado"),
+    tipo: z.enum(["agarrar", "empujar", "escapar", "lanzar", "sucio", "palanca", "sumision"]).describe("lanzar: Presa de Hollín, sobre alguien que ya tiene agarrado (con lance); sucio: Callejón de Aldenmar (Practicante), arena y codo: salvación de CON o queda cegado"),
     lance: z.enum(["cadera", "hombro", "molino"]).optional().describe("lanzar: cadera (derriba), hombro (lo estampa, 1d6; puede ir contra otro) o molino (3 m, 2d6)"),
     contra: z.string().optional().describe("lanzar con hombro: el otro enemigo cercano (1,5 m) contra el que lo estampa"),
     efecto: z.enum(["derribar", "alejar"]).optional().describe("empujar: derribarlo o apartarlo 1,5 m"),

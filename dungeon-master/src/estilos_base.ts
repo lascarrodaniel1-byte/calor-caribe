@@ -25,3 +25,8 @@ export function arteDeCombatiente(c: Combatiente, id: string): boolean {
 }
 /** Maestría de un combatiente: PJ por nivel, criatura (Kuru) siempre Maestro. */
 export const maestriaDe = (c: Combatiente): 1 | 2 | 3 => (c.tipo === "pj" ? maestria(c.p) : 3);
+
+/** El dado de los golpes del Flagelante crece con el nivel: 1d6 (como una maza), 1d8, 1d10 y 1d12. */
+export function dadoHaemajitsu(p: Personaje): string {
+  return p.nivel >= nvl(13) ? "1d12" : p.nivel >= nvl(9) ? "1d10" : p.nivel >= nvl(5) ? "1d8" : "1d6";
+}

@@ -29,6 +29,7 @@ import { agregarCondicion, efectos, mismaCondicion, reconocer, textoEfectos, niv
 
 import { nvl } from "./niveles.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
+import { dadoHaemajitsu } from "./estilos_base.js";
 import { distanciaPlano } from "./espacio.js";
 import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
@@ -676,13 +677,46 @@ function ataqueRacial(partida: Partida, d: DatosAtaque): DatosAtaque | null {
   return null;
 }
 
+/** Filo del Cuervo (Muralla de cuervos, Maestro) y Callejón (Arrastre, Maestro): a veces otro recibe el golpe en lugar del objetivo. */
+function redirigirAtaque(partida: Partida, d: DatosAtaque, at: Combatiente, ob: Combatiente): { objetivo: string; nota: string; desventaja?: boolean } | null {
+  const combate = partida.combate;
+  if (!combate || d.reaccion) return null;
+  const dist = (a: string, b: string) => distanciaPlano(partida, a, b)?.metros;
+  // Arrastre: tiene agarrado a alguien y lo usa de escudo contra los ataques a distancia.
+  if (d.a_distancia && arteDeCombatiente(ob, "callejon") && maestriaDe(ob) === 3) {
+    for (const o of combate.orden) {
+      if (igual(o.nombre, at.nombre) || igual(o.nombre, ob.nombre)) continue;
+      let c: Combatiente; try { c = localizar(partida, o.nombre); } catch { continue; }
+      if (condsDe(c).some((x) => reconocer(x)?.id === "agarrado" && new RegExp(`(?:por|cadenas de) ${ob.nombre}\\)`, "i").test(x)))
+        return { objetivo: c.nombre, nota: `🛡 Arrastre (Callejón de Aldenmar): ${ob.nombre} se escuda tras ${c.nombre}, a quien tiene agarrado, y el ataque de ${at.nombre} se lo lleva él.` };
+    }
+  }
+  // Muralla de cuervos: un Maestro del Filo del Cuervo cubre a un aliado adyacente y recibe el golpe cuerpo a cuerpo por él.
+  if (!d.a_distancia && ob.tipo === "pj") {
+    for (const g of Object.values(partida.personajes)) {
+      if (g.nombre === ob.nombre || igual(g.nombre, at.nombre) || g.pv <= 0 || g.condiciones.includes("muerto")) continue;
+      const gc: Combatiente = { tipo: "pj", nombre: g.nombre, p: g } as Combatiente;
+      if (!arteDeCombatiente(gc, "cuervo") || maestriaDe(gc) < 3) continue;
+      if (efectos(g.condiciones).incapacitado || turnoDe(partida, g.nombre).reaccion) continue;
+      const a = dist(g.nombre, ob.nombre), b = dist(g.nombre, at.nombre);
+      if (a === undefined || b === undefined || a > 2.2 || b > 2.2) continue; // adyacente, diagonal incluida (1,5 m y 2,1 m)
+      turnoDe(partida, g.nombre).reaccion = true;
+      return { objetivo: g.nombre, desventaja: true, nota: `🛡 Muralla de cuervos (Filo del Cuervo): ${g.nombre} se interpone y recibe el golpe dirigido a ${ob.nombre} (el atacante tiene desventaja). Gasta su reacción.` };
+    }
+  }
+  return null;
+}
+
 export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   // Ataques raciales con su propio daño (si el DM no lo da): Mordisco del Varg y del Nacido Pálido, Llama sagrada del Cenizo.
   const racial = ataqueRacial(partida, d);
   if (racial) d = racial;
   if (d.dano && !/^[0-9dD+\-\s]+$/.test(d.dano)) throw new Error(`Daño no válido «${d.dano}»: usa solo dados y números, como «1d8+3» o «2d6+4+1d6» (el tipo de daño va en tipo_dano, no en el texto).`);
   const at = localizar(partida, d.atacante);
-  const ob = localizar(partida, d.objetivo);
+  let ob = localizar(partida, d.objetivo);
+  const redir = redirigirAtaque(partida, d, at, ob);
+  let notaRedir = "";
+  if (redir) { ob = localizar(partida, redir.objetivo); d = { ...d, objetivo: redir.objetivo, desventaja: d.desventaja || redir.desventaja }; notaRedir = redir.nota; }
   if (ob.tipo === "pj" && ob.p.condiciones.includes("muerto")) throw new Error(`${ob.nombre} ya está muerto: no se le puede atacar.`);
   if (ob.tipo === "pnj" && ob.n.pv !== undefined && ob.n.pv <= 0) throw new Error(`${ob.nombre} ya ha caído (0 PV): no se le puede atacar.`);
   const distancia = !!d.a_distancia;
@@ -921,6 +955,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     `${at.nombre}${at.tipo !== "criatura" ? ` (${vet})` : ""} ataca a ${ob.nombre}${d.arma ? ` con ${d.arma}` : ""}${distancia ? " a distancia" : ""}: ` +
       `${describir(t)}${modo !== "normal" ? ` (${modo})` : ""}${repetido} [${desglose.join(", ")}] vs CA ${ca}`,
   ];
+  if (notaRedir) lineas.push(notaRedir);
   if (motivos.length) lineas.push(motivos.join("; "));
   if (posturaMuro) lineas.push(`🪨 Postura de muro (Piedra de Karak): ${ob.nombre} tiene +1 a la CA.`);
   // Danza marchita, Contragolpe (Practicante): si un ataque cuerpo a cuerpo le falla, contraataca como reacción.
@@ -1011,6 +1046,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       dano = Math.max(0, dano - dv.total);
       tOb.reaccion = true;
       lineas.push(`🌀 Desviar proyectiles: ${ob.nombre} reduce el daño ${describir(dv)} (${antes} → ${dano}). Gasta su reacción.`);
+    }
+    // Haemajitsu, Fluir (Practicante): la sangre acude al punto de contacto y endurece la zona (reacción, solo cuerpo a cuerpo).
+    if (dano > 0 && combate && !distancia && !tOb.reaccion && ob.tipo === "pj" && ob.p.pv > 0 && !efOb.incapacitado && arteDeCombatiente(ob, "haemajitsu") && maestriaDe(ob) >= 2) {
+      const fl = tirar(`${dadoHaemajitsu(ob.p)}${signo(mod(valor(ob.p, "con")))}`);
+      const antes = dano;
+      dano = Math.max(0, dano - Math.max(1, fl.total));
+      tOb.reaccion = true;
+      lineas.push(`🩸 Fluir (Haemajitsu): la sangre de ${ob.nombre} acude al punto del golpe y endurece la zona ${describir(fl)} (${antes} → ${dano}). Gasta su reacción.`);
     }
     // Contracorriente (Kuru): reacción que desvía cualquier ataque (proyectil, arma o golpe) y, si lo anula, contraataca.
     if (dano > 0 && combate && !tOb.reaccion && arteDeCombatiente(ob, "contracorriente") && !efOb.incapacitado && (ob.tipo !== "pj" || ob.p.pv > 0)) {

@@ -80,3 +80,11 @@ La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase
 - **Filo del Cuervo:** +1 al ataque por cada aliado junto al objetivo (máx. +2, hace falta plano), **Cuña** (ventaja con un aliado junto, desde Practicante) y **Desarmar** (`atacar {desarmar: true}`: si impacta, salvación de FUE o DES o suelta el arma).
 - **Callejón de Aldenmar:** ventaja en maniobras contra rivales distraídos (derribado, cegado, aturdido, agarrado, asustado, dormido, sorprendido, desarmado, incapacitado) y **Arena y codo** (`maniobra {tipo: sucio}`, Practicante: salvación de CON o cegado hasta el final de su siguiente turno).
 - Siguen a cargo del DM: Fluir y Corriente carmesí (Haemajitsu), Muralla de cuervos, Arrastre, Postura de muro, Golpe de yunque, Montaña, Palanca y Sumisión.
+
+### Tercera tanda (todo automatizado)
+- **Piedra de Karak:** Postura de muro (+1 CA en cuerpo a cuerpo para personajes), Golpe de yunque (`atacar {yunque: true}`) y Montaña.
+- **Filo del Cuervo:** Muralla de cuervos (reacción de cobertura a un aliado adyacente).
+- **Callejón de Aldenmar:** Arrastre (el agarrado hace de escudo contra ataques a distancia).
+- **Presa de Hollín:** Palanca y Sumisión (condición «sometido»).
+- **Haemajitsu:** Fluir (reacción que reduce el daño) y Corriente carmesí (golpes como un martillo de guerra).
+- No queda ninguna técnica a cargo del DM; la copia «al verlo» de Kuru sigue siendo regla escrita para el DM.
