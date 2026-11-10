@@ -266,7 +266,7 @@ export function fichaTexto(p: Personaje): string {
   };
   const maxEf = pvMaxEfectivo(p);
   return [
-    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""}${p.genero ? ` [${p.genero}]` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
+    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""}${p.genero ? ` [${p.genero}]` : " [género sin definir]"} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
     p.enfermedades?.some((e) => e.etapa !== "incubando") ? `  Enfermo: ${p.enfermedades.filter((e) => e.etapa !== "incubando").map((e) => `${e.id.replace(/_/g, " ")} (${e.etapa})`).join(", ")}` : "",
     p.idiomas?.length ? `  Idiomas: ${p.idiomas.map((i) => IDIOMAS_NOMBRES[i] ?? i).join(", ")}` : "",
