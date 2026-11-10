@@ -37,6 +37,8 @@ import { nvl } from "./niveles.js";
 export interface Personaje {
   nombre: string;
   jugador?: string;
+  /** Género del personaje (Masculino, Femenino, No binario u otro texto): el DM lo usa para los pronombres y los artículos. */
+  genero?: string;
   /** Enfermedades que sufre (ver enfermedades.ts) y si está aislado (no contagia ni se contagia). */
   enfermedades?: import("./enfermedades.js").Enfermedad[];
   /** Recibió el rito de sal y fuego: descansa y no se alza. */
@@ -264,7 +266,7 @@ export function fichaTexto(p: Personaje): string {
   };
   const maxEf = pvMaxEfectivo(p);
   return [
-    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
+    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""}${p.genero ? ` [${p.genero}]` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
     `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
     p.enfermedades?.some((e) => e.etapa !== "incubando") ? `  Enfermo: ${p.enfermedades.filter((e) => e.etapa !== "incubando").map((e) => `${e.id.replace(/_/g, " ")} (${e.etapa})`).join(", ")}` : "",
     p.idiomas?.length ? `  Idiomas: ${p.idiomas.map((i) => IDIOMAS_NOMBRES[i] ?? i).join(", ")}` : "",

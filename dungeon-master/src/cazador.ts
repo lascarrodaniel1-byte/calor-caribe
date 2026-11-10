@@ -6,7 +6,6 @@ import { REGLAS_SAL } from "./sal.js";
 import type { Partida, Personaje } from "./estado.js";
 import { curaConRunas, esCazador, MAX_HOJAS, papelesDe, potenciaDe, type RegistroMagia } from "./cazador_base.js";
 import type { EstadoJefe, Criatura } from "./bestiario.js";
-import { tirar } from "./dados.js";
 import { aplicarCondicion, localizar } from "./combate.js";
 import { bajarHerida } from "./heridas.js";
 import { buscarLugar, rumboEntre } from "./mapa.js";

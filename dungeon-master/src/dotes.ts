@@ -2,7 +2,7 @@
 // para el Humano del Faro al crearlo. Cada una tiene requisito, un efecto sencillo y, a veces, +1 a una característica.
 import type { Partida, Personaje } from "./estado.js";
 import { ALDESCANSAR } from "./recursos.js";
-import { ATRIBUTOS, valor, type Atributo } from "./reglas.js";
+import { valor, type Atributo } from "./reglas.js";
 import { tiene } from "./dotes_base.js";
 
 export { tiene, opcionDe } from "./dotes_base.js";

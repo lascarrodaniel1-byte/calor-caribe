@@ -17,7 +17,7 @@ import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js"
 import { gastarReserva, usoDivino } from "./juramento.js";
 import { autoManos, caEfectiva, propiedades } from "./manos.js";
 import { esDegollador, ojosEnLaEspalda } from "./degollador_base.js";
-import { esFlagelante, esquivaAutomatica, nivelDolor, pasoElusivoActivo } from "./flagelante_base.js";
+import { esFlagelante, esquivaAutomatica, pasoElusivoActivo } from "./flagelante_base.js";
 import { selloDe } from "./segador_base.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { pxCriatura, registrarBaja } from "./progresion.js";

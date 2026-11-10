@@ -1,6 +1,6 @@
 // La sal: en Velmora los muertos sin rito de sal y fuego se levantan. Los frascos de sal del Cazador de Brujas (y de quien los lleve)
 // sirven para cuatro cosas: un círculo que frena a los no-muertos, lanzarla contra ellos, salar una herida con Podre y el rito del cadáver.
-import { aplicarCondicion, condsDe, localizar, type Combatiente } from "./combate.js";
+import { aplicarCondicion, localizar, type Combatiente } from "./combate.js";
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { competencia, mod, valor } from "./reglas.js";

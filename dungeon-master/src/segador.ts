@@ -3,7 +3,7 @@
 // los muertos y sella las almas de los vivos a los que hiere (les quita su habilidad firma). Todo poder suma Deuda con
 // Neter, que pesa más cuanto más poder tiene y se paga con almas.
 import type { Partida, Personaje } from "./estado.js";
-import { localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque, type ResultadoAtaque } from "./combate.js";
+import { localizar, turnoDe, type Combatiente, type DatosAtaque, type ResultadoAtaque } from "./combate.js";
 import { describir, tirar } from "./dados.js";
 import { terminarFuria } from "./furia.js";
 import { motivoNoActua } from "./condiciones.js";

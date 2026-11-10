@@ -2,7 +2,7 @@
 // los hechizos de círculo bajo le cuestan cada vez menos y su bastón sirve de catalizador. La Recuperación arcana tiene usos reales.
 import { tiene } from "./dotes_base.js";
 import type { Partida, Personaje } from "./estado.js";
-import { buscarHechizo, buscarTipo, MAESTRIAS, nombreEscuelaHechiceria, sincronizarGrimorio, tipoDe, tiposMax, tiposDeEscuelas, type Hechizo } from "./magia.js";
+import { buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, tipoDe, tiposMax, tiposDeEscuelas, type Hechizo } from "./magia.js";
 import { RECURSOS_CLASE } from "./recursos.js";
 
 import { nvl } from "./niveles.js";

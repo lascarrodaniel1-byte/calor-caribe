@@ -1,7 +1,7 @@
 // Combate montado: montar, desmontar, caer de la montura y la ventaja de cargar desde lo alto.
 import { tiene } from "./dotes_base.js";
 import { agregarCondicion } from "./condiciones.js";
-import { localizar, condsDe } from "./combate.js";
+import { localizar } from "./combate.js";
 import type { Partida, Personaje } from "./estado.js";
 import { caida } from "./maniobras.js";
 import { salvacion } from "./reglas.js";

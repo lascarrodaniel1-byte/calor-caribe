@@ -10,14 +10,12 @@ import { esBarberoC } from "./barbero_base.js";
 import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablarConMuertos, invocacion, liberarAlma, liberarSiMuere, prepararDescarga, sellarAlma } from "./segador.js";
 import { esSegador, exigirLibre } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
-import { arteMarcial } from "./estilos.js";
-import { haemajitsu } from "./estilos.js";
+import { arteMarcial, haemajitsu } from "./estilos.js";
 import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
   buscarCriatura,
   danar,
-  devolverRobos,
   estadoTexto,
   presagio,
   usarHabilidad,
@@ -42,7 +40,7 @@ import {
   UBICACIONES,
 } from "./heridas.js";
 import { aprenderTipo, avisoLicencia, comprenderMagia } from "./hechicero.js";
-import { ajustarMaestriaHechicero, consumirTirada, historialDones, registrarDonForzado, tiradaPendiente, tirarDonJugador, buscarHechizo, buscarTipo, nombreEscuelaHechiceria, sincronizarGrimorio, TIPOS_IDS, tiposMax, tipoDe, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
+import { ajustarMaestriaHechicero, consumirTirada, historialDones, registrarDonForzado, tiradaPendiente, tirarDonJugador, buscarHechizo, TIPOS_IDS, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
 import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
@@ -139,6 +137,7 @@ const esquemas = {
   guardar_personaje: z.object({
     nombre: z.string(),
     jugador: z.string().optional().describe("Nombre de la persona que lo juega"),
+    genero: z.string().max(30).optional().describe("Género del personaje tal y como lo eligió el jugador (Masculino, Femenino, No binario u otro texto): úsalo para pronombres y artículos"),
     raza: z.enum(NOMBRES_RAZAS),
     clase: z.enum(NOMBRES_CLASES),
     nivel: z.number().int().min(1).max(20),
@@ -1288,7 +1287,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         // Volver a guardar la ficha conserva el estado propio de cada clase (sellos, Deuda, juramento, usos, dardos…).
         if (!nuevoEnClase && previo) {
           const q = previo as unknown as Record<string, unknown>, n = p as unknown as Record<string, unknown>;
-          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "habilidad_extra", "luna", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "artes", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
+          for (const k of ["sellos", "almas", "deuda", "invocaciones", "pielHueso", "gastados", "dardos", "presa", "kit_usos", "anestesia", "sustento", "idiomas", "enfermedades", "aislado", "dotes", "dote_humano", "habilidad_extra", "luna", "montura", "sumergido", "nave", "juramento", "papeles", "muestras", "mascota", "artes", "genero", "manos", "estilo", "leyenda", "mariscal", "veterania"]) if (q[k] !== undefined && n[k] === undefined) n[k] = q[k];
         }
         partida.personajes[p.nombre] = p;
         consumirDon?.();

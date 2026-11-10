@@ -2508,6 +2508,13 @@
     avisar.onclick = () => { avisar.disabled = true; setTimeout(() => { avisar.disabled = false; }, 20000); $("velo-personaje").hidden = true; enviar(`${nombre} pide al DM que tire el don arcano de su nuevo personaje (tirar_don_arcano).`); };
     raiz.append(avisar);
     raiz.append(campo("pj-nombre", "Nombre de tu personaje", texto("pj-nombre", 40, "No el tuyo de jugador")));
+    const gen = document.createElement("div"); gen.className = "campo";
+    const genEt = document.createElement("label"); genEt.htmlFor = "pj-genero"; genEt.textContent = "Género";
+    const genSel = select("pj-genero", [...DF.generos.map((g) => [g.id, g.nombre]), ["__otro", "Otro (lo escribo yo)…"]], "Elige…");
+    const genOtro = texto("pj-genero-otro", 30, "Escríbelo (p. ej. agénero, fluido…)"); genOtro.hidden = true; genOtro.setAttribute("aria-label", "Género (escrito)");
+    genSel.addEventListener("change", () => { genOtro.hidden = genSel.value !== "__otro"; if (!genOtro.hidden) genOtro.focus(); });
+    gen.append(genEt, genSel, genOtro);
+    raiz.append(gen);
     const fila1 = document.createElement("div"); fila1.className = "fila";
     fila1.append(
       campo("pj-raza", "Raza", select("pj-raza", DF.razas.map((r) => [r.nombre, `${r.nombre} (${r.bonos})`]), "Elige…"), true),
@@ -2659,7 +2666,7 @@
     const base = {};
     ATR.forEach((a) => (base[a] = Number($("pj-a-" + a).value) || 0));
     const datos = {
-      nombre: $("pj-nombre").value, jugador: nombre, raza: $("pj-raza").value, clase: $("pj-clase").value, veterania: $("pj-vet").value,
+      nombre: $("pj-nombre").value, jugador: nombre, genero: $("pj-genero").value === "__otro" ? $("pj-genero-otro").value.trim() : $("pj-genero").value, raza: $("pj-raza").value, clase: $("pj-clase").value, veterania: $("pj-vet").value,
       personalidad: per, base, metodo: form.metodo, tipo: $("pj-tipo").value, linaje: $("pj-linaje").value, dote: $("pj-raza").value === "Humano del Faro" ? $("pj-dote").value : undefined, opcion_dote: $("pj-dote-opcion").value || undefined,
       trasfondo: $("pj-trasfondo").value, extra: $("pj-extra").value,
     };

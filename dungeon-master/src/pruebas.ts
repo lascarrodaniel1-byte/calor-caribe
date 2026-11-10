@@ -5,9 +5,8 @@ import { opcionDe, tiene } from "./dotes_base.js";
 import { desventajaSigilo } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
-import { clase } from "./mundo.js";
 import { efectos } from "./condiciones.js";
-import { ATRIBUTOS, competencia, mod, salvacion, salvacionCompetente, signo, valor, type Atributo } from "./reglas.js";
+import { competencia, mod, salvacion, signo, valor, type Atributo } from "./reglas.js";
 
 export const HABILIDADES: Record<string, { nombre: string; atributo: Atributo }> = {
   atletismo: { nombre: "Atletismo", atributo: "fue" },

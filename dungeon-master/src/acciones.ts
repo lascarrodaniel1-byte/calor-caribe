@@ -5,7 +5,7 @@ import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { tiene } from "./dotes_base.js";
 import type { Partida } from "./estado.js";
 import { esDegollador } from "./degollador_base.js";
-import { condsDe, igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
+import { igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
 
 export const ACCIONES = ["esquivar", "correr", "retirarse", "ayudar", "preparar", "esconderse", "usar_objeto", "otra"] as const;
 export type AccionCombate = (typeof ACCIONES)[number];

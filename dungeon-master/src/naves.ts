@@ -1,7 +1,6 @@
 // Botes, balsas y barcos: navegar, aguantar el mar, el casco, los incendios, hundirse y el abordaje.
 import { tiene } from "./dotes_base.js";
 import { alAgua, gastarAireDe } from "./agua.js";
-import { condsDe, localizar } from "./combate.js";
 import { tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { avanzarSiHay, textoReloj } from "./espacio.js";

@@ -32,7 +32,17 @@ const DESCRIPCION_VETERANIA: Record<string, string> = {
   leyenda: "una vida entera de batallas",
 };
 
+/** Géneros que ofrece el formulario; «Otro» deja escribir uno propio. */
+export const GENEROS = [
+  { id: "Masculino", nombre: "Masculino", pronombres: "él (artículos y adjetivos en masculino)" },
+  { id: "Femenino", nombre: "Femenino", pronombres: "ella (artículos y adjetivos en femenino)" },
+  { id: "No binario", nombre: "No binario", pronombres: "elle / sin marcas de género (usa la forma neutra: «elle», «le», o reformula: «la persona», «quien»)" },
+] as const;
+export const MAX_GENERO = 30;
+export const pronombresDe = (g: string): string => GENEROS.find((x) => x.id === g)?.pronombres ?? `según lo que escribió el jugador: «${g}» (respétalo, sin suponer)`;
+
 export const DATOS_FORMULARIO = {
+  generos: GENEROS.map((g) => ({ id: g.id, nombre: g.nombre })),
   razas: RAZAS.map((r) => ({ nombre: r.nombre, bonos: r.atributos, valores: bonosDeRaza(r.atributos), descripcion: r.descripcion })),
   clases: CLASES.map((c) => ({ nombre: c.nombre, dado: c.dadoGolpe, principal: c.principal, equipo: c.equipo, mago: c.nombre === "Hechicero" })),
   personalidades: Object.entries(PERSONALIDADES).map(([nombre, p]) => ({ nombre, nota: p.nota })),
@@ -50,6 +60,8 @@ export const DATOS_FORMULARIO = {
 export interface DatosFicha {
   nombre: string;
   jugador: string;
+  /** Masculino, Femenino, No binario o el texto que escriba el jugador (hasta 30 caracteres). */
+  genero: string;
   raza: string;
   clase: string;
   veterania: string;
@@ -84,6 +96,9 @@ export function pvIniciales(f: DatosFicha): number {
 export function validarFicha(f: DatosFicha): string[] {
   const e: string[] = [];
   if (f.nombre.trim().length < 2) e.push("Ponle nombre a tu personaje.");
+  const gen = (f.genero ?? "").trim();
+  if (gen.length < 2) e.push("Elige el género de tu personaje (o escribe el que prefieras).");
+  else if (gen.length > MAX_GENERO || /[\n\r<>]/.test(gen)) e.push(`El género debe ser un texto corto (hasta ${MAX_GENERO} letras).`);
   if (!RAZAS.some((r) => r.nombre === f.raza)) e.push("Elige una raza.");
   const clase = CLASES.find((c) => c.nombre === f.clase);
   if (!clase) e.push("Elige una clase.");
@@ -120,6 +135,7 @@ export function textoFicha(f: DatosFicha): string {
   return [
     `FICHA DE PERSONAJE (formulario completo de ${f.jugador}). Guárdala YA con guardar_personaje, con jugador «${f.jugador}», sin pedir ningún dato más ni confirmar nada: usa exactamente estos valores.`,
     `Nombre: ${f.nombre.trim()}`,
+    `Género: ${f.genero.trim()} (guárdalo con guardar_personaje {genero: «${f.genero.trim()}»}; en la narración úsalo para el trato: ${pronombresDe(f.genero.trim())})`,
     `Raza: ${f.raza} (${r?.atributos ?? ""}) · Clase: ${f.clase} (d${c?.dadoGolpe}) · Nivel 1 · Veteranía: ${f.veterania}`,
     `Personalidad: ${f.personalidad.join(" y ")}`,
     `Atributos finales (${f.metodo === "tirada" ? "tiradas 4d6kh3" : "serie estándar"}, con el bono racial ya sumado): ${attrs}`,

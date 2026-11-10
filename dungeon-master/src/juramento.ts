@@ -9,7 +9,6 @@ import { agregarCondicion, nivelAgotamiento } from "./condiciones.js";
 import { distanciaPlano } from "./espacio.js";
 import { NOMBRE_DIRECCION as NOMBRE_DIR_ES } from "./mapa.js";
 import { RECURSOS_CLASE, ALDESCANSAR } from "./recursos.js";
-import { MAESTRIAS } from "./magia.js";
 import { mod, valor } from "./reglas.js";
 import { alcanceSentido, DIOS, esCaballero, intensidad, juramentoActivo, MAX_VOTOS, reservaMax, VOTOS, type Juramento } from "./juramento_base.js";
 
