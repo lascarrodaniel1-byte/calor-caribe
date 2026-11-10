@@ -655,6 +655,7 @@ const esquemas = {
     nervio: z.enum(["brazo", "pierna", "columna"]).optional().describe("Barbero-Cirujano: golpea un nervio (−2, columna −3): si hiere, CON o brazo entumecido, pierna entumecida o paralizado un asalto"),
     dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
     temerario: z.boolean().optional().describe("Berserker: false = NO ataca con temeridad. Por defecto el motor lo hace solo en sus ataques cuerpo a cuerpo de FUE (ventaja para él y para quien lo ataque hasta su próximo turno)"),
+    yunque: z.boolean().optional().describe("Piedra de Karak (Practicante, Golpe de yunque): el golpe aplasta la armadura (como un martillo)"),
     desarmar: z.boolean().optional().describe("Filo del Cuervo (técnica Desarmar): si impacta, el rival salva (FUE o DES) o suelta el arma"),
     golpe_demoledor: z.boolean().optional().describe("Dote Golpe demoledor: con arma pesada, −5 al ataque y +10 al daño"),
     duelo: z.boolean().optional().describe("Dote Esgrimista: es un duelo uno contra uno (ventaja en el primer ataque del combate)"),

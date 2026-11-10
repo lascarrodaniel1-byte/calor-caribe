@@ -44,11 +44,11 @@ export const ESTILOS: Estilo[] = [
   },
   {
     id: "piedra", nombre: "Piedra de Karak", centro: "resistencia y anclaje",
-    principio: "Pies clavados: ventaja en las pruebas para no ser derribado, empujado ni lanzado.",
+    principio: "Pies clavados: ventaja en las pruebas para no ser empujado ni lanzado (automático).",
     tecnicas: [
-      { nombre: "Postura de muro", efecto: "+1 a la CA mientras no se mueve en su turno" },
-      { nombre: "Golpe de yunque", efecto: "aplasta la armadura: el golpe cuenta como brutal y penetra una protección más" },
-      { nombre: "Montaña", efecto: "inmóvil: nada lo mueve de su sitio y agarra sin soltar" },
+      { nombre: "Postura de muro", efecto: "+1 a la CA contra ataques cuerpo a cuerpo mientras no haya corrido ni se haya retirado este asalto (automático)" },
+      { nombre: "Golpe de yunque", efecto: "atacar con yunque: true; el golpe aplasta la armadura (se resuelve como un martillo de guerra: penetra y agrava la herida) (automático)" },
+      { nombre: "Montaña", efecto: "inmóvil: nadie puede empujarlo ni lanzarlo, ni derribarlo con una maniobra (automático)" },
     ],
     ensena: "Los enanos de Karak-Dûm", clases: ["Berserker de Ceniza", "Caballero Juramentado"],
   },
@@ -145,11 +145,11 @@ export const REGLAS_ARTES = `## Artes marciales (estilos)
 - Hay siete estilos: Haemajitsu (Flagelantes: impacto), Callejón de Aldenmar (control y juego sucio), Piedra de Karak (resistencia), Danza marchita (evasión), Filo del Cuervo (armas y formación), Presa de Hollín (agarres, llaves y lances) y Contracorriente (solo Kuru: desviar y contraatacar). Un personaje conoce un estilo (dos con INT o SAB 14+ y un segundo maestro). Cada estilo tiene un principio pasivo y tres técnicas (Iniciado, Practicante a nivel 3 y Maestro a nivel 7 de la tabla, con el desplazamiento de +2 de siempre). Consulta lo que sabe cada uno con arte_marcial {accion: "ver"} y el catálogo con {accion: "catalogo"}.
 - Se aprenden con arte_marcial {accion: "aprender", via}: «clase» (la clase lo ofrece: ver el catálogo), «maestro» (hay un maestro del estilo y pasa tiempo: pasa maestro y motivo) o «historia» (la ficción lo justifica; pasa motivo). Haemajitsu y Contracorriente solo por historia. El Flagelante lleva el Haemajitsu de serie.
 - Haemajitsu (pasivo, lo aplica el programa): el golpe sin armas del Flagelante (atacar con arma «puño», sin armas…) es una maza: daño por nivel (1d6, luego 1d8, 1d10, 1d12), contundente y brutal, más la Comunión del dolor. No gasta PV ni recurso: es la sangre propia que fluye por sus puntos de contacto. Es la lógica del arte, no un bonus nuevo.
-- Presa de Hollín: el programa da ventaja al agarrar y al lanzar a quien lo practica, y a su favor cuando alguien intenta zafarse. Lances con la herramienta maniobra {tipo: lanzar, lance: cadera | hombro | molino} sobre alguien que ya tiene agarrado: cadera (Iniciado) lo derriba; hombro (Practicante) lo estampa (1d6) y puede lanzarlo contra otro enemigo cercano (contra); molino (Maestro) lo arroja 3 m (2d6). Piedra de Karak: ventaja en las pruebas contra empujar y lanzar.
+- Presa de Hollín: el programa da ventaja al agarrar y al lanzar a quien lo practica, y a su favor cuando alguien intenta zafarse. Lances con la herramienta maniobra {tipo: lanzar, lance: cadera | hombro | molino} sobre alguien que ya tiene agarrado: cadera (Iniciado) lo derriba; hombro (Practicante) lo estampa (1d6) y puede lanzarlo contra otro enemigo cercano (contra); molino (Maestro) lo arroja 3 m (2d6). Piedra de Karak (automático): ventaja contra empujar y lanzar, Postura de muro (+1 CA en cuerpo a cuerpo), Golpe de yunque (atacar {yunque: true}, Practicante) y Montaña (Maestro: no lo empujan ni lo lanzan).
 - Contracorriente: reacción automática de quien lo domina (Kuru): reduce el daño que le llega; si lo anula, avisa del contraataque que debes hacer tú (atacar con reaccion: true y ventaja: true).
 - Kuru domina todos los estilos normales y copia al verlos: si ve usar una técnica, la puede usar en su turno siguiente; tras verla dos veces en el mismo combate, la conserva hasta el final. No copia el Haemajitsu a la ligera (es sangre propia de Haema).
 - Danza marchita (automático): +2 a la iniciativa, ventaja en salvaciones de DES, Contragolpe (avisa del ataque de respuesta si le falla un cuerpo a cuerpo) y, de Maestro, Cien pasos (no provoca ataques de oportunidad). Filo del Cuervo (automático): +1 por aliado junto al objetivo (máx. +2), Cuña (ventaja con un aliado junto) y atacar {desarmar: true}. Callejón de Aldenmar (automático): ventaja en maniobras contra rivales distraídos y maniobra {tipo: sucio} (arena y codo, desde Practicante).
-- Lo que sigue siendo cosa tuya: Fluir y Corriente carmesí del Haemajitsu, Muralla de cuervos, Arrastre, Postura de muro, Golpe de yunque, Montaña, Palanca y Sumisión de la Presa: aplícalos con criterio según el catálogo.`;
+- Lo que sigue siendo cosa tuya: Fluir y Corriente carmesí del Haemajitsu, Muralla de cuervos, Arrastre, y Palanca y Sumisión de la Presa: aplícalos con criterio según el catálogo.`;
 
 // ------------------------------------------------------------------ la herramienta arte_marcial
 export interface DatosArte {

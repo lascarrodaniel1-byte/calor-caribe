@@ -1389,6 +1389,7 @@
     refused: "El DM no quiso narrar eso. Reformulad la acción y volved a intentarlo.",
     prompt_too_large: "La partida es demasiado larga para enviarla entera. Pedid al DM que resuma la crónica.",
     session_expired: "Tu sesión de Claude caducó. Vuelve a iniciar sesión.",
+    sin_narracion: "El DM resolvió las tiradas pero no llegó a escribir la narración. No se ha guardado nada: las acciones siguen en cola, pulsa «Que el DM responda» para reintentarlo.",
     tools_unavailable: "Esta vista no puede usar el motor del juego. Abre la página desde claude.ai en el navegador o en la app.",
   };
 
@@ -1891,8 +1892,19 @@
         // La marca de secuencia del final no se enseña a los jugadores, ni siquiera mientras se escribe.
         onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* un fallo al pintar no debe romper la respuesta del DM */ } },
       }), ctl.signal);
-      const marca = V.secuencia.extraerMarca(res.text);
+      let marca = V.secuencia.extraerMarca(res.text);
       texto = marca.limpio;
+      // Red de seguridad: si el DM resolvió las tiradas pero terminó sin escribir la narración, se le pide una vez más (sin herramientas).
+      if (texto.trim().length < 15 && !ctl.signal.aborted) {
+        registrarError("dm", "el DM terminó el turno sin narración (se le pide de nuevo)", { code: "sin_narracion" });
+        try {
+          const resultados = avisos.map((a) => a.texto).join("\n") || llamadasTurno.join(", ");
+          const r2 = await conCorte(sample(V.promptNarrar({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), resultados, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { modelTier: $("nivel").value, signal: ctl.signal, onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* pintar no debe romper la respuesta */ } } }), ctl.signal);
+          marca = V.secuencia.extraerMarca(r2.text);
+          texto = marca.limpio;
+        } catch (e2) { if (e2?.code === "cancelled" || ctl.signal.aborted) throw e2; }
+        if (texto.trim().length < 15) throw { code: "sin_narracion" };
+      }
       clearTimeout(pendienteEscritura);
       // Antes de guardar: ¿seguimos siendo quienes narran, y nadie más ha guardado mientras tanto?
       // Si no, se descarta este turno (las acciones siguen en cola) en vez de pisar el trabajo de otro.

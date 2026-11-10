@@ -7,7 +7,7 @@ import { sustentoVisible, textoSustento } from "./sustento.js";
 import { textoTrampas } from "./trampas.js";
 import { textoSal } from "./sal.js";
 import { textoGuaridas } from "./guarida.js";
-import { pistasDeRepaso, promptRepaso, textoSucesos } from "./repaso.js";
+import { pistasDeRepaso, promptNarrar, promptRepaso, textoSucesos } from "./repaso.js";
 import { textoIdiomas } from "./idiomas.js";
 import { textoEnfermedades } from "./enfermedades.js";
 import { textoAgua } from "./agua.js";
@@ -183,5 +183,5 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   return partes.join("\n\n");
 }
 
-export { bestiarioGrupo, pistasDeRepaso, promptRepaso, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

@@ -122,6 +122,8 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
     if (exito) return `${at.nombre} le tira arena y un codazo a ${ob.nombre}: ${txt} → aguanta y parpadea (CD ${cd}).`;
     return `${at.nombre} le tira arena y un codazo a ${ob.nombre}: ${txt} → falla (CD ${cd}). ${aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "cegado", nota: "arena y codo; hasta el final de su siguiente turno" }).split("\n")[0]}`;
   }
+  // Piedra de Karak, Montaña (Maestro): nada lo mueve de su sitio.
+  if (piedraOb && maestriaDe(ob) === 3 && (d.tipo === "empujar" || d.tipo === "lanzar")) return `${at.nombre} intenta ${d.tipo === "lanzar" ? "lanzar" : "empujar"} a ${ob.nombre}, pero es una montaña: Piedra de Karak (Maestro), no se mueve ni cae.`;
   const hayV = !!d.ventaja || (callejonAt && distraido && d.tipo !== "escapar") || (presaAt && (d.tipo === "agarrar" || d.tipo === "lanzar")) || (d.tipo === "agarrar" && at.tipo === "pj" && tiene(at.p, "pendenciero")), hayD = !!d.desventaja || ea.pruebas === "desventaja";
   const modoA = hayV && !hayD ? "ventaja" : hayD && !hayV ? "desventaja" : "normal";
   const ta = tirar(`1d20${signo(aA.bono)}`, modoA);

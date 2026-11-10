@@ -581,6 +581,8 @@ export interface DatosAtaque {
   mano_secundaria?: boolean;
   /** Filo del Cuervo (técnica Desarmar): si impacta, el rival salva (FUE o DES) o suelta el arma. */
   desarmar?: boolean;
+  /** Piedra de Karak (Practicante, Golpe de yunque): el golpe aplasta la armadura (como un martillo: penetra y agrava la herida). */
+  yunque?: boolean;
   /** Estilo de lucha con arma a dos manos: repite los 1 y 2 de los dados de daño. */
   repetir_bajos?: boolean;
   /** Barbero-Cirujano: golpea un nervio (brazo, pierna o columna) en lugar de buscar una herida: puede incapacitar. */
@@ -718,6 +720,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     if (extra) desglose.push(`temple ${signo(extra)}`);
   }
 
+  // Piedra de Karak, Golpe de yunque (Practicante): el golpe aplasta la armadura (se resuelve como un martillo de guerra).
+  if (d.yunque) {
+    if (!arteDeCombatiente(at, "piedra")) throw new Error(`${at.nombre} no domina la Piedra de Karak: no puede dar un golpe de yunque.`);
+    if (maestriaDe(at) < 2) throw new Error(`${at.nombre} aún no tiene la maestría para el Golpe de yunque (hace falta Practicante).`);
+    d = { ...d, arma: `${d.arma ?? "golpe"} (golpe de yunque, como un martillo)`, tipo_dano: "contundente" };
+    desglose.push("golpe de yunque (aplasta la armadura)");
+  }
   if (d.golpe_demoledor) {
     if (at.tipo !== "pj" || !tiene(at.p, "golpe_demoledor")) throw new Error(`${at.nombre} no tiene la dote Golpe demoledor.`);
     const arma = propiedades(d.arma ?? at.p.manos?.principal);
@@ -730,7 +739,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   // Defensa
   if (d.cobertura === "total") throw new Error(`${ob.nombre} tiene cobertura total: no se le puede atacar directamente (rodéalo, destruye la cobertura o usa un efecto de área).`);
   const cobBono = d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0;
-  const ca = cobBono + (d.ca ?? (ob.tipo === "pj" ? caEfectiva(ob.p) : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
+  // Piedra de Karak, Postura de muro: +1 a la CA contra cuerpo a cuerpo si no ha corrido ni se ha retirado este asalto.
+  const posturaMuro = !distancia && ob.tipo === "pj" && arteDeCombatiente(ob, "piedra") && !(partida.combate && (turnoDe(partida, ob.nombre).corrio || turnoDe(partida, ob.nombre).retirada)) ? 1 : 0;
+  const ca = cobBono + posturaMuro + (d.ca ?? (ob.tipo === "pj" ? caEfectiva(ob.p) : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
 
   // Filo del Cuervo: +1 al ataque por cada aliado adyacente al objetivo (máx. +2) y, desde Practicante (Cuña), ventaja si hay uno.
   let aliadosCuervo = 0;
@@ -911,6 +922,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       `${describir(t)}${modo !== "normal" ? ` (${modo})` : ""}${repetido} [${desglose.join(", ")}] vs CA ${ca}`,
   ];
   if (motivos.length) lineas.push(motivos.join("; "));
+  if (posturaMuro) lineas.push(`🪨 Postura de muro (Piedra de Karak): ${ob.nombre} tiene +1 a la CA.`);
   // Danza marchita, Contragolpe (Practicante): si un ataque cuerpo a cuerpo le falla, contraataca como reacción.
   if (["fallo", "torpeza"].includes(resultado) && !distancia && combate && !tOb.reaccion && !efOb.incapacitado && arteDeCombatiente(ob, "danza") && maestriaDe(ob) >= 2 && (ob.tipo !== "pj" || ob.p.pv > 0) && !sorprendido(ob.nombre)) {
     tOb.reaccion = true;
