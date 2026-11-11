@@ -677,6 +677,22 @@ function ataqueRacial(partida: Partida, d: DatosAtaque): DatosAtaque | null {
   return null;
 }
 
+/** Bando a grandes rasgos: los personajes jugadores por un lado; criaturas y PNJ por el otro. */
+const ladoDe = (c: Combatiente) => (c.tipo === "pj" ? "pj" : "otros");
+const estaVivo = (c: Combatiente) => (c.tipo === "pj" ? c.p.pv > 0 && !c.p.condiciones.includes("muerto") : c.tipo === "criatura" ? c.j.pv > 0 : (c.n.pv ?? 1) > 0);
+/** Aliados (mismo bando, vivos) del combatiente `c` que están a 1,5 m (2,2 m en diagonal) de `de`. */
+function aliadosJuntoA(partida: Partida, c: Combatiente, de: Combatiente): Combatiente[] {
+  const out: Combatiente[] = [];
+  for (const o of partida.combate?.orden ?? []) {
+    if (igual(o.nombre, c.nombre) || igual(o.nombre, de.nombre)) continue;
+    let x: Combatiente; try { x = localizar(partida, o.nombre); } catch { continue; }
+    if (ladoDe(x) !== ladoDe(c) || !estaVivo(x)) continue;
+    const dd = distanciaPlano(partida, x.nombre, de.nombre);
+    if (dd && dd.metros <= 2.2) out.push(x);
+  }
+  return out;
+}
+
 /** Filo del Cuervo (Muralla de cuervos, Maestro) y Callejón (Arrastre, Maestro): a veces otro recibe el golpe en lugar del objetivo. */
 function redirigirAtaque(partida: Partida, d: DatosAtaque, at: Combatiente, ob: Combatiente): { objetivo: string; nota: string; desventaja?: boolean } | null {
   const combate = partida.combate;
@@ -692,12 +708,12 @@ function redirigirAtaque(partida: Partida, d: DatosAtaque, at: Combatiente, ob: 
     }
   }
   // Muralla de cuervos: un Maestro del Filo del Cuervo cubre a un aliado adyacente y recibe el golpe cuerpo a cuerpo por él.
-  if (!d.a_distancia && ob.tipo === "pj") {
-    for (const g of Object.values(partida.personajes)) {
-      if (g.nombre === ob.nombre || igual(g.nombre, at.nombre) || g.pv <= 0 || g.condiciones.includes("muerto")) continue;
-      const gc: Combatiente = { tipo: "pj", nombre: g.nombre, p: g } as Combatiente;
-      if (!arteDeCombatiente(gc, "cuervo") || maestriaDe(gc) < 3) continue;
-      if (efectos(g.condiciones).incapacitado || turnoDe(partida, g.nombre).reaccion) continue;
+  if (!d.a_distancia) {
+    for (const o of combate.orden) {
+      if (igual(o.nombre, ob.nombre) || igual(o.nombre, at.nombre)) continue;
+      let g: Combatiente; try { g = localizar(partida, o.nombre); } catch { continue; }
+      if (ladoDe(g) !== ladoDe(ob) || !estaVivo(g) || !arteDeCombatiente(g, "cuervo") || maestriaDe(g) < 3) continue;
+      if (efectos(condsDe(g)).incapacitado || turnoDe(partida, g.nombre).reaccion) continue;
       const a = dist(g.nombre, ob.nombre), b = dist(g.nombre, at.nombre);
       if (a === undefined || b === undefined || a > 2.2 || b > 2.2) continue; // adyacente, diagonal incluida (1,5 m y 2,1 m)
       turnoDe(partida, g.nombre).reaccion = true;
@@ -779,12 +795,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
   // Filo del Cuervo: +1 al ataque por cada aliado adyacente al objetivo (máx. +2) y, desde Practicante (Cuña), ventaja si hay uno.
   let aliadosCuervo = 0;
-  if (at.tipo === "pj" && arteDeCombatiente(at, "cuervo") && !distancia) {
-    for (const o of Object.values(partida.personajes)) {
-      if (o.nombre === at.nombre || o.condiciones.includes("muerto") || o.pv <= 0) continue;
-      const dd = distanciaPlano(partida, o.nombre, ob.nombre);
-      if (dd && dd.metros <= 2) aliadosCuervo++;
-    }
+  if (arteDeCombatiente(at, "cuervo") && !distancia) {
+    aliadosCuervo = aliadosJuntoA(partida, at, ob).length;
     if (aliadosCuervo) { const b = Math.min(2, aliadosCuervo); bono += b; desglose.push(`Filo del Cuervo ${signo(b)} (${aliadosCuervo} aliado(s) junto al objetivo)`); }
   }
   // Ventaja y desventaja
@@ -1071,8 +1083,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     }
     // Filo del Cuervo, Desarmar: si impacta, el rival salva (la mejor de FUE o DES) o suelta el arma.
     if (d.desarmar) {
-      if (at.tipo !== "pj" || !arteDeCombatiente(at, "cuervo")) throw new Error(`${at.nombre} no domina el Filo del Cuervo: no puede desarmar.`);
-      const cdD = 8 + competencia(at.p) + Math.max(mod(valor(at.p, "fue")), mod(valor(at.p, "des")));
+      if (!arteDeCombatiente(at, "cuervo")) throw new Error(`${at.nombre} no domina el Filo del Cuervo: no puede desarmar.`);
+      const modCrit = (txt: string) => Math.max(mod(Number(/FUE\s+(\d+)/i.exec(txt)?.[1] ?? 10)), mod(Number(/DES\s+(\d+)/i.exec(txt)?.[1] ?? 10)));
+      const cdD = 8 + (at.tipo === "pj" ? competencia(at.p) + Math.max(mod(valor(at.p, "fue")), mod(valor(at.p, "des"))) : 4 + (at.tipo === "criatura" ? modCrit(at.j.definicion.atributos) : 0));
       let sal: { exito: boolean; texto: string };
       if (ob.tipo === "pj") { const s2 = salvacion(ob.p, valor(ob.p, "fue") >= valor(ob.p, "des") ? "fue" : "des", cdD, { extra: 0 }); sal = s2; }
       else { const s3 = tirar(`1d20${signo(ob.tipo === "criatura" ? Math.max(mod(Number(/FUE\s+(\d+)/i.exec(ob.j.definicion.atributos)?.[1] ?? 10)), mod(Number(/DES\s+(\d+)/i.exec(ob.j.definicion.atributos)?.[1] ?? 10))) : 0)}`); sal = { exito: s3.total >= cdD, texto: `salvación ${describir(s3)} contra CD ${cdD}` }; }

@@ -1128,6 +1128,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "El Que Golpea Bajo la Piedra",
+    artes: ["piedra"],
     categoria: "jefe",
     peligro: 5,
     region: "Lo más hondo de Karak-Dûm",
@@ -1206,6 +1207,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Vaerth, el Sin Rostro",
+    artes: ["callejon"],
     personalidad: ["calculador"],
     categoria: "jefe",
     peligro: 5,
@@ -1314,6 +1316,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Hugin, el Pensamiento",
+    artes: ["cuervo"],
     temple: "Humano del Faro",
     personalidad: ["calculador", "prudente"],
     blindaje: ["cota_malla", "coraza", "yelmo", "gorjal"],
@@ -1355,6 +1358,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Munin, la Memoria",
+    artes: ["cuervo"],
     temple: "Humano del Faro",
     personalidad: ["sereno", "paranoico"],
     blindaje: ["gambeson", "cota_malla", "almofar"],

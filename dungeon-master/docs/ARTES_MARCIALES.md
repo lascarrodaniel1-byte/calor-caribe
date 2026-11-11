@@ -88,3 +88,7 @@ La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase
 - **Presa de Hollín:** Palanca y Sumisión (condición «sometido»).
 - **Haemajitsu:** Fluir (reacción que reduce el daño) y Corriente carmesí (golpes como un martillo de guerra).
 - No queda ninguna técnica a cargo del DM; la copia «al verlo» de Kuru sigue siendo regla escrita para el DM.
+
+### Cuarta tanda (criaturas y jefes)
+- Desarmar, el +1 del Filo del Cuervo y la Muralla de cuervos valen también para criaturas y PNJ (mismo bando = personajes por un lado, criaturas y PNJ por el otro).
+- Estilos de jefes (propuesta, a confirmar): Hugin y Munin → Filo del Cuervo; Vaerth → Callejón de Aldenmar; El Que Golpea Bajo la Piedra → Piedra de Karak; Kuru → todos más Contracorriente.
