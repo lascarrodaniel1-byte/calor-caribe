@@ -35,7 +35,7 @@ export const ESTILOS: Estilo[] = [
     id: "callejon", nombre: "Callejón de Aldenmar", centro: "control y juego sucio",
     principio: "Aprovecha lo que haya a mano y el momento: ventaja en las maniobras (agarrar, empujar, lanzar) contra un rival derribado, cegado, aturdido, agarrado, asustado, dormido, sorprendido, desarmado o incapacitado (automático).",
     tecnicas: [
-      { nombre: "Llave y zancadilla", efecto: "derriba o agarra con ventaja a quien ya está en combate con otro" },
+      { nombre: "Llave y zancadilla", efecto: "ventaja al agarrar o derribar a un rival distraído (ver principio) (automático)" },
       { nombre: "Arena y codo", efecto: "maniobra {tipo: sucio}: salvación de CON (CD 8 + competencia + mejor de Atletismo o Acrobacias) o queda cegado hasta el final de su siguiente turno (automático)" },
       { nombre: "Arrastre", efecto: "si tiene agarrado a alguien, los ataques a distancia contra él se los lleva el agarrado (automático)" },
     ],
@@ -73,9 +73,9 @@ export const ESTILOS: Estilo[] = [
   },
   {
     id: "presa", nombre: "Presa de Hollín", centro: "agarres, llaves y lances",
-    principio: "Quien agarra no suelta: ventaja al agarrar y al lanzar, y quien intenta zafarse de él tiene que ganarle con desventaja. Mantener la presa no le cuesta la mano. Es el estilo «abierto»: lo puede tomar cualquier clase marcial.",
+    principio: "Quien agarra no suelta (automático): ventaja al agarrar y al lanzar, y quien intenta zafarse de él tiene que ganarle con desventaja. Mantener la presa no le cuesta la mano. Es el estilo «abierto»: lo puede tomar cualquier clase marcial.",
     tecnicas: [
-      { nombre: "Llave y Cadera", efecto: "agarra como parte del ataque; Cadera: derriba a quien tiene agarrado (maniobra lanzar, lance cadera)" },
+      { nombre: "Llave y Cadera", efecto: "Llave: agarra como acción adicional (maniobra {tipo: agarrar, adicional: true}) (automático); Cadera: derriba a quien tiene agarrado (maniobra lanzar, lance cadera) (automático)" },
       { nombre: "Palanca y Lance por encima del hombro", efecto: "Palanca (maniobra {tipo: palanca} sobre un agarrado, Practicante): disloca un miembro (brazo entumecido: desventaja en ataques y pruebas) (automático); Lance por encima del hombro: lo estampa en el suelo (1d6 y derribado) o contra otro enemigo a 1,5 m (maniobra lanzar, lance hombro)" },
       { nombre: "Sumisión y Lance de molino", efecto: "Sumisión (maniobra {tipo: sumision} sobre un agarrado, Maestro): queda «sometido» (velocidad 0, desventaja en ataques y pruebas, también para zafarse) (automático); Lance de molino: lo arroja hasta 3 m (2d6 y derribado, maniobra lanzar, lance molino)" },
     ],
@@ -88,7 +88,7 @@ export const ESTILOS: Estilo[] = [
     tecnicas: [
       { nombre: "Desvío", efecto: "reduce el daño de un proyectil, arma o golpe; con un proyectil pequeño puede devolverlo" },
       { nombre: "Contracorriente", efecto: "si el desvío anula el daño, ataque de respuesta con ventaja (reacción)" },
-      { nombre: "Remolino", efecto: "varios rivales a la vez: desvía y contraataca a cada uno una vez" },
+      { nombre: "Remolino", efecto: "varios rivales a la vez: desvía y contraataca a cada uno una vez por asalto, sin gastar la única reacción (automático)" },
     ],
     ensena: "Solo Kuru, el Cazador de Leyendas (y si la historia lo justifica)", clases: [], soloHistoria: true,
   },

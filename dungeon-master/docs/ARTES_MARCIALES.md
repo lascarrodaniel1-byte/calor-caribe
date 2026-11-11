@@ -92,3 +92,8 @@ La **Presa de Hollín** es el estilo «abierto»: lo puede tomar cualquier clase
 ### Cuarta tanda (criaturas y jefes)
 - Desarmar, el +1 del Filo del Cuervo y la Muralla de cuervos valen también para criaturas y PNJ (mismo bando = personajes por un lado, criaturas y PNJ por el otro).
 - Estilos de jefes (propuesta, a confirmar): Hugin y Munin → Filo del Cuervo; Vaerth → Callejón de Aldenmar; El Que Golpea Bajo la Piedra → Piedra de Karak; Kuru → todos más Contracorriente.
+
+### Quinta tanda (auditoría de cobertura)
+- Llave (Presa de Hollín): agarrar como acción adicional. Remolino (Contracorriente): una vez por rival y asalto, sin gastar la reacción.
+- Velocidad automática en combate (`src/velocidad.ts`).
+- Cobertura: 21 técnicas de 7 estilos, todas automáticas (ver `scripts` de auditoría en la sesión).

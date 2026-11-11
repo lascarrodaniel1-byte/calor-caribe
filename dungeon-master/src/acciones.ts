@@ -51,7 +51,8 @@ export function accionCombate(partida: Partida, d: DatosAccionCombate): string {
     }
     case "correr":
       t.corrio = true;
-      return `${c.nombre} corre: mueve el doble de su velocidad este turno (suele ser 18 m en vez de 9) y no ataca con esta acción. Muévelo con plano.`;
+      t.corrioRonda = partida.combate?.ronda;
+      return `${c.nombre} corre: mueve el doble de su velocidad este turno (suele ser 18 m en vez de 9) y no ataca con esta acción. Muévelo con plano (el programa recorta el movimiento a su velocidad: 9 m por asalto, el doble si corre, la mitad en el agua o agotado, 0 si está agarrado o sometido).`;
     case "retirarse":
       t.retirada = true;
       return `${c.nombre} se retira: su movimiento este turno no provoca ataques de oportunidad.`;

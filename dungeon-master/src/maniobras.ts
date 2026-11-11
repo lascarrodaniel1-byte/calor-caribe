@@ -93,16 +93,18 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   })() : { ...a, hab: "Atletismo" };
   const atl = bonoManiobra(ob, "atletismo", d.bono_objetivo), acr = bonoManiobra(ob, "acrobacias", d.bono_objetivo);
   const def = d.tipo === "escapar" ? { ...atl, hab: "Atletismo" } : atl.bono >= acr.bono ? { ...atl, hab: "Atletismo" } : { ...acr, hab: "Acrobacias" };
+  // Estilos: Presa de Hollín y Piedra de Karak.
+  const presaAt = arteDeCombatiente(at, "presa"), presaOb = arteDeCombatiente(ob, "presa"), piedraOb = arteDeCombatiente(ob, "piedra");
   if (d.escudo || d.adicional) {
-    if (at.tipo !== "pj") throw new Error("Solo los personajes jugadores tienen dotes.");
-    if (d.escudo && !(tiene(at.p, "maestro_del_escudo") && d.tipo === "empujar" && /escudo|rodela|adarga/i.test(at.p.manos?.secundaria ?? ""))) throw new Error(`${at.nombre} necesita la dote Maestro del escudo, un escudo empuñado y empujar.`);
-    if (d.adicional && !(tiene(at.p, "pendenciero") && d.tipo === "agarrar")) throw new Error(`${at.nombre} necesita la dote Pendenciero y agarrar.`);
+    if (d.adicional && d.tipo === "agarrar" && presaAt) { /* Presa de Hollín, Llave: agarra como parte del ataque (acción adicional) */ }
+    else if (at.tipo !== "pj") throw new Error("Solo los personajes jugadores tienen dotes (o domina la Presa de Hollín para agarrar como acción adicional).");
+    if (d.escudo && !(tiene((at as any).p, "maestro_del_escudo") && d.tipo === "empujar" && /escudo|rodela|adarga/i.test((at as any).p?.manos?.secundaria ?? ""))) throw new Error(`${at.nombre} necesita la dote Maestro del escudo, un escudo empuñado y empujar.`);
+    if (d.adicional && !((presaAt && d.tipo === "agarrar") || (at.tipo === "pj" && tiene(at.p, "pendenciero") && d.tipo === "agarrar"))) throw new Error(`${at.nombre} necesita la dote Pendenciero o la Presa de Hollín (Llave) y agarrar.`);
     const t = turnoDe(partida, at.nombre);
     if (t.adicional) throw new Error(`${at.nombre} ya usó su acción adicional este asalto (${t.adicional}).`);
-    t.adicional = d.escudo ? "empujón con escudo" : "agarrar (Pendenciero)";
+    t.adicional = d.escudo ? "empujón con escudo" : at.tipo === "pj" && tiene(at.p, "pendenciero") ? "agarrar (Pendenciero)" : "agarrar (Llave, Presa de Hollín)";
   }
   // Estilos: Presa de Hollín (ventaja al agarrar y lanzar) y Piedra de Karak (el que se defiende, contra empujar y lanzar).
-  const presaAt = arteDeCombatiente(at, "presa"), presaOb = arteDeCombatiente(ob, "presa"), piedraOb = arteDeCombatiente(ob, "piedra");
   if (d.tipo === "palanca" || d.tipo === "sumision") {
     if (!presaAt) throw new Error(`${at.nombre} no domina la Presa de Hollín: sin ese estilo no conoce esas llaves (arte_marcial aprender).`);
     const need = d.tipo === "sumision" ? 3 : 2;

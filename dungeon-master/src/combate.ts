@@ -205,6 +205,11 @@ export interface EstadoTurno {
   retirada?: boolean;
   /** Corrió: movimiento doble (sin acción para atacar). */
   corrio?: boolean;
+  /** Asalto en el que corrió (el doble de velocidad solo vale ese asalto) y metros que lleva recorridos en el asalto actual. */
+  corrioRonda?: number;
+  movido?: number;
+  /** Contracorriente (Maestro, Remolino): a quién ha desviado ya en este asalto (una vez por rival). */
+  remolino?: string[];
   /** Alguien lo ayudó: su próximo ataque (contra `contra`, si se dice) tiene ventaja. */
   ayuda?: { por: string; contra?: string };
   /** Flagelante: declaró su Paso elusivo (gastó su reacción): el siguiente ataque contra él se esquiva con una tirada. */
@@ -431,7 +436,7 @@ export function siguienteAsalto(partida: Partida): string {
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
   // Lo que dura «hasta su próximo turno» (esquivar, ayudar, preparar, retirarse, correr, paso elusivo) NO caduca aquí: caduca cuando ese combatiente actúa de nuevo.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.ataques; delete t.subita; delete t.presa; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; }
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.ataques; delete t.subita; delete t.presa; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; delete t.movido; delete t.remolino; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -1073,12 +1078,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       lineas.push(`🩸 Fluir (Haemajitsu): la sangre de ${ob.nombre} acude al punto del golpe y endurece la zona ${describir(fl)} (${antes} → ${dano}). Gasta su reacción.`);
     }
     // Contracorriente (Kuru): reacción que desvía cualquier ataque (proyectil, arma o golpe) y, si lo anula, contraataca.
-    if (dano > 0 && combate && !tOb.reaccion && arteDeCombatiente(ob, "contracorriente") && !efOb.incapacitado && (ob.tipo !== "pj" || ob.p.pv > 0)) {
+    const remolino = arteDeCombatiente(ob, "contracorriente") && maestriaDe(ob) === 3; // Remolino: desvía y contraataca a cada rival una vez por asalto
+    if (dano > 0 && combate && (remolino ? !(tOb.remolino ?? []).some((x) => igual(x, at.nombre)) : !tOb.reaccion) && arteDeCombatiente(ob, "contracorriente") && !efOb.incapacitado && (ob.tipo !== "pj" || ob.p.pv > 0)) {
       const dv = tirar(ob.tipo === "pj" ? `1d10${signo(mod(valor(ob.p, "des")) + ob.p.nivel)}` : "2d10+7");
       const antes = dano;
       dano = Math.max(0, dano - dv.total);
-      tOb.reaccion = true;
-      lineas.push(`🌊 Contracorriente: ${ob.nombre} desvía el ${distancia ? "proyectil" : "golpe"} ${describir(dv)} (${antes} → ${dano}). Gasta su reacción.`);
+      if (remolino) (tOb.remolino ??= []).push(at.nombre); else tOb.reaccion = true;
+      lineas.push(`🌊 Contracorriente: ${ob.nombre} desvía el ${distancia ? "proyectil" : "golpe"} ${describir(dv)} (${antes} → ${dano}). ${remolino ? "Remolino: puede hacerlo una vez con cada rival en el asalto." : "Gasta su reacción."}`);
       if (dano === 0) lineas.push(`👉 CONTRAATAQUE de ${ob.nombre}: ataca ya a ${at.nombre} con atacar {atacante: «${ob.nombre}», objetivo: «${at.nombre}», reaccion: true, ventaja: true}${distancia ? " (si era un proyectil pequeño, puede devolverlo: a distancia)" : ""}.`);
     }
     // Filo del Cuervo, Desarmar: si impacta, el rival salva (la mejor de FUE o DES) o suelta el arma.

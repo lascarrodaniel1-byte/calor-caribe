@@ -11,6 +11,7 @@ import { anotarHerida, cosechar, deudaPorHechizo, entregarAlmas, guadana, hablar
 import { esSegador, exigirLibre } from "./segador_base.js";
 import { motivoNoActua } from "./condiciones.js";
 import { arteMarcial, haemajitsu } from "./estilos.js";
+import { limitarMovimiento } from "./velocidad.js";
 import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sangreAjena } from "./flagelante.js";
 import {
   aparecer,
@@ -1791,8 +1792,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.plano>;
         const antes = instantanea(partida);
         const base = actualizarPlano(partida, e);
+        // Velocidad: nadie se mueve más de lo que le da su velocidad en el asalto (a la mitad en el agua si no es del agua, el doble si corre).
+        const cortos = partida.combate && e.mover?.length ? limitarMovimiento(partida, e.mover.map((m) => m.nombre), antes) : [];
         const avisos = e.mover?.length ? provocados(partida, antes) : [];
-        const texto = avisos.length ? `${base}\n${avisos.join("\n")}` : base;
+        const texto = [base, ...cortos, ...avisos].join("\n");
         return { contenido: texto, aviso: `🗺️ ${texto.split("\n").filter((l) => !l.startsWith("-") && !l.startsWith("##")).join("\n")}` };
       }
       case "tiempo": {
