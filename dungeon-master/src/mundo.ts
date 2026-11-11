@@ -21,6 +21,8 @@ export interface Raza {
   rasgos: string[];
   curacion: RasgosCuracion;
   notaCuracion: string;
+  /** Velocidad de caminar en metros por asalto (9 si no se dice). */
+  velocidad?: number;
 }
 
 export interface Clase {
@@ -56,7 +58,8 @@ export const RAZAS: Raza[] = [
     descripcion:
       "Exiliados de la Fortaleza Silente, sellada desde que algo despertó en lo profundo. Cargan con la vergüenza de haber huido y con la memoria de los nombres de sus muertos.",
     atributos: "+2 CON, +1 FUE",
-    rasgos: ["Visión en la oscuridad (18 m)", "Resistencia al daño de veneno y ventaja en salvaciones contra veneno", "Competencia con hachas y martillos de guerra"],
+    velocidad: 7.5,
+    rasgos: ["Velocidad 7,5 m (patas cortas, pasos firmes)", "Visión en la oscuridad (18 m)", "Resistencia al daño de veneno y ventaja en salvaciones contra veneno", "Competencia con hachas y martillos de guerra"],
     curacion: { ...CURACION_NORMAL, infeccion: 2 },
     notaCuracion: "+2 en salvaciones contra infección.",
   },
@@ -74,7 +77,8 @@ export const RAZAS: Raza[] = [
     descripcion:
       "Viven en aldeas sobre pilotes en las Ciénagas de Hollín. Contrabandistas, barqueros y ladrones de cadáveres; nadie conoce mejor los caminos del lodo.",
     atributos: "+2 DES, +1 CON",
-    rasgos: ["Afortunado: repite los 1 naturales en d20 (una vez por tirada)", "Sigilo natural: puede esconderse tras criaturas más grandes", "Valiente: ventaja contra quedar asustado"],
+    velocidad: 7.5,
+    rasgos: ["Velocidad 7,5 m (talla pequeña)", "Afortunado: repite los 1 naturales en d20 (una vez por tirada)", "Sigilo natural: puede esconderse tras criaturas más grandes", "Valiente: ventaja contra quedar asustado"],
     curacion: { ...CURACION_NORMAL, infeccion: 1 },
     notaCuracion: "+1 en salvaciones contra infección (criados en el fango).",
   },
@@ -83,7 +87,8 @@ export const RAZAS: Raza[] = [
     descripcion:
       "Humanos marcados por la Maldición del Lobo: ojos amarillos, colmillos, vello espeso. La Inquisición los quema si los atrapa; la Compañía del Cuervo los contrata sin preguntar.",
     atributos: "+2 FUE, +1 CON",
-    rasgos: ["Olfato de lobo: ventaja en Percepción basada en el olfato", "Mordisco: 1d6 + FUE perforante", "Furia de la luna: una vez por descanso largo, +2 al daño cuerpo a cuerpo durante 1 minuto"],
+    velocidad: 10.5,
+    rasgos: ["Velocidad 10,5 m (zancada de lobo)", "Olfato de lobo: ventaja en Percepción basada en el olfato", "Mordisco: 1d6 + FUE perforante", "Furia de la luna: una vez por descanso largo, +2 al daño cuerpo a cuerpo durante 1 minuto"],
     curacion: { ...CURACION_NORMAL, recuperacion: 2, levesRapidas: true, magia: "doble" },
     notaCuracion: "Las heridas leves sanan en 1 día; +2 en recuperación; la magia divina le quema (2 de Ceniza).",
   },

@@ -4,8 +4,9 @@ import type { Partida } from "./estado.js";
 import { nivelAgotamiento, efectos } from "./condiciones.js";
 import { condsDe, localizar, turnoDe, type Combatiente } from "./combate.js";
 import { esAcuatico, estaEnAgua, estaSumergido } from "./agua.js";
+import { RAZAS } from "./mundo.js";
 
-const BASE = 9; // metros por asalto de un personaje o PNJ sin dato
+const BASE = 9; // metros por asalto de un personaje o PNJ sin dato (los personajes, según su raza)
 
 function numero(texto: string, patron: RegExp): number | undefined {
   const m = patron.exec(texto);
@@ -18,6 +19,7 @@ export function velocidadDe(partida: Partida, c: Combatiente): { metros: number;
   const motivos: string[] = [];
   let v = BASE;
   let nada: number | undefined;
+  if (c.tipo === "pj") { v = RAZAS.find((r) => r.nombre === c.p.raza)?.velocidad ?? BASE; if (v !== BASE) motivos.push(`velocidad de su raza: ${v} m`); }
   if (c.tipo === "criatura") {
     const txt = c.j.definicion.velocidad;
     v = numero(txt, /^\s*(\d+(?:[.,]\d+)?)\s*m/i) ?? BASE;
