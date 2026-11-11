@@ -1296,7 +1296,7 @@
     if (jugadores.some((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre))) return undefined;
     return [...new Set(fichas.map((f) => f.clase))];
   }
-  function instrucciones() { return V.sistemaWeb(clasesEnMesa()) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
+  function instrucciones() { return V.sistemaWeb(clasesEnMesa(), { artes: V.hayArtes(partida) }) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
 
   const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
 
@@ -1350,9 +1350,9 @@
     recientes.forEach((t, i) => {
       const reciente = i >= recientes.length - 4;
       const medio = i >= recientes.length - 12;
-      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 500 : medio ? 300 : 120)).join("\n");
+      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 350 : medio ? 220 : 100)).join("\n");
       if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
-      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, medio ? 1600 : 350)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
+      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, medio ? 1200 : 280)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
       else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
     });
     const final =
@@ -1532,6 +1532,22 @@
 
   // Bitácora de errores en vivo: cada fallo que ve una página queda en `errores/<id>` (sin contenido de la partida: solo
   // qué falló y el estado de la mesa en ese momento), para poder diagnosticarlo y corregirlo sin esperar a que alguien lo cuente.
+  // Consumo por turno (colección consumo/): tamaño aproximado de lo enviado y lo recibido, para ver cuánto cuesta el DM (resumenConsumo en el motor). Nunca rompe un turno.
+  let consumoEscrito = 0;
+  const tamanoEntrada = (msgs) => { try { return (msgs || []).reduce((n, m) => n + String(m?.content ?? "").length, 0); } catch { return 0; } };
+  function registrarConsumo(d) {
+    try {
+      if (!db || soloLectura || !nombre) return;
+      const t = Date.now();
+      db.doc("consumo/c" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts: t, jugador: String(d.jugador || nombre), entrada: d.entrada | 0, salida: d.salida | 0, herramientas: d.herramientas | 0, repaso: !!d.repaso, sinNarracion: !!d.sinNarracion, nivel: String(d.nivel || "") }).catch(() => {});
+      // Poda: cada 20 anotaciones se conservan como mucho ~200 documentos.
+      if (++consumoEscrito % 20 === 0) {
+        db.collection("consumo").orderBy("ts", "desc").limit(260).get()
+          .then((snap) => snap.docs.slice(200).forEach((x) => { try { db.doc("consumo/" + x.id).delete().catch(() => {}); } catch {} }))
+          .catch(() => {});
+      }
+    } catch {}
+  }
   const erroresVistos = new Map();
   let erroresEnviados = 0;
   function registrarError(tipo, mensaje, extra) {
@@ -1799,6 +1815,7 @@
     let cronicaNueva = cronicaDM;
     const llamadasTurno = []; // qué herramientas usó el DM en este turno (para el repaso)
     let texto = "";
+    const consumo = { entrada: 0, salida: 0, repaso: false, sinNarracion: false }; // para registrarConsumo
     const avisos = [];
     const vivo = { narrando: true, por: infoTurno?.actuante || nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
     enCadenaVivo(() => ref.set(vivo)); // no se espera: el modelo empieza ya
@@ -1886,7 +1903,9 @@
     // Vigilante: si el DM lleva 3 minutos sin escribir ni registrar nada, se corta (las acciones siguen en cola).
     const vigilante = setInterval(() => { if (Date.now() - ultimaActividad > 180000 && !ctl.signal.aborted) { cortadoPor = "sin_respuesta"; ctl.abort(); } }, 5000);
     try {
-      const res = await conCorte(sample(construirEntrada(acciones, infoTurno, correccion), {
+      const entradaDM = construirEntrada(acciones, infoTurno, correccion);
+      consumo.entrada = tamanoEntrada(entradaDM);
+      const res = await conCorte(sample(entradaDM, {
         tools: [motor],
         modelTier: $("nivel").value,
         signal: ctl.signal,
@@ -1895,14 +1914,17 @@
       }), ctl.signal);
       let marca = V.secuencia.extraerMarca(res.text);
       texto = marca.limpio;
+      consumo.salida = (res.text || "").length;
       // Red de seguridad: si el DM resolvió las tiradas pero terminó sin escribir la narración, se le pide una vez más (sin herramientas).
       if (texto.trim().length < 15 && !ctl.signal.aborted) {
         registrarError("dm", "el DM terminó el turno sin narración (se le pide de nuevo)", { code: "sin_narracion" });
+        consumo.sinNarracion = true;
         try {
           const resultados = avisos.map((a) => a.texto).join("\n") || llamadasTurno.join(", ");
           const r2 = await conCorte(sample(V.promptNarrar({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), resultados, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { modelTier: $("nivel").value, signal: ctl.signal, onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* pintar no debe romper la respuesta */ } } }), ctl.signal);
           marca = V.secuencia.extraerMarca(r2.text);
           texto = marca.limpio;
+          consumo.salida += (r2.text || "").length;
         } catch (e2) { if (e2?.code === "cancelled" || ctl.signal.aborted) throw e2; }
         if (texto.trim().length < 15) throw { code: "sin_narracion" };
       }
@@ -1926,6 +1948,7 @@
       // Solo se repasa cuando el programa detecta algo que la narración cuenta y el DM no registró: sin pistas no hay segunda llamada.
       const pistas = $("repaso").checked && sample && !ctl.signal.aborted ? V.pistasDeRepaso(copia, { texto, llamadas: llamadasTurno, relojAntes }) : [];
       if (pistas.length) {
+        consumo.repaso = true;
         const ctlR = new AbortController();
         const alCortar = () => ctlR.abort();
         ctl.signal.addEventListener("abort", alCortar, { once: true });
@@ -1940,6 +1963,7 @@
       }
       if (ctl.signal.aborted) throw { code: "cancelled" }; // «Detener al DM» durante el repaso: el turno no se guarda
       const deshacerOk = await guardarCopia;
+      registrarConsumo({ jugador: infoTurno?.actuante || [...new Set(acciones.map((a) => a.nombre))].join(", "), entrada: consumo.entrada, salida: consumo.salida, herramientas: llamadasTurno.length, repaso: consumo.repaso, sinNarracion: consumo.sinNarracion, nivel: res.modelTierApplied || $("nivel").value });
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;

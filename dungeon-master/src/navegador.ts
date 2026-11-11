@@ -29,6 +29,7 @@ import * as encuentros from "./encuentros.js";
 import * as regentes from "./regentes.js";
 import { mitigacion, textoRunas } from "./cazador.js";
 import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
+import { artesDe } from "./estilos_base.js";
 
 import { rasgosAutomaticos } from "./rasgos.js";
 import { bestiarioGrupo } from "./codice.js";
@@ -178,4 +179,41 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
 }
 
 export { bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+/** ¿Hay artes marciales en juego? Algún personaje con estilo (o Flagelante) o una criatura en escena que los domina. */
+export function hayArtes(p: Partida): boolean {
+  return Object.values(p.personajes ?? {}).some((x) => artesDe(x).length > 0) ||
+    Object.values(p.jefes ?? {}).some((j) => j.pv > 0 && (j.definicion?.artes?.length ?? 0) > 0);
+}
+
+/** El percentil `q` (0-1) de una lista ya ordenada de menor a mayor (el más cercano por arriba). */
+function percentil(orden: number[], q: number): number {
+  if (!orden.length) return 0;
+  return orden[Math.min(orden.length - 1, Math.max(0, Math.ceil(q * orden.length) - 1))];
+}
+
+/** Resumen del registro de consumo (colección consumo/): media, p50, p90 y máximo de lo enviado y lo recibido, más cuántos turnos llevaron repaso o red de seguridad. */
+export function resumenConsumo(docs: { entrada?: number; salida?: number; herramientas?: number; repaso?: boolean; sinNarracion?: boolean }[]): {
+  turnos: number;
+  entrada: { media: number; p50: number; p90: number; max: number };
+  salida: { media: number; p50: number; p90: number; max: number };
+  herramientasMedia: number;
+  conRepaso: number;
+  sinNarracion: number;
+} {
+  const de = (campo: "entrada" | "salida") => {
+    const v = docs.map((d) => Number(d[campo])).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+    const media = v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0;
+    return { media, p50: percentil(v, 0.5), p90: percentil(v, 0.9), max: v.length ? v[v.length - 1] : 0 };
+  };
+  const h = docs.map((d) => Number(d.herramientas)).filter((n) => Number.isFinite(n));
+  return {
+    turnos: docs.length,
+    entrada: de("entrada"),
+    salida: de("salida"),
+    herramientasMedia: h.length ? Math.round((h.reduce((a, b) => a + b, 0) / h.length) * 10) / 10 : 0,
+    conRepaso: docs.filter((d) => d.repaso).length,
+    sinNarracion: docs.filter((d) => d.sinNarracion).length,
+  };
+}
+
 export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

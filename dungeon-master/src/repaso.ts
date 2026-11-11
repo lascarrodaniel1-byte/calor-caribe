@@ -85,7 +85,7 @@ export function pistasDeRepaso(partida: Partida, d: { texto: string; llamadas: s
 export function promptNarrar(d: { acciones: string; resultados: string; estado: string }): string {
   return [
     "# NARRA AHORA (sin herramientas)",
-    "En este turno ya resolviste las acciones de los jugadores con tus herramientas, pero terminaste SIN escribir la narración. Escríbela ahora, en español, como lo haría el Dungeon Master: 1 a 3 párrafos que cuenten lo que ocurrió con los resultados de abajo (no repitas cifras ni tiradas, no cambies ningún resultado, no hagas tiradas nuevas) y termina con lo que ven y pueden hacer los personajes a continuación.",
+    "En este turno ya resolviste las acciones de los jugadores con tus herramientas, pero terminaste SIN escribir la narración. Escríbela ahora, en español, como lo haría el Dungeon Master: 1 a 3 párrafos cortos (máximo ~120 palabras por jugador) que cuenten lo que ocurrió con los resultados de abajo (no repitas cifras ni tiradas, no cambies ningún resultado, no hagas tiradas nuevas) y termina con lo que ven y pueden hacer los personajes a continuación.",
     `\n## Acción de los jugadores\n${d.acciones}`,
     `\n## Lo que resolviste en este turno (resultados de tus herramientas)\n${d.resultados.slice(0, 6000) || "(nada registrado)"}`,
     `\n## Estado actual\n${d.estado}`,
