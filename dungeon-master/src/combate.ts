@@ -21,7 +21,7 @@ import { esFlagelante, esquivaAutomatica, pasoElusivoActivo } from "./flagelante
 import { selloDe } from "./segador_base.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { pxCriatura, registrarBaja } from "./progresion.js";
-import { ajusteAgua, estaSumergido } from "./agua.js";
+import { ajusteAgua, danoEnAgua, esAcuatico, estaEnAgua, estaSumergido } from "./agua.js";
 import { ventajaMontada } from "./montura.js";
 import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
@@ -853,7 +853,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     }
   }
   // El entorno: bajo el agua, a caballo y sobre la cubierta de una nave.
-  const aguaAj = ajusteAgua(estaSumergido(condsDe(at)), condsDe(at).some((c) => /nadador/i.test(c)) || (at.tipo === "pj" && tiene(at.p, "marinero")), distancia, d.arma);
+  const estadoAgua = { sumergido: estaSumergido(condsDe(at)), enAgua: estaEnAgua(condsDe(at)) || estaSumergido(condsDe(at)), acuatico: esAcuatico(at) || condsDe(at).some((c) => /nadador/i.test(c)) && at.tipo !== "pj" };
+  const entrenadoAgua = condsDe(at).some((c) => /nadador/i.test(c)) || (at.tipo === "pj" && tiene(at.p, "marinero"));
+  const aguaAj = ajusteAgua({ ...estadoAgua, entrenado: entrenadoAgua }, distancia, d.arma);
   if (aguaAj.desventaja) { desventaja = true; motivos.push(aguaAj.desventaja); }
   const monta = ventajaMontada(partida, at.nombre, ob.nombre, distancia);
   if (monta) { ventaja = true; motivos.push(monta); }
@@ -1001,7 +1003,10 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr + presaStr) : d.dano + castigoStr + presaStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
     if (furiaMas - lunaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     if (lunaMas) lineas.push("🌕 Furia de la luna: +2 al daño cuerpo a cuerpo.");
-    const bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
+    let bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
+    // El agua frena a quien no es del agua: sumergido, la mitad del daño; en el agua, −2 en cuerpo a cuerpo.
+    const dAgua = danoEnAgua(estadoAgua, distancia, bruto);
+    if (dAgua.nota) { bruto = dAgua.dano; lineas.push(dAgua.nota); }
     lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
 
     // Armadura: dónde cae el golpe, qué lo cubre y cuánto penetra el arma.

@@ -1,7 +1,7 @@
 // Combate bajo el agua: contener la respiración, ahogarse y cómo cambian los ataques.
 import { tiene } from "./dotes_base.js";
 import { agregarCondicion } from "./condiciones.js";
-import { localizar, condsDe } from "./combate.js";
+import { localizar, condsDe, type Combatiente } from "./combate.js";
 import type { Partida, Personaje } from "./estado.js";
 import { marcarMuerto, mod, valor } from "./reglas.js";
 import { avanzarSiHay } from "./espacio.js";
@@ -20,6 +20,19 @@ export interface Sumergido {
 
 const ES_SUMERGIDO = /^sumergido/i;
 export const estaSumergido = (conds: string[]) => conds.some((c) => ES_SUMERGIDO.test(c));
+const ES_EN_AGUA = /^en el agua/i;
+export const estaEnAgua = (conds: string[]) => conds.some((c) => ES_EN_AGUA.test(c));
+const NOMBRE_ACUATICO = /ahogad|sirena|hombre pez|elemental de agua|hidra|tritón|triton|kraken|leviat/i;
+
+/** ¿Es del agua? Los Tritones, las criaturas que nadan o respiran bajo el agua (sirenas, hombres pez, ahogados…) y quien el DM marque «nadador»: no sufren las penalizaciones del agua. */
+export function esAcuatico(c: Combatiente): boolean {
+  if (c.tipo === "pj") return c.p.raza === "Tritón de las Mareas";
+  if (c.tipo === "criatura") {
+    const d = c.j.definicion;
+    return /nadar/i.test(d.velocidad) || d.rasgos.some((r) => /anfibi|acu[aá]tic|respira (bajo el )?agua/i.test(r)) || NOMBRE_ACUATICO.test(d.nombre);
+  }
+  return NOMBRE_ACUATICO.test(c.nombre) || condsDe(c).some((x) => /nadador/i.test(x));
+}
 
 /** Un minuto = 10 asaltos de 6 segundos. Aire: (1 + mod. CON) minutos, mínimo 30 s; luego mod. CON asaltos (mínimo 1). */
 export function respiracion(p: Personaje): { aire: number; sinAire: number } {
@@ -35,7 +48,9 @@ export function alAgua(partida: Partida, nombres: string[], nadador = false): st
     const c = localizar(partida, n);
     const conds = condsDe(c);
     if (estaSumergido(conds)) { out.push(`${c.nombre} ya está bajo el agua.`); continue; }
-    agregarCondicion(conds, nadador ? "sumergido (nadador)" : "sumergido");
+    const nativo = esAcuatico(c);
+    agregarCondicion(conds, nadador || nativo ? "sumergido (nadador)" : "sumergido");
+    agregarCondicion(conds, nadador || nativo ? "en el agua (nadador)" : "en el agua");
     if (c.tipo === "pj") {
       if (c.p.raza === "Tritón de las Mareas") {
         agregarCondicion(conds, "sumergido (nadador)");
@@ -48,9 +63,33 @@ export function alAgua(partida: Partida, nombres: string[], nadador = false): st
       c.p.sumergido = { ...r, nadador: nadador || tiene(c.p, "marinero") };
       c.p.nave = undefined;
       out.push(`${c.nombre} se hunde bajo el agua: contiene la respiración ${r.aire / 10} min (${r.aire} asaltos) y luego aguanta ${r.sinAire} asalto(s) antes de caer.`);
-    } else out.push(`${c.nombre} está bajo el agua (lleva tú su aire).`);
+    } else out.push(nativo ? `${c.nombre} está en su elemento bajo el agua: sin penalizaciones.` : `${c.nombre} está bajo el agua (lleva tú su aire). No es del agua: ataca con desventaja, a la mitad de velocidad y con la mitad de daño.`);
   }
   return out;
+}
+
+/** Los mete en el agua sin hundirlos (nadando, vadeando, agua hasta el pecho). */
+export function entrarEnAgua(partida: Partida, nombres: string[]): string[] {
+  return nombres.map((n) => {
+    const c = localizar(partida, n);
+    const conds = condsDe(c);
+    if (estaEnAgua(conds) || estaSumergido(conds)) return `${c.nombre} ya está en el agua.`;
+    const nativo = esAcuatico(c);
+    agregarCondicion(conds, nativo ? "en el agua (nadador)" : "en el agua");
+    return nativo ? `${c.nombre} entra en el agua: es del agua, sin penalizaciones.` : `${c.nombre} entra en el agua: sin pie firme, ataca cuerpo a cuerpo con desventaja y con −2 al daño, y va a la mitad de velocidad (si se hunde, aún peor).`;
+  });
+}
+
+/** Los saca del agua del todo: pisan tierra firme. */
+export function salirDelAgua(partida: Partida, nombres: string[]): string[] {
+  return nombres.map((n) => {
+    const c = localizar(partida, n);
+    const conds = condsDe(c);
+    if (!estaEnAgua(conds) && !estaSumergido(conds)) return `${c.nombre} no está en el agua.`;
+    conds.splice(0, conds.length, ...conds.filter((x) => !ES_SUMERGIDO.test(x) && !ES_EN_AGUA.test(x)));
+    if (c.tipo === "pj") delete c.p.sumergido;
+    return `${c.nombre} sale del agua y pisa tierra firme.`;
+  });
 }
 
 export function emerger(partida: Partida, nombres: string[]): string[] {
@@ -60,8 +99,9 @@ export function emerger(partida: Partida, nombres: string[]): string[] {
     const conds = condsDe(c);
     if (!estaSumergido(conds)) { out.push(`${c.nombre} no está bajo el agua.`); continue; }
     conds.splice(0, conds.length, ...conds.filter((x) => !ES_SUMERGIDO.test(x)));
-    if (c.tipo === "pj") { delete c.p.sumergido; out.push(`${c.nombre} saca la cabeza del agua y respira: recupera el aire entero.`); }
-    else out.push(`${c.nombre} sale del agua.`);
+    if (!estaEnAgua(conds)) agregarCondicion(conds, esAcuatico(c) ? "en el agua (nadador)" : "en el agua");
+    if (c.tipo === "pj") { delete c.p.sumergido; out.push(`${c.nombre} saca la cabeza del agua y respira: recupera el aire entero (sigue en el agua: usa agua {accion: salir} cuando pise tierra firme).`); }
+    else out.push(`${c.nombre} saca la cabeza del agua (sigue en el agua).`);
   }
   return out;
 }
@@ -91,22 +131,29 @@ export function gastarAireDe(_partida: Partida, p: Personaje, asaltos: number): 
 
 export const pasarAsaltoAgua = (partida: Partida): string[] => gastarAire(partida, 1);
 
-/** Ajustes a un ataque por el agua: desventaja o ataque imposible. */
-const ARMAS_AGUA = /daga|cuchillo|kunai|jabalina|espada corta|lanza|tridente|dardo|estoque corto/i;
-const DISTANCIA_AGUA = /ballesta|red\b|jabalina|lanza|tridente|dardo|daga|hacha de mano/i;
-
-export function ajusteAgua(sumergido: boolean, nadador: boolean, distancia: boolean, arma?: string): { desventaja?: string; error?: string } {
-  if (!sumergido) return {};
-  if (distancia) {
-    if (arma && DISTANCIA_AGUA.test(arma)) return {};
-    return { desventaja: `bajo el agua, ${arma ?? "un arma a distancia"} sufre desventaja (solo ballestas, redes y armas arrojadizas como jabalina o tridente funcionan bien)` };
+/** Ajustes a un ataque por el agua. Quien no es del agua lo sufre: en el agua, desventaja cuerpo a cuerpo; sumergido, desventaja en todo
+ *  (quien nada de verdad solo a distancia). Los del agua (Tritones, sirenas, ahogados…) no sufren nada. */
+export function ajusteAgua(e: { sumergido: boolean; enAgua: boolean; acuatico: boolean; entrenado: boolean }, distancia: boolean, arma?: string): { desventaja?: string; error?: string } {
+  if (e.acuatico || (!e.sumergido && !e.enAgua)) return {};
+  if (e.sumergido) {
+    if (distancia) return { desventaja: `bajo el agua, ${arma ?? "un arma a distancia"} sufre desventaja (el agua frena el proyectil)` };
+    if (e.entrenado) return {};
+    return { desventaja: `bajo el agua, ${arma ? `con ${arma}` : "sin decir el arma"}, ataca con desventaja (no es del agua: se mueve lento y torpe)` };
   }
-  if (nadador || (arma && ARMAS_AGUA.test(arma))) return {};
-  return { desventaja: `bajo el agua, ${arma ? `con ${arma}` : "sin decir el arma"}, ataca con desventaja (solo daga, jabalina, espada corta, lanza o tridente se salvan, o quien nada de verdad)` };
+  if (distancia || e.entrenado) return {};
+  return { desventaja: "en el agua, sin pie firme, ataca cuerpo a cuerpo con desventaja" };
+}
+
+/** El daño que pierde quien no es del agua: sumergido, la mitad; en el agua, −2 en cuerpo a cuerpo (mínimo 1 si había daño). */
+export function danoEnAgua(e: { sumergido: boolean; enAgua: boolean; acuatico: boolean }, distancia: boolean, dano: number): { dano: number; nota: string } {
+  if (e.acuatico || dano <= 0) return { dano, nota: "" };
+  if (e.sumergido) { const n = Math.max(1, Math.floor(dano / 2)); return { dano: n, nota: `🌊 Bajo el agua el golpe pierde fuerza (${dano} → ${n}).` }; }
+  if (e.enAgua && !distancia) { const n = Math.max(1, dano - 2); return { dano: n, nota: `🌊 En el agua, sin apoyo, el golpe pierde fuerza (${dano} → ${n}).` }; }
+  return { dano, nota: "" };
 }
 
 export interface DatosAgua {
-  accion: "sumergir" | "emerger" | "nadar" | "ver";
+  accion: "sumergir" | "emerger" | "nadar" | "ver" | "entrar" | "salir";
   quienes?: string[];
   nadador?: boolean;
   /** nadar: minutos bajo el agua (gasta el aire). */
@@ -122,6 +169,8 @@ export function agua(partida: Partida, d: DatosAgua): string {
   const nombres = d.quienes?.length ? d.quienes : todos.map((p) => p.nombre);
   if (d.accion === "sumergir") return alAgua(partida, nombres, d.nadador).join("\n");
   if (d.accion === "emerger") return emerger(partida, nombres).join("\n");
+  if (d.accion === "entrar") return entrarEnAgua(partida, nombres).join("\n");
+  if (d.accion === "salir") return salirDelAgua(partida, nombres).join("\n");
   if (!d.minutos) throw new Error("nadar: di cuántos minutos pasan bajo el agua (minutos).");
   avanzarSiHay(partida, d.minutos * 60);
   return [`Pasan ${d.minutos} min bajo el agua (${d.minutos * 10} asaltos de aire).`, ...gastarAire(partida, d.minutos * 10)].join("\n");
@@ -135,4 +184,6 @@ export function textoAgua(partida: Partida): string {
 
 export const REGLAS_AGUA = `## Combate bajo el agua
 - Sumerge con agua {accion: sumergir, quienes} (y nadador=true si nada de verdad). Aguanta la respiración (1 + mod. CON) minutos (mínimo medio minuto); luego mod. CON asaltos (mínimo 1) y cae a 0 PV (inconsciente y muriéndose); a 0 PV bajo el agua, se ahoga. siguiente_asalto gasta el aire solo; agua {accion: nadar, minutos} gasta el de un trayecto largo. Emerger lo repone.
-- Ataques bajo el agua: cuerpo a cuerpo con desventaja salvo daga, jabalina, espada corta, lanza, tridente o si nada de verdad; a distancia, desventaja salvo ballestas, redes y armas arrojadizas (un arco no sirve). Pasa siempre el arma en atacar. Los sumergidos resisten el daño de fuego (a la mitad: aplícalo tú a mano). Nadar es a la mitad de velocidad salvo que se sepa nadar; el agua agitada pide Atletismo (CD 10 a 15). La armadura pesada y la mochila cargada hunden: CD más alta o hundimiento seguro.`;
+- QUIEN NO ES DEL AGUA (todos los personajes y criaturas salvo Tritones, sirenas, hombres pez, ahogados y lo que nada o respira bajo el agua) lo sufre: EN EL AGUA (agua {accion: entrar}), sin pie firme, ataca cuerpo a cuerpo con desventaja y −2 al daño, y va a la mitad de velocidad; SUMERGIDO, desventaja en TODOS sus ataques, la MITAD del daño y la mitad de velocidad. Quien nada de verdad (nadador: true, o un Marinero) no tiene desventaja cuerpo a cuerpo, pero sumergido sigue haciendo la mitad del daño. Los del agua no sufren nada (el programa los reconoce; si una criatura del agua no lo es, márcala nadador). Pasa siempre el arma en atacar. Los sumergidos resisten el daño de fuego (a la mitad: aplícalo tú a mano). El agua agitada pide Atletismo. Al terminar, agua {accion: salir}.
+
+- Nadar es a la mitad de velocidad salvo que se sepa nadar. La armadura pesada y la mochila cargada hunden: CD más alta o hundimiento seguro.`;

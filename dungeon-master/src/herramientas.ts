@@ -770,8 +770,8 @@ const esquemas = {
     motivo: z.string().optional(),
   }),
   agua: z.object({
-    accion: z.enum(["sumergir", "emerger", "nadar", "ver"]),
-    quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
+    accion: z.enum(["sumergir", "emerger", "nadar", "ver", "entrar", "salir"]),
+    quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo (PJ, criaturas y PNJ por su nombre)"),
     nadador: z.boolean().optional().describe("sumergir: sabe nadar de verdad (sin desventaja en el cuerpo a cuerpo)"),
     minutos: z.number().min(0.5).max(60).optional().describe("nadar: minutos bajo el agua"),
   }),
@@ -874,7 +874,7 @@ const descripciones: Record<Nombre, string> = {
   montura:
     "Combate montado: montar, desmontar o caer de la montura (DES CD 10). El jinete grande ataca con ventaja a los de a pie; si la montura cae, el jinete cae.",
   agua:
-    "Combate bajo el agua: sumergir, emerger, nadar (minutos) o ver el aire. Gasta aire por asalto, ahoga, y los ataques sufren desventaja salvo armas adecuadas.",
+    "Combate en el agua: entrar (nadando o vadeando), sumergir, emerger, salir (tierra firme), nadar (minutos) o ver el aire. Quien no es del agua (todos salvo Tritones, sirenas, hombres pez, ahogados y lo que nada) ataca con desventaja, hace menos daño (la mitad si está sumergido) y va a la mitad de velocidad; los del agua no sufren nada. Gasta aire por asalto y ahoga.",
   nave:
     "Botes, balsas y barcos: crear, abordar, desembarcar, navegar (horas y viento), mar, danar el casco, reparar (achicar, remendar, apagar) y abordaje. Se hunde, arde y tira gente por la borda.",
   trampa:
