@@ -26,7 +26,6 @@ export interface Furia {
 }
 
 export const ASALTOS_FURIA = 10;
-export const esBerserker = (p: Personaje) => p.clase === "Berserker de Ceniza";
 export const enFuria = (p: Personaje) => !!p.furia?.activa;
 /** Nivel 1-4: el trance lo ciega. */
 export const enTrance = (p: Personaje) => enFuria(p) && p.nivel < nvl(3);

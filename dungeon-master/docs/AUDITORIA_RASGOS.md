@@ -43,41 +43,44 @@ Los niveles de la tabla son los **reales** (tabla base + 2; ver `src/niveles.ts`
 | | Segundo aliento | 1 | HERRAMIENTA (`usar_recurso`) |
 | | Acción súbita | 4 | HERRAMIENTA; el motor da luego otra acción de Atacar completa |
 | | Veterano de compañía (crítico 19-20) | 5 | **AUTO** |
-| | Ataque adicional | 7 | **AUTO** (2 ataques por acción de Atacar; avisa del tercero) |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** (2 ataques por acción de Atacar; avisa del tercero) |
 | Berserker de Ceniza | Furia (usos, trance, daño, resistencia, heridas) | 1 | HERRAMIENTA (`furia`); lo demás **AUTO** mientras dura |
 | | Ataque temerario | 4 | **AUTO** (ventaja propia y de los enemigos hasta su próximo turno; `temerario:false` lo evita) |
 | | Sentido del peligro (ventaja en salvaciones de DES) | 4 | **AUTO** |
 | | Furia lúcida, Senda de la Ceniza | 5 | **AUTO** |
-| | Ataque adicional | 7 | **AUTO** |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** |
 | | Movimiento rápido | 7 | DM |
 | | Furia que cierra las heridas | 7 | **AUTO** |
 | Caballero Juramentado | Estilo de combate | 4 | HERRAMIENTA (`estilo_combate`) |
 | | Castigo divino | 4 | HERRAMIENTA (`atacar {castigo}`) |
 | | Salud divina, Ventaja de cada voto | 5 | **AUTO** |
 | | Sentido divino mayor (36 m) | 6 | **AUTO** |
-| | Ataque adicional | 7 | **AUTO** |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** |
 | | Luz contra la Podre | 7 | **AUTO** (al tratar herida con magia divina) |
 | Cazador de Brujas | Estilo de combate | 4 | HERRAMIENTA |
 | | Presa marcada (+1d8 a una criatura herida, una vez por turno) | 5 | **AUTO** |
 | | Conciencia primigenia (sentir no-muertos a 9 m) | 5 | DM |
 | | Runas, rastro y curación de las runas | 5–14 | HERRAMIENTA / **AUTO** según el caso |
-| | Ataque adicional, Urumi | 7 | **AUTO** / DM |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** |
+| | Urumi | 7 | DM |
 | Degollador | Acción astuta, Ataque furtivo, Filo del asesino, Entrar y salir | 4–5 | HERRAMIENTA / **AUTO** en el ataque |
 | | Ojos de gato, Ojos en la espalda, Esquiva asombrosa | 6–10 | **AUTO** |
 | Flagelante | Devolver el dolor, Contacto con la sangre | 4–5 | **AUTO** |
 | | Desviar proyectiles (reduce 1d10 + DES + nivel el daño de un proyectil) | 5 | **AUTO** (usa su reacción) |
 | | Caída lenta, Movimiento sin armadura | 4–6 | DM |
 | | Paso elusivo | 7 | HERRAMIENTA (`paso_elusivo`); automático con el dolor al máximo |
-| | Ataque adicional | 7 | **AUTO** |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** |
 | | Golpe aturdidor | 7 | HERRAMIENTA (`usar_recurso`, 1 uso por descanso corto) |
 | Segador | Invocaciones, Sellar almas, Descarga | 4 | HERRAMIENTA |
 | | Don del pacto | 5 | **AUTO** (guadaña mágica) |
-| | Ataque adicional, Descarga de dos rayos | 7 | **AUTO** |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** |
+| | Descarga de dos rayos | 7 | **AUTO** |
 | Hechicero | Recuperación arcana | 4 | HERRAMIENTA |
 | | Dominio de lo menor | 5 | **AUTO** (precios de los hechizos) |
 | | Maestro / Archimago / Ascendido (círculo y bono de lanzamiento) | 7 / 11 / 15 | **AUTO** |
 | Barbero-Cirujano | Mano de cirujano mejorada, Corte limpio | 4–5 | **AUTO** en el tratamiento |
-| | Mano firme, Ataque adicional | 7 | HERRAMIENTA / **AUTO** |
+| | Ataque adicional (excepción al desplazamiento) | 5 | **AUTO** |
+| | Mano firme | 7 | HERRAMIENTA |
 
 ## Dotes
 
