@@ -22,8 +22,13 @@ export function velocidadDe(partida: Partida, c: Combatiente): { metros: number;
   if (c.tipo === "pj") { v = RAZAS.find((r) => r.nombre === c.p.raza)?.velocidad ?? BASE; if (v !== BASE) motivos.push(`velocidad de su raza: ${v} m`); }
   if (c.tipo === "criatura") {
     const txt = c.j.definicion.velocidad;
-    v = numero(txt, /^\s*(\d+(?:[.,]\d+)?)\s*m/i) ?? BASE;
-    nada = numero(txt, /nadar\s+(\d+(?:[.,]\d+)?)/i);
+    const buena = (n: number | undefined): number | undefined => (n !== undefined && Number.isFinite(n) && n > 0 ? n : undefined);
+    const anda = buena(numero(txt ?? "", /^\s*(\d+(?:[.,]\d+)?)\s*m/i));
+    const vuela = buena(numero(txt ?? "", /volar\s+(\d+(?:[.,]\d+)?)/i));
+    nada = buena(numero(txt ?? "", /nadar\s+(\d+(?:[.,]\d+)?)/i));
+    v = anda ?? BASE;
+    if (vuela !== undefined && vuela > v) { v = vuela; motivos.push(`vuela a ${vuela} m`); } // un volador se mueve a su velocidad de vuelo
+    else if (vuela === undefined && anda === undefined && nada === undefined) v = BASE;
   }
   const enAgua = estaEnAgua(conds) || estaSumergido(conds);
   if (enAgua) {
