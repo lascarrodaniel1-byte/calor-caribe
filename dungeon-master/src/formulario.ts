@@ -4,6 +4,7 @@ import { buscarDote, DOTES } from "./dotes.js";
 import { PERSONALIDADES, VETERANIAS } from "./combate.js";
 import { buscarTipo, TIPOS_MAGIA } from "./magia.js";
 import { CLASES, RAZAS } from "./mundo.js";
+import { ESTILOS } from "./estilos.js";
 
 export const ATRIBUTOS = ["fue", "des", "con", "int", "sab", "car"] as const;
 export type Atributo = (typeof ATRIBUTOS)[number];
@@ -41,6 +42,10 @@ export const GENEROS = [
 export const MAX_GENERO = 30;
 export const pronombresDe = (g: string): string => GENEROS.find((x) => x.id === g)?.pronombres ?? `según lo que escribió el jugador: «${g}» (respétalo, sin suponer)`;
 
+/** Estilos de artes marciales que una clase ofrece al crear el personaje (los de solo historia no salen; el Flagelante lleva el Haemajitsu fijo). */
+export const estilosDeClase = (clase: string) =>
+  clase === "Flagelante" ? ESTILOS.filter((e) => e.id === "haemajitsu") : ESTILOS.filter((e) => e.clases.includes(clase) && !e.soloHistoria);
+
 export const DATOS_FORMULARIO = {
   generos: GENEROS.map((g) => ({ id: g.id, nombre: g.nombre })),
   razas: RAZAS.map((r) => ({ nombre: r.nombre, bonos: r.atributos, valores: bonosDeRaza(r.atributos), descripcion: r.descripcion })),
@@ -53,6 +58,7 @@ export const DATOS_FORMULARIO = {
     { id: "rico", nombre: "Rico (mercader, banquero, familia acomodada)" },
     { id: "humilde", nombre: "Humilde (solo entra si el DM te tiró el don arcano MÁGICO antes de crear el personaje)" },
   ],
+  estilos: Object.fromEntries(CLASES.map((c) => [c.nombre, estilosDeClase(c.nombre).map((e) => ({ id: e.id, nombre: e.nombre, centro: e.centro, principio: e.principio, fijo: c.nombre === "Flagelante" && e.id === "haemajitsu" }))])),
   serie: SERIE_ESTANDAR,
   dotes: DOTES.map((d) => ({ id: d.id, nombre: d.nombre, efecto: d.efecto, requisito: `${d.requisito.atributos.map((a) => a.toUpperCase()).join(" o ")} ${d.requisito.minimo}${d.requisito.clase ? `, solo ${d.requisito.clase}` : ""}`, opciones: d.opciones ?? [] })),
 };
@@ -76,6 +82,8 @@ export interface DatosFicha {
   linaje: string;
   trasfondo: string;
   extra: string;
+  /** Opcional: id del estilo de artes marciales que ofrece la clase (vacío o ausente = ninguno por ahora). */
+  estilo?: string;
   /** Solo el Humano del Faro: su dote gratis y la opción que lleve. */
   dote?: string;
   opcion_dote?: string;
@@ -121,6 +129,7 @@ export function validarFicha(f: DatosFicha): string[] {
     else if (!d.requisito.atributos.some((a) => fin[a] >= d.requisito.minimo)) e.push(`${d.nombre} pide ${d.requisito.atributos.map((a) => a.toUpperCase()).join(" o ")} ${d.requisito.minimo} (con tus atributos finales).`);
     else if (d.opciones && !d.opciones.includes(f.opcion_dote ?? "")) e.push(`${d.nombre}: elige ${d.opciones.join(" o ")}.`);
   }
+  if (f.estilo && !estilosDeClase(f.clase).some((x) => x.id === f.estilo)) e.push("Ese estilo de artes marciales no lo ofrece tu clase: elige otro o ninguno.");
   if (f.trasfondo.trim().length < 20) e.push("Cuenta en unas líneas quién fue tu personaje y qué busca.");
   if (textoFicha(f).length > MAX_ACCION) e.push("El texto es demasiado largo: acorta el trasfondo o el equipo extra.");
   return e;
@@ -144,6 +153,7 @@ export function textoFicha(f: DatosFicha): string {
     `Equipo: el inicial de la clase (${c?.equipo})${f.extra.trim() ? `; además: ${f.extra.trim()}` : ""}; más «Raciones de viaje (5)» y «Odre de agua (2)» en el inventario`,
     `Trasfondo: ${f.trasfondo.trim()}`,
     f.raza === "Humano del Faro" ? `Dote gratis del Humano del Faro: «${f.dote}»${f.opcion_dote ? ` (opción ${f.opcion_dote})` : ""} (pásala a guardar_personaje como dote${f.opcion_dote ? " y opcion_dote" : ""}).` : "",
+    f.estilo ? `Estilo marcial: ${ESTILOS.find((x) => x.id === f.estilo)?.nombre ?? f.estilo} (guárdalo con arte_marcial {accion: aprender, quien: «${f.nombre.trim()}», arte: «${ESTILOS.find((x) => x.id === f.estilo)?.nombre ?? f.estilo}», via: «clase»} justo después de guardar_personaje)` : "",
     f.clase === "Cazador de Brujas" ? "Mascota: si el jugador nombró un halcón o un ratón (en el trasfondo o en el equipo extra), ese; si no, elige tú según su trasfondo, y guárdala con mascota {accion: elegir} justo después de guardar la ficha." : "",
     f.clase === "Caballero Juramentado" ? "Juramento: elige tú, sin preguntar, 1 a 3 votos de Ka'i (Verdad, Amparo, Lealtad, Luz, Descanso, Merced) acordes a su trasfondo y guárdalos con juramento {accion: jurar} justo después de guardar la ficha." : "",
   ]

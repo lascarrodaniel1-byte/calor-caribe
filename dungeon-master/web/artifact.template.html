@@ -505,10 +505,11 @@
         <div class="atajos">
           <button class="boton" type="button" id="crear-personaje" hidden>📜 Crear personaje</button>
           <button class="boton sobrio" type="button" id="llevar-personaje" hidden title="Lleva el personaje de un jugador que no está, sin crear el tuyo">🎭 Llevar un personaje ausente</button>
-          <button class="boton sobrio" type="button" id="menu-ayudas" aria-haspopup="true" aria-expanded="false" aria-controls="panel-ayudas" title="Razas y clases, viales y ayuda">❔ Ayudas</button>
+          <button class="boton sobrio" type="button" id="menu-ayudas" aria-haspopup="true" aria-expanded="false" aria-controls="panel-ayudas" title="Razas y clases, viales, artes marciales y ayuda">❔ Ayudas</button>
           <div class="menu-panel arriba" id="panel-ayudas" role="menu" hidden>
             <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
             <button class="boton sobrio" type="button" data-cmd="/viales">Viales</button>
+            <button class="boton sobrio" type="button" data-cmd="/artes">Artes marciales</button>
             <button class="boton sobrio" type="button" data-cmd="/ayuda">Ayuda</button>
           </div>
           <button class="quien" id="quien" type="button"></button>
@@ -622,7 +623,7 @@
       <li>Arriba eliges el DM: <em>Rápido</em> (el que menos uso gasta, para el día a día), <em>Equilibrado</em> o <em>Profundo</em> (narra mejor en los momentos importantes, pero gasta más y puede tardar un par de minutos).</li>
       <li>Las heridas importan: una arteria abierta da segundos, no minutos. Pedid ayuda, usad torniquetes y no subestiméis una infección.</li>
       <li>La magia es rara y siempre cobra un precio: calor, aliento, sangre, cordura o años de vida. El Hechicero es el único mago de verdad: estudió en una escuela de hechicería (solo entran nobles y ricos, y todas tienen licencia de la Inquisición), domina un tipo de magia —fuego, hielo, viento, agua, tierra, oscuridad, luz…— y aprende hasta tres con el nivel. Antes de crear a cada personaje, el DM tira un d20 para ver si nace con un don arcano: un 19 es el don físico (un cuerpo prodigioso) y un 20, el don mágico. Con el don mágico, el Hechicero domina todos los tipos y comprende cualquier hechizo con solo verlo. Un guerrero solo sabe magia si nace con el don mágico (es raro) o si llega a élite y la aprende en la historia. Los catalizadores (como la Piedra de brasa) y el bastón del hechicero pagan por ti.</li>
-      <li>«/tirar» lo ven todos; «Razas y clases», «Viales» y «Ayuda» solo los ves tú.</li>
+      <li>«/tirar» lo ven todos; «Razas y clases», «Viales», «Artes marciales» y «Ayuda» solo los ves tú.</li>
     </ul>
     <div class="botonera">
       <button class="boton" type="submit">Entendido, a la mesa</button>
@@ -2106,7 +2107,7 @@
     if (/^\/corregir\b/i.test(texto)) { abrirCorreccion(texto.replace(/^\/corregir\s*/i, "")); return; }
     if (/^\/personaje\b/i.test(texto)) { abrirFormulario(); return; }
     if (texto.startsWith("/")) {
-      const r = V.comando(partida, texto);
+      const r = V.comando(partida, texto, nombre);
       if (!r) { privados.push("Comando desconocido. Escribe /ayuda."); pintar(); return; }
       if (r.publico && db) {
         await db.collection("turnos").add({ ts: siguienteTs(), acciones: [], texto: "", avisos: [{ pos: 0, texto: `${nombre}: ${r.texto}` }] }).catch(() => { privados.push(r.texto); pintar(); });
@@ -2173,7 +2174,7 @@
   caja.addEventListener("input", ajustar);
   caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
   $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
-  // «Razas y clases», «Viales» y «Ayuda» se abren y se cierran: pulsarlos otra vez quita la explicación.
+  // «Razas y clases», «Viales», «Artes marciales» y «Ayuda» se abren y se cierran: pulsarlos otra vez quita la explicación.
   const abiertosCmd = new Map(); // comando → el texto que dejó en pantalla
   window.__refrescarAyudas = () => document.querySelectorAll("[data-cmd]").forEach((b) => {
     const t = abiertosCmd.get(b.dataset.cmd);
@@ -2533,6 +2534,8 @@
       campo("pj-clase", "Clase", select("pj-clase", DF.clases.map((c) => [c.nombre, c.nombre]), "Elige…"), true),
     );
     raiz.append(fila1);
+    // Estilo de artes marciales (opcional): lo que ofrece la clase elegida; se rellena en actualizar().
+    raiz.append(campo("pj-estilo", "Estilo de artes marciales (opcional)", select("pj-estilo", [], null), true));
     const fila2 = document.createElement("div"); fila2.className = "fila";
     const per = DF.personalidades.map((x) => [x.nombre, x.nombre]);
     fila2.append(
@@ -2601,6 +2604,18 @@
       const clase = DF.clases.find((c) => c.nombre === $("pj-clase").value);
       $("pj-raza-ayuda").textContent = raza ? raza.descripcion : "";
       $("pj-clase-ayuda").textContent = clase ? `Dado de golpe d${clase.dado} · atributo principal ${clase.principal}. Equipo inicial: ${clase.equipo}` : "";
+      // El estilo depende de la clase: al cambiarla se rehace la lista (el Flagelante lleva el Haemajitsu fijo).
+      const selE = $("pj-estilo");
+      if (form.claseEstilo !== $("pj-clase").value) {
+        form.claseEstilo = $("pj-clase").value;
+        const ofrecidos = (DF.estilos && DF.estilos[form.claseEstilo]) || [];
+        const fijo = ofrecidos.find((e) => e.fijo);
+        selE.textContent = "";
+        if (fijo) { selE.append(opcion(fijo.id, fijo.nombre + " (de serie)")); selE.value = fijo.id; selE.disabled = true; }
+        else { selE.append(opcion("", "Ninguno por ahora")); ofrecidos.forEach((e) => selE.append(opcion(e.id, e.nombre))); selE.value = ""; selE.disabled = !form.claseEstilo; }
+      }
+      const eleg = ((DF.estilos && DF.estilos[form.claseEstilo]) || []).find((e) => e.id === selE.value);
+      $("pj-estilo-ayuda").textContent = eleg ? `${eleg.nombre}: ${eleg.centro}. ${eleg.principio}` : (form.claseEstilo ? "Tu clase puede aprender un estilo marcial ahora o más adelante con un maestro; puedes dejarlo en blanco." : "Elige primero la clase para ver sus estilos.");
       const v = DF.veteranias.find((x) => x.nombre === $("pj-vet").value); $("pj-vet-ayuda").textContent = v ? v.nota : "";
       [["pj-per1"], ["pj-per2"]].forEach(([id]) => { const x = DF.personalidades.find((q) => q.nombre === $(id).value); $(id + "-ayuda").textContent = x ? x.nota : ""; });
       // La tirada del don de ESTE personaje nuevo: la hace el DM antes; hasta entonces no se puede enviar la ficha.
@@ -2680,7 +2695,7 @@
     const datos = {
       nombre: $("pj-nombre").value, jugador: nombre, genero: $("pj-genero").value === "__otro" ? $("pj-genero-otro").value.trim() : $("pj-genero").value, raza: $("pj-raza").value, clase: $("pj-clase").value, veterania: $("pj-vet").value,
       personalidad: per, base, metodo: form.metodo, tipo: $("pj-tipo").value, linaje: $("pj-linaje").value, dote: $("pj-raza").value === "Humano del Faro" ? $("pj-dote").value : undefined, opcion_dote: $("pj-dote-opcion").value || undefined,
-      trasfondo: $("pj-trasfondo").value, extra: $("pj-extra").value,
+      trasfondo: $("pj-trasfondo").value, extra: $("pj-extra").value, estilo: $("pj-estilo").value || undefined,
     };
     const errores = FM.validarFicha(datos);
     // Con tiradas, el reparto tiene que usar justo los valores obtenidos.

@@ -16,8 +16,10 @@ import { recursosDe } from "./recursos.js";
 import { ENFERMEDADES } from "./enfermedades.js";
 import { IDIOMAS } from "./idiomas.js";
 import { IDIOMAS_NOMBRES } from "./idiomas_base.js";
+import { artesDe, ESTILOS, maestria, NOMBRE_MAESTRIA } from "./estilos.js";
+import { nvl } from "./niveles.js";
 
-export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma" | "nivel" | "sustento";
+export type TipoAyuda = "raza" | "clase" | "objeto" | "hechizo" | "dote" | "recurso" | "condicion" | "herida" | "don" | "rasgos" | "idioma" | "nivel" | "sustento" | "estilo";
 export interface Segmento { t: string; k?: { tipo: TipoAyuda; nombre: string } }
 export interface Tabla { cabecera: string[]; filas: string[][]; /** Fila (0 = la primera) que se resalta: el nivel actual. */ resaltar?: number }
 export interface Ayuda { titulo: string; cuerpo: string[]; tabla?: Tabla }
@@ -37,6 +39,7 @@ export function fichaClicable(p: Personaje): Segmento[][] {
   for (const h of p.heridas) poner(h.id, "herida");
   for (const i of p.idiomas ?? []) poner(IDIOMAS_NOMBRES[i] ?? i, "idioma", i);
   poner(p.don === "fisico" ? "Don arcano FÍSICO" : p.don === "magico" ? "Don arcano MÁGICO" : "", "don");
+  for (const id of artesDe(p)) { const e = ESTILOS.find((x) => x.id === id); if (e) poner(`${e.nombre} (${NOMBRE_MAESTRIA[maestria(p)]})`, "estilo", id); }
   poner("Rasgos de nivel", "rasgos");
   poner(`nv. ${p.nivel}`, "nivel");
   poner(`Experiencia: ${pxActual(p)}`, "nivel");
@@ -137,6 +140,27 @@ function ayudaNiveles(p: Personaje): Ayuda {
   };
 }
 
+/** Un estilo de artes marciales: centro, principio y las tres técnicas con las que ya tiene y las que llegan. */
+function ayudaEstilo(p: Personaje, id: string): Ayuda {
+  const e = ESTILOS.find((x) => x.id === id || x.nombre === id);
+  if (!e) return { titulo: id, cuerpo: ["Estilo sin descripción."] };
+  const m = maestria(p);
+  const llegan = [nvl(1), nvl(3), nvl(7)];
+  return {
+    titulo: `${e.nombre} (${NOMBRE_MAESTRIA[m]})`,
+    cuerpo: [
+      `Centro del estilo: ${e.centro}.`,
+      `Principio: ${e.principio}`,
+      ...e.tecnicas.map((t, i) => i < m
+        ? `✔ ${NOMBRE_MAESTRIA[i + 1]}, ya la tienes: ${t.nombre} — ${t.efecto}.`
+        : `🔒 ${NOMBRE_MAESTRIA[i + 1]}, llega en el nivel ${llegan[i]}: ${t.nombre} — ${t.efecto}.`),
+      `Lo enseñan: ${e.ensena}.`,
+    ],
+  };
+}
+
+const AYUDA_SIN_ESTILO = ["Un estilo de artes marciales da un principio pasivo y tres técnicas que se desbloquean con el nivel (Iniciado, Practicante y Maestro).", "Se aprende de tres maneras: por tu clase (si la clase ofrece uno), con un maestro del estilo (pasando tiempo con él) o por la historia, si la ficción lo justifica. Escribe /artes para ver el catálogo."];
+
 export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: string): Ayuda {
   const p = Object.values(partida.personajes).find((x) => norm(x.nombre) === norm(pj));
   if (!p) throw new Error(`No hay ningún personaje «${pj}».`);
@@ -180,6 +204,7 @@ export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: str
       return i ? { titulo: i.nombre, cuerpo: [i.nota, `Lo hablan: ${i.quienes}.`, "Quien no lo habla no entiende a quien lo usa: solo capta el tono y los gestos. Se aprende con un maestro y unos 30 días."] } : { titulo: nombre, cuerpo: ["Idioma sin descripción."] };
     }
     case "nivel": return ayudaNiveles(p);
+    case "estilo": return nombre === "ninguno" ? { titulo: "Sin estilo marcial", cuerpo: AYUDA_SIN_ESTILO } : ayudaEstilo(p, nombre);
     case "sustento": {
       const v = sustentoVisible(partida, p);
       if (!v) return { titulo: "Hambre y sed", cuerpo: ["El tiempo de la partida aún no corre."] };

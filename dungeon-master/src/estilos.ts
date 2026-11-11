@@ -136,6 +136,22 @@ export function textoArtes(p: Personaje): string {
   }).join("\n");
 }
 
+/** El catálogo público de /artes; si se da un personaje, añade sus estilos y las técnicas que ya tiene. */
+export function textoCatalogoArtes(propios: Personaje[] = []): string {
+  const cat = ESTILOS.map((e) => `- ${e.nombre} · ${e.centro}\n  Principio: ${e.principio}\n  Lo enseña: ${e.ensena}\n  Clases que lo ofrecen: ${e.clases.length ? e.clases.join(", ") : "ninguna (solo por la historia)"}${e.soloHistoria && e.clases.length ? " (a los demás solo por la historia)" : ""}.`).join("\n");
+  const mios = propios.map((p) => {
+    const ids = artesDe(p);
+    if (!ids.length) return `${p.nombre}: aún no conoce ningún estilo.`;
+    return `${p.nombre}:\n` + ids.map((id) => {
+      const e = ESTILOS.find((x) => x.id === id);
+      if (!e) return `  · ${id}`;
+      const m = maestria(p);
+      return `  · ${e.nombre} (${NOMBRE_MAESTRIA[m]}): ${e.tecnicas.slice(0, m).map((t) => t.nombre).join(", ")}`;
+    }).join("\n");
+  });
+  return `Artes marciales de Velmora (siete estilos; un personaje conoce uno):\n${cat}${mios.length ? `\n\nTus estilos:\n${mios.join("\n")}` : ""}`;
+}
+
 export const REGLAS_ARTES = `## Artes marciales (estilos)
 - Hay siete estilos: Haemajitsu (Flagelantes: impacto), Callejón de Aldenmar (control y juego sucio), Piedra de Karak (resistencia), Danza marchita (evasión), Filo del Cuervo (armas y formación), Presa de Hollín (agarres, llaves y lances) y Contracorriente (solo Kuru: desviar y contraatacar). Un personaje conoce un estilo (dos con INT o SAB 14+ y un segundo maestro). Cada estilo tiene un principio pasivo y tres técnicas (Iniciado, Practicante a nivel 3 y Maestro a nivel 7 de la tabla, con el desplazamiento de +2 de siempre). Consulta lo que sabe cada uno con arte_marcial {accion: "ver"} y el catálogo con {accion: "catalogo"}.
 - Se aprenden con arte_marcial {accion: "aprender", via}: «clase» (la clase lo ofrece: ver el catálogo), «maestro» (hay un maestro del estilo y pasa tiempo: pasa maestro y motivo) o «historia» (la ficción lo justifica; pasa motivo). Haemajitsu y Contracorriente solo por historia. El Flagelante lleva el Haemajitsu de serie.

@@ -3,18 +3,20 @@ import { describir, tirar } from "./dados.js";
 import { fichaTexto, type Partida } from "./estado.js";
 import { AMBIENTACION, textoRazasYClases } from "./mundo.js";
 import { VIALES } from "./viales.js";
+import { textoCatalogoArtes } from "./estilos.js";
 
 export const AYUDA = `Comandos:
   /fichas          fichas de los personajes (con heridas y secuelas)
   /mundo           ambientación de Velmora
   /razas           razas y clases disponibles
   /viales          qué hace cada vial
+  /artes           estilos de artes marciales y los tuyos
   /notas           notas de campaña del DM
   /tirar 1d20+3    tira dados tú mismo (sin pasar por el DM)
   /ayuda           esta ayuda`;
 
 /** Comandos de mesa (sin pasar por el DM). Devuelve null si no es un comando conocido. */
-export function comando(partida: Partida, texto: string): { texto: string; publico: boolean } | null {
+export function comando(partida: Partida, texto: string, jugador?: string): { texto: string; publico: boolean } | null {
   const [cmd, ...args] = texto.trim().split(/\s+/);
   switch (cmd) {
     case "/ayuda":
@@ -29,6 +31,11 @@ export function comando(partida: Partida, texto: string): { texto: string; publi
       return { texto: textoRazasYClases().replace(/\*\*/g, ""), publico: false };
     case "/viales":
       return { texto: Object.entries(VIALES).map(([n, v]) => `- ${n} (${v.tipo}): ${v.descripcion}`).join("\n"), publico: false };
+    case "/artes": {
+      const n = (x: string) => x.trim().toLowerCase();
+      const mios = jugador ? Object.values(partida.personajes).filter((p) => n(p.jugador ?? "") === n(jugador)) : [];
+      return { texto: textoCatalogoArtes(mios), publico: false };
+    }
     case "/notas":
       return { texto: partida.notas_mundo.length ? partida.notas_mundo.map((n) => `- ${n}`).join("\n") : "Sin notas todavía.", publico: false };
     case "/tirar":
