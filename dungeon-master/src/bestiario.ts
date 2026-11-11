@@ -969,7 +969,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "El Juez Sin Ojos",
-    blindaje: ["loriga", "yelmo"], // malla con yelmo (antes placas completas: una espada apenas le hacía daño)
+    blindaje: ["loriga", "yelmo", "brigantina", "grebas"], // malla con yelmo, brigantina y grebas: intermedio entre las placas completas (una espada apenas le hacía daño) y la loriga con yelmo (casi sin defensa a nivel 13)
     personalidad: ["calculador"],
     categoria: "jefe",
     peligro: 5,

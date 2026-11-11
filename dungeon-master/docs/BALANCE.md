@@ -273,3 +273,66 @@ Antes → después (% de victorias del grupo; entre paréntesis, % de PV del gru
 - **Terco** (cambio 2): el simulador ahora comprueba que, cuando la dote salva a un personaje, este no queda inconsciente: 0 casos. Quedan los PJ con PV > 0 «inconscientes» al terminar el combate (48 en la corrida): son heridas de zona roja de un crítico o golpe masivo con PV restantes, que el motor define así a propósito («Cae inconsciente»); no es el error de Terco.
 - **Otras cifras**: sin acciones rechazadas ni NaN en toda la corrida; combates sin final: Gárgola de nivel 1, trío de peligro 1-2 en los niveles 1-4, Kharoth de nivel 13 y el agua sumergida de nivel 5 y 9.
 - **Pendiente de la sección 8 (sin tocar)**: Gárgola (armadura plana de piedra), el techo de dificultad en los niveles 9-13 sin habilidades de criaturas en el simulador, dividir el peligro 3, y el seguimiento del simulador (habilidades, hechizos, maniobras, salvaciones contra la muerte).
+
+## 10. Tercera corrida (rampa de los niveles 3-4 y Juez intermedio)
+
+Mismo simulador y semilla: `npx tsx tests/balance/simular.ts --n 300 --semilla 1 --niveles 1,2,3,4,5,6,7,8,9,13 --detalle --n-detalle 60` (antes y después, el «antes» es el commit anterior) y `--n 300 --semilla 1 --detalle --comparar` (83 s; sin cambios en artes marciales ni agua). Grupos de 4, n = 300 por celda.
+
+### 10.1 Qué se cambió (la combinación mínima que probó ser eficaz)
+
+| # | Cambio | Dónde |
+|---|---|---|
+| 1 | **Ataque adicional en el nivel real 4** (antes 5). Sigue siendo la excepción al +2 de la sección 9, un nivel antes. Mercenario, Berserker, Caballero, Cazador, Flagelante, Segador y Barbero-Cirujano. | `niveles.ts` (`NIVEL_ATAQUE_ADICIONAL`) |
+| 2 | **Presa marcada** del Cazador (+1d8 una vez por turno contra una criatura herida) y **Veterano de compañía** del Mercenario (crítico 19-20) llegan en el nivel real 3 (la tabla base los pone en el 3; antes, con el +2, en el 5). Sin desplazar; el resto de lo que la tabla base pone en el 3 sigue en el 5. | `niveles.ts` (`NIVEL_PRESA_MARCADA`, `NIVEL_VETERANO`), `rasgos.ts`, `progresion.ts` (`ANTICIPADOS`) |
+| 3 | **Tope firme de peligro en el sorteo de encuentros** (red de seguridad, no cambia pesos): por nivel medio del grupo, peligro ≤ 2 (niveles 1-2), ≤ 3 (3-4), ≤ 4 (5-8), 5 (9+); la dificultad «mortal» lo sube un punto (la emboscada excepcional) y «fácil» lo baja. Antes era un tope blando (peso ×0,05, ahora ×10⁻⁹: solo sale si no queda otra cosa). Un jefe fuera de su zona solo da la cara en persona desde el nivel medio 7 (`NIVEL_JEFE_EN_PERSONA`; antes 4-5 según el jefe). La regla corta está en `REGLAS_ENCUENTROS` (prompt completo: 66.770 caracteres, ≤ 66.800). | `encuentros.ts` |
+| 4 | **Juez Sin Ojos**: `loriga` + `yelmo` → `loriga` + `yelmo` + `brigantina` + `grebas`. PV (180), CA (19) y ataques intactos. Un 1d8+4 de espada le deja pasar **1,98 PV de media** (antes de 9d0433: ~0,8 con placas y gambesón; después: 3,64 con loriga y yelmo). | `bestiario.ts`, `t-bestiario.ts` |
+
+La tablita de niveles de la ayuda (`/ayuda niveles`) y la ayuda de clase salen de `RASGOS_NIVEL`, así que ya muestran Veterano y Presa en el 3 y el Ataque adicional en el 4 (pruebas en `t-regresion.ts`; `t-rampa.ts` cubre el sorteo). `docs/AUDITORIA_RASGOS.md` actualizado.
+
+### 10.2 Antes → después (% de victorias, n = 300)
+
+| Encuentro | N1 | N2 | N3 | N4 | N5 | N6 | N7 | N8 | N9 | N13 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| peligro 3 | 46 → 46 | 62 → 62 | 84 → **90** | 99 → 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| peligro 4 | 6 → 6 | 9 → 9 | 11 → **13** | 20 → **46** | 59 → 59 | 68 → 68 | 81 → 81 | 94 → 94 | 96 → 96 | 100 |
+| peligro 5 (Lich) | 0 | 0 | 0 → 2 | 22 → **91** | 98 → 98 | 100 | 100 | 100 | 100 | 100 |
+| trío de peligro 1-2 | 47 → 47 | 69 → 69 | 86 → **91** | 97 → 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| jefe | 0 → 0 | 0 → 0 | 0 → 0 | 5 → **20** | 37 → 36 | 47 → 47 | 68 → 65 | 78 → 74 | 80 → 77 | 91 → 91 |
+
+Niveles 1-2 y 5+ no cambian (±0) salvo el jefe de los niveles 7-9 (-3/-4 puntos), que es solo el Juez, más duro. Jefe por criatura en el nivel 4 (n = 60): Munin 7 → 62, Ysolde 47 → 97, Lich 28 → 90, Hugin 0 → 30, Vaskar 0 → 25, Dragón joven 0 → 32, Gigante de hueso 0 → 50; el Juez, Kuru, Kharoth y el Apóstol siguen en 0. La fila de jefe del nivel 3 sigue en 0 (el mejor es Ysolde, 2 → 0 por ruido).
+
+**Juez Sin Ojos** (solo él, n = 300): nivel 9: **76% → 27%**; nivel 13: **100% → 95%** (n = 60 del detalle: 67% → 22% y 100% → 95%).
+
+### 10.3 Objetivos
+
+| Objetivo | Resultado |
+|---|---|
+| Peligro 4, nivel 4 ≈ 45% | **46%** cumplido |
+| Jefe, nivel 4 ≈ 20-25% | **20%** cumplido (en el límite bajo) |
+| Peligro 4, nivel 5 ≈ 59% y jefe ≈ 37% | 59% y 36%: sin cambios |
+| Niveles 1-2 y ≥ 5 dentro de ±5 | cumplido (0 de cambio en niveles 1-6 y 13; jefe de 7-9: -3 a -4 por el Juez) |
+| Peligro 3 y tríos 1-2 en 3-4 sin pasarse del 95% | nivel 3: 90% y 91%, cumplido; nivel 4: 100% y 100% (ya eran 99% y 97%: se pasan del 95%, un cambio de +1 a +3 sobre lo que había) |
+| **Peligro 4, nivel 3 ≈ 30-35%** | **13%: NO cumplido** (antes 11%) |
+| **Jefe, nivel 3 ≈ 8-12%** | **0%: NO cumplido** |
+| Juez nivel 9 ≈ 30-40% | **27%**: queda 3 puntos por debajo |
+| Juez nivel 13 ≈ 75-85% | **95%: NO cumplido** (antes 100%) |
+
+### 10.4 Por qué no se cumplen los del nivel 3 y el nivel 13 del Juez
+
+- **Nivel 3.** Con los rasgos simples y automáticos de la base 2-3 solo se ganan ~2 puntos de peligro 4: la Presa y el Veterano afectan a dos clases (y el Veterano apenas pesa) y los demás rasgos de ese tramo (Furia, Castigo divino, Acción súbita, furtivo, Sangre…) son habilidades que el simulador no usa, así que no se pueden medir ni ajustar. Lo que sí mueve el nivel 3 es el segundo ataque, y con él el peligro 3 y el trío se salen del margen. Alternativas medidas (n = 300, niveles 3 / 4, peligro 4 · jefe · peligro 3 · trío):
+
+  | Variante | Nivel 3 | Nivel 4 |
+  |---|---|---|
+  | Antes | 11 · 0 · 84 · 86 | 20 · 5 · 99 · 97 |
+  | Ataque adicional en el 4 (sin más) | 11 · 0 · 84 · 86 | 38 · 15 · 100 · 100 |
+  | Ataque adicional en el **3** | 23 · 4 · **99 · 97** | 38 · 15 · 100 · 100 |
+  | Presa y Veterano en el 3 (sin Ataque adicional) | 13 · 0 · 90 · 91 | 23 · 6 · 98 · 99 |
+  | Ataque temerario del Berserker en el 3 (extra) | 13 · 0 · 88 · 84 (sin ganancia) | igual |
+  | PV +2 por nivel | 12 · 0 · 92 · 89 | 25 · 7 · 100 · 99; nivel 5: 69 · 48 (+10: se sale de ±5) |
+  | PV +4 por nivel | 13 · 1 · 96 · 90 | 27 · 9; nivel 5: 75 · 58 (+16) |
+  | **Elegida**: Ataque adicional 4 + Presa + Veterano 3 | **13 · 0 · 90 · 91** | **46 · 20 · 100 · 100** |
+
+  El Ataque adicional en el 3 daría ~23% en peligro 4, pero con el peligro 3 al 99% y el trío al 97% (justo lo que se pedía no tocar). Los PV no sirven: suben más el nivel 5 (que debe quedarse en ±5) que el 3, y el nivel 3 casi no se mueve (+1 punto en peligro 4). Se priorizó no degradar. **El valle del nivel 3 se queda, y es el motivo de la red de seguridad 3**: en los niveles 3-4 el sorteo no saca peligro 4 ni jefes en persona (salvo emboscada excepcional con «mortal»), y el DM lo sabe por `REGLAS_ENCUENTROS`. La rampa resultante (peligro 4: 13 → 46 → 59 → 68 → 81; jefe: 0 → 20 → 36 → 47 → 65) es continua desde el 4, pero con un salto de 33 puntos entre el 3 y el 4 en peligro 4 (el del Ataque adicional); antes el salto era 20 → 59 entre el 4 y el 5.
+- **Efecto colateral**: con el Ataque adicional en el 4, los jefes sueltos de peligro 4-5 del nivel 4 (Lich 90%, Ysolde 97%) quedan muy fáciles en el simulador. El Lich ya lo era en el nivel 5 y el simulador no modela sus hechizos, su relicario ni su resistencia al daño no mágico (ver 9.4); no se ha tocado.
+- **Juez.** Las piezas y el PV no permiten llegar a la vez a 30-40% en el nivel 9 y 75-85% en el 13: la curva del Juez es la misma sigmoide desplazada. Medido (n = 200-400 según la variante): `loriga`+`yelmo`+`coraza`+`grebas` (1,45 PV de media) 12% / 86%; `loriga`+`yelmo`+`brigantina`+`grebas`+`gorjal` (1,61) 19% / 91%; **`loriga`+`yelmo`+`brigantina`+`grebas` (1,98) 27-28% / 95%**; `loriga`+`yelmo`+`gorjal`+`grebas` (2,18) 32% / 96%; `loriga`+`yelmo`+`grebas` (2,54) 39% / 98%; las placas completas (0,77) 3% / ~60%. Cambiar los PV no ayuda: +15% (207 PV) baja el nivel 9 unos 16 puntos y el 13 solo 3; quitarle PV sube más el 13 que el 9. Se eligió el punto que minimiza el mayor desvío (3 puntos por debajo en el 9, 10 por encima en el 13). Para llevar el 13 al 80% haría falta volver a placas (3% en el 9), que es lo que se quería evitar. Además, a nivel 13 y con el simulador sin habilidades de criaturas ni hechizos, el 95% sobrestima al grupo.
+- **Rasgos de clase del nivel 3 que quedan sin medir**: Furia, Castigo divino, Acción súbita, furtivo y Sangre del Flagelante no los usa el simulador, así que la dificultad real del nivel 3 es algo menor que la medida.

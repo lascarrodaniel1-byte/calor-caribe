@@ -7,7 +7,7 @@ import { tirar } from "./dados.js";
 import { despertarMagia, ajustarMaestriaHechicero } from "./magia.js";
 import type { Partida, Personaje } from "./estado.js";
 import { CLASES } from "./mundo.js";
-import { nvl, NIVEL_ATAQUE_ADICIONAL } from "./niveles.js";
+import { nvl, NIVEL_ATAQUE_ADICIONAL, NIVEL_PRESA_MARCADA, NIVEL_VETERANO } from "./niveles.js";
 import { CON_ATAQUE_ADICIONAL } from "./rasgos.js";
 import { ATRIBUTOS, mod, valor, type Atributo } from "./reglas.js";
 
@@ -23,7 +23,6 @@ export const pxCriatura = (c: { peligro: number; categoria?: string }): number =
 const RASGOS_BASE: Record<string, Record<number, string[]>> = {
   "Mercenario del Cuervo": {
     2: ["Acción súbita (1 por descanso corto): una acción adicional en su turno"],
-    3: ["Veterano de compañía: los críticos con 19-20 en el d20"],
     4: [],
   },
   "Berserker de Ceniza": {
@@ -40,7 +39,7 @@ const RASGOS_BASE: Record<string, Record<number, string[]>> = {
   },
   "Cazador de Brujas": {
     2: ["Estilo de combate"],
-    3: ["Presa marcada: una vez por turno, +1d8 de daño a una criatura que ya esté herida", "Conciencia primigenia: siente a no-muertos, brujos y hechiceros a 9 m", "Runas de potencia 2 (dominan a seres de peligro 2); rastro: ahora sabe el rumbo del casteador"],
+    3: ["Conciencia primigenia: siente a no-muertos, brujos y hechiceros a 9 m", "Runas de potencia 2 (dominan a seres de peligro 2); rastro: ahora sabe el rumbo del casteador"],
     4: [],
     5: ["Urumi: como veterano del oficio, recibe un urumi (espada-látigo de láminas de acero, 1d8 cortante, alcance 3 m) que sustituye a su látigo de metal", "Rastro: ahora sabe la región del casteador"],
     6: ["Runas de potencia 3 (dominan a seres de peligro 3)"],
@@ -83,16 +82,23 @@ const RASGOS_BASE: Record<string, Record<number, string[]>> = {
   },
 };
 
-/** Ataque adicional: EXCEPCIÓN deliberada al desplazamiento. Llega en el nivel real NIVEL_ATAQUE_ADICIONAL (5), no en nvl(5) (7). */
+/** Rasgos de combate que llegan en un nivel REAL fijo, sin desplazar (excepciones deliberadas de niveles.ts). */
+const ANTICIPADOS: Record<string, { nivel: number; rasgo: string }[]> = {
+  "Mercenario del Cuervo": [{ nivel: NIVEL_VETERANO, rasgo: "Veterano de compañía: los críticos con 19-20 en el d20" }],
+  "Cazador de Brujas": [{ nivel: NIVEL_PRESA_MARCADA, rasgo: "Presa marcada: una vez por turno, +1d8 de daño a una criatura que ya esté herida" }],
+};
+
+/** Ataque adicional: EXCEPCIÓN deliberada al desplazamiento. Llega en el nivel real NIVEL_ATAQUE_ADICIONAL (4), no en nvl(5) (7). */
 const ATAQUE_ADICIONAL: Record<string, string> = Object.fromEntries(
   [...CON_ATAQUE_ADICIONAL].map((c) => [c, c === "Segador" ? "Ataque adicional: puede atacar dos veces con la guadaña" : "Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"]),
 );
 
-/** Rasgos de clase por nivel REAL: lo que la tabla base desbloquea en el nivel n llega en nvl(n) (dos niveles después; ver niveles.ts), salvo el Ataque adicional (nivel 5 real). */
+/** Rasgos de clase por nivel REAL: lo que la tabla base desbloquea en el nivel n llega en nvl(n) (dos niveles después; ver niveles.ts), salvo las excepciones de niveles.ts (Ataque adicional en el 4; Presa marcada y Veterano de compañía en el 3). */
 export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = Object.fromEntries(
   Object.entries(RASGOS_BASE).map(([clase, t]) => {
     const real: Record<number, string[]> = Object.fromEntries(Object.entries(t).map(([n, r]) => [nvl(Number(n)), [...r]]));
     if (ATAQUE_ADICIONAL[clase]) real[NIVEL_ATAQUE_ADICIONAL] = [ATAQUE_ADICIONAL[clase], ...(real[NIVEL_ATAQUE_ADICIONAL] ?? [])];
+    for (const a of ANTICIPADOS[clase] ?? []) real[a.nivel] = [a.rasgo, ...(real[a.nivel] ?? [])];
     return [clase, real];
   }),
 );

@@ -18,6 +18,7 @@ Todo se ejecuta desde `dungeon-master/`. No hay dependencias nuevas: motor y aud
 - `tests/motor/` — suites `t-*.ts`. Cada una termina con `N ok, M fallas`; el runner lee la **última** línea con ese formato.
   - `t-regresion` — regresiones generales (niveles, saber, repaso, mapa, rasgos de clase, dados fijos).
   - `t-codice` — Códice y bestiario del grupo (descubrir criaturas).
+  - `t-rampa` — rampa de los niveles 3-4: tope firme de peligro del sorteo de encuentros por nivel medio y jefes en persona solo desde el nivel 7 (dados fijos).
   - `t-bestiario` — fichas del bestiario, temples, piezas de armadura, condiciones y temas de saber.
   - `t-monstruos` — conjuros y ataques de monstruos, PX y consulta de reglas.
   - `t-control` — control de personajes ausentes (quién lleva a quién) y bloque de turnos.

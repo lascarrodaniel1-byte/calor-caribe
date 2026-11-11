@@ -203,6 +203,11 @@ export interface DatosEncuentro {
   excluir?: string[];
 }
 
+/** Peligro máximo de un encuentro sorteado según el nivel medio del grupo (firme): 2 hasta el nivel 2, 3 hasta el 4, 4 hasta el 8 y 5 desde el 9. */
+export const topePeligro = (nivel: number): number => (nivel <= 2 ? 2 : nivel <= 4 ? 3 : nivel <= 8 ? 4 : 5);
+/** Nivel medio desde el que un jefe fuera de su zona puede dar la cara en persona (antes solo emisarios o indicios, salvo ventaja clara del grupo, que decide el DM). */
+export const NIVEL_JEFE_EN_PERSONA = 7;
+
 const horaDe = (p: Partida) => (p.reloj ? Math.floor((p.reloj.segundos % 86400) / 3600) : null);
 
 /** Un jefe fuera de su zona: casi siempre sus señales o un emisario, rara vez en persona, y siempre con su plan detrás. */
@@ -218,7 +223,7 @@ function encuentroDeJefe(partida: Partida, d: DatosEncuentro, region: string, ni
   const tirada = tirar("1d100").total;
   const regente = buscarCriatura(j.bestiario)?.regente;
   // Los regentes delegan: casi nunca dan la cara y casi siempre actúan a través de sus subordinados.
-  const enPersona = nivel >= j.minNivel && tirada <= (regente ? 8 : 15);
+  const enPersona = nivel >= Math.max(j.minNivel, NIVEL_JEFE_EN_PERSONA) && tirada <= (regente ? 8 : 15);
   const emisario = !enPersona && tirada <= (regente ? 75 : nivel >= j.minNivel ? 55 : 45);
   const servidor = regente ? regente.servidores[tirar(`1d${Math.max(2, regente.servidores.length)}`).total - 1] ?? regente.servidores[0] : null;
   const usoServidor = servidor ? `${servidor.nombre} (${servidor.cuantos})${servidor.plantilla ? `, plantilla «${servidor.plantilla}»` : ""}: ${servidor.nota}` : "";
@@ -269,7 +274,7 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
       if (r) return r;
     }
   }
-  const techo = (nivel <= 2 ? 2 : nivel <= 4 ? 3 : nivel <= 8 ? 4 : 5) + (dif === "mortal" ? 1 : dif === "facil" ? -1 : 0);
+  const techo = topePeligro(nivel) + (dif === "mortal" ? 1 : dif === "facil" ? -1 : 0);
   const h = partida.encuentros ?? [];
   const prohibidas = new Set<string>(d.excluir ?? []);
   const ultimas2 = h.slice(-2);
@@ -281,7 +286,7 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
     if (t.momento && noche !== null) w *= (t.momento === "noche") === noche ? 1.6 : 0.3;
     if (bonusReg) w *= bonusReg.bonus.familias[t.familia] ?? 1; // el bonus especial de la región
     w *= pesoInf[t.familia] ?? 1; // la política de los regentes empuja a sus familias
-    if (t.peligro > techo) w *= 0.05;
+    if (t.peligro > techo) w *= 1e-9; // tope firme de peligro por nivel (solo la dificultad «mortal» lo sube un punto: la emboscada excepcional); solo sale si no queda otra cosa
     if (t.peligro < techo - 2) w *= 0.6;
     // Memoria: cada vez que esta familia salió entre los últimos encuentros, pesa menos.
     const veces = h.slice(-6).filter((x) => x.familia === t.familia).length;
@@ -320,7 +325,8 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
 }
 
 export const REGLAS_ENCUENTROS = `## Variedad de enemigos y encuentros (no todo es un Hambriento ni de la Inquisición)
-- Tú no tienes azar propio y tiendes a repetir lo que más aparece en la ambientación: los Hambrientos y la Inquisición de la Llama Gris son UNA amenaza de fondo entre muchas, no el enemigo por defecto. Para cualquier encuentro aleatorio (viaje, exploración, un descanso interrumpido, «¿qué hay en esta calle?») NO lo decidas tú: llama a encuentro, que tira de verdad según región, hora, nivel y dificultad y evita repetir lo reciente.
-- Reparte: humanos (bandoleros, desertores, cazarrecompensas, contrabandistas, saqueadores), fauna y monstruos, no-muertos, culto, Corte Pálida, Inquisición, entorno (niebla, pantano, derrumbe) y encuentros sociales o de hallazgo. No más de uno de cada tres encuentros de la misma familia; el programa te lo recuerda y puede negarte aparecer_criatura si repites tres veces (repetir=true solo si la trama lo exige).
-- Cada región tiene su bonus (qué familias pesan más allí) y encuentro lo aplica. Además hay una pequeña posibilidad de que el encuentro sea un JEFE FUERA DE SU ZONA (casi siempre solo sus indicios o un emisario; en persona, rara vez y solo a nivel alto). Cuando salga, la razón la pones tú, con coherencia: puede ser su plan, lo que persigue o el verdadero origen de la misión en curso (pasa la misión en mision, o usa jefe: "azar"/nombre para que una misión sea consecuencia de un jefe). Regístralo siempre como PNJ con agenda y arco en segundo plano (pnj + trama), para que viva fuera de escena y llegue como eco.
-- No todo encuentro es un combate: muchos se resuelven hablando, pagando, huyendo o sorteando el peligro. Dale a cada enemigo un motivo para estar ahí ahora y una forma de evitarlo.`;
+- Tú no tienes azar propio y tiendes a repetir lo que más aparece (Hambrientos, Inquisición de la Llama Gris): son UNA amenaza de fondo entre muchas, no el enemigo por defecto. Para cualquier encuentro aleatorio (viaje, exploración, descanso interrumpido, «¿qué hay en esta calle?») NO lo decidas tú: llama a encuentro, que tira de verdad según región, hora, nivel y dificultad y evita repetir lo reciente.
+- Reparte: humanos (bandoleros, desertores, cazarrecompensas, saqueadores), fauna y monstruos, no-muertos, culto, Corte Pálida, Inquisición, entorno (niebla, pantano, derrumbe) y encuentros sociales o de hallazgo. Como mucho uno de cada tres de la misma familia; el programa te lo recuerda y te niega aparecer_criatura a la tercera repetición (repetir=true solo si la trama lo exige).
+- Cada región tiene su bonus de familias y encuentro lo aplica. Hay además una pequeña posibilidad de un JEFE FUERA DE SU ZONA (casi siempre indicios o un emisario; en persona, rara vez y solo desde el nivel 7 o con clara ventaja del grupo: trampa, aliados, terreno). Si sale, la razón la pones tú: su plan, lo que persigue o el origen de la misión en curso (pasa la misión en mision, o jefe: "azar"/nombre para que una misión sea consecuencia de un jefe). Regístralo siempre como PNJ con agenda y arco (pnj + trama), para que viva fuera de escena y llegue como eco.
+- TOPE de peligro por nivel medio (el sorteo lo respeta; tú también): 2 en los niveles 1-2, 3 en el 3-4 (un 4 solo en emboscada excepcional), 4 en el 5-8, 5 desde el 9.
+- No todo encuentro es un combate: muchos se resuelven hablando, pagando, huyendo o sorteando el peligro. Cada enemigo, con un motivo para estar ahí y una forma de evitarlo.`;

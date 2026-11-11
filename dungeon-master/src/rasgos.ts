@@ -1,19 +1,19 @@
 // Rasgos que el MOTOR aplica solo (sin que el DM tenga que acordarse). Los umbrales de nivel pasan por nvl() (niveles.ts).
 // Lo que no está aquí lo aplica el DM con su herramienta o lo narra; ver docs/AUDITORIA_RASGOS.md.
 import type { Personaje } from "./estado.js";
-import { nvl, NIVEL_ATAQUE_ADICIONAL } from "./niveles.js";
+import { nvl, NIVEL_ATAQUE_ADICIONAL, NIVEL_PRESA_MARCADA, NIVEL_VETERANO } from "./niveles.js";
 
-/** Clases con Ataque adicional (nivel real 5, sin desplazar: ver NIVEL_ATAQUE_ADICIONAL). El Degollador y el Hechicero no lo tienen. */
+/** Clases con Ataque adicional (nivel real 4, sin desplazar: ver NIVEL_ATAQUE_ADICIONAL). El Degollador y el Hechicero no lo tienen. */
 export const CON_ATAQUE_ADICIONAL = new Set(["Mercenario del Cuervo", "Berserker de Ceniza", "Caballero Juramentado", "Cazador de Brujas", "Flagelante", "Segador", "Barbero-Cirujano"]);
 
 /** Ataques de la acción de Atacar: 2 con Ataque adicional (la Acción súbita los repite en un segundo turno de acción). */
 export const ataquesPorAccion = (p: Personaje): number => (CON_ATAQUE_ADICIONAL.has(p.clase) && p.nivel >= NIVEL_ATAQUE_ADICIONAL ? 2 : 1);
-/** Veterano de compañía (Mercenario, base nivel 3): crítico con 19-20 en el d20. */
-export const criticoVeterano = (p: Personaje): boolean => p.clase === "Mercenario del Cuervo" && p.nivel >= nvl(3);
+/** Veterano de compañía (Mercenario, nivel real 3 sin desplazar: NIVEL_VETERANO): crítico con 19-20 en el d20. */
+export const criticoVeterano = (p: Personaje): boolean => p.clase === "Mercenario del Cuervo" && p.nivel >= NIVEL_VETERANO;
 /** Ataque temerario (Berserker, base nivel 2): ventaja en sus ataques cuerpo a cuerpo de FUE; los ataques contra él también la tienen. */
 export const temerarioActivo = (p: Personaje): boolean => p.clase === "Berserker de Ceniza" && p.nivel >= nvl(2);
-/** Presa marcada (Cazador de Brujas, base nivel 3): una vez por turno, +1d8 contra una criatura ya herida. */
-export const presaMarcada = (p: Personaje): boolean => p.clase === "Cazador de Brujas" && p.nivel >= nvl(3);
+/** Presa marcada (Cazador de Brujas, nivel real 3 sin desplazar: NIVEL_PRESA_MARCADA): una vez por turno, +1d8 contra una criatura ya herida. */
+export const presaMarcada = (p: Personaje): boolean => p.clase === "Cazador de Brujas" && p.nivel >= NIVEL_PRESA_MARCADA;
 /** Desviar proyectiles (Flagelante, base nivel 3): reacción para reducir el daño de un proyectil. */
 export const desviaProyectiles = (p: Personaje): boolean => p.clase === "Flagelante" && p.nivel >= nvl(3);
 /** Sentido del peligro (Berserker, base nivel 2): ventaja en salvaciones de DES. */

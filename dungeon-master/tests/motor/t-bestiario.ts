@@ -47,9 +47,10 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
   const u = BESTIARIO.find((c) => c.nombre === "Ulfhedinn")!, h = BESTIARIO.find((c) => c.nombre === "Hombre oso")!;
   t([u, h].every((c) => c.rasgos.some((r) => /Piel fusionada/.test(r)) && c.rasgos.some((r) => /se le fundió con la carne/.test(r))) && /hombre lobo/i.test(u.descripcion) && /hombre oso/i.test(h.descripcion), "la piel se fusiona con ellos: son hombres lobo y hombres oso, no hombres con una piel");
   const { encuentrosDe } = { encuentrosDe: null as any }; void encuentrosDe; }
-// El Juez lleva malla con yelmo (no placas completas): una espada (1d8+4) le deja pasar ~3 PV o más de media; el Djinn es de peligro 3
+// El Juez lleva loriga, yelmo, brigantina y grebas: INTERMEDIO entre las placas completas (un 1d8+4 de espada dejaba pasar ~0,8 PV) y la loriga con yelmo (~3,6); el Djinn es de peligro 3
 { const juez = BESTIARIO.find((c) => c.nombre === "El Juez Sin Ojos")!; const pesos: [Region, number][] = [["cabeza", 1], ["cuello", 1], ["torso", 4], ["abdomen", 3], ["brazos", 4], ["piernas", 7]]; let medio = 0;
   for (const [r, w] of pesos) { const prot = proteccion(juez.blindaje ?? [], r, "corte").valor; let suma = 0; for (let d = 1; d <= 8; d++) suma += Math.max(0, d + 4 - prot); medio += (w / 20) * (suma / 8); }
-  t(!(juez.blindaje ?? []).includes("placas_completas") && medio >= 3, "el Juez sin placas completas: un 1d8+4 de espada le deja pasar ≥ 3 PV de media", medio.toFixed(2));
+  t(!(juez.blindaje ?? []).includes("placas_completas") && Math.abs(medio - 1.98) < 0.1, "el Juez intermedio: un 1d8+4 de espada le deja pasar ≈ 2 PV de media (entre ~0,8 de las placas y ~3,6 de loriga con yelmo)", medio.toFixed(2));
+  t(juez.ca === 19 && juez.pv === "180" && juez.ataques.length === 1 && /\+11, 2d6\+5/.test(juez.ataques[0]), "el Juez conserva CA 19, 180 PV y su ataque (solo cambia el blindaje)");
   t(BESTIARIO.find((c) => c.nombre === "Djinn")!.peligro === 3 && BESTIARIO.find((c) => c.nombre === "Djinn")!.vd === "6", "Djinn: peligro 3, VD 6"); }
 console.log(`${ok} ok, ${mal} fallas`);
