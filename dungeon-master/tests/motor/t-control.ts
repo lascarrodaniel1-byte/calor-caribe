@@ -1,0 +1,13 @@
+import { controlesVigentes, personajesAusentes, personajesLlevadosPor, personajesTomables, bloqueAusentes, bloqueTurnos } from "../../src/turnos.ts";
+let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
+const partida = { personajes: { Aldo: { nombre: "Aldo", jugador: "Ana", condiciones: [] as string[], raza: "H", clase: "C", nivel: 1 }, Bruna: { nombre: "Bruna", jugador: "Beto", condiciones: [] as string[], raza: "H", clase: "M", nivel: 1 }, Carl: { nombre: "Carl", jugador: "Cris", condiciones: ["muerto"], raza: "H", clase: "M", nivel: 1 } } };
+const ctl = { Bruna: "Cam" };
+t(JSON.stringify(personajesAusentes(partida, ["Ana", "Cam"])) === '["Bruna"]', "sin control, el ausente lo lleva el DM (el muerto no cuenta)");
+t(personajesAusentes(partida, ["Ana", "Cam"], ctl).length === 0 && personajesTomables(partida, ["Ana", "Cam"], ctl).length === 0, "con control prestado, el DM ya no lo lleva ni se ofrece a otro");
+t(personajesLlevadosPor(partida, "cam", ["Ana", "Cam"], ctl)[0] === "Bruna", "quién lo lleva: Cam (sin importar mayúsculas)");
+t(Object.keys(controlesVigentes(partida, ["Ana", "Cam", "Beto"], ctl)).length === 0, "si su dueño vuelve, el control se le devuelve solo");
+t(Object.keys(controlesVigentes(partida, ["Ana"], ctl)).length === 0 && personajesAusentes(partida, ["Ana"], ctl)[0] === "Bruna", "si quien lo llevaba se va, vuelve a llevarlo el DM");
+t(Object.keys(controlesVigentes(partida, ["Ana", "Cam"], { Carl: "Cam" })).length === 0, "un personaje muerto no se puede llevar");
+const b = bloqueAusentes(partida, ["Ana", "Cam"], [], ctl); t(/LLEVADOS POR OTRO JUGADOR/.test(b) && /Bruna \(de Beto, ausente\) lo lleva ahora Cam/.test(b) && !/LLEVADOS POR EL DM/.test(b), "el DM recibe el aviso de control prestado");
+const bt = bloqueTurnos({ actuante: "Cam", orden: ["Ana", "Cam"], ronda: 1, siguiente: "Ana", cierraRonda: true, controla: [{ personaje: "Bruna", dueno: "Beto" }] }); t(/Cam LLEVA ahora a Bruna \(cuyo jugador, Beto, está ausente\)/.test(bt), "el bloque de turnos dice a quién lleva el actuante");
+console.log(`${ok} ok, ${mal} fallas`);

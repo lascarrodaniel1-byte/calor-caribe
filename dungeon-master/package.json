@@ -8,7 +8,13 @@
     "jugar": "tsx src/index.ts",
     "servidor": "tsx src/servidor.ts",
     "typecheck": "tsc --noEmit",
-    "artifact": "node scripts/construir-artifact.mjs"
+    "artifact": "node scripts/construir-artifact.mjs",
+    "test": "node tests/ejecutar-motor.mjs",
+    "test:ui": "node tests/ejecutar-ui.mjs",
+    "audit": "tsx tests/auditoria/auditoria.ts",
+    "soak": "tsx tests/auditoria/soak.ts",
+    "fuzz": "tsx tests/auditoria/fuzz.ts",
+    "dead-exports": "node tests/auditoria/exportsMuertos.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
