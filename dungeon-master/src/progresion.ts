@@ -7,7 +7,8 @@ import { tirar } from "./dados.js";
 import { despertarMagia, ajustarMaestriaHechicero } from "./magia.js";
 import type { Partida, Personaje } from "./estado.js";
 import { CLASES } from "./mundo.js";
-import { nvl } from "./niveles.js";
+import { nvl, NIVEL_ATAQUE_ADICIONAL } from "./niveles.js";
+import { CON_ATAQUE_ADICIONAL } from "./rasgos.js";
 import { ATRIBUTOS, mod, valor, type Atributo } from "./reglas.js";
 
 /** PX necesarios para llegar a cada nivel (índice = nivel − 1). */
@@ -24,25 +25,24 @@ const RASGOS_BASE: Record<string, Record<number, string[]>> = {
     2: ["Acción súbita (1 por descanso corto): una acción adicional en su turno"],
     3: ["Veterano de compañía: los críticos con 19-20 en el d20"],
     4: [],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"],
   },
   "Berserker de Ceniza": {
     2: ["Ataque temerario: ventaja en sus ataques cuerpo a cuerpo de FUE, pero los ataques contra él tienen ventaja", "Sentido del peligro: ventaja en salvaciones de DES contra efectos que pueda ver"],
     3: ["Furia lúcida: el trance de la furia se aclara; ya distingue aliados de enemigos", "Furia (3 usos por descanso largo)", "Senda de la Ceniza: en furia, la ceniza de su piel arde: los atacantes cuerpo a cuerpo que lo golpean sufren 1d4 de fuego"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Movimiento rápido: +3 m de velocidad sin armadura pesada", "Furia que cierra las heridas: mientras dura la furia, sus heridas rojas dejan de sangrar (se reabren al terminar)"],
+    5: ["Movimiento rápido: +3 m de velocidad sin armadura pesada", "Furia que cierra las heridas: mientras dura la furia, sus heridas rojas dejan de sangrar (se reabren al terminar)"],
     6: ["Furia (4 usos por descanso largo)"],
   },
   "Caballero Juramentado": {
     2: ["Estilo de combate", "Castigo divino (atacar {castigo: true}): al impactar, gasta 5 PV de su reserva para +2d8 de daño radiante (3d8 con 3 votos, 4d8 con 5; un dado más contra no-muertos y malditos)"],
     3: ["Salud divina: casi inmune a las infecciones comunes (+5 a esas salvaciones; no a la Podre)", "Ventaja de cada voto: mientras cumple un voto jurado, obtiene su ventaja concreta (la ficha la muestra)"],
     4: ["Sentido divino mayor: su alcance sube a 36 m"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Luz contra la Podre: su magia divina expulsa la Podre de una herida (tratar_herida con magia divina; cuesta 10 PV de la reserva en vez de 5). Es la única magia que puede con ella"],
+    5: ["Luz contra la Podre: su magia divina expulsa la Podre de una herida (tratar_herida con magia divina; cuesta 10 PV de la reserva en vez de 5). Es la única magia que puede con ella"],
   },
   "Cazador de Brujas": {
     2: ["Estilo de combate"],
     3: ["Presa marcada: una vez por turno, +1d8 de daño a una criatura que ya esté herida", "Conciencia primigenia: siente a no-muertos, brujos y hechiceros a 9 m", "Runas de potencia 2 (dominan a seres de peligro 2); rastro: ahora sabe el rumbo del casteador"],
     4: [],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Urumi: como veterano del oficio, recibe un urumi (espada-látigo de láminas de acero, 1d8 cortante, alcance 3 m) que sustituye a su látigo de metal", "Rastro: ahora sabe la región del casteador"],
+    5: ["Urumi: como veterano del oficio, recibe un urumi (espada-látigo de láminas de acero, 1d8 cortante, alcance 3 m) que sustituye a su látigo de metal", "Rastro: ahora sabe la región del casteador"],
     6: ["Runas de potencia 3 (dominan a seres de peligro 3)"],
     7: ["Rastro: ahora sabe el lugar exacto del casteador"],
     8: ["Runas que curan: dentro de las runas, cada asalto se cierra una herida leve y cada tres asaltos una moderada baja un nivel"],
@@ -61,12 +61,12 @@ const RASGOS_BASE: Record<string, Record<number, string[]>> = {
     2: ["Devolver el dolor: reacción; cuando un enemigo a su alcance le hace daño, le devuelve (nivel de dolor)d4 de daño, una vez por asalto", "Movimiento sin armadura: +3 m"],
     3: ["Contacto con la sangre: curación pasiva; ya no necesita untarla, el mero contacto con la sangre de un enemigo al que hiere cuerpo a cuerpo lo cura (1d6 PV, cierra hemorragias y baja un nivel su herida más grave, una vez por asalto)", "Desviar proyectiles: reacción para reducir 1d10 + DES + nivel el daño de un proyectil"],
     4: ["Caída lenta: reduce el daño de caída en 5 × nivel"],
-    5: ["Paso elusivo (paso_elusivo, reacción): se aparta del ataque con una tirada de Acrobacias; con el dolor al máximo (nivel 4) es una esquiva automática que no falla nunca", "Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Golpe aturdidor (1 uso por descanso corto): CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
+    5: ["Paso elusivo (paso_elusivo, reacción): se aparta del ataque con una tirada de Acrobacias; con el dolor al máximo (nivel 4) es una esquiva automática que no falla nunca", "Golpe aturdidor (1 uso por descanso corto): CON CD 8 + competencia + SAB o queda aturdido hasta el final de su próximo turno"],
   },
   Segador: {
     2: ["Invocaciones de Neter (invocacion): elige dos (Ojos del dios muerto, Presencia sepulcral, Voz de los muertos, Piel de hueso)", "Sellar almas (sellar_alma): tras herir a un vivo con la guadaña, sella su habilidad firma; sostiene hasta la mitad de su nivel almas", "Descarga con dos usos por descanso corto"],
     3: ["Don del pacto: su guadaña ahora cuenta como mágica"],
-    5: ["Ataque adicional: puede atacar dos veces con la guadaña", "Descarga sobrenatural: dos rayos", "Tercera invocación; la Deuda de Neter pesa ×2"],
+    5: ["Descarga sobrenatural: dos rayos", "Tercera invocación; la Deuda de Neter pesa ×2"],
     9: ["Cuarta invocación; la Deuda de Neter pesa ×3"],
   },
   Hechicero: {
@@ -79,13 +79,22 @@ const RASGOS_BASE: Record<string, Record<number, string[]>> = {
   "Barbero-Cirujano": {
     2: ["Mano de cirujano mejorada: +1 más a toda tirada de tratamiento"],
     3: ["Corte limpio: al tratar una herida, las complicaciones por fallo pegan la mitad"],
-    5: ["Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar", "Mano firme (2/descanso largo)"],
+    5: ["Mano firme (2/descanso largo)"],
   },
 };
 
-/** Rasgos de clase por nivel REAL: lo que la tabla base desbloquea en el nivel n llega en nvl(n) (dos niveles después; ver niveles.ts). */
+/** Ataque adicional: EXCEPCIÓN deliberada al desplazamiento. Llega en el nivel real NIVEL_ATAQUE_ADICIONAL (5), no en nvl(5) (7). */
+const ATAQUE_ADICIONAL: Record<string, string> = Object.fromEntries(
+  [...CON_ATAQUE_ADICIONAL].map((c) => [c, c === "Segador" ? "Ataque adicional: puede atacar dos veces con la guadaña" : "Ataque adicional: puede atacar dos veces cuando hace la acción de Atacar"]),
+);
+
+/** Rasgos de clase por nivel REAL: lo que la tabla base desbloquea en el nivel n llega en nvl(n) (dos niveles después; ver niveles.ts), salvo el Ataque adicional (nivel 5 real). */
 export const RASGOS_NIVEL: Record<string, Record<number, string[]>> = Object.fromEntries(
-  Object.entries(RASGOS_BASE).map(([clase, t]) => [clase, Object.fromEntries(Object.entries(t).map(([n, r]) => [nvl(Number(n)), r]))]),
+  Object.entries(RASGOS_BASE).map(([clase, t]) => {
+    const real: Record<number, string[]> = Object.fromEntries(Object.entries(t).map(([n, r]) => [nvl(Number(n)), [...r]]));
+    if (ATAQUE_ADICIONAL[clase]) real[NIVEL_ATAQUE_ADICIONAL] = [ATAQUE_ADICIONAL[clase], ...(real[NIVEL_ATAQUE_ADICIONAL] ?? [])];
+    return [clase, real];
+  }),
 );
 
 /** Los rangos de la Compañía del Cuervo Negro: el Mercenario asciende al subir de nivel. */

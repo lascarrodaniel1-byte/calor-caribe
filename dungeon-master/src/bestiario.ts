@@ -647,7 +647,7 @@ export const BESTIARIO: Criatura[] = [
     temple: "elemental",
     personalidad: ["calculador"],
     categoria: "monstruo",
-    peligro: 4,
+    peligro: 3,
     region: "Desiertos de ceniza, lámparas y ruinas de dioses; cualquier lugar donde alguien pidió un deseo y no se cumplió",
     descripcion:
       "Un espíritu del viento y del humo con forma de hombre alto, de piel azul grisácea y ojos de brasa, que vive atado a un objeto: una lámpara, un anillo, una botella. Concede favores, pero cada uno tiene precio y el contrato siempre tiene letra pequeña. Odia que lo mantengan prisionero y odia más a quien lo libera sin pedir nada.",
@@ -969,7 +969,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "El Juez Sin Ojos",
-    blindaje: ["placas_completas", "gambeson"],
+    blindaje: ["loriga", "yelmo"], // malla con yelmo (antes placas completas: una espada apenas le hacía daño)
     personalidad: ["calculador"],
     categoria: "jefe",
     peligro: 5,
@@ -1405,7 +1405,7 @@ export const VD: Record<string, string> = {
   "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", "Banshee del Velo": "5", Ulfhedinn: "5", "Hombre oso": "6",
   "Golem de carne": "5", "Elemental de fuego": "5", "Elemental de agua": "6", "Elemental de aire": "5", Grifo: "5", Sirena: "5",
   "Gigante de hueso": "10", "Dragón joven de ceniza": "11", "Apóstol": "12", Wendigo: "9", "Golem de piedra": "10", "Elemental de tierra": "9",
-  Djinn: "11", Hidra: "10", Leshen: "9", Moira: "9", Lich: "16",
+  Djinn: "6", Hidra: "10", Leshen: "9", Moira: "9", Lich: "16",
   "Hugin, el Pensamiento": "12", "Munin, la Memoria": "11", "Vaskar, el Lobo del Eclipse": "15", "El Juez Sin Ojos": "14", "Ysolde, la Reina Pálida": "16",
   "La Madre de los Hambrientos": "16", "El Que Golpea Bajo la Piedra": "18", "Ilvara, la Tejedora de Mañanas": "15", "Vaerth, el Sin Rostro": "16",
   "Kharoth, Dragón Antiguo del Sol Herido": "24", "Kuru, el Cazador de Leyendas": "15",

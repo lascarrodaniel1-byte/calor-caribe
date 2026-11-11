@@ -113,7 +113,10 @@ const anotar = (clave: string) => { errores[clave] = (errores[clave] ?? 0) + 1; 
 
 function montarGrupo(o: OpcionesGrupo): Escena {
   const p = nuevaPartida(); normalizarPartida(p);
-  const E = (n: string, d: object): Resultado => { try { return ejecutar(n, d, p); } catch (e) { anotar(`EXCEPCION en ${n}: ${String((e as Error).message).slice(0, 80)}`); return { contenido: String((e as Error).message), aviso: null, error: true }; } };
+  const E = (n: string, d: object): Resultado => { try { const r = ejecutar(n, d, p);
+      // Terco: si la dote lo salva (queda en 1 PV) no debe quedar «inconsciente» por la herida del mismo golpe.
+      for (const m of String(r.contenido).matchAll(/💪 (.+?) debería caer a 0 PV, pero es Terco/g)) if (p.personajes[m[1]]?.condiciones.includes("inconsciente")) anotar("MOTOR: Terco salva al PJ (1 PV) pero queda «inconsciente» por la herida");
+      return r; } catch (e) { anotar(`EXCEPCION en ${n}: ${String((e as Error).message).slice(0, 80)}`); return { contenido: String((e as Error).message), aviso: null, error: true }; } };
   const comp = o.composicion ?? COMPOSICIONES[o.indice % COMPOSICIONES.length];
   const pjs: string[] = [], plantillas: Record<string, Plantilla> = {};
   comp.forEach((cl, j) => {
@@ -157,7 +160,7 @@ export interface Resultado1 {
   victoria: boolean; derrota: boolean; empate: boolean; asaltos: number; pjCaidos: number; pjMuertos: number; pjTotal: number;
   pvRestantes: number; pvTotal: number; rechazadas: number; acciones: number; anomalias: string[];
 }
-/** Activo = vivo, con PV y consciente. (Un Terco que cae a 0 por una herida queda con 1 PV pero «inconsciente»: el motor no lo deja actuar; ver docs/BALANCE.md.) */
+/** Activo = vivo, con PV y consciente. (Una herida de zona roja puede dejar inconsciente a un PJ con PV; Terco ya no lo deja inconsciente: ver docs/BALANCE.md.) */
 const vivoPJ = (p: Personaje) => !p.condiciones.includes("muerto") && p.pv > 0 && !p.condiciones.includes("inconsciente");
 
 function posicionar(sc: Escena, enemigos: string[], metros = 10) {
@@ -267,7 +270,7 @@ function simularCombate(sc: Escena, defs: { nombre: string; def: Criatura }[], o
   // Invariantes: nada de NaN ni PV imposibles.
   for (const n of pjs) { const q = p.personajes[n]; if (!Number.isFinite(q.pv) || q.pv > q.pv_max) anomalias.push(`PV imposibles en ${n}: ${q.pv}/${q.pv_max}`); }
   for (const n of nombres) { const j = p.jefes[n]; if (j && (!Number.isFinite(j.pv) || j.pv < 0 || j.pv > j.pv_max)) anomalias.push(`PV imposibles en ${n}: ${j.pv}/${j.pv_max}`); }
-  for (const n of pjs) { const q = p.personajes[n]; if (q.pv > 0 && q.condiciones.includes("inconsciente") && !q.condiciones.includes("muerto")) anotar("MOTOR: PJ con PV>0 pero «inconsciente» (Terco que cae a 0 por una herida: no puede actuar)"); }
+  for (const n of pjs) { const q = p.personajes[n]; if (q.pv > 0 && q.condiciones.includes("inconsciente") && !q.condiciones.includes("muerto")) anotar("PJ con PV>0 pero «inconsciente» al terminar (herida de zona roja que lo deja inconsciente aun con PV: esperado, no es el fallo de Terco)"); }
   const caidos = pjs.filter((n) => !vivoPJ(p.personajes[n])).length;
   const muertos = pjs.filter((n) => p.personajes[n].condiciones.includes("muerto")).length;
   const victoria = !vivosEnem().length && vivosPJ().length > 0;

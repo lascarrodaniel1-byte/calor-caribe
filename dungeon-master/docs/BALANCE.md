@@ -4,7 +4,7 @@ Simulador Monte Carlo que usa el **motor real** (`ejecutar(...)` de `src/herrami
 
 - Código: `tests/balance/simular.ts`
 - Esta tabla sale de: `npx tsx tests/balance/simular.ts --n 300 --semilla 1 --detalle --n-detalle 60 --comparar --n-comparar 300` (unos 2 minutos; 29 760 combates y 963 177 acciones pasadas por el motor).
-- Todo lo de este documento es **medición** o **PROPUESTA**. Las propuestas las tiene que confirmar el dueño; ninguna está aplicada.
+- Las secciones 1-8 son el primer pase: **medición** y **PROPUESTAS** (cuando se escribieron, ninguna estaba aplicada). El dueño confirmó después las propuestas 1b, 2 (solo el Juez), 4 (solo el Djinn), 5a y 6; están aplicadas y medidas en la **sección 9 (segunda corrida)**. Los números de las secciones 3-8 son los de antes de esos cambios.
 
 ## 1. Cómo ejecutarlo
 
@@ -217,3 +217,59 @@ La corrida entera (29 760 combates, 963 177 acciones) arrojó **0 excepciones, 0
 5. **Agua.** (a) Que las **armas de punta** (lanza, daga, tridente, estoque) no pierdan la mitad del daño bajo el agua (como en 5e), para que un grupo no acuático no quede en tablas frente a sirenas y hombres pez; o (b) dar a los hombres pez y sirenas una penalización en tierra (hoy rinden igual fuera del agua). Mantener el valor del Tritón.
 6. **Terco + herida (sección 7).** Decidir cuál manda: si Terco «se queda en pie», quitar `inconsciente` al aplicar el truco; si la herida es tan grave que cae, que Terco no la «salve» (o que lo avise).
 7. **Seguimiento.** Añadir al simulador: habilidades de criaturas (`habilidad_criatura`), hechizos de los Hechiceros, maniobras, salvaciones contra la muerte (para que «muertos» sea una métrica real) y equipo mágico por nivel. Con eso, repetir este informe.
+
+## 9. Segunda corrida (tras los cambios confirmados)
+
+Mismo simulador, misma semilla y mismos parámetros: `npx tsx tests/balance/simular.ts --n 300 --semilla 1 --detalle --n-detalle 60 --comparar --n-comparar 300` (98 s; la curva por niveles, con `--n 200 --niveles 3,4,5,6,7,8,9`). Los resultados de la sección 3 son el «antes».
+
+### 9.1 Qué se cambió
+
+| # | Cambio | Dónde |
+|---|---|---|
+| 1 | **Ataque adicional en el nivel real 5**, sin desplazamiento (excepción deliberada al +2; constante `NIVEL_ATAQUE_ADICIONAL` en `niveles.ts`). Lo tienen Mercenario, Berserker, Caballero, Cazador, Flagelante, Segador y Barbero-Cirujano; no el Degollador ni el Hechicero. La tablita de niveles (`/ayuda niveles`) y la ayuda de clase lo muestran en el 5. El resto de lo que la tabla base ponía en el 5 (Paso elusivo, Urumi, Luz contra la Podre, Movimiento rápido…) sigue llegando en el 7. | `niveles.ts`, `rasgos.ts`, `progresion.ts`, `t-regresion.ts` |
+| 2 | **Terco + herida**: si Terco salva al personaje (1 PV), la herida de zona roja no lo deja «inconsciente»; sigue en pie con la herida abierta (sangrado y reloj siguen). Con la dote ya gastada, sin cambios. | `muerte.ts` (`caerA0`), `tests/motor/t-terco.ts` (10 pruebas), `simular.ts` |
+| 3 | **Juez Sin Ojos**: `placas_completas` + `gambeson` → `loriga` + `yelmo` (malla con yelmo: 5 al corte en cuerpo y piernas, 8 en la cabeza, 0 en el cuello). Un 1d8+4 de espada le deja pasar **3,6 PV de media** (antes ~1). PV, CA y ataques intactos. | `bestiario.ts`, `t-bestiario.ts` |
+| 4 | **Djinn**: peligro 4 → **3**, VD 11 → **6**. Lich, Hugin y Munin se dejan (ver 9.4). | `bestiario.ts` |
+| 5 | **Armas de punta bajo el agua**: pierden un tercio (×2/3, hacia abajo, mínimo 1) en lugar de la mitad; el resto sigue a la mitad y «en el agua» sigue siendo −2. Cuenta como punta lo que `atacar` clasifica como `punta` (daga, estoque, lanza, tridente, jabalina, flecha, virote, estaca, colmillos…), un `tipo_dano: punta` explícito y la espada corta. El aviso 🌊 y `REGLAS_AGUA` lo dicen. | `agua.ts`, `combate.ts`, `t-agua.ts` (+17 pruebas) |
+
+### 9.2 Tabla principal (n = 300, semilla 1)
+
+Antes → después (% de victorias del grupo; entre paréntesis, % de PV del grupo que queda).
+
+| Encuentro | Nivel 1 | Nivel 5 | Nivel 9 | Nivel 13 |
+|---|---|---|---|---|
+| 1 criatura, peligro 1 | 100% → 100% | 100% → 100% | 100% → 100% | 100% → 100% |
+| 1 criatura, peligro 2 | 94% → 94% | 100% → 100% | 100% → 100% | 100% → 100% |
+| 1 criatura, peligro 3 | 48% → **46%** | 100% (84% PV) → 100% (**90%**) | 100% → 100% | 100% → 100% |
+| 1 criatura, peligro 4 | 5% → 6% | 41% (25% PV) → **59%** (36%) | 100% → 96% | 100% → 100% |
+| 1 criatura, peligro 5 (Lich) | 0% → 0% | 71% (28% PV) → **98%** (64%) | 100% → 100% | 100% → 100% |
+| 3 criaturas, peligro 1-2 | 47% → 47% | 100% → 100% | 100% → 100% | 100% → 100% |
+| **1 jefe** | 0% → 0% | **11% → 37%** (5% → 18% PV) | 73% → **80%** | 88% → **91%** |
+
+«Peligro 3» y «peligro 4» de la tabla no comparan exactamente lo mismo: el Djinn (100% en el nivel 5) salió de la lista de peligro 4 y entró en la de peligro 3.
+
+### 9.3 Curva por niveles (n = 200): ¿desaparece el acantilado 6 → 7?
+
+| Encuentro | N3 | N4 | N5 | N6 | N7 | N8 | N9 |
+|---|---|---|---|---|---|---|---|
+| peligro 4, antes | 17% | 23% | 39% | 41% | **90%** | 98% | 100% |
+| peligro 4, después | 12% | 20% | **59%** | **69%** | 82% | 94% | 96% |
+| peligro 5 (Lich), antes | 0% | 22% | 70% | 87% | **100%** | 100% | 100% |
+| peligro 5 (Lich), después | 0% | 22% | **98%** | 100% | 100% | 100% | 100% |
+| jefe, antes | 0% | 5% | 12% | 14% | **65%** | 73% | 73% |
+| jefe, después | 0% | 5% | **39%** | **47%** | 67% | 77% | 81% |
+
+**Sí: el acantilado desaparece y queda una rampa.** El jefe pasa de 14% (N6) → 65% (N7) a 47% → 67%; el peligro 4 sube del 41% al 69% en el nivel 6 y su salto 6 → 7 baja de +49 a +13 puntos. Los niveles 1-4 no cambian (el Ataque adicional llega en el 5), así que el valle de 3-4 sigue ahí (peligro 4: 12-20%; jefe: 0-5%): es lo esperable en niveles bajos, pero sigue siendo duro.
+
+### 9.4 Efectos y observaciones
+
+- **El jefe de nivel 5 pasa de 11% a 37%** (🔴 → 🟡/🟢 en el límite): peligroso pero ya no imposible; la mayoría de los combates se pierden con el grupo casi entero caído (79% caídos). Es casi lo que daba el contrafactual sin desplazamiento (42%), pero solo en el 5: el resto del desplazamiento se mantiene. Nivel 9: jefe 73% → 80%.
+- **El Lich de nivel 5 queda en el 98%** (antes 71%) y es ya trivial. Es el efecto más visible del cambio 1 en lo que pasaba de «difícil» a «fácil». **No se ha tocado** (decisión del dueño): conviene recordar que el simulador no modela su resistencia al daño no mágico, su relicario ni sus hechizos, así que su dificultad real está muy por encima de la medida. Por eso no se le ha bajado el peligro: con el Ataque adicional en el 5, hasta el peligro 4 (Wendigo, Leshen, Dragón, Hugin, Munin) es 60-100% en el nivel 5, y el Lich no es un caso aparte.
+- **Nivel 5 en general**: peligro 3 y trío de peligro 1-2 siguen al 100% (más holgados: 84% → 90% de PV), peligro 4 ya no es un muro (41% → 59%) y el jefe es duro pero jugable. No se ve «demasiado fácil»; el único exceso es el Lich.
+- **El Juez Sin Ojos** (cambio 3): nivel 9, 3% → **67%** (🔴 → 🟢); nivel 13, 60% → **100%**. Queda igual de difícil que el Apóstol (78%) en el 9 pero, sin sus placas, a nivel 13 ya es un paseo para el grupo del simulador, mientras Kuru (45%) y Kharoth (58%) siguen siendo los únicos desafíos reales. Mejor muro que inmune, pero si se quiere algo más duro a nivel 13 bastaría un punto de protección más (`brigantina` en el torso) o subirle PV. Pendiente de decisión del dueño.
+- **Hugin (62%) y Munin (80%) en el nivel 5, y el Lich**: se dejan como están. Con el Ataque adicional ya no hay discrepancia clara respecto al resto de peligro 4 (antes 13-15%, ahora comparables a Wendigo/Leshen/Dragón joven/Gigante de hueso, que van del 60% al 100%). La amplitud dentro del peligro 4 sigue siendo grande (Apóstol 0% frente a Wendigo 100% en el nivel 5), pero eso es un tema de «peligro 4 agrupa demasiado», no de estos dos.
+- **Efecto del Djinn en peligro 3** en las reglas que leen el peligro: (a) *terrible* (`combate.ts`: jefe o peligro ≥ 4): deja de causar la presión de nervios extra; (b) Kuru, ventaja contra peligro 3+: sin cambios (3 ya cuenta); (c) las runas del Cazador (`cazador.ts`): ahora las de potencia 3 (nivel real 7) lo dominan, antes hacían falta las de 4 (nivel real 9); (d) PX por criatura: 5000 → 1800 (y valor de alma del Segador 4 → 3); (e) Flagelante (`peligro ≥ 4` = «grande»): ya no lo es; (f) la tabla de encuentros (`encuentros.ts`) no contiene al Djinn, así que no cambia ninguna tirada; la auditoría sigue en «sin problemas».
+- **Agua**: sumergidos a nivel 5, 37% → **82%** (asaltos medios 19,0 → 13,1; antes 187 de 300 combates acababan sin final); con un Tritón 69% → 87%. El agua sigue alargando el combate (3,8 asaltos en tierra → 13,1 sumergidos) y con 4 Tritones se queda en 3,8, como en tierra. En el nivel 9 no cambia la victoria (100%) pero los asaltos bajan de 9,1 a 8,9. Parte de la mejora es el propio Ataque adicional (grupo de nivel 5), no solo las armas de punta: el simulador no distingue ambos efectos. Además, casi todas las armas de la corrida son cortantes o contundentes (espada larga, hacha, shotel, maza, bastón); solo las dagas del Degollador son de punta, así que el efecto de este cambio concreto en el simulador es pequeño: se nota sobre todo en la mesa, con lanzas, tridentes, arcos y estoques.
+- **Terco** (cambio 2): el simulador ahora comprueba que, cuando la dote salva a un personaje, este no queda inconsciente: 0 casos. Quedan los PJ con PV > 0 «inconscientes» al terminar el combate (48 en la corrida): son heridas de zona roja de un crítico o golpe masivo con PV restantes, que el motor define así a propósito («Cae inconsciente»); no es el error de Terco.
+- **Otras cifras**: sin acciones rechazadas ni NaN en toda la corrida; combates sin final: Gárgola de nivel 1, trío de peligro 1-2 en los niveles 1-4, Kharoth de nivel 13 y el agua sumergida de nivel 5 y 9.
+- **Pendiente de la sección 8 (sin tocar)**: Gárgola (armadura plana de piedra), el techo de dificultad en los niveles 9-13 sin habilidades de criaturas en el simulador, dividir el peligro 3, y el seguimiento del simulador (habilidades, hechizos, maniobras, salvaciones contra la muerte).

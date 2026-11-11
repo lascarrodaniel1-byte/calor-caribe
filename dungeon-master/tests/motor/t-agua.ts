@@ -1,5 +1,6 @@
 import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { ejecutar } from "../../src/herramientas.ts";
+import { danoEnAgua, esArmaDePunta, REGLAS_AGUA } from "../../src/agua.ts";
 import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const txt = (r: any) => (typeof r === "string" ? r : r?.contenido ?? JSON.stringify(r));
@@ -41,4 +42,18 @@ const atacar = (E: any, a: string, o: string, arma: string) => { fijos(15); cons
   t(/tierra firme/.test(s) && !p.personajes.Pj.condiciones.some((c) => /agua|sumerg/i.test(c)), "salir del agua quita las condiciones", s.replace(/\n/g, " | ").slice(0, 160));
   fijos(15); const r = txt(E("atacar", { atacante: "Pj", objetivo: "Hambriento", arma: "Espada larga", dano: "4d6" })); liberarDados();
   t(!/pierde fuerza/.test(r) && !/en el agua/.test(r), "en tierra firme no hay penalización"); }
+// 6. armas de punta bajo el agua: pierden solo un tercio (×2/3, hacia abajo, mínimo 1); el resto, la mitad
+{ const fijo = (arma: string, dano: string, extra: any = {}) => { const r0 = /^(Flecha|Virote de ballesta)$/.test(arma) ? { arma: arma === "Flecha" ? "Arco largo" : "Ballesta pesada", principal: arma === "Flecha" ? "Arco largo" : "Ballesta pesada" } : { arma, principal: arma };
+    const { E } = mk("Humano del Faro", { inventario: [r0.principal] }); E("empunar", { quien: "Pj", principal: r0.principal }); escena(E, "Hambriento", ["Pj", "Hambriento"], "sumergir");
+    fijos(15); const r = txt(E("atacar", { atacante: "Pj", objetivo: "Hambriento", arma, dano, ...(r0.arma !== arma ? { a_distancia: true } : {}), ...extra })); liberarDados(); return r; };
+  for (const a of ["Daga", "Lanza", "Tridente", "Jabalina", "Estoque", "Espada corta", "Flecha", "Virote de ballesta"]) { const r = fijo(a, "9"); t(/9 → 6/.test(r) && /punta pierde solo un tercio/.test(r), `${a} sumergida: 9 → 6 (un tercio menos)`, r.replace(/\n/g, " | ").slice(0, 200)); }
+  for (const a of ["Espada larga", "Maza", "Hacha"]) { const r = fijo(a, "9"); t(/9 → 4/.test(r) && /Bajo el agua el golpe pierde fuerza/.test(r), `${a} sumergida: 9 → 4 (la mitad)`, r.replace(/\n/g, " | ").slice(0, 200)); }
+  const r1 = fijo("Daga", "1"); t(!/🌊/.test(r1) || /1 → 1/.test(r1), "mínimo 1 con un daño de 1", r1.replace(/\n/g, " | ").slice(0, 160));
+  const r2 = fijo("Daga", "2"); t(/2 → 1/.test(r2), "2 de daño con punta: 1 (hacia abajo)", r2.replace(/\n/g, " | ").slice(0, 160));
+  const r3 = fijo("Espada larga", "9", { tipo_dano: "punta" }); t(/9 → 6/.test(r3), "tipo_dano punta explícito también cuenta como arma de punta", r3.replace(/\n/g, " | ").slice(0, 200)); }
+{ const a = danoEnAgua({ sumergido: true, enAgua: true, acuatico: false }, false, 10, true), b = danoEnAgua({ sumergido: true, enAgua: true, acuatico: false }, false, 10), c = danoEnAgua({ sumergido: true, enAgua: true, acuatico: true }, false, 10, true), d = danoEnAgua({ sumergido: false, enAgua: true, acuatico: false }, false, 10, true);
+  t(a.dano === 6 && b.dano === 5 && c.dano === 10 && d.dano === 8, "danoEnAgua: punta 10→6, resto 10→5, acuático sin cambio, en el agua (sin hundirse) −2 también con punta", `${a.dano} ${b.dano} ${c.dano} ${d.dano}`);
+  t(esArmaDePunta("punta") && esArmaDePunta("corte", "Espada corta") && !esArmaDePunta("corte", "Espada larga") && !esArmaDePunta("contundente"), "esArmaDePunta reconoce punta y espada corta"); }
+// el aviso y las reglas dicen qué pasa
+{ const { E } = mk("Humano del Faro"); const s = escena(E, "Hambriento", ["Pj", "Hambriento"], "sumergir"); t(/un tercio menos con armas de punta/.test(s), "el aviso de sumergir menciona las armas de punta"); t(/TERCIO/.test(REGLAS_AGUA) && /daga, lanza, tridente/.test(REGLAS_AGUA), "REGLAS_AGUA explica las armas de punta"); }
 console.log(`${ok} ok, ${mal} fallas`);

@@ -63,7 +63,7 @@ export function alAgua(partida: Partida, nombres: string[], nadador = false): st
       c.p.sumergido = { ...r, nadador: nadador || tiene(c.p, "marinero") };
       c.p.nave = undefined;
       out.push(`${c.nombre} se hunde bajo el agua: contiene la respiración ${r.aire / 10} min (${r.aire} asaltos) y luego aguanta ${r.sinAire} asalto(s) antes de caer.`);
-    } else out.push(nativo ? `${c.nombre} está en su elemento bajo el agua: sin penalizaciones.` : `${c.nombre} está bajo el agua (lleva tú su aire). No es del agua: ataca con desventaja, a la mitad de velocidad y con la mitad de daño.`);
+    } else out.push(nativo ? `${c.nombre} está en su elemento bajo el agua: sin penalizaciones.` : `${c.nombre} está bajo el agua (lleva tú su aire). No es del agua: ataca con desventaja, a la mitad de velocidad y con la mitad de daño (un tercio menos con armas de punta).`);
   }
   return out;
 }
@@ -144,9 +144,15 @@ export function ajusteAgua(e: { sumergido: boolean; enAgua: boolean; acuatico: b
   return { desventaja: "en el agua, sin pie firme, ataca cuerpo a cuerpo con desventaja" };
 }
 
-/** El daño que pierde quien no es del agua: sumergido, la mitad; en el agua, −2 en cuerpo a cuerpo (mínimo 1 si había daño). */
-export function danoEnAgua(e: { sumergido: boolean; enAgua: boolean; acuatico: boolean }, distancia: boolean, dano: number): { dano: number; nota: string } {
+/** Armas de punta que se reconocen aunque el motor las clasifique de otro modo (la espada corta es un arma de estocada). */
+const PUNTA_EXTRA = /espada corta|gladio|gladius/i;
+/** ¿Un ataque de punta (perforante: daga, lanza, tridente, jabalina, estoque, espada corta, flecha, virote)? `tipo` es el tipo de daño ya calculado en atacar. */
+export const esArmaDePunta = (tipo?: string, arma?: string): boolean => tipo === "punta" || (!!arma && PUNTA_EXTRA.test(arma));
+
+/** El daño que pierde quien no es del agua: sumergido, la mitad (un tercio si el arma es de punta, que se hunde en línea recta); en el agua, −2 en cuerpo a cuerpo (mínimo 1 si había daño). */
+export function danoEnAgua(e: { sumergido: boolean; enAgua: boolean; acuatico: boolean }, distancia: boolean, dano: number, punta = false): { dano: number; nota: string } {
   if (e.acuatico || dano <= 0) return { dano, nota: "" };
+  if (e.sumergido && punta) { const n = Math.max(1, Math.floor((dano * 2) / 3)); return { dano: n, nota: `🌊 Bajo el agua el arma de punta pierde solo un tercio de fuerza (${dano} → ${n}); el resto de armas, la mitad.` }; }
   if (e.sumergido) { const n = Math.max(1, Math.floor(dano / 2)); return { dano: n, nota: `🌊 Bajo el agua el golpe pierde fuerza (${dano} → ${n}).` }; }
   if (e.enAgua && !distancia) { const n = Math.max(1, dano - 2); return { dano: n, nota: `🌊 En el agua, sin apoyo, el golpe pierde fuerza (${dano} → ${n}).` }; }
   return { dano, nota: "" };
@@ -184,6 +190,6 @@ export function textoAgua(partida: Partida): string {
 
 export const REGLAS_AGUA = `## Combate bajo el agua
 - Sumerge con agua {accion: sumergir, quienes} (y nadador=true si nada de verdad). Aguanta la respiración (1 + mod. CON) minutos (mínimo medio minuto); luego mod. CON asaltos (mínimo 1) y cae a 0 PV (inconsciente y muriéndose); a 0 PV bajo el agua, se ahoga. siguiente_asalto gasta el aire solo; agua {accion: nadar, minutos} gasta el de un trayecto largo. Emerger lo repone.
-- QUIEN NO ES DEL AGUA (todos los personajes y criaturas salvo Tritones, sirenas, hombres pez, ahogados y lo que nada o respira bajo el agua) lo sufre: EN EL AGUA (agua {accion: entrar}), sin pie firme, ataca cuerpo a cuerpo con desventaja y −2 al daño, y va a la mitad de velocidad; SUMERGIDO, desventaja en TODOS sus ataques, la MITAD del daño y la mitad de velocidad. Quien nada de verdad (nadador: true, o un Marinero) no tiene desventaja cuerpo a cuerpo, pero sumergido sigue haciendo la mitad del daño. Los del agua no sufren nada (el programa los reconoce; si una criatura del agua no lo es, márcala nadador). Pasa siempre el arma en atacar. Los sumergidos resisten el daño de fuego (a la mitad: aplícalo tú a mano). El agua agitada pide Atletismo. Al terminar, agua {accion: salir}.
+- QUIEN NO ES DEL AGUA (todos los personajes y criaturas salvo Tritones, sirenas, hombres pez, ahogados y lo que nada o respira bajo el agua) lo sufre: EN EL AGUA (agua {accion: entrar}), sin pie firme, ataca cuerpo a cuerpo con desventaja y −2 al daño, y va a la mitad de velocidad; SUMERGIDO, desventaja en TODOS sus ataques, la MITAD del daño (un TERCIO menos, o sea ×2/3, si el arma es de punta: daga, lanza, tridente, jabalina, estoque, espada corta, flecha o virote; el programa lo aplica por el arma) y la mitad de velocidad. Quien nada de verdad (nadador: true, o un Marinero) no tiene desventaja cuerpo a cuerpo, pero sumergido sigue perdiendo daño igual. Los del agua no sufren nada (el programa los reconoce; si una criatura del agua no lo es, márcala nadador). Pasa siempre el arma en atacar. Los sumergidos resisten el daño de fuego (a la mitad: aplícalo tú a mano). El agua agitada pide Atletismo. Al terminar, agua {accion: salir}.
 
 - La velocidad a la mitad en el agua la aplica el programa al mover con plano en combate (recorta el movimiento y avisa). La armadura pesada y la mochila cargada hunden: CD más alta o hundimiento seguro.`;

@@ -21,7 +21,7 @@ import { esFlagelante, esquivaAutomatica, pasoElusivoActivo } from "./flagelante
 import { selloDe } from "./segador_base.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { pxCriatura, registrarBaja } from "./progresion.js";
-import { ajusteAgua, danoEnAgua, esAcuatico, estaEnAgua, estaSumergido } from "./agua.js";
+import { ajusteAgua, danoEnAgua, esArmaDePunta, esAcuatico, estaEnAgua, estaSumergido } from "./agua.js";
 import { ventajaMontada } from "./montura.js";
 import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
@@ -1021,18 +1021,19 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     if (furiaMas - lunaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     if (lunaMas) lineas.push("🌕 Furia de la luna: +2 al daño cuerpo a cuerpo.");
     let bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
-    // El agua frena a quien no es del agua: sumergido, la mitad del daño; en el agua, −2 en cuerpo a cuerpo.
-    const dAgua = danoEnAgua(estadoAgua, distancia, bruto);
-    if (dAgua.nota) { bruto = dAgua.dano; lineas.push(dAgua.nota); }
-    lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
-
-    // Armadura: dónde cae el golpe, qué lo cubre y cuánto penetra el arma.
+    // Tipo de daño y arma (hace falta ya aquí: el agua frena menos las armas de punta).
     const lineaAtaque = at.tipo === "criatura" ? (d.arma && at.j.definicion.ataques.find((a) => a.toLowerCase().includes(d.arma!.toLowerCase()))) || at.j.definicion.ataques[0] || "" : "";
     // Sin arma nombrada, la primera del inventario del PJ.
     const delInventario = !d.arma && at.tipo === "pj" ? at.p.inventario.find((x) => reconocerArma(x)) : undefined;
     const arma = reconocerArma(d.arma) ?? reconocerArma(lineaAtaque) ?? reconocerArma(delInventario);
-    if (delInventario && !d.tipo_dano) lineas.push(`(Arma por defecto: ${delInventario}.)`);
     const tipo = d.tipo_dano ?? arma?.tipo;
+    // El agua frena a quien no es del agua: sumergido, la mitad del daño (un tercio menos con armas de punta); en el agua, −2 en cuerpo a cuerpo.
+    const dAgua = danoEnAgua(estadoAgua, distancia, bruto, esArmaDePunta(tipo, d.arma ?? delInventario ?? lineaAtaque));
+    if (dAgua.nota) { bruto = dAgua.dano; lineas.push(dAgua.nota); }
+    lineas.push(`Daño: ${r.texto}${resultado === "roce" ? ` → la mitad, ${bruto}` : ""}`);
+
+    // Armadura: dónde cae el golpe, qué lo cubre y cuánto penetra el arma.
+    if (delInventario && !d.tipo_dano) lineas.push(`(Arma por defecto: ${delInventario}.)`);
     const hueco = d.apuntar === "hueco";
     const ubicacion: Ubicacion =
       d.apuntar && d.apuntar !== "hueco" ? d.apuntar : hueco ? (["cuello", "torso", "abdomen", "cabeza"] as const)[tirar("1d4").total - 1] : tirarUbicacion();

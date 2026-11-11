@@ -35,7 +35,11 @@ export function caerA0(p: Personaje): string {
   if (tiene(p, "terco") && !p.gastados?.["Terco"]) {
     (p.gastados ??= {})["Terco"] = 1;
     p.pv = 1;
-    return `💪 ${p.nombre} debería caer a 0 PV, pero es Terco: se queda en pie con 1 PV (una vez por descanso largo).`;
+    // Si el mismo golpe abrió una herida que «cae inconsciente» (zona roja), Terco manda: sigue en pie con la herida abierta
+    // (sangrado, reloj y demás efectos siguen), pero no queda inconsciente por ella.
+    const eraInconsciente = p.condiciones.includes("inconsciente");
+    quitarInconsciente(p);
+    return `💪 ${p.nombre} debería caer a 0 PV, pero es Terco: se queda en pie con 1 PV (una vez por descanso largo)${eraInconsciente ? "; la herida sigue abierta, pero no cae inconsciente" : ""}.`;
   }
   p.muerte = { exitos: 0, fallos: 0, estable: false, ...(p.muerte?.desventaja ? { desventaja: true } : {}) };
   if (!p.condiciones.includes("inconsciente")) p.condiciones.push("inconsciente");

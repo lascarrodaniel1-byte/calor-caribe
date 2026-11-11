@@ -4,7 +4,8 @@ import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { ejecutar } from "../../src/herramientas.ts";
 import { estadoParaDM } from "../../src/navegador.ts";
 import { RASGOS_NIVEL } from "../../src/progresion.ts";
-import { nvl } from "../../src/niveles.ts";
+import { nvl, NIVEL_ATAQUE_ADICIONAL } from "../../src/niveles.ts";
+import { ataquesPorAccion } from "../../src/rasgos.ts";
 import { rangoDe, buscarTema, textoSaber, fugasDeSaber } from "../../src/saber.ts";
 import { pistasDeRepaso } from "../../src/repaso.ts";
 import { TERRITORIOS, territorioEn } from "../../src/mapa.ts";
@@ -16,15 +17,23 @@ const ficha = (E: any, n: string, clase: string, nivel: number, raza = "Humano d
 const combate = (E: any, n: string, metros = 1.5) => { E("aparecer_criatura", { nombre: "Hambriento", repetir: true }); E("iniciativa", { participantes: [n, "Hambriento"] }); E("plano", { escena: "sala", poner: [{ nombre: n }] }); E("plano", { poner: [{ nombre: "Hambriento", ref: n, direccion: "N", metros }] }); };
 const fijos = (v: number, n = 30) => iniciarRegistroDados(Array.from({ length: n }, () => ({ caras: 20, valor: v })));
 // ---- umbrales: ninguna puerta de nivel sin desplazar
+// EXCEPCIONES PERMITIDAS (lista explícita y deliberada): el Ataque adicional llega en el nivel real 5 SIN desplazar (NIVEL_ATAQUE_ADICIONAL),
+// porque con el +2 los niveles 5-6 eran un valle muy duro y el 7 un acantilado (docs/BALANCE.md). Ninguna otra puerta puede usar una constante.
+// (NIVEL_MINIMO de leyenda.ts es el nivel mínimo para aspirar a una leyenda, no un desbloqueo de clase: ya existía fuera del desplazamiento.)
+const EXCEPCIONES_SIN_DESPLAZAR = ["NIVEL_ATAQUE_ADICIONAL", "NIVEL_MINIMO"];
 { const dir = fileURLToPath(new URL("../../src/", import.meta.url)); const permitidos = new Set(["combate.ts", "encuentros.ts", "sustento.ts", "compania.ts", "progresion.ts", "niveles.ts"]); const malos: string[] = [];
-  for (const f of readdirSync(dir).filter((x) => x.endsWith(".ts") && !permitidos.has(x))) readFileSync(dir + f, "utf8").split("\n").forEach((l, i) => { if (/nivel[^=<>!a-zA-Z_]{0,12}(>=|<=|>|<)\s*[0-9]+/.test(l) && !/nvl\(/.test(l.replace(/nivel[^=<>!a-zA-Z_]{0,12}(>=|<=|>|<)\s*nvl\(\d+\)/g, ""))) malos.push(`${f}:${i + 1}`); });
-  t(malos.length === 0, "ninguna puerta de nivel se queda sin desplazar con nvl()", malos.join(", ")); }
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".ts") && !permitidos.has(x))) readFileSync(dir + f, "utf8").split("\n").forEach((l, i) => { if (/nivel[^=<>!a-zA-Z_]{0,12}(>=|<=|>|<)\s*[0-9]+/.test(l) && !/nvl\(/.test(l.replace(/nivel[^=<>!a-zA-Z_]{0,12}(>=|<=|>|<)\s*nvl\(\d+\)/g, ""))) malos.push(`${f}:${i + 1}`);
+    for (const m of l.matchAll(/nivel[^=<>!a-zA-Z_]{0,12}(?:>=|<=|>|<)\s*([A-Z][A-Z_0-9]+)/g)) if (!EXCEPCIONES_SIN_DESPLAZAR.includes(m[1])) malos.push(`${f}:${i + 1} (${m[1]})`); });
+  t(malos.length === 0, "ninguna puerta de nivel se queda sin desplazar con nvl() (salvo la lista de excepciones)", malos.join(", ")); }
+t(ataquesPorAccion({ clase: "Mercenario del Cuervo", nivel: NIVEL_ATAQUE_ADICIONAL } as any) === 2 && ataquesPorAccion({ clase: "Mercenario del Cuervo", nivel: NIVEL_ATAQUE_ADICIONAL - 1 } as any) === 1 && NIVEL_ATAQUE_ADICIONAL === 5 && nvl(5) === 7, "Ataque adicional: nivel real 5, sin desplazar (el resto de puertas del 5 base llega en el 7)");
+for (const cl of ["Mercenario del Cuervo", "Berserker de Ceniza", "Caballero Juramentado", "Cazador de Brujas", "Flagelante", "Segador", "Barbero-Cirujano"]) t(!!RASGOS_NIVEL[cl][5]?.some((r) => /^Ataque adicional/.test(r)) && !RASGOS_NIVEL[cl][7]?.some((r) => /^Ataque adicional/.test(r)), `la tablita de niveles de ${cl} da el Ataque adicional en el 5`);
+t(!RASGOS_NIVEL["Degollador"][5]?.some((r) => /Ataque adicional/.test(r)) && !RASGOS_NIVEL["Hechicero"][5]?.some((r) => /Ataque adicional/.test(r)), "Degollador y Hechicero siguen sin Ataque adicional");
 t(nvl(1) === 1 && nvl(3) === 5 && nvl(19) === 20 && !RASGOS_NIVEL["Berserker de Ceniza"][3] && !!RASGOS_NIVEL["Berserker de Ceniza"][5], "el reequilibrio: Furia lúcida pasa del 3 al 5");
 // ---- ataque adicional, crítico 19-20, temerario, presa, desviar
-{ const { p, E } = mundo(); ficha(E, "Mer7", "Mercenario del Cuervo", 7); ficha(E, "Mer6", "Mercenario del Cuervo", 6); combate(E, "Mer7"); p.jefes["Hambriento"].pv = p.jefes["Hambriento"].pv_max = 999; fijos(12);
-  t(!E("atacar", { atacante: "Mer7", objetivo: "Hambriento", dano: "1d4", bono: 50 }).error && !E("atacar", { atacante: "Mer7", objetivo: "Hambriento", dano: "1d4" }).error && /ya hizo 2 ataque/.test(txt(E("atacar", { atacante: "Mer7", objetivo: "Hambriento", dano: "1d4" }))), "nivel 7: dos ataques por acción y el tercero se bloquea");
-  E("atacar", { atacante: "Mer6", objetivo: "Hambriento", dano: "1d4", bono: 50 }); t(/ya hizo 1 ataque/.test(txt(E("atacar", { atacante: "Mer6", objetivo: "Hambriento", dano: "1d4" }))), "nivel 6: un solo ataque");
-  E("siguiente_asalto", {}); E("usar_recurso", { quien: "Mer7", recurso: "Acción súbita" }); let n = 0; for (let i = 0; i < 5; i++) if (!E("atacar", { atacante: "Mer7", objetivo: "Hambriento", dano: "1d4", bono: 50 }).error) n++; t(n === 4, "Acción súbita: cuatro ataques", String(n)); liberarDados(); }
+{ const { p, E } = mundo(); ficha(E, "Mer5", "Mercenario del Cuervo", 5); ficha(E, "Mer4", "Mercenario del Cuervo", 4); combate(E, "Mer5"); p.jefes["Hambriento"].pv = p.jefes["Hambriento"].pv_max = 999; fijos(12);
+  t(!E("atacar", { atacante: "Mer5", objetivo: "Hambriento", dano: "1d4", bono: 50 }).error && !E("atacar", { atacante: "Mer5", objetivo: "Hambriento", dano: "1d4" }).error && /ya hizo 2 ataque/.test(txt(E("atacar", { atacante: "Mer5", objetivo: "Hambriento", dano: "1d4" }))), "nivel 5: dos ataques por acción y el tercero se bloquea");
+  E("atacar", { atacante: "Mer4", objetivo: "Hambriento", dano: "1d4", bono: 50 }); t(/ya hizo 1 ataque/.test(txt(E("atacar", { atacante: "Mer4", objetivo: "Hambriento", dano: "1d4" }))), "nivel 4: un solo ataque");
+  E("siguiente_asalto", {}); E("usar_recurso", { quien: "Mer5", recurso: "Acción súbita" }); let n = 0; for (let i = 0; i < 5; i++) if (!E("atacar", { atacante: "Mer5", objetivo: "Hambriento", dano: "1d4", bono: 50 }).error) n++; t(n === 4, "Acción súbita: cuatro ataques", String(n)); liberarDados(); }
 { const { p, E } = mundo(); ficha(E, "A", "Mercenario del Cuervo", 5); ficha(E, "B", "Mercenario del Cuervo", 4); combate(E, "A"); p.jefes["Hambriento"].pv = p.jefes["Hambriento"].pv_max = 999;
   fijos(19); const ra = txt(E("atacar", { atacante: "A", objetivo: "Hambriento", dano: "1d4" })), rb = txt(E("atacar", { atacante: "B", objetivo: "Hambriento", dano: "1d4" })); liberarDados();
   t(/→ ¡CRÍTICO!/.test(ra) && !/→ ¡CRÍTICO!/.test(rb), "Veterano de compañía: el 19 natural crita a nivel 5 y no a nivel 4"); }

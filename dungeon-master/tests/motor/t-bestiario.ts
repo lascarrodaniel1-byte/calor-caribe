@@ -2,11 +2,12 @@ import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { ejecutar } from "../../src/herramientas.ts";
 import { BESTIARIO } from "../../src/bestiario.ts";
 import { TEMPLES } from "../../src/combate.ts";
-import { NOMBRES_PIEZAS } from "../../src/armadura.ts";
+import { NOMBRES_PIEZAS, proteccion } from "../../src/armadura.ts";
 import { reconocer } from "../../src/condiciones.ts";
 import { buscarTema, textoSaber } from "../../src/saber.ts";
 import { bestiarioGrupo } from "../../src/codice.ts";
 const ejecutarCon = (p: any, n: string, d: object): any => ejecutar(n, d, p);
+type Region = Parameters<typeof proteccion>[1];
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const nuevos = ["Ulfhedinn", "Hombre oso", "Gárgola", "Golem de piedra", "Golem de carne", "Elemental de fuego", "Elemental de agua", "Elemental de tierra", "Elemental de aire", "Djinn", "Duende", "Grifo", "Hidra", "Sirena", "Arpía", "Leshen", "Moira"];
 t(nuevos.every((n) => BESTIARIO.some((c) => c.nombre === n)), `las ${nuevos.length} criaturas nuevas están en el bestiario`);
@@ -46,4 +47,9 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
   const u = BESTIARIO.find((c) => c.nombre === "Ulfhedinn")!, h = BESTIARIO.find((c) => c.nombre === "Hombre oso")!;
   t([u, h].every((c) => c.rasgos.some((r) => /Piel fusionada/.test(r)) && c.rasgos.some((r) => /se le fundió con la carne/.test(r))) && /hombre lobo/i.test(u.descripcion) && /hombre oso/i.test(h.descripcion), "la piel se fusiona con ellos: son hombres lobo y hombres oso, no hombres con una piel");
   const { encuentrosDe } = { encuentrosDe: null as any }; void encuentrosDe; }
+// El Juez lleva malla con yelmo (no placas completas): una espada (1d8+4) le deja pasar ~3 PV o más de media; el Djinn es de peligro 3
+{ const juez = BESTIARIO.find((c) => c.nombre === "El Juez Sin Ojos")!; const pesos: [Region, number][] = [["cabeza", 1], ["cuello", 1], ["torso", 4], ["abdomen", 3], ["brazos", 4], ["piernas", 7]]; let medio = 0;
+  for (const [r, w] of pesos) { const prot = proteccion(juez.blindaje ?? [], r, "corte").valor; let suma = 0; for (let d = 1; d <= 8; d++) suma += Math.max(0, d + 4 - prot); medio += (w / 20) * (suma / 8); }
+  t(!(juez.blindaje ?? []).includes("placas_completas") && medio >= 3, "el Juez sin placas completas: un 1d8+4 de espada le deja pasar ≥ 3 PV de media", medio.toFixed(2));
+  t(BESTIARIO.find((c) => c.nombre === "Djinn")!.peligro === 3 && BESTIARIO.find((c) => c.nombre === "Djinn")!.vd === "6", "Djinn: peligro 3, VD 6"); }
 console.log(`${ok} ok, ${mal} fallas`);
