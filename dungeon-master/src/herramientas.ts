@@ -73,7 +73,7 @@ import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
 import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
-import { ATRIBUTOS } from "./reglas.js";
+import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { danoConResistencia } from "./rasgos.js";
@@ -1229,10 +1229,14 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         if (pareceUnaPrueba(partida, e.expresion, e.motivo))
           throw new Error("Esto es una prueba de característica, habilidad o salvación de un personaje: hazla con la herramienta prueba (aplica su característica y competencia y comprueba que la habilidad corresponde). tirar_dados es para dados sueltos (daño, tablas, azar).");
         const t = tirar(e.expresion, e.modo ?? "normal");
+        // Si la tirada es de un personaje, se le recuerda al DM su competencia real (con el don arcano), por si suma a mano.
+        const motivoN = (e.motivo ?? "").toLowerCase();
+        const quien = Object.values(partida.personajes).find((p) => [p.nombre, p.jugador].some((n) => n && n.length > 1 && motivoN.includes(n.toLowerCase())));
+        const recordatorio = quien && /^\s*\d*d20/i.test(e.expresion) ? `Competencia de ${quien.nombre}: ${signo(competencia(quien))}${quien.don === "fisico" ? " (incluye el don arcano físico)" : ""}. Si esto es una prueba, ataque o salvación suya, usa prueba, atacar o lanzar: la aplican solas.` : undefined;
         const linea = describir(t);
         const modo = e.modo && e.modo !== "normal" ? ` con ${e.modo}` : "";
         return {
-          contenido: JSON.stringify({ ...t, motivo: e.motivo }),
+          contenido: JSON.stringify({ ...t, motivo: e.motivo, ...(recordatorio ? { recordatorio } : {}) }),
           aviso: e.oculta ? "🎲 (el DM tira en secreto…)" : `🎲 ${e.motivo}${modo} → ${linea}`,
         };
       }

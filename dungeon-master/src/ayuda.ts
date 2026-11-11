@@ -127,7 +127,7 @@ function ayudaNiveles(p: Personaje): Ayuda {
     if (NIVELES_AUMENTO.includes(n)) da.push("Aumento de característica (+2 a una o +1 a dos) o una dote");
     if (p.clase === "Mercenario del Cuervo" && rangoCompania(n).rango !== rangoCompania(n - 1).rango && n > 1) da.push(`Ascenso: ${rangoCompania(n).rango}`);
     da.push(n === 1 ? `PV iniciales (d${c?.dadoGolpe ?? 8})` : `+PV (d${c?.dadoGolpe ?? 8}: promedio ${Math.floor((c?.dadoGolpe ?? 8) / 2) + 1} + CON)`);
-    filas.push([String(n), String(PX_NIVEL[n - 1]), `+${2 + Math.floor((n - 1) / 4)}`, da.join(" · ")]);
+    filas.push([String(n), String(PX_NIVEL[n - 1]), `+${2 + Math.floor((n - 1) / 4) + (p.don === "fisico" ? 1 : 0)}`, da.join(" · ")]);
   }
   const sig = pxSiguiente(p);
   return {

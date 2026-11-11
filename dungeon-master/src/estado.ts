@@ -8,6 +8,7 @@ import { textoCazador } from "./cazador_base.js";
 import { textoDegollador, type Dardos } from "./degollador_base.js";
 import { textoFlagelante } from "./flagelante_base.js";
 import { textoArtes } from "./estilos.js";
+import { textoCompetencia } from "./pruebas.js";
 import { textoSegador, type AlmaSellada, type Sello } from "./segador_base.js";
 import { textoBarbero } from "./barbero_base.js";
 import { textoManos } from "./manos.js";
@@ -295,6 +296,7 @@ export function fichaTexto(p: Personaje): string {
     textoDegollador(p),
     textoFlagelante(p),
     textoArtes(p),
+    textoCompetencia(p),
     textoSegador(p),
     textoBarbero(p),
     p.furia?.activa ? `  🔥 EN FURIA (pelo cenizo, ${p.furia.asaltos} asalto(s)) · INT y CAR a la mitad, +2 al modificador de FUE${p.nivel < nvl(3) ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${p.nivel >= nvl(5) ? " · heridas rojas cerradas mientras dure" : ""}` : "",

@@ -4,7 +4,7 @@
 import { opcionDe, tiene } from "./dotes_base.js";
 import { desventajaSigilo } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
-import type { Partida } from "./estado.js";
+import type { Partida, Personaje } from "./estado.js";
 import { efectos } from "./condiciones.js";
 import { competencia, mod, salvacion, signo, valor, type Atributo } from "./reglas.js";
 
@@ -133,6 +133,14 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   return { texto: `🎲 ${nombrePrueba} de ${pj.nombre} (${desglose}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modoP !== "normal" ? ` (${modoP})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito, margen: t.total - d.cd };
 }
 
+/** La competencia del personaje, con su desglose, para que el DM no la calcule a mano (el don arcano físico y la leyenda ya van incluidos). */
+export function textoCompetencia(p: Personaje): string {
+  const base = 2 + Math.floor((p.nivel - 1) / 4);
+  const partes = [`nivel ${p.nivel} ${signo(base)}`, p.don === "fisico" ? "don arcano físico +1" : "", p.leyenda?.coronada ? "leyenda +1" : ""].filter(Boolean).join(", ");
+  const hab = [...(COMPETENCIAS_CLASE[p.clase] ?? []), ...(p.raza === "Humano del Faro" && p.habilidad_extra ? [clave(p.habilidad_extra)] : [])];
+  return `  Competencia ${signo(competencia(p))} (${partes}): la suman sus ataques, salvaciones de clase, CD y las habilidades en que es competente${hab.length ? ` (${[...new Set(hab)].join(", ")})` : ""}. prueba, atacar y lanzar ya la aplican: no la sumes a mano.`;
+}
+
 /** ¿La tirada genérica parece una prueba de característica de un PJ? (para dirigirla a la herramienta `prueba`) */
 export function pareceUnaPrueba(partida: Partida, expresion: string, motivo: string): boolean {
   if (!/^\s*\d*d20/i.test(expresion)) return false;
@@ -146,6 +154,7 @@ export function pareceUnaPrueba(partida: Partida, expresion: string, motivo: str
 }
 
 export const REGLAS_PRUEBAS = `## Pruebas y límites (sé estricto con lo que se puede y no se puede hacer)
+- COMPETENCIA: la de cada personaje está en su ficha («Competencia +N»), ya con el don arcano FÍSICO (+1) y la leyenda. Todo lo que lleva competencia (habilidades en que es competente, salvaciones de clase, ataques, CD de hechizos y de rasgos) pásalo SIEMPRE por prueba, atacar o lanzar, que la aplican solas; nunca sumes tú un +2 «de memoria» ni uses tirar_dados para eso. Si un personaje con el don físico dice que su bono es mayor, es porque su competencia es mayor.
 - Cada prueba usa SU característica, y se hace con la herramienta prueba (habilidad, quien, cd, motivo); no uses tirar_dados para pruebas, habilidades o salvaciones de un PJ. Fuerza: Atletismo. Destreza: Acrobacias, Juego de manos, Sigilo. Inteligencia: Arcanos, Historia, Investigación, Naturaleza, Religión. Sabiduría: Medicina, Percepción, Perspicacia, Supervivencia, Trato con animales. Carisma: Engaño, Intimidación, Interpretación, Persuasión. Las pruebas puras de característica (derribar una puerta = FUE) y las salvaciones (tipo salvacion + atributo) también van con prueba.
 - Si un jugador propone otra característica («uso mi inteligencia para convencerle»), díselo claro: «la Inteligencia no influye en Persuasión; es de Carisma» (la herramienta lo comprueba y te lo recuerda), y tira con la correcta. Lo mismo si pide una habilidad que no sirve para lo que quiere (no se fuerza una cerradura con Persuasión).
 - Antes de resolver cualquier acción comprueba que se PUEDE hacer: ¿lo tiene (objeto en el inventario, hechizo conocido, munición)? ¿está al alcance (plano de la escena: distancia real)? ¿lo permite su estado (inconsciente, atado, sin manos, a 0 PV) y su turno? Si no se puede, dilo sin rodeos («no lo tienes», «está a 12 m: fuera de alcance», «estás inconsciente») y ofrece qué sí puede hacer. Nada de dejarlo pasar por simpatía.
