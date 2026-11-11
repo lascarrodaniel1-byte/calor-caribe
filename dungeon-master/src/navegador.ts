@@ -35,12 +35,6 @@ import { bestiarioGrupo } from "./codice.js";
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
 
 /** Catálogo compacto de las acciones del motor, para el prompt del DM. */
-export function catalogoAcciones(): string {
-  return herramientas
-    .map((h) => `### ${h.name}\n${h.description}\nDatos (JSON Schema): ${JSON.stringify(h.input_schema)}`)
-    .join("\n\n");
-}
-
 /** La ficha completa de un personaje (por su nombre o el de su jugador), para consultar_reglas. */
 export function fichaPorNombre(p: Partida, nombre: string): string {
   const n = String(nombre ?? "").toLowerCase().trim();

@@ -14,11 +14,6 @@ import { danar } from "./bestiario.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
-export const COBERTURA = {
-  media: { ca: 2, nombre: "cobertura media (muro bajo, mueble grande, otra criatura)" },
-  tres_cuartos: { ca: 5, nombre: "cobertura de tres cuartos (rastrillo, tronera, tronco grueso)" },
-} as const;
-
 function atributoCriatura(texto: string, a: "FUE" | "DES" | "CON"): number {
   const m = new RegExp(`${a}\\s+(\\d+)`, "i").exec(texto);
   return m ? Number(m[1]) : 10;

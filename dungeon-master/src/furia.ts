@@ -118,13 +118,6 @@ export function redirigirTrance(partida: Partida, atacante: string, objetivo: st
   };
 }
 
-export function textoFuria(p: Personaje): string {
-  if (!esBerserker(p)) return "";
-  return enFuria(p)
-    ? `  🔥 EN FURIA (pelo cenizo, ${p.furia!.asaltos} asalto(s))${enTrance(p) ? " · EN TRANCE: no distingue aliados de enemigos" : ""}${cierraRojas(p) ? " · heridas rojas cerradas mientras dure" : ""}`
-    : "";
-}
-
 export const REGLAS_FURIA = `## Furia del Berserker de Ceniza
 - Se invoca con usar_recurso {recurso: "Furia"} (acción adicional; se acaba sola a los 10 asaltos o con usar_recurso {accion: terminar}). Mientras dura: el pelo se vuelve del color de la ceniza; INT y CAR a la mitad y +2 al modificador de FUE (se suma al bono base) (lo aplica el programa en todas las tiradas); +2 al daño cuerpo a cuerpo (lo suma atacar); resistencia al daño contundente, cortante y perforante (lo aplica atacar); las penalizaciones de las heridas no cuentan.
 - Niveles 1-4: es un TRANCE. No distingue aliados de enemigos: al atacar, el programa hace caer el golpe sobre cualquiera a su alcance. Narra su mirada vacía y a los compañeros intentando contenerlo. Desde el nivel 5 el trance se aclara. En el nivel 7 la furia cierra las heridas rojas mientras dura; al terminar se reabren.

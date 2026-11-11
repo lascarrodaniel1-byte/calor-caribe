@@ -311,7 +311,6 @@ export interface MagiaPersonaje {
 
 /** Los dones arcanos son de dos tipos: físico y mágico. */
 export type Don = "fisico" | "magico";
-export const NOMBRE_DON: Record<Don, string> = { fisico: "don arcano físico", magico: "don arcano mágico" };
 export interface TiradaDon { tipo: Don | "ninguno"; don: boolean; tirada?: number; texto: string }
 
 /** La tirada del DM antes de crear a un personaje: un d20; 19 = don físico, 20 = don mágico. */

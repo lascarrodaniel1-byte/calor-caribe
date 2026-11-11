@@ -75,7 +75,6 @@ export interface Trama {
 }
 
 export const MAX_ARCOS = 3;
-export const MAX_HILOS = MAX_ARCOS;
 /** Cuántos turnos como mucho en cada fase antes de que el programa avise al DM de que empuje. */
 export const RITMO = { inicio: 3, nudo: 7, desenlace: 3 } as const;
 /** Turnos fuera de escena tras los que un PNJ con nombre tiene que mover ficha (y que su eco llegue a los protagonistas). */
