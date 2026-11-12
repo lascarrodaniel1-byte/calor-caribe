@@ -296,10 +296,10 @@ export const BESTIARIO: Criatura[] = [
     atributos: "FUE 20 DES 11 CON 20 INT 2 SAB 12 CAR 7",
     ataques: ["Cornada: +8, 2d12+5 perforante", "Pezuñas (solo contra un objetivo derribado, con ventaja): +8, 2d6+5 contundente"],
     rasgos: [
-      "Origen (secreto del DM, PROPUESTA a confirmar): criado de los dioses de la tierra, quedó enterrado a medias cuando murieron y se alimenta de mineral y de lo que su aliento deja petrificado; por eso sus cotos están sembrados de estatuas",
+      "Origen (secreto del DM): criado de los dioses de la tierra, quedó enterrado a medias cuando murieron y se alimenta de mineral y de lo que su aliento deja petrificado; por eso sus cotos están sembrados de estatuas",
       "Escamas de mena: el filo y la punta resbalan (blindaje escamas) y la maza o el golpe contundente lo hieren mejor; no tiene resistencias mágicas",
-      "Territorial: defiende su coto y no persigue más allá de él; una pieza de caza dejada lejos del grupo puede distraerlo (PROPUESTA a confirmar)",
-      "Petrificación reversible (PROPUESTA a confirmar): la piedra de su aliento vuelve a ser carne con su hiel (ver botín) si se aplica en las 24 h siguientes; sin hiel, la víctima sigue de piedra y la magia divina no la devuelve (deja Ceniza y no sirve)",
+      "Territorial: defiende su coto y no persigue más allá de él; una pieza de caza dejada lejos del grupo puede distraerlo",
+      "Petrificación reversible: la piedra de su aliento vuelve a ser carne con su hiel (ver botín) si se aplica en las 24 h siguientes; sin hiel, la víctima sigue de piedra y la magia divina no la devuelve (deja Ceniza y no sirve)",
     ],
     habilidades: [
       {
@@ -324,7 +324,7 @@ export const BESTIARIO: Criatura[] = [
       },
     ],
     botin:
-      "Escamas de mena (valen buen dinero a un herrero) y, si se abre la glándula bajo la lengua en la hora siguiente a su muerte, 1d3 viales de hiel de gorgon (PROPUESTA a confirmar): vertida sobre una víctima petrificada por su aliento en las 24 h siguientes, la piedra vuelve a ser carne en una hora (el DM quita «petrificado» con condicion) y la víctima queda con agotamiento 1; la hiel se corta y se vuelve piedra a las 24 h de sacada",
+      "Escamas de mena (valen buen dinero a un herrero) y, si se abre la glándula bajo la lengua en la hora siguiente a su muerte, 1d3 viales de hiel de gorgon: vertida sobre una víctima petrificada por su aliento en las 24 h siguientes, la piedra vuelve a ser carne en una hora (el DM quita «petrificado» con condicion) y la víctima queda con agotamiento 1; la hiel se corta y se vuelve piedra a las 24 h de sacada",
   },
   {
     nombre: "Banshee del Velo",
