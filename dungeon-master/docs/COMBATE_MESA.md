@@ -25,6 +25,8 @@ La barra pinta la iniciativa (`Asalto N`, jugadores como fichas con «tú», cri
 ## Decisiones confirmadas por el dueño
 Sin cambios: la lista de iniciativa visible en móvil con scroll horizontal; «Pasar/Saltar turno» en combate genera una acción narrada por el DM; con un único humano en la mesa el DM resuelve a todos y la palabra vuelve a ese jugador.
 
+**Acciones programadas y reacciones preparadas (confirmado por el dueño):** (1) la reacción preparada existe **solo en combate** (fuera de él no se ofrece ni se guarda); (2) hay **una programada por jugador**, no por personaje con control prestado; (3) un jugador **desconectado con una programada por ejecutar cuenta como presente** (su turno no se salta y su acción se ejecuta); (4) **el pie de la página crece** al haber una programada (la ficha «⏳ Programada» ocupa su sitio sin ocultar la caja de texto).
+
 ## Acciones programadas y reacciones preparadas
 **Flujo.** Con la mesa en modo «turnos» (en combate y fuera), un jugador sentado y con personaje que escribe fuera de su turno **programa** su acción: el botón pasa a «Programar para mi turno», el texto sale de la caja y aparece la ficha «⏳ Programada: «…» [Editar] [Cancelar]». Hay una sola por jugador: programar otra sustituye a la anterior; Editar devuelve el texto a la caja (si la caja está ocupada no pisa nada); Cancelar la quita. Los comandos (`/razas`, `/ayuda`…) se ejecutan como siempre; el texto vacío o de más de `MAX_ACCION` (2000) no se programa. Con modo «libre», un jugador solo, quien aún crea su personaje o quien no está sentado, el comportamiento es el de siempre (no hay botón de programar).
 
