@@ -43,7 +43,7 @@ import {
 import { aprenderTipo, avisoLicencia, comprenderMagia } from "./hechicero.js";
 import { ajustarMaestriaHechicero, consumirTirada, historialDones, registrarDonForzado, tiradaPendiente, tirarDonJugador, buscarHechizo, TIPOS_IDS, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
-import { actualizarPlano, actualizarReloj, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { actualizarPlano, actualizarReloj, adelantoDeFijar, avanzarSiHay, distanciaPlano } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
 import { ajustarAtaque, empunar, ESTILOS, estiloCombate } from "./manos.js";
 import { curarConRunas, esMagiaNegra, mascota, mitigacion, papeles, rastroMagico, registrarMagia } from "./cazador.js";
@@ -744,10 +744,10 @@ const esquemas = {
     quitar: z.array(z.string()).optional().describe("Puntos que ya no importan"),
   }),
   tiempo: z.object({
-    fijar: z.object({ dia: z.number().int().min(1).optional(), hora: z.number().int().min(0).max(23), minuto: z.number().int().min(0).max(59).optional() }).optional().describe("Pon el reloj en una hora (la primera vez, al empezar; luego solo hacia delante)"),
+    fijar: z.object({ dia: z.number().int().min(1).optional(), hora: z.number().int().min(0).max(23), minuto: z.number().int().min(0).max(59).optional() }).optional().describe("Pon el reloj en una hora (la primera vez, al empezar; luego solo hacia delante; adelantarlo 6 h o más exige cita)"),
     avanzar: z.object({ segundos: z.number().int().min(1).optional(), minutos: z.number().int().min(1).optional(), horas: z.number().int().min(1).optional(), dias: z.number().int().min(1).optional() }).optional().describe("Cuánto pasa en este turno según lo que dura lo hecho"),
     motivo: z.string().optional().describe("Qué ha pasado en ese tiempo, en pocas palabras"),
-    cita: z.string().min(5).max(200).optional().describe("Obligatoria si avanzas 6 h o más: frase literal de la acción de un jugador de este turno que pide ese descanso, espera o viaje"),
+    cita: z.string().min(5).max(200).optional().describe("Obligatoria si avanzas o adelantas (fijar) 6 h o más: frase literal de la acción de un jugador de este turno que pide ese descanso, espera o viaje"),
   }),
   prueba: z.object({
     quien: z.string().describe("Personaje (o PNJ) que hace la prueba"),
@@ -786,6 +786,7 @@ const esquemas = {
     casco: z.number().int().min(1).optional().describe("crear: PV del casco si no son los del tipo"),
     quienes: z.array(z.string()).optional(),
     horas: z.number().min(0.5).max(48).optional(),
+    cita: z.string().min(5).max(200).optional().describe("navegar 6 h o más: frase literal de la acción de un jugador de este turno que pide ese viaje (obligatoria)"),
     viento: z.enum(["favorable", "normal", "calmo", "contrario", "tormenta"]).optional(),
     cantidad: z.number().int().min(1).optional().describe("danar: daño al casco"),
     tipo_dano: z.string().optional().describe("danar: si es de fuego, hace el doble y prende"),
@@ -824,6 +825,7 @@ const esquemas = {
     idioma: z.string().optional().describe("comun, karak, marchito, hollin, varg, palido, ceniza, solar, cuervo o bajos"),
     maestro: z.string().optional().describe("aprender: quién o qué lo enseña"),
     dias: z.number().int().min(1).max(365).optional().describe("aprender: días de estudio (30 por defecto)"),
+    cita: z.string().min(5).max(200).optional().describe("aprender: frase literal de la acción de un jugador de este turno que pide estudiar (obligatoria)"),
   }),
   guarida: z.object({
     accion: z.enum(["ver", "declarar", "actuar", "salir"]),
@@ -880,7 +882,7 @@ const descripciones: Record<Nombre, string> = {
   agua:
     "Combate en el agua: entrar (nadando o vadeando), sumergir, emerger, salir (tierra firme), nadar (minutos) o ver el aire. Quien no es del agua (todos salvo Tritones, sirenas, hombres pez, ahogados y lo que nada) ataca con desventaja, hace menos daño (la mitad si está sumergido) y va a la mitad de velocidad; los del agua no sufren nada. Gasta aire por asalto y ahoga.",
   nave:
-    "Botes, balsas y barcos: crear, abordar, desembarcar, navegar (horas y viento), mar, danar el casco, reparar (achicar, remendar, apagar) y abordaje. Se hunde, arde y tira gente por la borda.",
+    "Botes, balsas y barcos: crear, abordar, desembarcar, navegar (horas y viento), mar, danar el casco, reparar (achicar, remendar, apagar) y abordaje. Navegar 6 h o más exige cita literal de lo que pidieron los jugadores. Se hunde, arde y tira gente por la borda.",
   trampa:
     "Trampas secretas: colocar (CD de detectar y de desarmar, efecto), detectar (Percepción pasiva del grupo o búsqueda activa), desarmar (Juego de manos) y disparar. Nunca avises de una trampa que nadie ha descubierto.",
   sustento:
@@ -888,7 +890,7 @@ const descripciones: Record<Nombre, string> = {
   viajar:
     "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
   idioma:
-    "Idiomas: lista, ver los del grupo, comprobar quién entiende uno (quien no lo entiende oye sonidos sin sentido) o aprender uno con un maestro (30 días, prueba de INT).",
+    "Idiomas: lista, ver los del grupo, comprobar quién entiende uno (quien no lo entiende oye sonidos sin sentido) o aprender uno con un maestro (30 días, prueba de INT; exige cita literal de lo que pidieron los jugadores).",
   guarida:
     "Combate en la guarida de un jefe: declararla y, en la iniciativa 20 de cada asalto, una acción de guarida (el lugar ataca) sin repetir la misma dos asaltos seguidos. ver enseña las acciones y los efectos regionales.",
   sal:
@@ -1028,7 +1030,7 @@ const descripciones: Record<Nombre, string> = {
   plano:
     "Plano de la escena en metros (norte arriba): coloca y mueve a personajes, PNJ, criaturas y puntos de referencia (el fuego, el carro, la puerta). El programa calcula distancias y rumbos y te los devuelve como verdad espacial; los ataques cuerpo a cuerpo comprueban el alcance.",
   tiempo:
-    "Reloj del mundo (día y hora): fíjalo al empezar y avánzalo cada turno según lo que dura la acción. Los asaltos y los días de reposo lo mueven solos. Un avance de 6 h o más exige cita literal de lo que pidieron los jugadores.",
+    "Reloj del mundo (día y hora): fíjalo al empezar y avánzalo cada turno según lo que dura la acción. Los asaltos y los días de reposo lo mueven solos. Un avance o un fijar que adelante 6 h o más exige cita literal de lo que pidieron los jugadores.",
   prueba:
     "Prueba de habilidad, de característica o salvación de un personaje: aplica la característica correcta (rechaza la que no corresponde a la habilidad), la competencia de su clase y compara con la CD.",
   saber:
@@ -1202,6 +1204,12 @@ const citaValida = (cita: string | undefined): boolean => {
   return c.length >= 5 && !!contextoTurno?.some((a) => sinTildes(a).includes(c));
 };
 const listaAcciones = (): string => (contextoTurno ?? []).map((a) => a.replace(/\s+/g, " ").slice(0, 160)).join(" | ") || "ninguna";
+const horasTexto = (seg: number): string => `${Math.round(seg / 360) / 10} h`;
+/** Con contexto de turno, un salto de reloj exige cita literal de la acción de un jugador; sin ella, error y no se toca nada. */
+function exigirCitaDeSalto(cita: string | undefined, cuanto: string): void {
+  if (!citaValida(cita)) throw new Error(`No avances el reloj por tu cuenta: esto pasa ${cuanto} (hambre y sed incluidos). Solo si los jugadores lo piden en este turno; pasa en cita la frase de su acción. Acciones de este turno: ${listaAcciones()}.`);
+}
+const avisoSustento = (cuanto: string): string => `El reloj avanza ${cuanto}: recuerda que comer y beber corren (sustento): narra el paso del tiempo.`;
 
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
@@ -1438,14 +1446,16 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "pasar_tiempo": {
         const e = validado.data as z.infer<typeof esquemas.pasar_tiempo>;
-        if (contextoTurno && !citaValida(e.cita)) {
-          throw new Error(`No avances el reloj por tu cuenta: esto pasa ${e.dias} día(s) (hambre y sed incluidos). Solo si los jugadores lo piden en este turno; pasa en cita la frase de su acción. Acciones de este turno: ${listaAcciones()}.`);
-        }
+        if (contextoTurno) exigirCitaDeSalto(e.cita, `${e.dias} día(s)`);
         const ps = e.personajes?.length ? e.personajes.map((n) => buscar(partida, n)) : Object.values(partida.personajes);
         const furias = terminarTodas(partida, "se apaga con el paso del tiempo");
         for (const p of ps) descansar(p, e.dias, e.calidad);
         avanzarSiHay(partida, e.dias * 86400);
-        const aviso = contextoTurno ? [`El reloj avanza ${e.dias} día(s): recuerda que comer y beber corren (sustento): narra el paso del tiempo.`] : [];
+        const otros = Object.values(partida.personajes).filter((p) => !ps.includes(p)).length;
+        const aviso = [
+          ...(contextoTurno ? [avisoSustento(`${e.dias} día(s)`)] : []),
+          ...(e.personajes?.length && otros ? [`Ojo: el reloj del mundo avanza para todos (${otros} personajes no descansan y sufren hambre y sed).`] : []),
+        ];
         const texto = [...furias, ...ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`), ...aviso].join("\n\n");
         return { contenido: texto, aviso: `⏳ ${e.dias} día(s), ${e.calidad}\n${texto}` };
       }
@@ -1825,13 +1835,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "tiempo": {
         const e = validado.data as z.infer<typeof esquemas.tiempo>;
-        const seg = e.avanzar ? (e.avanzar.segundos ?? 0) + (e.avanzar.minutos ?? 0) * 60 + (e.avanzar.horas ?? 0) * 3600 + (e.avanzar.dias ?? 0) * 86400 : 0;
+        // Suma lo que avanza y lo que adelanta fijar (fijar hacia atrás, igual o la primera vez no cuenta).
+        const seg = (e.avanzar ? (e.avanzar.segundos ?? 0) + (e.avanzar.minutos ?? 0) * 60 + (e.avanzar.horas ?? 0) * 3600 + (e.avanzar.dias ?? 0) * 86400 : 0)
+          + (e.fijar ? Math.max(0, adelantoDeFijar(partida, e.fijar)) : 0);
         const salto = !!contextoTurno && seg >= 6 * 3600;
-        if (salto && !citaValida(e.cita)) {
-          throw new Error(`No avances el reloj por tu cuenta: esto pasa ${Math.round(seg / 360) / 10} h (hambre y sed incluidos). Solo si los jugadores lo piden en este turno; pasa en cita la frase de su acción. Acciones de este turno: ${listaAcciones()}.`);
-        }
+        if (salto) exigirCitaDeSalto(e.cita, horasTexto(seg));
         const texto = actualizarReloj(partida, e);
-        const nota = salto ? `\nEl reloj avanza ${Math.round(seg / 360) / 10} h: recuerda que comer y beber corren (sustento): narra el paso del tiempo.` : "";
+        const nota = salto ? `\n${avisoSustento(horasTexto(seg))}` : "";
         return { contenido: texto + nota, aviso: texto };
       }
       case "prueba": {
@@ -1897,8 +1907,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "nave": {
         const e = validado.data as z.infer<typeof esquemas.nave>;
+        const largo = !!contextoTurno && e.accion === "navegar" && (e.horas ?? 0) >= 6;
+        if (largo) exigirCitaDeSalto(e.cita, `${e.horas} h`);
         const r = nave(partida, e);
-        return { contenido: r.texto, aviso: r.publico };
+        return { contenido: largo ? `${r.texto}\n${avisoSustento(`${e.horas} h`)}` : r.texto, aviso: r.publico };
       }
       case "trampa": {
         const e = validado.data as z.infer<typeof esquemas.trampa>;
@@ -1917,8 +1929,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "idioma": {
         const e = validado.data as z.infer<typeof esquemas.idioma>;
+        const largo = !!contextoTurno && e.accion === "aprender";
+        const dias = e.dias ?? 30;
+        if (largo) exigirCitaDeSalto(e.cita, `${dias} día(s)`);
         const r = idioma(partida, e);
-        return { contenido: r.texto, aviso: r.publico };
+        return { contenido: largo ? `${r.texto}\n${avisoSustento(`${dias} día(s)`)}` : r.texto, aviso: r.publico };
       }
       case "guarida": {
         const e = validado.data as z.infer<typeof esquemas.guarida>;

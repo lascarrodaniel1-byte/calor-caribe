@@ -170,11 +170,21 @@ export interface DatosTiempo {
   motivo?: string;
 }
 
+function momentoFijado(antes: Reloj | undefined, f: NonNullable<DatosTiempo["fijar"]>): number {
+  const dia = f.dia ?? (antes ? Math.floor(antes.segundos / DIA) + 1 : 1);
+  return (dia - 1) * DIA + f.hora * 3600 + (f.minuto ?? 0) * 60;
+}
+
+/** Segundos que adelantaría fijar el reloj (negativo si retrocede); 0 si aún no está fijado de verdad (la primera vez vale cualquier hora). */
+export function adelantoDeFijar(partida: Partida, f: NonNullable<DatosTiempo["fijar"]>): number {
+  const antes = partida.reloj;
+  return antes && !antes.auto ? momentoFijado(antes, f) - antes.segundos : 0;
+}
+
 export function actualizarReloj(partida: Partida, d: DatosTiempo): string {
   const antes = partida.reloj;
   if (d.fijar) {
-    const dia = d.fijar.dia ?? (antes ? Math.floor(antes.segundos / DIA) + 1 : 1);
-    const nuevo = (dia - 1) * DIA + d.fijar.hora * 3600 + (d.fijar.minuto ?? 0) * 60;
+    const nuevo = momentoFijado(antes, d.fijar);
     if (antes && !antes.auto && nuevo < antes.segundos) throw new Error(`El tiempo no retrocede: ahora es ${textoReloj(antes)}. Usa avanzar, o corrige la hora solo hacia delante.`);
     partida.reloj = { segundos: nuevo };
     // La primera vez que el DM fija el reloj de verdad, nadie lleva horas sin comer ni beber: se cuenta desde ahí.

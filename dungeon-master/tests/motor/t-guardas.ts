@@ -104,4 +104,91 @@ const estados = (p: any) => Object.values<any>(p.personajes).map((x) => `${x.sus
   t(estados(p) === antes && !/deshidratado|hambriento/i.test(estados(p)), "incidente: ni hambre ni sed", estados(p));
   fijarAccionesDelTurno(null); }
 
+// (f) tiempo fijar con contexto
+{ const { p, E } = mesa(); // reloj fijado a mano: Día 1, 09:00
+  fijarAccionesDelTurno(["Ana: Esperamos hasta que anochezca"]);
+  const a = seg(p), antes = estados(p);
+  let r = E("tiempo", { fijar: { dia: 2, hora: 8 } });
+  t(!!r.error && /No avances el reloj por tu cuenta/.test(r.contenido) && seg(p) === a && estados(p) === antes, "fijar +23 h sin cita: error, reloj y sustento intactos", r.contenido.slice(0, 70));
+  r = E("tiempo", { fijar: { hora: 20 } });
+  t(!!r.error && seg(p) === a, "fijar +11 h sin cita: error");
+  r = E("tiempo", { fijar: { dia: 2, hora: 9 }, cita: "esto no lo dijo nadie" });
+  t(!!r.error && seg(p) === a, "fijar con cita falsa: error");
+  r = E("tiempo", { fijar: { hora: 14, minuto: 59 } });
+  t(!r.error && seg(p) === a + 5 * 3600 + 59 * 60, "fijar +5 h 59 min sin cita: permitido", String(r.error ? r.contenido : ""));
+  const b = seg(p);
+  r = E("tiempo", { fijar: { hora: 3 } });
+  t(!!r.error && /no retrocede/.test(r.contenido) && !/cita/.test(r.contenido) && seg(p) === b, "fijar hacia atrás: sigue rechazado por retroceder, sin pedir cita");
+  r = E("tiempo", { fijar: { hora: 14, minuto: 59 } });
+  t(!r.error && seg(p) === b, "fijar a la misma hora: permitido sin cita");
+  const c = seg(p);
+  r = E("tiempo", { fijar: { dia: 2, hora: 3 } });
+  t(!!r.error && seg(p) === c, "fijar con dia +1 (24 h) sin cita: error");
+  r = E("tiempo", { fijar: { hora: 5 }, avanzar: { horas: 5 } });
+  t(!!r.error && seg(p) === c, "fijar +2 h con avanzar 5 h: suman 7 h y exigen cita");
+  r = E("tiempo", { fijar: { dia: 2, hora: 8 }, cita: "esperamos hasta que anochezca" });
+  t(!r.error && seg(p) === 86400 + 8 * 3600 && /comer y beber corren/.test(txt(r)), "fijar +29 h con cita válida: ok y aviso de sustento", String(r.error ? r.contenido : ""));
+  fijarAccionesDelTurno(null);
+  r = E("tiempo", { fijar: { dia: 9, hora: 8 } });
+  t(!r.error, "sin contexto: fijar adelante sin cita permitido"); }
+
+// fijar la primera vez (reloj automático) sin cita
+{ const p = nuevaPartida(); normalizarPartida(p);
+  ejecutar("guardar_personaje", { don_arcano: false, nombre: "Ana", jugador: "Ana", raza: "Humano del Faro", clase: "Mercenario del Cuervo", nivel: 1, pv_max: 20, ca: 12, atributos: { fue: 16, des: 14, con: 14, int: 10, sab: 10, car: 10 }, inventario: [] }, p);
+  fijarAccionesDelTurno(["Ana: Miro el mapa"]);
+  const r: any = ejecutar("tiempo", { fijar: { dia: 5, hora: 22 } }, p);
+  t(!r.error && p.reloj?.segundos === 4 * 86400 + 22 * 3600, "primera fijación: permitida sin cita aunque sea lejana", String(r.error ? r.contenido : ""));
+  fijarAccionesDelTurno(null); }
+
+// el incidente con fijar
+{ const { p, E } = mesa();
+  fijarAccionesDelTurno(["Ana: Miro el mapa"]);
+  const a = seg(p), antes = estados(p);
+  const r = E("tiempo", { fijar: { dia: 2, hora: 8 } });
+  t(!!r.error && seg(p) === a && estados(p) === antes, "incidente: fijar el día 2 a las 8 se rechaza sin tocar hambre/sed", estados(p));
+  fijarAccionesDelTurno(null); }
+
+// (g) idiomas y nave
+{ const { p, E, ana } = mesa();
+  fijarAccionesDelTurno(["Ana: Estudiamos karak con el enano durante un mes", "Varok: Zarpamos hacia el sur toda la jornada"]);
+  const a = seg(p);
+  let r = E("idioma", { accion: "aprender", quien: "Ana", idioma: "karak", maestro: "el enano", dias: 30 });
+  t(!!r.error && /No avances el reloj por tu cuenta/.test(r.contenido) && seg(p) === a && !(ana.idiomas ?? []).includes("karak"), "idioma 30 días sin cita: error, reloj y estudio intactos");
+  r = E("idioma", { accion: "aprender", quien: "Ana", idioma: "karak", maestro: "el enano", dias: 1 });
+  t(!!r.error && seg(p) === a, "idioma 1 día sin cita: error (24 h)");
+  r = E("idioma", { accion: "comprobar", idioma: "karak" });
+  t(!r.error, "idioma comprobar no pide cita");
+  r = E("idioma", { accion: "aprender", quien: "Ana", idioma: "karak", maestro: "el enano", dias: 3, cita: "estudiamos karak con el enano" });
+  t(!r.error && seg(p) === a + 3 * 86400 && /comer y beber corren/.test(txt(r)), "idioma con cita: ok, reloj +3 días y aviso", String(r.error ? r.contenido : ""));
+  const b = seg(p);
+  E("nave", { accion: "crear", nave: "Gaviota", tipo: "bote" });
+  E("nave", { accion: "abordar", nave: "Gaviota", quienes: ["Ana", "Varok"] });
+  r = E("nave", { accion: "navegar", nave: "Gaviota", horas: 8, viento: "normal" });
+  t(!!r.error && /No avances el reloj por tu cuenta/.test(r.contenido) && seg(p) === b, "nave 8 h sin cita: error y reloj intacto", String(r.contenido).slice(0, 60));
+  r = E("nave", { accion: "navegar", nave: "Gaviota", horas: 8, viento: "normal", cita: "zarpamos hacia el sur" });
+  t(!r.error && seg(p) === b + 8 * 3600 && /comer y beber corren/.test(txt(r)), "nave 8 h con cita: ok y aviso", String(r.error ? r.contenido : ""));
+  const c = seg(p);
+  r = E("nave", { accion: "navegar", nave: "Gaviota", horas: 2, viento: "normal" });
+  t(!r.error && seg(p) === c + 7200, "nave 2 h sin cita: permitida", String(r.error ? r.contenido : ""));
+  fijarAccionesDelTurno(null); }
+
+// sin contexto: idiomas y nave como antes
+{ const { p, E } = mesa();
+  fijarAccionesDelTurno(null);
+  const a = seg(p);
+  let r = E("idioma", { accion: "aprender", quien: "Ana", idioma: "karak", maestro: "el enano", dias: 2 });
+  t(!r.error && seg(p) === a + 2 * 86400 && !/comer y beber corren/.test(txt(r)), "sin contexto: idioma sin cita, sin aviso");
+  E("nave", { accion: "crear", nave: "Gaviota", tipo: "bote" }); E("nave", { accion: "abordar", nave: "Gaviota", quienes: ["Ana"] });
+  r = E("nave", { accion: "navegar", nave: "Gaviota", horas: 10, viento: "normal" });
+  t(!r.error && seg(p) === a + 2 * 86400 + 36000, "sin contexto: nave 10 h sin cita permitida"); }
+
+// (h) pasar_tiempo con personajes parciales
+{ const { p, E } = mesa();
+  let r = E("pasar_tiempo", { dias: 1, calidad: "esfuerzo", personajes: ["Ana"] });
+  t(!r.error && /Ojo: el reloj del mundo avanza para todos \(1 personajes no descansan y sufren hambre y sed\)\./.test(txt(r)), "parcial: línea de Ojo con el número de quienes no descansan", txt(r).slice(-120));
+  r = E("pasar_tiempo", { dias: 1, calidad: "esfuerzo", personajes: ["Ana", "Varok"] });
+  t(!r.error && !/Ojo:/.test(txt(r)), "personajes = todos: sin Ojo");
+  r = E("pasar_tiempo", { dias: 1, calidad: "esfuerzo" });
+  t(!r.error && !/Ojo:/.test(txt(r)), "sin personajes: sin Ojo"); }
+
 console.log(`${ok} ok, ${mal} fallas`);
