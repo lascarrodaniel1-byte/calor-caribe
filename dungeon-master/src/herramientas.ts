@@ -198,6 +198,7 @@ const esquemas = {
     de_no_muerto: z.boolean().optional().describe("true si la causa un no-muerto: puede transmitir la Podre"),
     cd_podre: z.number().int().min(5).max(25).optional().describe("CD para resistir la Podre: 11 Hambriento, 12 por defecto, 13 ghul, 15-17 no-muertos poderosos"),
     descripcion: z.string().optional().describe('Breve, p. ej. "tajo de hacha oxidada en el antebrazo"'),
+    cita: z.string().min(5).max(200).optional().describe("Sin combate: cita literal (de las acciones de este turno) de lo que hicieron los jugadores y provoca la herida"),
   }),
   tratar_herida: z.object({
     paciente: z.string(),
@@ -216,6 +217,7 @@ const esquemas = {
     dias: z.number().int().min(1).max(90),
     calidad: z.enum(CALIDADES),
     personajes: z.array(z.string()).optional().describe("Por defecto, todos los personajes"),
+    cita: z.string().min(5).max(200).optional().describe("Frase literal de la acción de un jugador de este turno que pide descansar, dormir, esperar o viajar ese tiempo (obligatoria: todo salto de 1 día o más)"),
   }),
   avanzar_asaltos: z.object({
     asaltos: z.number().int().min(1).max(600).describe("Asaltos de 6 s; 10 = 1 minuto"),
@@ -745,6 +747,7 @@ const esquemas = {
     fijar: z.object({ dia: z.number().int().min(1).optional(), hora: z.number().int().min(0).max(23), minuto: z.number().int().min(0).max(59).optional() }).optional().describe("Pon el reloj en una hora (la primera vez, al empezar; luego solo hacia delante)"),
     avanzar: z.object({ segundos: z.number().int().min(1).optional(), minutos: z.number().int().min(1).optional(), horas: z.number().int().min(1).optional(), dias: z.number().int().min(1).optional() }).optional().describe("Cuánto pasa en este turno según lo que dura lo hecho"),
     motivo: z.string().optional().describe("Qué ha pasado en ese tiempo, en pocas palabras"),
+    cita: z.string().min(5).max(200).optional().describe("Obligatoria si avanzas 6 h o más: frase literal de la acción de un jugador de este turno que pide ese descanso, espera o viaje"),
   }),
   prueba: z.object({
     quien: z.string().describe("Personaje (o PNJ) que hace la prueba"),
@@ -906,11 +909,11 @@ const descripciones: Record<Nombre, string> = {
     "Aplica cambios a la ficha de un personaje: daño/curación, oro, objetos, condiciones, subida de nivel.",
   infligir_herida:
     "Causa una herida física real a un personaje jugador (críticos recibidos, golpes masivos, caer a 0 PV, accidentes). " +
-    "El programa tira gravedad y ubicación y aplica efectos, hemorragia y Podre.",
+    "El programa tira gravedad y ubicación y aplica efectos, hemorragia y Podre. Sin combate exige cita literal de la acción de un jugador de este turno.",
   tratar_herida:
     "Intenta tratar una herida: detener hemorragia, medicina/cirugía, cauterizar, magia divina o remedio raro. El programa tira y aplica el resultado.",
   pasar_tiempo:
-    "Hace avanzar días: convalecencia, infecciones, agravamientos, recuperación de PV y secuelas al cerrar las heridas. También mueve el reloj del mundo 24 h por día: no avances el tiempo otra vez con tiempo por lo mismo, y cuida los plazos de la trama.",
+    "Hace avanzar días: convalecencia, infecciones, agravamientos, recuperación de PV y secuelas al cerrar las heridas. También mueve el reloj del mundo 24 h por día: no avances el tiempo otra vez con tiempo por lo mismo, y cuida los plazos de la trama. Exige cita literal de la acción de un jugador de este turno que lo pida.",
   avanzar_asaltos:
     "Hace avanzar las hemorragias asalto a asalto: PV perdidos y riesgo creciente de perder FUE por anemia. Llámala al final de cada asalto si alguien sangra.",
   usar_vial:
@@ -1025,7 +1028,7 @@ const descripciones: Record<Nombre, string> = {
   plano:
     "Plano de la escena en metros (norte arriba): coloca y mueve a personajes, PNJ, criaturas y puntos de referencia (el fuego, el carro, la puerta). El programa calcula distancias y rumbos y te los devuelve como verdad espacial; los ataques cuerpo a cuerpo comprueban el alcance.",
   tiempo:
-    "Reloj del mundo (día y hora): fíjalo al empezar y avánzalo cada turno según lo que dura la acción. Los asaltos y los días de reposo lo mueven solos.",
+    "Reloj del mundo (día y hora): fíjalo al empezar y avánzalo cada turno según lo que dura la acción. Los asaltos y los días de reposo lo mueven solos. Un avance de 6 h o más exige cita literal de lo que pidieron los jugadores.",
   prueba:
     "Prueba de habilidad, de característica o salvación de un personaje: aplica la característica correcta (rechaza la que no corresponde a la habilidad), la competencia de su clase y compara con la CD.",
   saber:
@@ -1184,6 +1187,21 @@ export function tiempoDeTurno(partida: Partida, relojAntes?: number): string[] {
   partida.reloj.segundos += 600;
   return [...revisarSustento(partida), ...procesarEnfermedades(partida), ...procesarTiempo(partida)];
 }
+
+// Contexto del turno (solo en memoria, fuera de `partida`: no se guarda ni se exporta). null = sin contexto (suites, CLI): sin guardas.
+let contextoTurno: string[] | null = null;
+export function fijarAccionesDelTurno(textos: string[] | null): void {
+  contextoTurno = textos && textos.length ? textos.slice() : textos ? [] : null;
+}
+export function accionesDelTurno(): string[] | null {
+  return contextoTurno ? contextoTurno.slice() : null;
+}
+const sinTildes = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const citaValida = (cita: string | undefined): boolean => {
+  const c = sinTildes(cita ?? "");
+  return c.length >= 5 && !!contextoTurno?.some((a) => sinTildes(a).includes(c));
+};
+const listaAcciones = (): string => (contextoTurno ?? []).map((a) => a.replace(/\s+/g, " ").slice(0, 160)).join(" | ") || "ninguna";
 
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
@@ -1386,6 +1404,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "infligir_herida": {
         const e = validado.data as z.infer<typeof esquemas.infligir_herida>;
+        if (contextoTurno && !partida.combate && !citaValida(e.cita)) {
+          throw new Error(`No inflijas heridas por tu cuenta: sin combate, una herida solo nace de lo que han hecho los jugadores en este turno (una trampa que activan, una caída, un conjuro que sale mal, un golpe a un PNJ…). Pasa en cita la frase literal de su acción que la provoca. Acciones de este turno: ${listaAcciones()}. Si nadie ha hecho nada que hiera, no hay herida: narra el peligro y deja que decidan.`);
+        }
         const texto = infligir(buscar(partida, e.nombre), e);
         return { contenido: texto, aviso: `🩸 ${texto}` };
       }
@@ -1417,11 +1438,15 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "pasar_tiempo": {
         const e = validado.data as z.infer<typeof esquemas.pasar_tiempo>;
+        if (contextoTurno && !citaValida(e.cita)) {
+          throw new Error(`No avances el reloj por tu cuenta: esto pasa ${e.dias} día(s) (hambre y sed incluidos). Solo si los jugadores lo piden en este turno; pasa en cita la frase de su acción. Acciones de este turno: ${listaAcciones()}.`);
+        }
         const ps = e.personajes?.length ? e.personajes.map((n) => buscar(partida, n)) : Object.values(partida.personajes);
         const furias = terminarTodas(partida, "se apaga con el paso del tiempo");
         for (const p of ps) descansar(p, e.dias, e.calidad);
         avanzarSiHay(partida, e.dias * 86400);
-        const texto = [...furias, ...ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`)].join("\n\n");
+        const aviso = contextoTurno ? [`El reloj avanza ${e.dias} día(s): recuerda que comer y beber corren (sustento): narra el paso del tiempo.`] : [];
+        const texto = [...furias, ...ps.map((p) => `## ${p.nombre}\n${pasarTiempo(p, e.dias, e.calidad)}`), ...aviso].join("\n\n");
         return { contenido: texto, aviso: `⏳ ${e.dias} día(s), ${e.calidad}\n${texto}` };
       }
       case "avanzar_asaltos": {
@@ -1800,8 +1825,14 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "tiempo": {
         const e = validado.data as z.infer<typeof esquemas.tiempo>;
+        const seg = e.avanzar ? (e.avanzar.segundos ?? 0) + (e.avanzar.minutos ?? 0) * 60 + (e.avanzar.horas ?? 0) * 3600 + (e.avanzar.dias ?? 0) * 86400 : 0;
+        const salto = !!contextoTurno && seg >= 6 * 3600;
+        if (salto && !citaValida(e.cita)) {
+          throw new Error(`No avances el reloj por tu cuenta: esto pasa ${Math.round(seg / 360) / 10} h (hambre y sed incluidos). Solo si los jugadores lo piden en este turno; pasa en cita la frase de su acción. Acciones de este turno: ${listaAcciones()}.`);
+        }
         const texto = actualizarReloj(partida, e);
-        return { contenido: texto, aviso: texto };
+        const nota = salto ? `\nEl reloj avanza ${Math.round(seg / 360) / 10} h: recuerda que comer y beber corren (sustento): narra el paso del tiempo.` : "";
+        return { contenido: texto + nota, aviso: texto };
       }
       case "prueba": {
         const e = validado.data as z.infer<typeof esquemas.prueba>;

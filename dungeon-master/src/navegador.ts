@@ -15,7 +15,7 @@ import { textoNaves } from "./naves.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
-import { ejecutar, herramientas, tiempoDeTurno } from "./herramientas.js";
+import { accionesDelTurno, ejecutar, fijarAccionesDelTurno, herramientas, tiempoDeTurno } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, TERRITORIOS, territorioEn, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import * as narrativa from "./narrativa.js";
@@ -216,4 +216,4 @@ export function resumenConsumo(docs: { entrada?: number; salida?: number; herram
   };
 }
 
-export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, ejecutar, fichaTexto, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };
+export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, accionesDelTurno, ejecutar, fichaTexto, fijarAccionesDelTurno, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };

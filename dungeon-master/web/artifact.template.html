@@ -1903,6 +1903,8 @@
     // Vigilante: si el DM lleva 3 minutos sin escribir ni registrar nada, se corta (las acciones siguen en cola).
     const vigilante = setInterval(() => { if (Date.now() - ultimaActividad > 180000 && !ctl.signal.aborted) { cortadoPor = "sin_respuesta"; ctl.abort(); } }, 5000);
     try {
+      // Guardas del motor: sin combate, heridas y saltos de 6 h o más solo valen si citan lo que los jugadores escribieron en este turno (el repaso es el mismo turno).
+      V.fijarAccionesDelTurno(acciones.map((a) => a.nombre + ": " + a.texto));
       const entradaDM = construirEntrada(acciones, infoTurno, correccion);
       consumo.entrada = tamanoEntrada(entradaDM);
       const res = await conCorte(sample(entradaDM, {
@@ -2019,6 +2021,7 @@
       return false;
     } finally {
       clearInterval(vigilante);
+      V.fijarAccionesDelTurno(null);
       V.dados.liberarDados(); // los dados fijados valen solo para este turno: nada que tire después (fichas, tiradas propias) los consume
     }
   }
