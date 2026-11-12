@@ -172,6 +172,8 @@ export interface PnjCombate {
   sellos?: import("./segador_base.js").Sello[];
   bono_ataque: number;
   ca: number;
+  /** Ataques de su acción de Atacar por asalto (1 por defecto, máx. 4). */
+  ataques_por_asalto?: number;
   des?: number;
   veterania?: Veterania;
   temple?: string;
@@ -223,6 +225,12 @@ export interface EstadoTurno {
   ataques?: number;
   /** Usó Acción súbita este asalto: tiene otra acción de Atacar. */
   subita?: boolean;
+  /** Criaturas: ya usó su habilidad (con recarga o especial) de este asalto. */
+  habilidad?: boolean;
+  /** Criaturas: acciones legendarias gastadas este asalto (entre los turnos de otros). */
+  legendarias?: number;
+  /** Criaturas y PNJ: ataques hechos como reacción este asalto (ataque de oportunidad, contragolpe…). */
+  reaccionAtaques?: number;
   /** Berserker: ronda en la que atacó con temeridad (los ataques contra él tienen ventaja hasta su próximo turno). */
   temerario?: number;
   /** Cazador de Brujas: ya usó la Presa marcada este asalto. */
@@ -437,7 +445,7 @@ export function siguienteAsalto(partida: Partida): string {
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.
   // Lo que dura «hasta su próximo turno» (esquivar, ayudar, preparar, retirarse, correr, paso elusivo) NO caduca aquí: caduca cuando ese combatiente actúa de nuevo.
-  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.ataques; delete t.subita; delete t.presa; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; delete t.movido; delete t.remolino; }
+  for (const t of Object.values(c.turnos ?? {})) { delete t.reaccion; delete t.ataques; delete t.subita; delete t.habilidad; delete t.legendarias; delete t.reaccionAtaques; delete t.presa; delete t.atacoLigero; delete t.adicional; delete t.interacciones; delete t.sangre; delete t.heridos; delete t.movido; delete t.remolino; }
   const activas = condicionesActivas(partida);
   return `Asalto ${c.ronda}.${fin}${activas.length ? `\nCondiciones activas (¿alguna debe terminar?):\n- ${activas.join("\n- ")}` : ""}`;
 }
@@ -482,6 +490,92 @@ export function retirarCaido(partida: Partida, j: EstadoJefe): string[] {
 
 export function condsDe(c: Combatiente): string[] {
   return c.tipo === "pj" ? c.p.condiciones : c.tipo === "criatura" ? (c.j.condiciones ??= []) : (c.n.condiciones ??= []);
+}
+
+/** Ataques de la acción de Atacar de una criatura: el «(xN)» de su ficha (el mayor) o un «Ataque múltiple» de sus rasgos; por defecto 1. */
+export function ataquesDeCriatura(c: Criatura): number {
+  let n = 1;
+  for (const l of c.ataques) { const m = /\(x\s*(\d+)/i.exec(l); if (m) n = Math.max(n, Number(m[1])); }
+  for (const r of c.rasgos) { const m = /(?:ataque m[uú]ltiple|multiataque)\D{0,40}?(\d+)/i.exec(r); if (m) n = Math.max(n, Number(m[1])); }
+  return n;
+}
+
+/** Acciones legendarias por ronda de una criatura («2 acciones legendarias por ronda» en sus rasgos); 0 si no tiene. */
+export function legendariasDe(c: Criatura): number {
+  for (const r of c.rasgos) { const m = /(\d+)\s+acciones legendarias/i.exec(r); if (m) return Number(m[1]); }
+  return 0;
+}
+
+/** Ataques que puede hacer un combatiente con su acción de Atacar en un asalto. */
+function ataquesPorAsalto(c: Combatiente, t: EstadoTurno): number {
+  if (c.tipo === "pj") return ataquesPorAccion(c.p) * (t.subita ? 2 : 1);
+  if (c.tipo === "criatura") return ataquesDeCriatura(c.j.definicion);
+  return Math.max(1, Math.min(4, c.n.ataques_por_asalto ?? 1));
+}
+
+/** Criaturas y PNJ: una acción de Atacar por asalto (N ataques), una reacción y las legendarias del jefe. Lanza el error SIN tocar nada. */
+function exigirAccionDisponible(partida: Partida, d: DatosAtaque, at: Combatiente): void {
+  if (!partida.combate || at.tipo === "pj" || d.mano_secundaria || d.sin_contar) return;
+  const t = turnoDe(partida, at.nombre);
+  const leg = at.tipo === "criatura" ? legendariasDe(at.j.definicion) : 0;
+  const pie = `Para un asalto nuevo usa siguiente_asalto.`;
+  if (d.legendaria) {
+    if (!leg) throw new Error(`${at.nombre} no tiene acciones legendarias: quita legendaria: true.`);
+    if ((t.legendarias ?? 0) >= leg) throw new Error(`${at.nombre} ya gastó sus ${leg} acciones legendarias de este asalto. ${pie}`);
+    return;
+  }
+  if (d.reaccion) {
+    const permitidas = Math.max(1, t.remolino?.length ?? 0); // la Contracorriente en remolino contesta a cada rival una vez
+    if ((t.reaccionAtaques ?? 0) >= permitidas) throw new Error(`${at.nombre} ya atacó como reacción este asalto (1 de 1: solo tiene una reacción por asalto). ${pie}`);
+    return;
+  }
+  const max = ataquesPorAsalto(at, t);
+  if ((t.ataques ?? 0) >= max)
+    throw new Error(`${at.nombre} ya ha actuado este asalto (${t.ataques} de ${max} ataque${max > 1 ? "s" : ""}). Cada criatura actúa UNA vez por asalto, en su iniciativa: no la hagas atacar de nuevo en el turno de otro. Si es una reacción (ataque de oportunidad, etc.) pasa reaccion: true; ${leg ? `si es una acción legendaria (${leg} por asalto), legendaria: true; ` : ""}${pie}`);
+}
+
+/** Habilidad de criatura: una por asalto salvo las de acción adicional o legendarias (esas, por su pozo). Lanza el error SIN tocar nada. */
+export function exigirHabilidadDisponible(partida: Partida, j: EstadoJefe, h: { nombre: string; descripcion: string }, legendaria: boolean): { legendaria: boolean; contar: boolean } {
+  const texto = `${h.nombre} ${h.descripcion}`;
+  const leg = legendaria || /acci[oó]n(?:es)? legendaria/i.test(texto);
+  if (!partida.combate) return { legendaria: false, contar: false };
+  const t = turnoDe(partida, j.nombre);
+  if (leg) {
+    const n = legendariasDe(j.definicion);
+    if (!n) throw new Error(`${j.nombre} no tiene acciones legendarias: quita legendaria: true.`);
+    if ((t.legendarias ?? 0) >= n) throw new Error(`${j.nombre} ya gastó sus ${n} acciones legendarias de este asalto. Para un asalto nuevo usa siguiente_asalto.`);
+    return { legendaria: true, contar: true };
+  }
+  if (/acci[oó]n adicional/i.test(texto)) return { legendaria: false, contar: false };
+  if (t.habilidad) throw new Error(`${j.nombre} ya usó una habilidad este asalto (1 de 1). Cada criatura actúa UNA vez por asalto, en su iniciativa: no la hagas actuar de nuevo en el turno de otro. ${j.definicion.rasgos.some((r) => /acciones legendarias/i.test(r)) ? "Si es una acción legendaria, legendaria: true. " : ""}Para un asalto nuevo usa siguiente_asalto.`);
+  return { legendaria: false, contar: true };
+}
+
+/** Gasta la habilidad (o la legendaria) una vez usada con éxito. */
+export function gastarHabilidad(partida: Partida, j: EstadoJefe, r: { legendaria: boolean; contar: boolean }): void {
+  if (!r.contar) return;
+  const t = turnoDe(partida, j.nombre);
+  if (r.legendaria) t.legendarias = (t.legendarias ?? 0) + 1; else t.habilidad = true;
+}
+
+/** Quién ha actuado ya en el asalto y quién falta (para el DM): una línea por combatiente, en orden de iniciativa. */
+export function estadoDelAsalto(partida: Partida): string {
+  const c = partida.combate;
+  if (!c) return "";
+  const filas = c.orden.map((o) => {
+    let cb: Combatiente | null = null;
+    try { cb = localizar(partida, o.nombre); } catch { /* ya no está en escena */ }
+    if (!cb || !estaVivo(cb)) return null;
+    const t = turnoDe(partida, o.nombre);
+    const max = ataquesPorAsalto(cb, t);
+    const leg = cb.tipo === "criatura" ? legendariasDe(cb.j.definicion) : 0;
+    const actuo = (t.ataques ?? 0) > 0 || !!t.habilidad || !!t.adicional || !!t.subita || (!!t.corrio && t.corrioRonda === c.ronda);
+    const partes = [`acción ${t.ataques ?? 0}/${max} ataques${t.habilidad ? " + habilidad" : ""}`, t.reaccion ? "reacción gastada" : "reacción libre"];
+    if (leg) partes.push(`legendarias ${leg - (t.legendarias ?? 0)}/${leg}`);
+    return { nombre: cb.nombre, actuo, linea: `- ${cb.nombre}: ${partes.join(" · ")}`.slice(0, 120) };
+  }).filter((x): x is { nombre: string; actuo: boolean; linea: string } => !!x);
+  const ya = filas.filter((f) => f.actuo).map((f) => f.nombre), faltan = filas.filter((f) => !f.actuo).map((f) => f.nombre);
+  return `Asalto ${c.ronda} — ya actuaron: ${ya.join(", ") || "nadie"}; faltan: ${faltan.join(", ") || "nadie"} (en orden de iniciativa)\n${filas.map((f) => f.linea).join("\n")}`;
 }
 
 /** Aplica, quita o consulta una condición de un personaje, criatura o PNJ en combate. */
@@ -584,6 +678,8 @@ export interface DatosAtaque {
   castigo?: boolean;
   /** Es un ataque hecho como reacción (en turno ajeno): no cuenta como su turno. */
   reaccion?: boolean;
+  /** Acción legendaria de un jefe (entre los turnos de otros): no gasta su acción normal; tiene N por asalto. */
+  legendaria?: boolean;
   /** Pelea con dos armas: ataca con el arma ligera de la mano secundaria (acción adicional). */
   mano_secundaria?: boolean;
   /** Filo del Cuervo (técnica Desarmar): si impacta, el rival salva (FUE o DES) o suelta el arma. */
@@ -735,6 +831,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (racial) d = racial;
   if (d.dano && !/^[0-9dD+\-\s]+$/.test(d.dano)) throw new Error(`Daño no válido «${d.dano}»: usa solo dados y números, como «1d8+3» o «2d6+4+1d6» (el tipo de daño va en tipo_dano, no en el texto).`);
   const at = localizar(partida, d.atacante);
+  exigirAccionDisponible(partida, d, at); // antes de cualquier efecto (la Muralla gasta reacciones): si se excede, se rechaza sin tocar nada
   let ob = localizar(partida, d.objetivo);
   const redir = redirigirAtaque(partida, d, at, ob);
   let notaRedir = "";
@@ -843,7 +940,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     if ((tAt.ataques ?? 0) >= permitidos) throw new Error(`${at.nombre} ya hizo ${tAt.ataques} ataque(s) este asalto (${ataquesPorAccion(at.p) > 1 ? "su Ataque adicional da 2 por acción" : "sin Ataque adicional solo hace 1 por acción"}${tAt.subita ? ", ya con la Acción súbita" : ""}). Si es un asalto nuevo usa siguiente_asalto; si no, elige otra cosa (Acción súbita, acción adicional, movimiento).`);
   }
   // Empieza su turno: lo que hizo en el anterior (esquivar, retirarse, correr) ya no vale.
-  if (!d.reaccion) { if (tAt.adicional !== "esquivar") tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; tAt.pasoElusivo = false; delete tAt.preparada; } // la esquiva del Degollador (acción adicional) no se pierde al atacar
+  if (!d.reaccion && !d.legendaria) { if (tAt.adicional !== "esquivar") tAt.esquiva = false; tAt.retirada = false; tAt.corrio = false; tAt.pasoElusivo = false; delete tAt.preparada; } // la esquiva del Degollador (acción adicional) no se pierde al atacar
   if (tAt.ayuda && (!tAt.ayuda.contra || igual(tAt.ayuda.contra, ob.nombre))) {
     ventaja = true;
     motivos.push(`ventaja: lo ayuda ${tAt.ayuda.por}`);
@@ -936,6 +1033,11 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   }
 
   if (at.tipo === "pj" && combate && !d.reaccion && !d.mano_secundaria && !d.sin_contar) tAt.ataques = (tAt.ataques ?? 0) + 1;
+  if (at.tipo !== "pj" && combate && !d.mano_secundaria && !d.sin_contar) {
+    if (d.legendaria) tAt.legendarias = (tAt.legendarias ?? 0) + 1;
+    else if (d.reaccion) { tAt.reaccionAtaques = (tAt.reaccionAtaques ?? 0) + 1; tAt.reaccion = true; }
+    else tAt.ataques = (tAt.ataques ?? 0) + 1;
+  }
   if (at.tipo === "pj") { const bc = bonoClima(partida, at.p); if (bc.bono) { bono += bc.bono; desglose.push(bc.texto); } } // lluvia (Tritón, con estaciones)
   let t = tirar(`1d20${signo(bono)}`, modo);
   let repetido = "";

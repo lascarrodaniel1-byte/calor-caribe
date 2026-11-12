@@ -28,6 +28,7 @@ import * as espacio from "./espacio.js";
 import * as encuentros from "./encuentros.js";
 import * as regentes from "./regentes.js";
 import { mitigacion, textoRunas } from "./cazador.js";
+import { estadoDelAsalto } from "./combate.js";
 import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
 import { artesDe } from "./estilos_base.js";
 
@@ -140,6 +141,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
     partes.push(
       `## Combate en curso (asalto ${p.combate.ronda})${p.combate.sorprendidos?.length ? `\nSorprendidos: ${p.combate.sorprendidos.join(", ")}` : ""}${p.combate.plan ? `\nPlan ${p.combate.plan.calidad} de ${p.combate.plan.bando.join(", ")}; lo leyeron: ${p.combate.plan.leido_por.join(", ") || "nadie"}` : ""}\nOrden de iniciativa: ${p.combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}` +
         (pnj.length ? `\nPNJ: ${pnj.map((n) => `${n.nombre} (ataque ${n.bono_ataque >= 0 ? "+" : ""}${n.bono_ataque}, CA ${n.ca}, ${n.veterania ?? "curtido"}${n.temple ? `, ${n.temple}` : ""}${n.personalidad?.length ? `, ${n.personalidad.join(" y ")}` : ""}${n.aliado ? ", ALIADO" : ""}${n.ceniza ? `, Ceniza ${n.ceniza}` : ""}${n.pv !== undefined ? `, PV ${n.pv}/${n.pv_max ?? n.pv}` : ""}${n.condiciones?.length ? `, condiciones: ${n.condiciones.join(", ")}` : ""})`).join("; ")}` : "") +
+        `\n${estadoDelAsalto(p)}` +
         (() => {
           const t = Object.entries(p.combate.turnos ?? {}).map(([k, v]) => [k, [v.reaccion ? "reacción gastada" : "", v.esquiva ? "esquivando" : "", v.retirada ? "retirado" : "", v.corrio ? "corrió" : "", v.ayuda ? `ayudado por ${v.ayuda.por}` : "", v.preparada ? `acción preparada («${v.preparada.accion}» al ocurrir «${v.preparada.disparador}»)` : ""].filter(Boolean)] as const).filter(([, l]) => l.length);
           return t.length ? `\nEste asalto: ${t.map(([k, l]) => `${k} (${l.join(", ")})`).join("; ")}` : "";

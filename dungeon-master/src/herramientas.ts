@@ -74,7 +74,7 @@ import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
-import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS } from "./combate.js";
+import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS, exigirHabilidadDisponible, gastarHabilidad } from "./combate.js";
 import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
@@ -548,6 +548,7 @@ const esquemas = {
     habilidad: z.string().optional().describe("Nombre de una de sus habilidades registradas"),
     habilidad_nueva: habilidad.optional().describe("Habilidad improvisada que no está en su ficha"),
     objetivos: z.array(z.string()).min(1).describe("Personajes jugadores afectados"),
+    legendaria: z.boolean().optional().describe("Acción legendaria del jefe (entre los turnos de otros; máx. las N de su ficha por asalto)"),
   }),
   presagio_criatura: z.object({
     criatura: z.string(),
@@ -629,6 +630,7 @@ const esquemas = {
           veterania: z.enum(VETERANIAS).optional().describe("Por defecto curtido"),
           temple: z.enum(NOMBRES_TEMPLES).optional().describe("Su raza o naturaleza"),
           sab: z.number().int().optional().describe("Sabiduría (10 por defecto): para notar emboscadas y leer planes"),
+          ataques_por_asalto: z.number().int().min(1).max(4).optional().describe("Ataques de su acción de Atacar por asalto (1 por defecto; un capitán veterano, 2)"),
           pv: z.number().int().min(1).optional().describe("Si lo das, el programa lleva sus PV"),
           armadura: z.array(z.enum(NOMBRES_PIEZAS)).optional(),
           personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional(),
@@ -664,6 +666,7 @@ const esquemas = {
     golpe_demoledor: z.boolean().optional().describe("Dote Golpe demoledor: con arma pesada, −5 al ataque y +10 al daño"),
     duelo: z.boolean().optional().describe("Dote Esgrimista: es un duelo uno contra uno (ventaja en el primer ataque del combate)"),
     en_cubierta: z.boolean().optional().describe("PNJ o criatura que lucha sobre la cubierta de una nave: sus armas de cubierta (sable de abordaje…) dan ventaja"),
+    legendaria: z.boolean().optional().describe("Acción legendaria de un jefe (entre los turnos de otros; máx. las N de su ficha por asalto): no gasta su acción normal"),
     reaccion: z.boolean().optional().describe("Ataque de oportunidad ya anunciado con reaccion (sin dano): resuelve aquí su único ataque cuerpo a cuerpo, sin exigir que siga al alcance"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
     castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 4+): gasta 5 PV de su reserva y suma dados de daño radiante"),
@@ -1566,9 +1569,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`No encuentro esa habilidad. Habilidades de ${e.criatura}: ${hay}. Usa habilidad_nueva para improvisar.`);
         }
         const objetivos = e.objetivos.map((n) => buscar(partida, n));
+        const gasto = j ? exigirHabilidadDisponible(partida, j, h, !!e.legendaria) : null; // antes de tirar nada: si se excede, se rechaza sin efecto
         const mit = j ? mitigacion(partida, j) : null;
         const esquivan = Object.entries(partida.combate?.turnos ?? {}).filter(([, t]) => t.esquiva).map(([k]) => k.toLowerCase());
         const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0, esquivan) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
+        if (j && gasto && !texto.includes("Elige otra acción.")) gastarHabilidad(partida, j, gasto); // si no se recargó o está sellada, no se gasta
         if (j) registrarMagia(partida, { hechizo: h.nombre, lanzador: j.nombre, victima: objetivos[0]?.nombre, negra: esMagiaNegra(undefined, `${h.nombre} ${h.descripcion} ${h.condicion ?? ""}`) && /no-muerto|vampiro|espectro|hechic|brujo|bruja|mago|culti/i.test(`${j.definicion.temple ?? ""} ${j.definicion.nombre}`), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
         return { contenido: texto, aviso: `💀 ${texto}` };
       }

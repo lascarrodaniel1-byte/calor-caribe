@@ -35,3 +35,16 @@ Resultado: **una sola regla única perdida (Mapa)**; el resto eran duplicados re
 ## Prueba anti-regresión
 
 `tests/motor/t-prompt.ts` tiene ahora una lista de reglas imprescindibles siempre activas (Mapa con `ubicacion` + `viajando_hacia` + `progreso`, reutilizar nombres, `pasar_tiempo`, herramienta `prueba`, «NO inventes heridas ni saltos de tiempo» con cita literal, `consultar_reglas`, «fichas guardadas son la verdad», GÉNERO, competencia, formulario y `guardar_personaje`, don arcano, `encuentro`, `tiempo fijar`, `plano mover`, `atacar`, iniciativa/`terminar_combate`, `abrir_arco`, etc.) que deben aparecer en el prompt completo **y** en el típico. Un recorte futuro que borre alguna hace fallar la prueba.
+
+## Regla nueva de combate: una acción por asalto (punto 76 del README)
+
+Se añadió a `COMBATE` una regla firme («Cada criatura/PNJ actúa UNA vez por asalto en su iniciativa…», +~220 caracteres) porque el DM hacía atacar a los enemigos en el turno de cada jugador. Para hacerle sitio se recortó solo redundancia real, con la misma metodología (cada frase quitada se buscó en el resto del prompt y en los esquemas de herramientas):
+
+| Quitado | Veredicto | Dónde sigue |
+|---|---|---|
+| «respeta el orden de turnos» (BASE) | (a) | La regla nueva lo dice con más fuerza |
+| «ataques: atacar;» (BASE) | (a) | «Todo ataque con armas, de quien sea, va con atacar» (COMBATE, imprescindible) |
+| «(oculta=true si es secreta)» | (a) | Descripción del parámetro `oculta` de `tirar_dados` |
+| Detalle de razas y personalidades («no-muertos torpes… el arrogante es fácil de sorprender») | (c) | `REGLAS_COMBATE` (`consultar_reglas {tema: "combate"}`) y la descripción de `personalidad` |
+
+Tamaño: completo 66.788 → 66.797 (umbral 66.800, **sin subirlo**); típico 45.634 → 45.643 (umbral 49.285). `t-prompt.ts` incluye la regla nueva entre las imprescindibles.
