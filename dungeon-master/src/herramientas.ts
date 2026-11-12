@@ -1234,6 +1234,21 @@ function exigirCitaDeSalto(cita: string | undefined, cuanto: string): void {
 }
 const avisoSustento = (cuanto: string): string => `El reloj avanza ${cuanto}: recuerda que comer y beber corren (sustento): narra el paso del tiempo.`;
 
+/**
+ * Avance automático del asalto para la mesa por turnos: hace lo mismo que la herramienta siguiente_asalto, UNA vez.
+ * Idempotente: solo avanza si el combate sigue en el asalto `desde` (por omisión, el actual); si el DM ya llamó a
+ * siguiente_asalto en el mismo turno, o el combate terminó o se reemplazó, no hace nada y devuelve null.
+ * Lo que avisa (condiciones activas: «¿alguna debe terminar?») queda en `combate.avisoAsalto` para el DM del turno siguiente.
+ */
+export function cerrarAsalto(partida: Partida, desde?: number): { texto: string; avisos: string[] } | null {
+  const c = partida.combate;
+  if (!c || (desde !== undefined && c.ronda !== desde)) return null;
+  const r = ejecutar("siguiente_asalto", {}, partida);
+  if (r.error) return null;
+  c.avisoAsalto = r.contenido;
+  return { texto: r.contenido, avisos: [`⚔ Asalto ${c.ronda}`] };
+}
+
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));

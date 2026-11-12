@@ -235,8 +235,13 @@
   .turnos-barra .ficha-turno { font: 600 15px/1 var(--f-ui); padding: 6px 10px; border-radius: 3px; background: #2c1d12; color: #cdb88f; border: 1px solid #4a3020; }
   .turnos-barra .ficha-turno.actual { background: linear-gradient(180deg, #f0b45a, #c9791a); color: #2a1a0e; border-color: #8a5410; box-shadow: 0 0 10px var(--lumbre-suave); }
   .turnos-barra .ficha-turno.ausente { opacity: .55; text-decoration: line-through; }
+  .turnos-barra .orden.en-combate { position: relative; flex: 1 1 100%; min-width: 0; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 3px; scrollbar-width: thin; }
+  .turnos-barra .orden.en-combate > * { flex: none; white-space: nowrap; }
+  .turnos-barra .asalto-turnos { font: 700 13px/1 var(--f-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--lumbre); padding-right: 2px; }
+  .turnos-barra .ficha-turno.npc { font-weight: 500; font-size: 13px; padding: 4px 8px; opacity: .72; background: #231710; border-style: dashed; }
+  .turnos-barra .ficha-turno.npc .estado-npc { opacity: .8; font-style: italic; }
   .turnos-barra .aviso-turno { flex: 1 1 220px; font: 600 17px/1.3 var(--f-ui); color: var(--lumbre); }
-  @media (max-width: 800px) { .turnos-barra .orden { display: none; } .turnos-barra { margin-bottom: 6px; } .turnos-barra .aviso-turno { flex-basis: 100%; font-size: 16px; } }
+  @media (max-width: 800px) { .turnos-barra .orden { display: none; } .turnos-barra .orden.en-combate { display: flex; } .turnos-barra { margin-bottom: 6px; } .turnos-barra .aviso-turno { flex-basis: 100%; font-size: 16px; } }
   .corregir-fila { display: flex; justify-content: flex-end; margin: 4px 0 0; }
   .corregir-fila .boton { font-size: 15px; padding: 6px 12px; }
   #texto-correccion { width: 100%; font-size: 18px; color: var(--tinta); background: #f4e8c8; border: 1px solid #8a6a3a; padding: 10px 12px; }
@@ -335,7 +340,7 @@
   .menu-panel.arriba { top: auto; bottom: calc(100% + 6px); right: auto; left: 0; min-width: 200px; }
   .atajos { position: relative; }
   .fila-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-  .fila-meta .turnos-barra { margin-bottom: 0; flex: 1 1 320px; }
+  .fila-meta .turnos-barra { margin-bottom: 0; flex: 1 1 320px; min-width: 0; }
   .fila-meta .atajos { flex: 0 1 auto; margin-left: auto; }
   .redaccion { padding-block: 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
 
@@ -901,6 +906,10 @@
     return V.turnos.personajesLlevadosPor(p, jugador, presentesAhora(), controles).length > 0;
   }
   const quienToca = () => T.quienToca(jugadores, orden, ahora());
+  // Combate (solo en modo «turnos»): la mesa sigue la iniciativa del motor, con enemigos, PNJ y ausentes intercalados.
+  // En modo «libre» y fuera de combate rige la ronda de siempre. La ronda de la mesa y el asalto del motor son contadores distintos.
+  const enCombate = () => !!partida?.combate && orden.modo !== "libre";
+  const mismoNombre = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
   const estoySentado = () => jugadores.some((j) => j.id === miId);
   // Si hay turnos y estoy en la lista, solo actúo si me toca; con un solo jugador, siempre.
   const esMiTurno = () => !porTurnos() || (estoySentado() && quienToca()?.id === miId);
@@ -939,6 +948,34 @@
     $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
   }
 
+  // La iniciativa completa: jugadores como fichas (resaltado quien actúa), el resto apagado y con su estado público (sin cifras).
+  function pintarOrdenCombate(ord, comb, toca) {
+    const suyo = (e) => e.jugador && toca && mismoNombre(e.jugador, toca.nombre);
+    const actual = comb.find((e) => suyo(e) && orden.entrada && mismoNombre(e.nombre, orden.entrada)) || comb.find((e) => suyo(e) && !e.tocaAlDM) || comb.find(suyo);
+    const asalto = document.createElement("span"); asalto.className = "asalto-turnos"; asalto.textContent = `Asalto ${partida.combate.ronda}`; ord.append(asalto);
+    let chipActual = null;
+    comb.forEach((e, k) => {
+      const c = document.createElement("span");
+      const humano = e.jugador && !e.tocaAlDM;
+      if (humano) {
+        c.className = "ficha-turno" + (e === actual ? " actual" : "");
+        c.textContent = e.jugador + (mismoNombre(e.jugador, nombre) ? " (tú)" : "");
+        c.title = e.nombre;
+      } else {
+        c.className = "ficha-turno npc";
+        const marca = e.tipo === "enemigo" ? "🐺" : e.tipo === "pnj" ? "🧑" : (e.estado || "🎭");
+        c.append(`${marca} ${e.nombre}`);
+        if (e.tipo !== "pj" && e.estado) { const s = document.createElement("span"); s.className = "estado-npc"; s.textContent = ` · ${e.estado}`; c.append(s); }
+        c.title = e.motivo || (e.tipo === "pj" ? "Lo lleva el DM" : "Lo resuelve el DM");
+      }
+      if (e === actual) chipActual = c;
+      ord.append(c);
+      if (k < comb.length - 1) { const f = document.createElement("span"); f.textContent = "→"; f.setAttribute("aria-hidden", "true"); f.style.color = "#8a6a3a"; ord.append(f); }
+    });
+    // Si hay muchos y quien actúa queda fuera de la vista, la lista se desplaza hasta él.
+    if (chipActual && chipActual.offsetLeft + chipActual.offsetWidth > ord.clientWidth) ord.scrollLeft = Math.max(0, chipActual.offsetLeft - 60);
+  }
+
   function pintarMesa() {
     $("detener-dm").hidden = !narrandoYo;
     const t = ahora();
@@ -974,7 +1011,10 @@
     if (turnos_) {
       const ord = $("orden-turnos");
       ord.textContent = "";
-      T.enRonda(jugadores, orden, t).forEach((j, k, todos) => {
+      const comb = enCombate() ? T.ordenDeCombate(partida, presentesAhora(toca?.nombre), controles) : [];
+      ord.classList.toggle("en-combate", comb.length > 0);
+      if (comb.length) pintarOrdenCombate(ord, comb, toca);
+      else T.enRonda(jugadores, orden, t).forEach((j, k, todos) => {
         const c = document.createElement("span");
         c.className = "ficha-turno" + (toca?.id === j.id ? " actual" : "") + (T.activo(j, t) ? "" : " ausente");
         c.textContent = j.nombre + (j.id === miId ? " (tú)" : "");
@@ -998,6 +1038,17 @@
     if (!db || soloLectura || narrandoYo || turnoVivo) return;
     const toca = quienToca();
     if (!toca) return;
+    // En combate, pasar o saltar un turno va por el DM (un turno normal sin acción): los enemigos que van entre este jugador y el siguiente tienen que actuar.
+    if (enCombate() && T.siguienteEnCombate(partida, presentesAhora(toca.nombre), controles, toca.nombre, orden.entrada)) {
+      const texto = saltando && toca.id !== miId ? `(${toca.nombre} no está: se salta su turno y no actúa)` : "(pasa su turno sin actuar)";
+      try {
+        const tsAccion = Math.max(Date.now(), pendientes.reduce((m, p) => Math.max(m, p.ts || 0), 0) + 1, turnos.reduce((m, x) => Math.max(m, x.ts || 0), 0) + 1);
+        await reintentar(() => db.collection("acciones").add({ nombre: toca.nombre, uid, jid: toca.id, texto, ts: tsAccion }));
+      } catch { privados.push("No se pudo pasar el turno (fallo de conexión). Vuelve a intentarlo."); pintar(); return; }
+      if (agotado()) { relevoDeNarrador(); privados.push("Tus usos están agotados: el turno pasará cuando lo narre otro jugador."); pintar(); return; }
+      if (!turnoVivo) narrarCola(); else reintentoPendiente = true;
+      return;
+    }
     const ref = db.doc("mesa/turno");
     // Se toma el turno de narrador un momento para no pisar a quien esté guardando.
     const holderPasar = miId + ":" + pestana;
@@ -1009,8 +1060,8 @@
       const sig = T.siguiente(jugadores, act.id, ahora());
       if (!sig) return;
       const ronda = orden.ronda + (sig.nuevaRonda ? 1 : 0);
-      await escribirOrden({ turno: sig.jugador.id, ronda, desde: Date.now() });
-      orden = { ...orden, turno: sig.jugador.id, ronda };
+      await escribirOrden({ turno: sig.jugador.id, ronda, entrada: "", desde: Date.now() });
+      orden = { ...orden, turno: sig.jugador.id, ronda, entrada: "" };
       const texto = saltando && act.id !== miId ? `${nombre} salta el turno de ${act.nombre}` : `${act.nombre} pasa su turno`;
       const ts = siguienteTs();
       await reintentar(() => db.doc("turnos/p" + ts.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts, acciones: [], texto: "", avisos: [{ pos: 0, texto: `⏭ ${texto}. Ahora le toca a ${sig.jugador.nombre}.` }] }));
@@ -1631,7 +1682,7 @@
       await Promise.all([
         reintentar(() => db.doc("turnos/" + p.turnoId).delete()).catch(() => {}),
         // mesa/deshacer no se borra aquí: si ya se está repitiendo la acción, es la copia nueva. La vieja no vale para ningún turno (se valida por turnoId).
-        p.orden ? escribirOrden({ turno: p.orden.turno, ronda: p.orden.ronda, desde: Date.now() }).catch(() => {}) : null,
+        p.orden ? escribirOrden({ turno: p.orden.turno, ronda: p.orden.ronda, entrada: p.orden.entrada || "", desde: Date.now() }).catch(() => {}) : null,
         ...(p.acciones || []).map(({ id, ...a }) => reintentar(() => db.doc("acciones/" + id).set(a)).catch(() => {})),
       ]);
     }
@@ -1805,13 +1856,24 @@
       if (actuante && sig) {
         siguienteJ = sig;
         infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda, creando: !tieneFicha(partida, actuante.nombre), controla: llevaActuante(actuante.nombre) };
+        // En combate manda la iniciativa: quién da la palabra, qué turnos resuelve el DM en esta misma respuesta y si se cierra el asalto.
+        // (Si el combate empieza en este turno, `partida` aún no lo tiene: la iniciativa rige desde el turno siguiente.)
+        const cb = enCombate() && !infoTurno.creando ? T.siguienteEnCombate(partida, presentesAhora(actuante.nombre), controles, actuante.nombre, orden.turno === actuante.id ? orden.entrada : undefined) : null;
+        const jugCb = cb && jugadores.find((j) => mismoNombre(j.nombre, cb.jugador) && (T.activo(j, ahora()) || j.id === actuante.id));
+        if (cb && jugCb) {
+          siguienteJ = { jugador: jugCb, nuevaRonda: false, entrada: cb.entrada }; // la ronda de la mesa no avanza en combate
+          infoTurno.siguiente = jugCb.nombre;
+          infoTurno.cierraRonda = false;
+          infoTurno.combate = { asalto: cb.asalto, orden: cb.orden.map(({ nombre: n, tipo, tocaAlDM }) => ({ nombre: n, tipo, tocaAlDM })), resolverAntes: cb.resolverAntes.map(({ nombre: n, tipo, motivo, nuevoAsalto }) => ({ nombre: n, tipo, ...(motivo ? { motivo } : {}), ...(nuevoAsalto ? { nuevoAsalto } : {}) })), cierraAsalto: cb.cierraAsalto, entrada: cb.entradaActuante };
+        }
       }
     }
     const copia = JSON.parse(JSON.stringify(partida));
     // Copia de cómo estaba todo antes de este turno, por si los jugadores piden deshacerlo.
     const previa = JSON.stringify((({ historial, ...resto }) => resto)(copia));
     const cronicaPrevia = cronicaDM;
-    const ordenPrevio = { modo: orden.modo, turno: orden.turno, ronda: orden.ronda, desde: orden.desde };
+    const ordenPrevio = { modo: orden.modo, turno: orden.turno, ronda: orden.ronda, desde: orden.desde, entrada: orden.entrada || "" };
+    const combateAntes = copia.combate, asaltoAntes = copia.combate?.ronda; // para avanzar el asalto una sola vez y solo si el combate es el mismo
     const avancesAntes = copia.trama?.avances ?? 0;
     let cronicaNueva = cronicaDM;
     const llamadasTurno = []; // qué herramientas usó el DM en este turno (para el repaso)
@@ -1908,6 +1970,7 @@
       // Guardas del motor: sin combate, heridas y saltos de 6 h o más solo valen si citan lo que los jugadores escribieron en este turno (el repaso es el mismo turno).
       V.fijarAccionesDelTurno(acciones.map((a) => a.nombre + ": " + a.texto));
       const entradaDM = construirEntrada(acciones, infoTurno, correccion);
+      if (copia.combate) delete copia.combate.avisoAsalto; // el aviso del asalto anterior ya le llegó al DM en esta entrada
       consumo.entrada = tamanoEntrada(entradaDM);
       const res = await conCorte(sample(entradaDM, {
         tools: [motor],
@@ -1974,10 +2037,15 @@
       for (const t of V.tiempoDeTurno(copia, relojAntes)) avisos.push({ pos: texto.length, texto: t }); // el tiempo corre aunque el DM no lo avance: hambre, sed, enfermedades…
       V.regentes.contarTurno(copia);
       V.narrativa.contarTurno(copia); // los arcos envejecen en su fase y los PNJ fuera de escena llevan un turno más sin moverse
+      // Cierre de la ronda de iniciativa: el programa avanza el asalto (una vez; si el DM ya lo hizo, o el combate acabó o es otro, no se toca).
+      if (infoTurno?.combate?.cierraAsalto && combateAntes && copia.combate === combateAntes) {
+        const cierre = V.cerrarAsalto(copia, asaltoAntes);
+        if (cierre) for (const x of cierre.avisos) avisos.push({ pos: texto.length, texto: x });
+      }
       const { historial, ...sinHistorial } = copia;
       // Mientras el personaje de quien actúa no esté completo (guardado), el turno no pasa: sigue creándolo.
       if (siguienteJ && !tieneFicha(copia, infoTurno.actuante)) { siguienteJ = null; avisos.push({ pos: texto.length, texto: `✎ ${infoTurno.actuante} aún no ha terminado su personaje: sigue su turno.` }); }
-      const siguienteOrden = siguienteJ ? { turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), desde: Date.now() } : null;
+      const siguienteOrden = siguienteJ ? { turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), entrada: siguienteJ.entrada || "", desde: Date.now() } : null;
       const version = siguienteVersion();
       // PUNTO DE CONFIRMACIÓN: una sola escritura guarda el estado nuevo y apunta lo que falta (el turno, el orden, la cola).
       // Si algo falla después, quien narre a continuación lo completa al sincronizar; nada se repite ni se pierde.
@@ -2104,7 +2172,7 @@
       await reintentar(() => db.doc("mesa/estado").set({ partida: d.partida, cronica: d.cronica, actualizado: version, pendiente }));
       aplicarEstado({ partida: d.partida, cronica: d.cronica, actualizado: version });
       turnos = turnos.slice(0, -1);
-      if (d.orden) orden = { ...orden, turno: d.orden.turno, ronda: d.orden.ronda };
+      if (d.orden) orden = { ...orden, turno: d.orden.turno, ronda: d.orden.ronda, entrada: d.orden.entrada || "" };
       pintarFichas(); pintarMesa(); pintar();
       await completarPendiente(pendiente).catch(() => {});
       repetir = true;
@@ -2770,6 +2838,7 @@
       if (!memoriaCargada && d && hayMemoria(d)) aplicarMemoria(d); // partida antigua
       pintarFichas();
       pintarDiario();
+      pintarMesa(); // la iniciativa de la barra sale del estado: empieza o acaba un combate
     });
     suscribir((ok, err) => db.doc("mesa/aventuras").onSnapshot(ok, err), (snap) => { aventurasPrevias = snap.exists ? V.aventuras.leerArchivo(snap.data()) : []; });
     suscribir((ok, err) => db.doc("mesa/memoria").onSnapshot(ok, err), (snap) => {

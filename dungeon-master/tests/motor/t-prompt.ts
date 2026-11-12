@@ -89,6 +89,7 @@ t(/competencia/i.test(completo), "el prompt completo habla de competencia (regla
     ["atacar para todo ataque con armas", /Todo ataque con armas[^\n]{0,40}atacar/],
     ["iniciativa y terminar_combate", /iniciativa[^\n]{0,400}terminar_combate/],
     ["criaturas y PNJ: una vez por asalto en su iniciativa", /Cada criatura\/PNJ actúa UNA vez por asalto en su iniciativa[^\n]{0,160}resuelve sus turnos pendientes/],
+    ["en combate la mesa sigue la iniciativa y el DM resuelve a los no-jugadores", /En combate la mesa sigue la iniciativa[^\n]{0,200}el programa avanza el asalto/],
     ["nunca decidir por los jugadores", /Nunca decides lo que hacen, dicen o sienten/],
     ["texto entre (( )) es fuera de personaje", /\(\( \)\)/],
     ["abrir_arco al empezar la campaña", /abrir_arco/],

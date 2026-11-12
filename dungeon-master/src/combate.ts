@@ -253,6 +253,8 @@ export interface EstadoCombate {
   guaridas?: string[];
   guaridaUso?: Record<string, { ronda: number; ultima: string }>;
   plan?: { bando: string[]; calidad: CalidadPlan; leido_por: string[] };
+  /** Mesa por turnos: lo que dejó el avance automático del asalto (condiciones activas, etc.); el DM lo lee en su siguiente turno y se borra. */
+  avisoAsalto?: string;
 }
 
 export type Combatiente =
@@ -441,6 +443,7 @@ export function siguienteAsalto(partida: Partida): string {
   const c = partida.combate;
   if (!c) throw new Error("No hay ningún combate en curso: empieza con iniciativa.");
   c.ronda += 1;
+  delete c.avisoAsalto;
   const fin = c.ronda === 2 && (c.sorprendidos?.length || c.plan) ? " Se acaban la sorpresa y la ventaja del plan." : "";
   c.sorprendidos = [];
   // Nuevo asalto: la reacción se recupera y lo que duraba "hasta su próximo turno" caduca.

@@ -48,3 +48,16 @@ Se añadió a `COMBATE` una regla firme («Cada criatura/PNJ actúa UNA vez por 
 | Detalle de razas y personalidades («no-muertos torpes… el arrogante es fácil de sorprender») | (c) | `REGLAS_COMBATE` (`consultar_reglas {tema: "combate"}`) y la descripción de `personalidad` |
 
 Tamaño: completo 66.788 → 66.797 (umbral 66.800, **sin subirlo**); típico 45.634 → 45.643 (umbral 49.285). `t-prompt.ts` incluye la regla nueva entre las imprescindibles.
+
+## Regla nueva: la mesa sigue la iniciativa (punto 77 del README)
+
+Se añadió a `COMBATE` una línea («En combate la mesa sigue la iniciativa: tras narrar al jugador, resuelve los turnos de enemigos, PNJ y ausentes que van antes del siguiente jugador, y entrégale la palabra; el programa avanza el asalto», +~200 caracteres). Para hacerle sitio se recortó solo redundancia real, con la misma metodología:
+
+| Quitado | Veredicto | Dónde sigue |
+|---|---|---|
+| Ejemplo «un cuchillo no pasa unas placas, una maza sí» | (a) | Lo calcula el programa; `REGLAS_ARMADURA` (consultar_reglas combate) |
+| «Se puede apuntar a un hueco con daga o estoque, con penalizador» | (c) | `REGLAS_ARMADURA` y la descripción del parámetro `apuntar`; el prompt remite a «huecos» |
+| «(presión: golpear después, un rival terrible, estar malherido)» | (c) | `REGLAS_COMBATE` (Nervios) |
+| «(detalle en consultar_reglas)» tras raza, clase y personalidad; «no cambies en silencio lo que un PNJ tiene o hace» | (a) | La línea final «Detalle (nervios, raza, huecos): consultar_reglas»; «lo que cambie, cuéntalo como cambio, no en silencio» |
+
+Tamaño: completo 66.797 → 66.796 (umbral 66.800, **sin subirlo**); típico 45.643 → 45.642 (umbral 49.285). `t-prompt.ts` incluye la regla nueva entre las imprescindibles.

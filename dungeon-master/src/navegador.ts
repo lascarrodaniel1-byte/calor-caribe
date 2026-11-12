@@ -15,7 +15,7 @@ import { textoNaves } from "./naves.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
 import * as dados from "./dados.js";
-import { accionesDelTurno, ejecutar, fijarAccionesDelTurno, herramientas, tiempoDeTurno } from "./herramientas.js";
+import { accionesDelTurno, cerrarAsalto, ejecutar, fijarAccionesDelTurno, herramientas, tiempoDeTurno } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, TERRITORIOS, territorioEn, textoMapa } from "./mapa.js";
 import { comando } from "./mesa.js";
 import * as narrativa from "./narrativa.js";
@@ -142,6 +142,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
       `## Combate en curso (asalto ${p.combate.ronda})${p.combate.sorprendidos?.length ? `\nSorprendidos: ${p.combate.sorprendidos.join(", ")}` : ""}${p.combate.plan ? `\nPlan ${p.combate.plan.calidad} de ${p.combate.plan.bando.join(", ")}; lo leyeron: ${p.combate.plan.leido_por.join(", ") || "nadie"}` : ""}\nOrden de iniciativa: ${p.combate.orden.map((o) => `${o.nombre} (${o.total})`).join(" → ")}` +
         (pnj.length ? `\nPNJ: ${pnj.map((n) => `${n.nombre} (ataque ${n.bono_ataque >= 0 ? "+" : ""}${n.bono_ataque}, CA ${n.ca}, ${n.veterania ?? "curtido"}${n.temple ? `, ${n.temple}` : ""}${n.personalidad?.length ? `, ${n.personalidad.join(" y ")}` : ""}${n.aliado ? ", ALIADO" : ""}${n.ceniza ? `, Ceniza ${n.ceniza}` : ""}${n.pv !== undefined ? `, PV ${n.pv}/${n.pv_max ?? n.pv}` : ""}${n.condiciones?.length ? `, condiciones: ${n.condiciones.join(", ")}` : ""})`).join("; ")}` : "") +
         `\n${estadoDelAsalto(p)}` +
+        (p.combate.avisoAsalto ? `\nAVISO DEL ASALTO (el programa lo avanzó al cerrar la ronda; revisa si alguna condición debe terminar): ${p.combate.avisoAsalto}` : "") +
         (() => {
           const t = Object.entries(p.combate.turnos ?? {}).map(([k, v]) => [k, [v.reaccion ? "reacción gastada" : "", v.esquiva ? "esquivando" : "", v.retirada ? "retirado" : "", v.corrio ? "corrió" : "", v.ayuda ? `ayudado por ${v.ayuda.por}` : "", v.preparada ? `acción preparada («${v.preparada.accion}» al ocurrir «${v.preparada.disparador}»)` : ""].filter(Boolean)] as const).filter(([, l]) => l.length);
           return t.length ? `\nEste asalto: ${t.map(([k, l]) => `${k} (${l.join(", ")})`).join("; ")}` : "";
@@ -224,4 +225,4 @@ export function resumenConsumo(docs: { entrada?: number; salida?: number; herram
   };
 }
 
-export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, accionesDelTurno, ejecutar, fichaTexto, fijarAccionesDelTurno, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };
+export { ALTO, ANCHO, TERRITORIOS, territorioEn, catalogoCompacto, comando, consultarReglas, accionesDelTurno, cerrarAsalto, ejecutar, fichaTexto, fijarAccionesDelTurno, normalizarPartida, nuevaPartida, REGIONES, sistemaWeb, SISTEMA_WEB };
