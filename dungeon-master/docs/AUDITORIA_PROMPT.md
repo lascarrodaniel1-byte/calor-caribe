@@ -68,3 +68,13 @@ Las dos reglas nuevas («Una acción preparada es una intención de antes…» y
 
 Tamaño: completo **66.796** de 66.800 y típico **45.642** de 49.285, **sin cambios**; no hizo falta recortar nada ni subir el umbral de `t-prompt.ts`.
 
+
+## Auditoría de integración (punto 79 del README): contradicción de `siguiente_asalto` y umbrales nuevos
+
+**Método.** Mismo procedimiento: `sistemaWeb()` completo y típico del commit 9fa18f8 frente a los actuales; cada frase con instrucción del «antes» (870 en el completo) se busca, normalizada, en el «después». Quedan 40 sin coincidencia literal; revisadas una a una, todas son (a) reformulaciones o duplicados del mismo prompt, (c) detalle que ya vive en `consultar_reglas`, o ejemplos. Reglas únicas perdidas desde la auditoría anterior: **una** de detalle, el contraejemplo de RUMBOS («no mandes al norte a quien ya está al norte de su destino»), **restaurado** (+57 caracteres). «En combate, respeta el orden de turnos» queda cubierto por las reglas de una acción por asalto y de iniciativa de mesa. Las reglas de los sistemas nuevos (guardas de cita, economía de acciones, mesa por iniciativa, clima, estilos, velocidad por asalto) ya estaban en el prompt.
+
+**Contradicción corregida.** `COMBATE` decía «Cada asalto: siguiente_asalto» y, dos líneas más abajo, «el programa avanza el asalto»; `REGLAS_COMBATE` (CLI y `consultar_reglas`) decía «Al empezar cada asalto nuevo, siguiente_asalto» mientras el bloque «TURNOS DE COMBATE» manda «NO llames a siguiente_asalto». Ahora hay una sola instrucción: «Asalto nuevo: siguiente_asalto, salvo que «TURNOS DE COMBATE» diga que lo avanza el programa». En modo «libre» (sin bloque) el DM sigue avanzándolo él; en la mesa por turnos lo hace el programa, y el bloque dice cuándo el DM debe llamarlo (`nuevoAsalto`). El CLI no tiene bloque de turnos y sigue llamándolo.
+
+**Umbrales (subidos con permiso del dueño).** Completo: 66.800 → **67.600** caracteres; típico: 49.285 → **49.880** (proporcional). Tamaños tras los cambios: completo 66.888, típico 45.734 (los umbrales dejan ~700 y ~4.100 caracteres de holgura). Motivo: la restauración (+57), la regla de `siguiente_asalto` (+~35) y espacio para las reglas de los sistemas nuevos sin recortar a ciegas; no se recortó redundancia adicional porque el margen real era de 4 caracteres. `t-prompt.ts` y `t-rampa.ts` llevan los umbrales nuevos.
+
+**Lista de imprescindibles ampliada** (`tests/motor/t-prompt.ts`, completo y típico): contradicción resuelta de `siguiente_asalto`, UNA reacción por asalto, estaciones y clima (`consultar_reglas {tema: "clima"}`), anomalías con causa y cita, artes marciales (catálogo y `consultar_reglas artes`), velocidad por asalto aplicada por el programa al mover con `plano`, y los rumbos.

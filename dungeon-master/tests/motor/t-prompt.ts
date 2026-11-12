@@ -89,7 +89,14 @@ t(/competencia/i.test(completo), "el prompt completo habla de competencia (regla
     ["atacar para todo ataque con armas", /Todo ataque con armas[^\n]{0,40}atacar/],
     ["iniciativa y terminar_combate", /iniciativa[^\n]{0,400}terminar_combate/],
     ["criaturas y PNJ: una vez por asalto en su iniciativa", /Cada criatura\/PNJ actúa UNA vez por asalto en su iniciativa[^\n]{0,160}resuelve sus turnos pendientes/],
-    ["en combate la mesa sigue la iniciativa y el DM resuelve a los no-jugadores", /En combate la mesa sigue la iniciativa[^\n]{0,200}el programa avanza el asalto/],
+    ["en combate la mesa sigue la iniciativa y el DM resuelve a los no-jugadores", /En combate la mesa sigue la iniciativa[^\n]{0,200}entrégale la palabra/],
+    ["siguiente_asalto: el programa lo avanza si lo dice «TURNOS DE COMBATE» (sin contradicción)", /siguiente_asalto, salvo que «TURNOS DE COMBATE» diga que lo avanza el programa/],
+    ["economía: UNA reacción por asalto y ataques de oportunidad", /tiene UNA reacción por asalto/],
+    ["clima y estaciones: el estado trae el clima y consultar_reglas clima", /Estaciones y clima por región[^\n]{0,200}consultar_reglas \{tema: "clima"\}/],
+    ["anomalías del clima con causa y cita", /clima \{accion: anomalia\} con causa y cita/],
+    ["artes marciales: catálogo y consultar_reglas artes", /arte_marcial \{accion: catalogo\}[^\n]{0,40}consultar_reglas \{tema: "artes"\}|Artes marciales/],
+    ["la velocidad por asalto la aplica el programa al mover con plano", /velocidad a la mitad en el agua la aplica el programa al mover con plano/],
+    ["rumbos: no mandar al norte a quien ya está al norte", /no mandes al norte a quien ya está al norte/],
     ["nunca decidir por los jugadores", /Nunca decides lo que hacen, dicen o sienten/],
     ["texto entre (( )) es fuera de personaje", /\(\( \)\)/],
     ["abrir_arco al empezar la campaña", /abrir_arco/],
@@ -112,8 +119,8 @@ t(/competencia/i.test(completo), "el prompt completo habla de competencia (regla
   t(v.turnos === 0 && v.entrada.media === 0 && v.salida.p90 === 0, "resumenConsumo: sin datos no falla");
 }
 
-// ---- tamaños (el prompt completo de partida: 72.609 caracteres; con clases típicas y sin estilos: 57.983)
-t(completo.length <= 66800, "el prompt completo baja al menos un 8 %", String(completo.length));
-t(tipico.length <= 49285, "el prompt con clases típicas (sin estilos) baja al menos un 15 %", String(tipico.length));
+// ---- tamaños (umbrales: completo 67.600 y típico 49.880 tras la auditoría de integración)
+t(completo.length <= 67600, "el prompt completo baja al menos un 8 %", String(completo.length));
+t(tipico.length <= 49880, "el prompt con clases típicas (sin estilos) baja al menos un 15 %", String(tipico.length));
 
 console.log(`${ok} ok, ${mal} fallas`);

@@ -53,5 +53,5 @@ t(NIVEL_JEFE_EN_PERSONA === 7, "un jefe fuera de su zona solo da la cara desde e
 
 // ---- la regla del prompt lo dice, y el prompt completo sigue por debajo del umbral
 t(/TOPE de peligro/.test(REGLAS_ENCUENTROS) && /nivel 7/.test(REGLAS_ENCUENTROS) && /emboscada excepcional/.test(REGLAS_ENCUENTROS), "REGLAS_ENCUENTROS: tope de peligro por nivel, jefes desde el 7 y emboscada excepcional");
-t(sistemaWeb().length <= 66800, "el prompt completo sigue ≤ 66.800 caracteres", String(sistemaWeb().length));
+t(sistemaWeb().length <= 67600, "el prompt completo sigue ≤ 67.600 caracteres", String(sistemaWeb().length));
 console.log(`${ok} ok, ${mal} fallas`);

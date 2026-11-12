@@ -518,11 +518,12 @@ function ataquesPorAsalto(c: Combatiente, t: EstadoTurno): number {
 
 /** Criaturas y PNJ: una acción de Atacar por asalto (N ataques), una reacción y las legendarias del jefe. Lanza el error SIN tocar nada. */
 function exigirAccionDisponible(partida: Partida, d: DatosAtaque, at: Combatiente): void {
-  if (!partida.combate || at.tipo === "pj" || d.mano_secundaria || d.sin_contar) return;
+  if (!partida.combate || d.mano_secundaria || d.sin_contar) return;
+  if (at.tipo === "pj" && !d.reaccion) return; // los PJ llevan su cuenta de ataques por acción aparte (Ataque adicional)
   const t = turnoDe(partida, at.nombre);
   const leg = at.tipo === "criatura" ? legendariasDe(at.j.definicion) : 0;
   const pie = `Para un asalto nuevo usa siguiente_asalto.`;
-  if (d.legendaria) {
+  if (d.legendaria && at.tipo !== "pj") {
     if (!leg) throw new Error(`${at.nombre} no tiene acciones legendarias: quita legendaria: true.`);
     if ((t.legendarias ?? 0) >= leg) throw new Error(`${at.nombre} ya gastó sus ${leg} acciones legendarias de este asalto. ${pie}`);
     return;
@@ -1036,6 +1037,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   }
 
   if (at.tipo === "pj" && combate && !d.reaccion && !d.mano_secundaria && !d.sin_contar) tAt.ataques = (tAt.ataques ?? 0) + 1;
+  if (at.tipo === "pj" && combate && d.reaccion && !d.mano_secundaria && !d.sin_contar) { tAt.reaccionAtaques = (tAt.reaccionAtaques ?? 0) + 1; tAt.reaccion = true; } // un ataque de reacción de un PJ gasta su reacción (y solo se permite uno)
   if (at.tipo !== "pj" && combate && !d.mano_secundaria && !d.sin_contar) {
     if (d.legendaria) tAt.legendarias = (tAt.legendarias ?? 0) + 1;
     else if (d.reaccion) { tAt.reaccionAtaques = (tAt.reaccionAtaques ?? 0) + 1; tAt.reaccion = true; }
@@ -1311,7 +1313,7 @@ ${Object.entries(OFICIO).map(([k, o]) => `  - ${k}: ${o.descripcion}.`).join("\n
 - Nervios: cada presión suma (golpear después que el rival, un rival terrible —jefe o peligro 4+—, estar malherido, un carácter tenso); cuánto restan depende de la veteranía (arriba). Actuar antes que el rival quita una presión y la torpeza extra. Los no-muertos no sienten nervios.
 - Emboscadas y planes (iniciativa con tactica: bando, emboscada, plan, alerta de los rivales): el sigilo del más torpe del bando contra la percepción de cada rival (10 + SAB + oficio + sentidos + carácter; dormidos, distraídos o en guardia cuentan). A un veterano cuesta mucho más sorprenderlo. Los sorprendidos no actúan en el primer asalto y se les ataca con ventaja. Planes:
 ${Object.entries(PLANES).map(([k, p]) => `  - ${k}: ${p.nota}.`).join("\n")}
-  Juzga tú la calidad del plan de los jugadores (o de los PNJ) por lo que han preparado. Al empezar cada asalto nuevo, siguiente_asalto.
+  Juzga tú la calidad del plan de los jugadores (o de los PNJ) por lo que han preparado. Al empezar cada asalto nuevo, siguiente_asalto (salvo que «TURNOS DE COMBATE» diga que lo avanza el programa: en la mesa por turnos lo hace él).
 - Personalidad (en guardar_personaje, en los PNJ y en las criaturas): 
 ${Object.entries(PERSONALIDADES).map(([k, p]) => `  - ${k}: ${p.nota}.`).join("\n")}
 - Temple de cada raza o naturaleza (en las criaturas, campo temple de su ficha):
