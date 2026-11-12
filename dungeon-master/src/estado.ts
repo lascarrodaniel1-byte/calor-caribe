@@ -31,6 +31,7 @@ import { mapaVacio, migrarMapa, type EstadoMapa } from "./mapa.js";
 import { normalizarTrama, tramaVacia, type Pnj, type Trama } from "./narrativa.js";
 import type { Plano, Reloj } from "./espacio.js";
 import type { RegistroEncuentro } from "./encuentros.js";
+import type { Calendario } from "./clima.js";
 import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
 
@@ -184,6 +185,8 @@ export interface Partida {
   plano?: Plano;
   /** Día y hora del mundo. */
   reloj?: Reloj;
+  /** Estaciones y clima (opcional: sin él, todo neutro). `inicio` = día del año (1-360) en que cae el «Día 1» de la partida. */
+  calendario?: Calendario;
   /** Últimos encuentros (para no repetir enemigos). */
   encuentros?: RegistroEncuentro[];
   /** Runas dispuestas por un Cazador de Brujas en la escena. */

@@ -44,6 +44,7 @@ import { REGLAS_REGENTES } from "./regentes.js";
 import { REGLAS_PRUEBAS } from "./pruebas.js";
 import { AMBIENTACION, CLASES, RAZAS, textoRazasYClases } from "./mundo.js";
 import { REGLAS_VIALES } from "./viales.js";
+import { REGLAS_CLIMA } from "./clima.js";
 
 const BASE = `Eres el Dungeon Master de una campaña multijugador de dark fantasy con reglas de D&D 5e, en español.
 - Narras, interpretas a los PNJ y arbitras. Nunca decides lo que hacen, dicen o sienten los personajes jugadores.
@@ -100,7 +101,7 @@ const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
 - Qué sabe cada PNJ: antes de que hable de un jefe, raza, facción o secreto, mira saber {accion: consultar, tema, quien} (el vulgo solo repite rumores; eruditos y altos cargos saben más; lo secreto no lo sabe nadie): tema "saber". El BESTIARIO del grupo se actualiza solo al derrotar una criatura; si averiguan algo de ella, saber {accion: descubrir, tema: criatura, texto o capa}.
 - Behelits y el Eclipse (behelit): tema "behelits", léelo siempre antes de usarlos.
 - Magia con lanzar_hechizo: rara, temida y cara; cada hechizo cobra calor, aliento, sangre, cordura o años de vida según escuela y círculo (los catalizadores absorben el precio). El Hechicero es el único mago de verdad; un guerrero solo la usa si nació con el don (raro) o es de élite y la aprendió con un maestro; casi ningún PNJ sabe magia. Antes del primer hechizo, lee tema "magia".
-- Mapa: llama a ubicacion al empezar, al llegar a otro sitio y durante los viajes (viajando_hacia y progreso); reutiliza los nombres de los lugares. Ambientación: tema "ambientacion".
+- Ambientación: tema "ambientacion".
 - Detalles: pasar_tiempo ya mueve el reloj (24 h por día), no lo avances otra vez; lanzar_hechizo NO hace daño a enemigos (objetivo es solo un PJ al que cura): aplica tú el daño con danar_criatura; ubicacion con un lugar nuevo también coloca ahí al grupo; los booleanos son true/false; en iniciativa, tactica.bando es una LISTA de nombres y alerta es dormidos|distraidos|normal|en_guardia; los caídos (0 PV) no atacan ni reaccionan. Si dudas de un esquema, consultar_reglas {tema: "accion", nombre}.`;
 
 /** Firma compacta de una acción a partir de su esquema JSON. */
@@ -138,7 +139,7 @@ export function catalogoCompacto(): string {
   return `## Acciones del motor (herramienta "motor")
 ${lineas.join("\n")}
 - actualizar_cronica(texto) — reescribe tu crónica completa (tu memoria).
-- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | behelits | bestiario | mapa | magia | artes | arcos | saber | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
+- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | behelits | bestiario | mapa | magia | artes | arcos | saber | clima | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
@@ -204,6 +205,8 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return textoBestiario();
     case "mapa":
       return REGLAS_MAPA;
+    case "clima":
+      return REGLAS_CLIMA;
     case "saber":
       return REGLAS_SABER;
     case "magia":
@@ -226,6 +229,6 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return h ? `${h.name}: ${h.description}\nEsquema: ${JSON.stringify(h.input_schema)}` : `No existe la acción "${nombre}". Acciones: ${herramientas.map((x) => x.name).join(", ")}.`;
     }
     default:
-      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, behelits, bestiario, mapa, magia, artes, arcos, saber, criatura, accion, compania.`);
+      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, behelits, bestiario, mapa, magia, artes, arcos, saber, clima, criatura, accion, compania.`);
   }
 }

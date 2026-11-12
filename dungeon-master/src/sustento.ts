@@ -4,26 +4,67 @@ import { agregarCondicion, nivelAgotamiento } from "./condiciones.js";
 import type { Partida, Personaje } from "./estado.js";
 import { salvacion, marcarMuerto, mod, valor } from "./reglas.js";
 import { textoReloj } from "./espacio.js";
+import { alAireLibre, condicionesDe, diaDePartida, factorHambreDe, factorSedDe, factorViajeGrupo, lluviaAbierta, regionActual } from "./clima.js";
 
 const DIA = 86400;
 /** El Tritón de las Mareas se seca en tierra: la sed corre el doble de rápido mientras no está en el agua. */
 export const FACTOR_SED_TRITON = 2;
 const esTriton = (p: Personaje) => p.raza === "Tritón de las Mareas";
 /** Segundos «de sed» que lleva: los reales desde que bebió, más los extra por estar en tierra (Tritón). */
-const segSinBeber = (p: Personaje, s: Sustento, ahora: number) => Math.max(0, ahora - s.agua) + (esTriton(p) ? s.seco ?? 0 : 0);
+const segSinBeber = (p: Personaje, s: Sustento, ahora: number) => Math.max(0, Math.max(0, ahora - s.agua) + (esTriton(p) ? s.seco ?? 0 : 0) + (s.extraSed ?? 0));
+/** Segundos «de hambre»: los reales desde que comió más el extra del frío (solo con calendario). */
+const segSinComer = (s: Pick<Sustento, "comida" | "extraHambre">, ahora: number) => Math.max(0, ahora - s.comida) + (s.extraHambre ?? 0);
+/** Tramos de un intervalo, uno por día de la partida: [día, segundos, fin]. Sin calendario, un solo tramo. */
+function tramos(partida: Partida, ini: number, fin: number): [number, number, number][] {
+  if (fin <= ini) return [];
+  if (!partida.calendario) return [[0, fin - ini, fin]];
+  const out: [number, number, number][] = [];
+  for (let t = Math.max(ini, fin - 400 * DIA); t < fin;) { const dia = Math.floor(t / DIA) + 1, f = Math.min(fin, dia * DIA); out.push([dia, f - t, f]); t = f; }
+  return out;
+}
+/** Extra de sed por calor y de hambre por frío (con la adaptación de cada uno), mientras el reloj corre y solo con calendario. */
+function acumularClima(partida: Partida, p: Personaje, s: Sustento, ahora: number): void {
+  if (!partida.calendario) return;
+  const ini = s.vistoClima; s.vistoClima = ahora;
+  if (ini === undefined) return;
+  const region = regionActual(partida);
+  const cubierto = !alAireLibre(partida) || !!p.sumergido || p.condiciones.some((c) => /^(en el agua|sumergido)/i.test(c)); // en el agua o sumergido (como en agua.ts)
+  for (const [dia, seg] of tramos(partida, ini, ahora)) {
+    const c = condicionesDe(partida, region, dia);
+    if (!c) continue;
+    const lluvia = esTriton(p) && !!lluviaAbierta(partida, dia);
+    if (lluvia) s.extraSed = (s.extraSed ?? 0) - seg; // la lluvia sacia al Tritón: el tiempo de lluvia no cuenta como sed
+    else if (!cubierto) s.extraSed = (s.extraSed ?? 0) + seg * (factorSedDe(c, p) - 1);
+    s.extraHambre = (s.extraHambre ?? 0) + seg * (factorHambreDe(c, p) - 1);
+  }
+}
 const ES_PIEL = /^piel reseca/i;
 /** Un Tritón en tierra acumula sed extra y, tras un día sin mojarse, se le reseca la piel. */
-function secarTriton(p: Personaje, s: Sustento, ahora: number): string[] {
+function secarTriton(partida: Partida, p: Personaje, s: Sustento, ahora: number): string[] {
   if (!esTriton(p)) return [];
-  const dt = Math.max(0, ahora - (s.visto ?? ahora));
+  const ini = s.visto ?? ahora;
+  const dt = Math.max(0, ahora - ini);
   s.visto = ahora;
   const enAgua = !!p.sumergido;
-  if (enAgua) s.mojado = ahora; else { s.seco = (s.seco ?? 0) + dt * (FACTOR_SED_TRITON - 1); s.mojado ??= ahora - dt; }
+  const avisos: string[] = [];
+  if (enAgua) s.mojado = ahora;
+  else {
+    s.mojado ??= ahora - dt;
+    let seco = 0;
+    // Con llovizna, lluvia o tormenta al aire libre (y calendario) el Tritón no se seca: no acumula sed y la piel cuenta como mojada.
+    for (const [dia, seg, fin] of tramos(partida, ini, ahora)) {
+      if (lluviaAbierta(partida, dia)) {
+        s.mojado = fin;
+        if (!s.lluvia) { s.lluvia = true; avisos.push(`🌧 La lluvia sacia a ${p.nombre}: no pasa sed mientras dure.`); }
+      } else { s.lluvia = false; seco += seg; }
+    }
+    s.seco = (s.seco ?? 0) + seco * (FACTOR_SED_TRITON - 1);
+  }
   const reseca = !enAgua && ahora - (s.mojado ?? ahora) >= DIA;
   const tiene = p.condiciones.some((c) => ES_PIEL.test(c));
-  if (reseca && !tiene) { p.condiciones.push("piel reseca"); return [`🐟 La piel de ${p.nombre} se agrieta: lleva un día entero sin mojarse (desventaja en pruebas de característica hasta que se sumerja).`]; }
-  if (!reseca && tiene) { p.condiciones = p.condiciones.filter((c) => !ES_PIEL.test(c)); return [`💧 ${p.nombre} se moja y la piel se le recompone.`]; }
-  return [];
+  if (reseca && !tiene) { p.condiciones.push("piel reseca"); return [...avisos, `🐟 La piel de ${p.nombre} se agrieta: lleva un día entero sin mojarse (desventaja en pruebas de característica hasta que se sumerja).`]; }
+  if (!reseca && tiene) { p.condiciones = p.condiciones.filter((c) => !ES_PIEL.test(c)); return [...avisos, `💧 ${p.nombre} se moja y la piel se le recompone.`]; }
+  return avisos;
 }
 /** Días que se aguanta sin comer: 3 + mod. de CON (mínimo 1). Sin beber, un día entero. */
 export const diasSinComer = (p: Personaje) => Math.max(1, 3 + mod(valor(p, "con")));
@@ -38,6 +79,12 @@ export interface Sustento {
   sed: number;
   /** Tritón: segundos de sed extra acumulados por estar en tierra (la sed corre al doble). */
   seco?: number;
+  /** Con calendario: segundos extra de sed (calor) y de hambre (frío) acumulados, y última revisión del clima. */
+  extraSed?: number;
+  extraHambre?: number;
+  vistoClima?: number;
+  /** Tritón: ¿está sacándole la sed la lluvia (para no repetir el aviso)? */
+  lluvia?: boolean;
   /** Tritón: última vez que el reloj se revisó y última vez que se mojó del todo. */
   visto?: number;
   mojado?: number;
@@ -81,8 +128,9 @@ export function revisarSustento(partida: Partida): string[] {
   const out: string[] = [];
   for (const p of vivos(partida)) {
     const s = estado(partida, p);
-    const sinComer = Math.floor((ahora - s.comida) / DIA);
-    const piel = secarTriton(p, s, ahora);
+    acumularClima(partida, p, s, ahora);
+    const piel = secarTriton(partida, p, s, ahora);
+    const sinComer = Math.floor(segSinComer(s, ahora) / DIA);
     const sinBeber = Math.floor(segSinBeber(p, s, ahora) / DIA);
     const excesoH = Math.max(0, sinComer - diasSinComer(p));
     const excesoS = Math.max(0, sinBeber - DIAS_SIN_BEBER);
@@ -90,7 +138,7 @@ export function revisarSustento(partida: Partida): string[] {
     for (let i = s.sed; i < excesoS; i++) out.push(subirAgotamiento(p, `lleva ${sinBeber + 1} días sin beber`));
     s.hambre = Math.max(s.hambre, excesoH);
     s.sed = Math.max(s.sed, excesoS);
-    if (!p.condiciones.includes("muerto")) out.push(...ponerEstados(p, Math.max(0, (ahora - s.comida) / 3600), segSinBeber(p, s, ahora) / 3600));
+    if (!p.condiciones.includes("muerto")) out.push(...ponerEstados(p, segSinComer(s, ahora) / 3600, segSinBeber(p, s, ahora) / 3600));
     out.push(...piel);
   }
   return out;
@@ -109,7 +157,7 @@ export interface Medidor { horas: number; limite: number; fraccion: number; esta
 export function sustentoVisible(partida: Partida, p: Personaje): { hambre: Medidor; sed: Medidor } | null {
   if (!partida.reloj) return null;
   const s = p.sustento ?? { comida: partida.reloj.segundos, agua: partida.reloj.segundos };
-  const hh = Math.max(0, Math.floor((partida.reloj.segundos - s.comida) / 3600)), ha = Math.floor(segSinBeber(p, p.sustento ?? { comida: 0, agua: partida.reloj.segundos, hambre: 0, sed: 0 }, partida.reloj.segundos) / 3600);
+  const hh = Math.floor(segSinComer(s, partida.reloj.segundos) / 3600), ha = Math.floor(segSinBeber(p, p.sustento ?? { comida: 0, agua: partida.reloj.segundos, hambre: 0, sed: 0 }, partida.reloj.segundos) / 3600);
   const limH = (diasSinComer(p) + 1) * 24, limA = (DIAS_SIN_BEBER + 1) * 24; // horas hasta que empieza el agotamiento
   const estH = p.condiciones.find((c) => ESTADOS_HAMBRE.test(c)) ?? "", estA = p.condiciones.find((c) => ESTADOS_SED.test(c)) ?? "";
   const limFam = diasSinComer(p) * 24;
@@ -167,20 +215,20 @@ export function sustento(partida: Partida, d: DatosSustento): string {
   for (const p of pjs) {
     const s = estado(partida, p);
     if (d.accion === "ver") {
-      const h = Math.floor((ahora - s.comida) / 3600), a = Math.floor(segSinBeber(p, s, ahora) / 3600);
+      const h = Math.floor(segSinComer(s, ahora) / 3600), a = Math.floor(segSinBeber(p, s, ahora) / 3600);
       lineas.push(`${p.nombre}: ${h} h sin comer (aguanta ${diasSinComer(p)} días), ${a} h sin beber (aguanta ${DIAS_SIN_BEBER} día)${s.hambre || s.sed ? ` · agotamiento por hambre ${s.hambre}, por sed ${s.sed}` : ""}. Provisiones: ${p.inventario.filter((x) => /raci[oó]n|provisi|agua|odre|cantimplora/i.test(x)).join(", ") || "ninguna"}.`);
       continue;
     }
     if (d.accion === "comer") {
       const gastado = d.libre ? "lo que encontró" : gastarUnidad(p, /raci[oó]n|raciones|provisi[oó]n|pan\b|carne seca|queso/i);
       if (!gastado) { lineas.push(`${p.nombre}: no tiene qué comer (sin raciones en el inventario; si come de una posada o de la caza, pasa libre=true).`); continue; }
-      s.comida = ahora; s.hambre = 0;
+      s.comida = ahora; s.hambre = 0; s.extraHambre = 0;
       p.condiciones = p.condiciones.filter((c) => !ESTADOS_HAMBRE.test(c));
       lineas.push(`${p.nombre} come (${gastado}).`);
     } else {
       const gastado = d.libre ? "una fuente" : gastarUnidad(p, /agua|odre|cantimplora/i, "Odre vacío");
       if (!gastado) { lineas.push(`${p.nombre}: no tiene qué beber (sin agua ni odre lleno; si bebe de un río o un pozo, pasa libre=true).`); continue; }
-      s.agua = ahora; s.sed = 0; s.seco = 0;
+      s.agua = ahora; s.sed = 0; s.seco = 0; s.extraSed = 0;
       p.condiciones = p.condiciones.filter((c) => !ESTADOS_SED.test(c));
       lineas.push(`${p.nombre} bebe (${gastado}).`);
     }
@@ -217,7 +265,9 @@ export function viajar(partida: Partida, d: DatosViaje): string {
   if (!partida.reloj) throw new Error("El reloj no está fijado (tiempo fijar): sin él no se puede viajar.");
   const pjs = vivos(partida).filter((p) => p.pv > 0);
   if (!pjs.length) throw new Error("No hay nadie en pie para viajar.");
-  const km = Math.round(d.horas * KM_H[d.ritmo] * FACTOR[d.terreno] * 10) / 10;
+  const cond = condicionesDe(partida, regionActual(partida), diaDePartida(partida));
+  const clima = cond ? factorViajeGrupo(cond, pjs) : { factor: 1, notas: [] as string[] };
+  const km = Math.round(d.horas * KM_H[d.ritmo] * FACTOR[d.terreno] * clima.factor * 10) / 10;
   const hora = Math.floor((partida.reloj.segundos % DIA) / 3600);
   const lineas = [`Viaje de ${d.horas} h a ritmo ${d.ritmo} por terreno ${d.terreno}${d.motivo ? ` (${d.motivo})` : ""}: unos ${km} km.`];
   // Marcha forzada: cada hora pasada de las 8 del día exige salvación de CON (CD 10 + horas de más) o un nivel de agotamiento.
@@ -231,11 +281,12 @@ export function viajar(partida: Partida, d: DatosViaje): string {
   if (d.ritmo === "rapido") lineas.push("Ritmo rápido: −5 a la Percepción pasiva del grupo (no ven las trampas ni los rastros) y no pueden ir en sigilo.");
   if (d.ritmo === "lento") lineas.push("Ritmo lento: pueden ir en sigilo y buscar comida o rastros mientras caminan.");
   if (d.terreno === "dificil") lineas.push("Terreno difícil: mitad de distancia.");
+  if (cond && clima.factor < 1) lineas.push(`🌨 ${cond.etiqueta}: el camino rinde ×${String(clima.factor).replace(".", ",")} de km (las horas no cambian).${clima.notas.length ? ` ${clima.notas.join("; ")}.` : ""}`);
   lineas.push(`Ahora: ${textoReloj(partida.reloj)} (salieron a las ${String(hora).padStart(2, "0")}:00). Tira un posible encuentro (encuentro) si el trayecto es largo o peligroso.`);
   return lineas.join("\n");
 }
 
 export const REGLAS_SUSTENTO = `## Viaje, raciones, hambre y sed
-- El reloj corre siempre (si no lo mueves en un turno, pasan 10 minutos de escena) y cuenta el hambre y la sed solo; fíjalo al empezar con tiempo fijar y avánzalo según lo que dure lo hecho. Cuando el programa avise de que alguien tiene hambre, sed, está famélico o deshidratado, narra los síntomas (estómago que ruge, boca seca, mareo) y recuérdales comer y beber. El hambre y la sed: sin comer, un personaje aguanta 3 + mod. de CON días (mínimo 1) y después sube un nivel de agotamiento por cada día (y antes, el hambre pasa por dos estados con castigo: «con hambre» —desventaja en pruebas— a partir de la mitad del plazo y «famélico» —también en ataques— al cumplirlo); sin beber aguanta un día y luego sube un nivel por día («con sed» a las 12 h y «deshidratado» a las 24 h, con los mismos castigos). Comer o beber los quita. Al llegar a agotamiento 6, muere. Comer y beber (sustento {accion: comer|beber}) gasta una ración o una unidad de agua del inventario («Raciones de viaje (5)», «Odre de agua (2)»); si come en una posada o bebe de un río, pasa libre=true. Dale a cada personaje al empezar «Raciones de viaje (5)» y «Odre de agua (2)» si su equipo no las trae.
+- El reloj corre siempre (si no lo mueves en un turno, pasan 10 minutos de escena) y cuenta el hambre y la sed solo; fíjalo al empezar con tiempo fijar y avánzalo según lo que dure lo hecho. Cuando el programa avise de que alguien tiene hambre, sed, está famélico o deshidratado, narra los síntomas y recuérdales comer y beber. El hambre y la sed: sin comer, un personaje aguanta 3 + mod. de CON días (mínimo 1) y después sube un nivel de agotamiento por cada día (y antes, el hambre pasa por dos estados con castigo: «con hambre» —desventaja en pruebas— a partir de la mitad del plazo y «famélico» —también en ataques— al cumplirlo); sin beber aguanta un día y luego sube un nivel por día («con sed» a las 12 h y «deshidratado» a las 24 h, con los mismos castigos). Comer o beber los quita. Al llegar a agotamiento 6, muere. Comer y beber (sustento {accion: comer|beber}) gasta una ración o una unidad de agua del inventario («Raciones de viaje (5)», «Odre de agua (2)»); si come en una posada o bebe de un río, pasa libre=true. Dale a cada personaje al empezar «Raciones de viaje (5)» y «Odre de agua (2)» si su equipo no las trae.
 - Para ir de un sitio a otro usa viajar {horas, ritmo, terreno}: calcula los km (lento 3,2 km/h, normal 4,8, rápido 6,4; terreno difícil, la mitad), avanza el reloj y cobra la marcha forzada pasadas 8 horas (salvación de CON, CD 10 + horas de más, o agotamiento). Rápido: −5 a la Percepción pasiva y sin sigilo; lento: sigilo y forrajeo. Buscar comida por el camino es una prueba de Supervivencia (CD 10 fértil, 15 normal, 20 árido): si sale, comen con libre=true.
 - Un descanso largo quita un nivel de agotamiento solo si en el último día comió y bebió.`;

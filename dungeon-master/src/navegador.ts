@@ -31,6 +31,8 @@ import { mitigacion, textoRunas } from "./cazador.js";
 import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
 import { artesDe } from "./estilos_base.js";
 
+import { lineaClimaFicha, textoEstacion } from "./clima.js";
+import * as clima from "./clima.js";
 import { rasgosAutomaticos } from "./rasgos.js";
 import { bestiarioGrupo } from "./codice.js";
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
@@ -88,6 +90,8 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   if (plano) partes.push(plano);
   else partes.push("## PLANO DE LA ESCENA\n(vacío: si hay una escena con varios actores —combate, calle, sala—, ábrela con plano y coloca a los presentes)");
   partes.push(`## Mapa\n${textoMapa(p.mapa)}`);
+  const est = textoEstacion(p);
+  if (est) partes.push(est);
   const pjs = Object.values(p.personajes);
   // Por turnos, solo el jugador que actúa lleva la ficha completa; los demás, abreviada (el prompt no crece con cada jugador).
   const f = (foco ?? "").toLowerCase().trim();
@@ -95,7 +99,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   const conFoco = pjs.some(esFoco) && pjs.length > 1;
   partes.push(
     `## Personajes jugadores${conFoco ? " (ficha completa solo del que actúa; la de los demás, con consultar_reglas {tema: \"ficha\", nombre})" : ""}\n` +
-      (pjs.length ? pjs.map((x) => (conFoco && !esFoco(x) ? fichaCorta(x) : fichaTexto(x))).join(conFoco ? "\n" : "\n\n") : "Aún no hay personajes: hay que crearlos."),
+      (pjs.length ? pjs.map((x) => { if (conFoco && !esFoco(x)) return fichaCorta(x); const c = lineaClimaFicha(x, p); return fichaTexto(x) + (c ? `\n  ${c}` : ""); }).join(conFoco ? "\n" : "\n\n") : "Aún no hay personajes: hay que crearlos."),
   );
   // Lo que el motor aplica solo: así el DM no lo repite ni lo da por olvidado.
   const auto = (conFoco ? pjs.filter(esFoco) : pjs).map((x) => { const r = rasgosAutomaticos(x); return r.length ? `- ${x.nombre}: ${r.join("; ")}` : ""; }).filter(Boolean);
@@ -178,6 +182,8 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   return partes.join("\n\n");
 }
 
+export { clima };
+export const activarCalendario = clima.activarCalendario;
 export { bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 /** ¿Hay artes marciales en juego? Algún personaje con estilo (o Flagelante) o una criatura en escena que los domina. */
 export function hayArtes(p: Partida): boolean {

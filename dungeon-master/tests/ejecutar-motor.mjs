@@ -29,6 +29,7 @@ casos.push({
 const sinProblemas = (s) => { const m = /problemas: (\d+)/.exec(s); return m ? { ok: Number(m[1]) === 0, resumen: `${m[1]} problemas` } : null; };
 casos.push({ nombre: "auditoria/fuzz.ts", args: ["tests/auditoria/fuzz.ts"], leer: sinProblemas });
 for (const semilla of [1, 2, 3]) casos.push({ nombre: `auditoria/soak.ts ${semilla}`, args: ["tests/auditoria/soak.ts", String(semilla)], leer: sinProblemas });
+casos.push({ nombre: "auditoria/soak.ts 4 calendario", args: ["tests/auditoria/soak.ts", "4", "calendario"], leer: sinProblemas }); // estaciones, clima y anomalías activos
 
 const filtro = process.argv[2];
 const elegidos = filtro ? casos.filter((c) => c.nombre.includes(filtro)) : casos;

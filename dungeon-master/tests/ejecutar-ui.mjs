@@ -6,7 +6,7 @@ import { cargarPlaywright, chromiumDisponible } from "./ui/_comun.mjs";
 import { construirPagina } from "./ui/construir.mjs";
 
 const AQUI = fileURLToPath(new URL(".", import.meta.url));
-const SCRIPTS = ["flujo", "bestiario", "run", "control", "genero", "sinnarracion"];
+const SCRIPTS = ["flujo", "bestiario", "run", "control", "genero", "sinnarracion", "clima"];
 const LIMITE_MS = 150_000;
 
 if (!(await cargarPlaywright())) {

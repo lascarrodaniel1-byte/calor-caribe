@@ -63,6 +63,7 @@ import { agua, pasarAsaltoAgua } from "./agua.js";
 import { montura, revisarMonturas } from "./montura.js";
 import { marcarTiempo, nave, pasarAsaltoNave, procesarTiempo } from "./naves.js";
 import { revisarSustento, sustento, viajar } from "./sustento.js";
+import { avisosDeCalendario, clima as ejecutarClima } from "./clima.js";
 import { darExperiencia, eleccionNivel, PX_PNJ, repartirBajas, subirAutomatico, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
@@ -812,6 +813,21 @@ const esquemas = {
     quienes: z.array(z.string()).optional().describe("Por defecto, todo el grupo"),
     libre: z.boolean().optional().describe("Comió o bebió de algo que no es del inventario (posada, río, caza): no gasta provisiones"),
   }),
+  clima: z.object({
+    accion: z.enum(["ver", "pronostico", "anomalia", "terminar_anomalia"]),
+    id: z.string().optional().describe("terminar_anomalia: id de la anomalía (A1…); por defecto la activa"),
+    nombre: z.string().max(60).optional().describe("anomalia: nombre («El Invierno Largo»)"),
+    causa: z.string().max(300).optional().describe("anomalia: qué hecho de la historia la provoca (≥ 20 caracteres, obligatoria)"),
+    tipo: z.enum(["larga", "intensa", "ambas"]).optional(),
+    estacion: z.enum(["Primavera", "Verano", "Otoño", "Invierno"]).optional().describe("anomalia: estación afectada (por defecto la actual)"),
+    region: z.string().optional().describe("anomalia: región o «todas» (por defecto la del grupo)"),
+    desde: z.number().int().min(1).optional().describe("anomalia: día de la partida en que empieza (por defecto hoy; no en el pasado)"),
+    extra_dias: z.number().int().min(0).max(60).optional().describe("anomalia larga o ambas: días que alarga la estación"),
+    intensidad: z.number().int().min(1).max(3).optional().describe("anomalia intensa o ambas: 1-3"),
+    publica: z.boolean().optional().describe("anomalia: ¿lo saben los jugadores? (true por defecto; false = rumor del DM)"),
+    cita: z.string().min(5).max(200).optional().describe("anomalia: frase literal de la acción de un jugador de este turno que la desencadena (obligatoria con turno en marcha, salvo origen trama)"),
+    origen: z.enum(["trama"]).optional().describe("anomalia: la causa es un hecho de la trama sin acción de jugador (solo con un arco abierto)"),
+  }),
   viajar: z.object({
     horas: z.number().min(0.5).max(24),
     ritmo: z.enum(["lento", "normal", "rapido"]),
@@ -888,6 +904,8 @@ const descripciones: Record<Nombre, string> = {
     "Trampas secretas: colocar (CD de detectar y de desarmar, efecto), detectar (Percepción pasiva del grupo o búsqueda activa), desarmar (Juego de manos) y disparar. Nunca avises de una trampa que nadie ha descubierto.",
   sustento:
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
+  clima:
+    "Estaciones y clima (solo si la partida tiene calendario): ver el de hoy, pronostico (3 días, vago), anomalia (alarga o intensifica una estación por una causa de la historia; exige cita) o terminar_anomalia. El estado ya trae la estación y el clima de hoy.",
   viajar:
     "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas. Un viaje de 6 horas o más exige cita literal de lo que pidieron los jugadores.",
   idioma:
@@ -1187,8 +1205,9 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
 export function tiempoDeTurno(partida: Partida, relojAntes?: number): string[] {
   if (!partida.reloj) return [];
   if (relojAntes !== undefined && partida.reloj.segundos !== relojAntes) return []; // el DM ya lo movió: las herramientas lo contaron
+  const antes = partida.reloj.segundos;
   partida.reloj.segundos += 600;
-  return [...revisarSustento(partida), ...procesarEnfermedades(partida), ...procesarTiempo(partida)];
+  return [...avisosDeCalendario(partida, antes), ...revisarSustento(partida), ...procesarEnfermedades(partida), ...procesarTiempo(partida)];
 }
 
 // Contexto del turno (solo en memoria, fuera de `partida`: no se guarda ni se exporta). null = sin contexto (suites, CLI): sin guardas.
@@ -1216,7 +1235,12 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   // Quién estaba a 0 PV antes: tras la herramienta, quien cae a 0 se queda inconsciente y empieza sus salvaciones contra muerte.
   const antes = Object.fromEntries(Object.values(partida.personajes).map((p) => [p.nombre, { pv: p.pv, muerto: p.condiciones.includes("muerto") }]));
   const enEscena = criaturasEnEscena(partida);
+  const segAntes = partida.reloj?.segundos;
   const r = ejecutarInterno(nombre, entrada, partida);
+  if (!r.error && segAntes !== undefined && partida.reloj && partida.reloj.segundos !== segAntes) { // cambio de estación o de anomalía al avanzar el reloj
+    const cal = avisosDeCalendario(partida, segAntes);
+    if (cal.length) { r.contenido += `\n${cal.join("\n")}`; r.aviso = [r.aviso, ...cal].filter(Boolean).join("\n"); }
+  }
   if (!r.error) actualizarCodice(partida, enEscena); // el bestiario del grupo aprende de lo que ve y derrota
   if (!r.error) for (const [n, a] of Object.entries(antes)) { const p = partida.personajes[n]; if (p && !a.muerto && p.condiciones.includes("muerto")) anotarSuceso(partida, `☠ ${n} muere`); }
   if (r.error || nombre === "salvacion_muerte") return r;
@@ -1922,6 +1946,14 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.sustento>;
         const texto = sustento(partida, e);
         return { contenido: texto, aviso: e.accion === "ver" ? null : `🍖 ${texto.split("\n").slice(1).join(" ")}` };
+      }
+      case "clima": {
+        const e = validado.data as z.infer<typeof esquemas.clima>;
+        if (e.accion === "anomalia" && contextoTurno && !(e.origen === "trama" && (partida.trama?.arcos?.length ?? 0) > 0)) {
+          if (!citaValida(e.cita)) throw new Error(`No crees anomalías por tu cuenta: nacen de lo que hacen los jugadores en este turno. Pasa en cita la frase literal de su acción que la desencadena (o origen: "trama" si es un hecho de la trama y hay un arco abierto). Acciones de este turno: ${listaAcciones()}.`);
+        }
+        const r = ejecutarClima(partida, e);
+        return { contenido: r.texto, aviso: r.aviso ?? null };
       }
       case "viajar": {
         const e = validado.data as z.infer<typeof esquemas.viajar>;

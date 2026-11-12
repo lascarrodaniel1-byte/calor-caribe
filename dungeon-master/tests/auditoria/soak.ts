@@ -5,6 +5,7 @@ import { RAZAS, CLASES } from "../../src/mundo.ts";
 import { BESTIARIO } from "../../src/bestiario.ts";
 import { ESTILOS } from "../../src/estilos.ts";
 let seed = Number(process.argv[2] || 1); const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32; };
+const CAL = process.argv[3] === "calendario"; // con estaciones y anomalías activas (el resto de semillas, sin calendario)
 const pick = <T,>(a: readonly T[]) => a[Math.floor(rnd() * a.length)];
 const malos = /TypeError|Cannot read|is not a function|undefined is not|is not iterable|Maximum call stack|RangeError|ReferenceError|NaN|\[object Object\]/;
 const fallos: string[] = []; let llamadas = 0; const motivos: Record<string, number> = {}; const stats: Record<string, [number, number]> = {}; const t0 = Date.now();
@@ -19,6 +20,11 @@ for (let partidaN = 0; partidaN < 25; partidaN++) {
     const est = pick(ESTILOS.filter((e) => !e.soloHistoria)); call(P, "arte_marcial", { accion: "aprender", quien: n, arte: est.nombre, via: "maestro", maestro: "X", motivo: "entrenamiento largo" });
   }
   call(P, "tiempo", { fijar: { dia: 1, hora: 8 } });
+  if (CAL) {
+    P.calendario = { inicio: 1 + Math.floor(rnd() * 360), anomalias: [] };
+    call(P, "ubicacion", { lugar: "Sitio " + partidaN, region: pick(["Aldenmar", "Las Agujas de Vahl", "Las Ciénagas de Hollín", "Karak-Dûm", "La Marca Hueca", "El Bosque de Velo Rojo"]), tipo: pick(["aldea", "posada", "cueva", "camino"]) });
+    if (rnd() < 0.7) call(P, "clima", { accion: "anomalia", nombre: "Anomalía de prueba", causa: "Un hecho de la historia lo provoca desde hace días", tipo: pick(["larga", "intensa", "ambas"]), extra_dias: 1 + Math.floor(rnd() * 60), intensidad: 1 + Math.floor(rnd() * 3), publica: rnd() < 0.5 });
+  }
   const enemigos: string[] = [];
   for (let i = 0; i < 3; i++) { const c = pick(BESTIARIO); call(P, "aparecer_criatura", { nombre: c.nombre, repetir: true }); enemigos.push(c.nombre); }
   const todos = [...pjs, ...new Set(enemigos)];
@@ -40,6 +46,7 @@ for (let partidaN = 0; partidaN < 25; partidaN++) {
       else call(P, "prueba", { quien: pick(pjs), habilidad: pick(["atletismo", "sigilo", "percepcion"]), cd: 12, motivo: "algo" });
     }
     call(P, "siguiente_asalto", {});
+    if (CAL) { call(P, "tiempo", { avanzar: { horas: 1 + Math.floor(rnd() * 200) } }); call(P, pick(["clima", "clima", "viajar", "sustento"]), { accion: pick(["ver", "pronostico", "comer", "beber"]), horas: 1 + Math.floor(rnd() * 8), ritmo: "normal", terreno: pick(["camino", "dificil"]) }); }
     for (const n of pjs) { const p = P.personajes[n]; if (p && (Number.isNaN(p.pv) || p.pv > p.pv_max + 100 || p.condiciones.length !== new Set(p.condiciones).size)) fallos.push(`invariante: ${n} pv=${p.pv}/${p.pv_max} conds=${p.condiciones.join("|")}`); }
   }
   try { const e = estadoParaDM(P); if (malos.test(e)) fallos.push("estadoParaDM contiene " + (malos.exec(e) || [""])[0]); JSON.parse(JSON.stringify(P)); } catch (er: any) { fallos.push("estado/serialización: " + er.message); }

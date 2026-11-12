@@ -31,6 +31,7 @@ import { nvl } from "./niveles.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { dadoHaemajitsu } from "./estilos_base.js";
 import { distanciaPlano } from "./espacio.js";
+import { bonoClima } from "./clima.js";
 import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
@@ -935,6 +936,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   }
 
   if (at.tipo === "pj" && combate && !d.reaccion && !d.mano_secundaria && !d.sin_contar) tAt.ataques = (tAt.ataques ?? 0) + 1;
+  if (at.tipo === "pj") { const bc = bonoClima(partida, at.p); if (bc.bono) { bono += bc.bono; desglose.push(bc.texto); } } // lluvia (Tritón, con estaciones)
   let t = tirar(`1d20${signo(bono)}`, modo);
   let repetido = "";
   if (t.dados[0] === 1 && (of.repiteUno && at.tipo !== "criatura" || tp.repiteUno)) {

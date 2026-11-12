@@ -6,7 +6,7 @@ Todo se ejecuta desde `dungeon-master/`. No hay dependencias nuevas: motor y aud
 
 | Comando | Qué hace |
 |---|---|
-| `npm test` | Suites del motor + auditoría + fuzz + soak (semillas 1, 2 y 3). Tabla final; código de salida 1 si algo falla. `node tests/ejecutar-motor.mjs <texto>` ejecuta solo los casos cuyo nombre contenga el texto. |
+| `npm test` | Suites del motor + auditoría + fuzz + soak (semillas 1, 2 y 3, y la 4 con calendario). Tabla final; código de salida 1 si algo falla. `node tests/ejecutar-motor.mjs <texto>` ejecuta solo los casos cuyo nombre contenga el texto. |
 | `npm run test:ui` | Construye la página en un directorio temporal y lanza en serie los scripts de navegador (150 s de límite cada uno). Falla si un script sale con error o imprime `errores de página: N` / `errores: N` con N > 0. Sin Playwright: aviso y código 0. |
 | `npm run audit` | Coherencia de datos (herramientas, razas, criaturas, encuentros, estilos, numeración del README). Debe acabar en «sin problemas». |
 | `npm run fuzz` | 860 llamadas a las herramientas con entradas incompletas. Debe dar 0 problemas. |
@@ -27,10 +27,11 @@ Todo se ejecuta desde `dungeon-master/`. No hay dependencias nuevas: motor y aud
   - `t-agua` — movimiento, aire y penalizaciones en el agua.
   - `t-don` — Don Arcano y competencias recordadas en las tiradas.
   - `t-artes` — artes marciales: estilos, principios y técnicas automáticas.
+  - `t-clima` — estaciones y clima por región: calendario, climaDe determinista, sed, hambre y viaje, encuentros por estación, luz, avisos, anomalías (larga, intensa, ambas, guardas), adaptación por raza y clase, Tritones y la lluvia, y que sin `calendario` todo es neutro.
   - `t-vel` — velocidad por raza y de las 44 criaturas (incluidos los voladores).
   - `t-enc2.ts`, `t-enc-wen.ts` — **no entran en `npm test`**: son sondeos estadísticos de la tabla de encuentros con dados reales (250–400 encuentros) que imprimen conteos, no «N ok, M fallas». Se ejecutan a mano: `VELMORA_DESPLAZO=0 npx tsx tests/motor/t-enc2.ts`.
 - `tests/auditoria/` — `auditoria.ts`, `fuzz.ts`, `soak.ts`, `cobertura.ts` (técnicas de artes marciales: 21 de 21), `migra.ts` (carga partidas antiguas de `tests/fixtures`, o las que se pasen como argumento), `tam.ts` (tamaño del estado del DM), `exportsMuertos.mjs`.
-- `tests/ui/` — scripts de Playwright (`flujo`, `bestiario`, `run`, `control`, `genero`, `sinnarracion`, `layout`), `mock.js` (simula `window.claude` y la base de datos en memoria), `_comun.mjs` (lanzamiento de Chromium y rutas), `construir.mjs` (construye la página con `scripts/construir-artifact.mjs`). `layout.mjs` saca capturas y no está en el runner. Cada script acepta como argumento la carpeta con `mesa-de-velmora.html`; sin él, la construye en `os.tmpdir()`. Las capturas y exportaciones se escriben en un directorio temporal.
+- `tests/ui/` — scripts de Playwright (`flujo`, `bestiario`, `run`, `control`, `genero`, `sinnarracion`, `clima`, `layout`), `mock.js` (simula `window.claude` y la base de datos en memoria), `_comun.mjs` (lanzamiento de Chromium y rutas), `construir.mjs` (construye la página con `scripts/construir-artifact.mjs`). `layout.mjs` saca capturas y no está en el runner. Cada script acepta como argumento la carpeta con `mesa-de-velmora.html`; sin él, la construye en `os.tmpdir()`. Las capturas y exportaciones se escriben en un directorio temporal.
 - `tests/fixtures/` — partidas JSON de ejemplo; `generadores/mk-*.ts` las regeneran (`npx tsx tests/fixtures/generadores/mk-mesa.ts <salida.json>`).
 
 ## Variables de entorno

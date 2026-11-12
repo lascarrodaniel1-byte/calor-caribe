@@ -1,5 +1,6 @@
 // Ayuda de la ficha: cada raza, clase, objeto, hechizo, dote, recurso, condición o herida de un personaje se puede pulsar
 // y enseña para qué sirve en un pequeño pop-up. `fichaClicable` parte el texto de la ficha en trozos pulsables.
+import { ADAPTACION_CLASE, ADAPTACION_RAZA, type Adaptacion } from "./clima.js";
 import { reconocerArma, PIEZAS } from "./armadura.js";
 import { CATALOGO, reconocer, REGLA_AGOTAMIENTO } from "./condiciones.js";
 import { buscarDote, DOTES } from "./dotes.js";
@@ -105,10 +106,16 @@ function ayudaObjeto(partida: Partida, p: Personaje, nombre: string): Ayuda {
   return { titulo: nombre, cuerpo };
 }
 
+/** «Clima: …» (con estaciones activas) de una raza o clase. */
+function textoAdaptacion(a?: Adaptacion): string {
+  if (!a) return "";
+  return `Clima (con estaciones): ${[a.frio ? `frío ${a.frio}` : "", a.calor ? `calor ${a.calor}` : "", a.humedad ? `humedad ${a.humedad}` : ""].filter(Boolean).join(", ")} (${a.nota}).`;
+}
+
 function ayudaClase(p: Personaje): Ayuda {
   const c = CLASES.find((x) => x.nombre === p.clase);
   if (!c) return { titulo: p.clase, cuerpo: ["Clase sin descripción."] };
-  const cuerpo = [`Dado de golpe d${c.dadoGolpe} · atributo principal ${c.principal} · salvaciones ${c.salvaciones}.`, ...c.rasgos.map((r) => `· ${r}`)];
+  const cuerpo = [`Dado de golpe d${c.dadoGolpe} · atributo principal ${c.principal} · salvaciones ${c.salvaciones}.`, ...c.rasgos.map((r) => `· ${r}`), textoAdaptacion(ADAPTACION_CLASE[c.nombre])].filter(Boolean);
   const porNivel = RASGOS_NIVEL[p.clase] ?? {};
   const tuyos = Object.entries(porNivel).filter(([n]) => Number(n) <= p.nivel).sort((a, b) => Number(a[0]) - Number(b[0]));
   if (tuyos.length) cuerpo.push("Lo que ya tienes por nivel:", ...tuyos.flatMap(([n, r]) => r.map((x) => `· Nv. ${n}: ${x}`)));
@@ -168,7 +175,7 @@ export function ayuda(partida: Partida, pj: string, tipo: TipoAyuda, nombre: str
     case "clase": return ayudaClase(p);
     case "raza": {
       const r = RAZAS.find((x) => x.nombre === nombre);
-      return r ? { titulo: r.nombre, cuerpo: [r.descripcion, `Atributos: ${r.atributos}.`, ...r.rasgos.map((x) => `· ${x}`), r.notaCuracion] } : { titulo: nombre, cuerpo: ["Raza sin descripción."] };
+      return r ? { titulo: r.nombre, cuerpo: [r.descripcion, `Atributos: ${r.atributos}.`, ...r.rasgos.map((x) => `· ${x}`), r.notaCuracion, textoAdaptacion(ADAPTACION_RAZA[r.nombre])] } : { titulo: nombre, cuerpo: ["Raza sin descripción."] };
     }
     case "objeto": return ayudaObjeto(partida, p, nombre);
     case "hechizo": {

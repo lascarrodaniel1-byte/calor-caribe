@@ -1118,7 +1118,8 @@
       detalle = "El DM os situará al empezar.";
     }
     const hora = V.espacio.textoReloj(p.reloj);
-    $("mapa-donde").innerHTML = `${ruta ? "🧭" : "📍"} ${escapar(titulo)}<small>${escapar(detalle)}</small>${hora ? `<small>🕒 ${escapar(hora)}</small>` : ""}`;
+    const est = V.clima.textoPanel(p); // estación y clima de hoy (solo con calendario)
+    $("mapa-donde").innerHTML = `${ruta ? "🧭" : "📍"} ${escapar(titulo)}<small>${escapar(detalle)}</small>${hora ? `<small>🕒 ${escapar(hora)}</small>` : ""}${est ? `<small id="mapa-estacion" title="${escapar(est.titulo)}">${escapar(est.texto)}</small>` : ""}`;
     $("franja-texto").textContent = `${ruta ? "🧭" : "📍"} ${titulo}`;
   }
 
@@ -1880,7 +1881,7 @@
           llamadasTurno.push(String(accion));
           if (accion === "guardar_personaje" && datos && !datos.jugador) datos.jugador = infoTurno?.actuante || nombre; // la ficha queda ligada a quien la juega
           const r = V.ejecutar(String(accion), datos ?? {}, copia);
-          if (accion === "ubicacion") pintarMapa(copia);
+          if (accion === "ubicacion" || accion === "tiempo" || accion === "clima") pintarMapa(copia);
           if (accion === "trama") pintarObjetivo(copia);
           if (r.aviso) {
             avisos.push({ pos: texto.length, texto: r.aviso });
@@ -1895,6 +1896,7 @@
 
     // Al repetir un turno corregido, los dados que ya salieron vuelven a salir igual (salvo que el DM los reabra con motivo).
     V.dados.iniciarRegistroDados(correccion?.tiradas);
+    V.activarCalendario(copia); // estaciones y clima: se activan solas la primera vez que hay reloj (idempotente)
     const relojAntes = copia.reloj?.segundos; // si el DM no lo mueve, pasan 10 minutos de escena
     ctl = new AbortController();
     cortadoPor = "";

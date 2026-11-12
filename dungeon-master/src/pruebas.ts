@@ -6,6 +6,7 @@ import { desventajaSigilo } from "./segador_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { efectos } from "./condiciones.js";
+import { bonoClima } from "./clima.js";
 import { competencia, mod, salvacion, signo, valor, type Atributo } from "./reglas.js";
 
 export const HABILIDADES: Record<string, { nombre: string; atributo: Atributo }> = {
@@ -108,8 +109,9 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
 
   if (salv) {
     const esquiva = attr === "des" && !!partida.combate?.turnos && Object.entries(partida.combate.turnos).some(([k, t]) => t.esquiva && k.toLowerCase() === pj.nombre.toLowerCase());
-    const s = salvacion(pj, attr!, d.cd, { extra: (d.bono ?? 0) + (attr === "des" ? (d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0) : 0), ventaja: d.ventaja || esquiva, desventaja: d.desventaja, contra: d.motivo });
-    return { texto: `🎲 ${pj.nombre}: ${s.texto} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
+    const bcS = bonoClima(partida, pj);
+    const s = salvacion(pj, attr!, d.cd, { extra: (d.bono ?? 0) + bcS.bono + (attr === "des" ? (d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0) : 0), ventaja: d.ventaja || esquiva, desventaja: d.desventaja, contra: d.motivo });
+    return { texto: `🎲 ${pj.nombre}: ${s.texto}${bcS.bono ? ` [${bcS.texto}]` : ""} — ${d.motivo} (${s.exito ? "ÉXITO" : "FALLO"}, ${s.margen >= 0 ? "+" : ""}${s.margen})`, exito: s.exito };
   }
   const efP = efectos(pj.condiciones);
   const hayD = !!d.desventaja || efP.pruebas === "desventaja" || (hab === "sigilo" && desventajaSigilo(pj)); // huesos que crujen (Segador, Deuda 5+)
@@ -124,12 +126,13 @@ export function resolverPrueba(partida: Partida, d: DatosPrueba): { texto: strin
   const competente = d.competente ?? deClase;
   const pericia = pj.clase === "Barbero-Cirujano" && hab === "medicina";
   const bonoComp = hab && competente ? comp * (pericia ? 2 : 1) : 0;
+  const bc = bonoClima(partida, pj);
   const extra = d.bono ?? 0;
-  const bono = m + bonoComp + extra;
+  const bono = m + bonoComp + extra + bc.bono;
   const t = tirar(`1d20${signo(bono)}`, modoP);
   const natural = t.dados[0];
   const exito = natural === 20 || (natural !== 1 && t.total >= d.cd);
-  const desglose = [`${ATR_CORTO[attr!]} ${signo(m)}`, bonoComp ? `competencia ${signo(bonoComp)}${pericia ? " (pericia)" : ""}` : hab ? "sin competencia" : "", extra ? `ajuste ${signo(extra)}` : ""].filter(Boolean).join(", ");
+  const desglose = [`${ATR_CORTO[attr!]} ${signo(m)}`, bonoComp ? `competencia ${signo(bonoComp)}${pericia ? " (pericia)" : ""}` : hab ? "sin competencia" : "", extra ? `ajuste ${signo(extra)}` : "", bc.bono ? bc.texto : ""].filter(Boolean).join(", ");
   return { texto: `🎲 ${nombrePrueba} de ${pj.nombre} (${desglose}) vs CD ${d.cd} — ${d.motivo} → ${describir(t)}${modoP !== "normal" ? ` (${modoP})` : ""} → ${exito ? "ÉXITO" : "FALLO"} (${t.total - d.cd >= 0 ? "+" : ""}${t.total - d.cd})`, exito, margen: t.total - d.cd };
 }
 
