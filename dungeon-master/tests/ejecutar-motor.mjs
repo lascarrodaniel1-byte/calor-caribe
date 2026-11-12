@@ -31,6 +31,8 @@ casos.push({ nombre: "auditoria/fuzz.ts", args: ["tests/auditoria/fuzz.ts"], lee
 for (const semilla of [1, 2, 3]) casos.push({ nombre: `auditoria/soak.ts ${semilla}`, args: ["tests/auditoria/soak.ts", String(semilla)], leer: sinProblemas });
 casos.push({ nombre: "auditoria/soak.ts 4 calendario", args: ["tests/auditoria/soak.ts", "4", "calendario"], leer: sinProblemas }); // estaciones, clima y anomalías activos
 
+casos.push({ nombre: "auditoria/partida-completa.ts 11", args: ["tests/auditoria/partida-completa.ts", "11"], leer: sinProblemas }); // varias sesiones con el contexto de turno, mesa por iniciativa, programadas y calendario
+
 const filtro = process.argv[2];
 const elegidos = filtro ? casos.filter((c) => c.nombre.includes(filtro)) : casos;
 const filas = [];

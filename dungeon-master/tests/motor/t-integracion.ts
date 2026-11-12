@@ -154,5 +154,18 @@ const sinTildes = (x: string) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").toLo
   t(!!bloqueTurnos({ actuante: "Ana", orden: ["Ana", "Beto"], ronda: 1, siguiente: "Beto", cierraRonda: false, combate: sig ? { asalto: sig.asalto, orden: sig.orden, resolverAntes: sig.resolverAntes, cierraAsalto: sig.cierraAsalto, entrada: sig.entradaActuante } : undefined }), "bloqueTurnos funciona con la partida importada");
 }
 
+// ---- tamaño del estado: las criaturas supervivientes no se acumulan sin tope tras los combates
+{
+  const { p, E } = mk("Humano del Faro", []);
+  for (let c = 0; c < 12; c++) {
+    for (let i = 0; i < 5; i++) E("aparecer_criatura", { nombre: i === 0 ? "Hambriento" : "Ogro", repetir: true });
+    E("iniciativa", { participantes: ["Ana", "Beto", ...Object.values(p.jefes).map((j) => j.nombre)] });
+    E("terminar_combate", {});
+  }
+  const n = Object.keys(p.jefes).length;
+  t(n <= 24, "tras 12 combates con 60 criaturas supervivientes, el estado conserva como mucho 24", String(n));
+  t(JSON.stringify({ ...p, historial: undefined }).length < 120_000, "y el estado sigue siendo pequeño (< 120 KB)", String(JSON.stringify(p).length));
+}
+
 console.log(`${ok} ok, ${mal} fallas`);
 void sinTildes;

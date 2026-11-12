@@ -468,7 +468,17 @@ export function limpiarTrasCombate(partida: Partida): void {
   const pasajeras = new Set(["agarrado", "derribado", "retenido", "aturdido", "incapacitado", "asustado", "cegado", "ensordecido", "invisible", "hechizado"]);
   for (const p of Object.values(partida.personajes)) p.condiciones = p.condiciones.filter((x) => !pasajeras.has(reconocer(x)?.id ?? ""));
   for (const j of Object.values(partida.jefes)) j.condiciones = [];
+  // Tope: las criaturas que sobreviven (huyeron, se perdonaron…) se quedaban para siempre en `jefes` y en el estado del DM.
+  // Se conservan las MAX_CRIATURAS_FUERA más recientes; de las más antiguas, caen primero las de peligro 3 o menos.
+  const claves = Object.keys(partida.jefes);
+  if (claves.length > MAX_CRIATURAS_FUERA) {
+    const sobran = claves.length - MAX_CRIATURAS_FUERA;
+    const orden = [...claves.entries()].sort((a, b) => ((partida.jefes[a[1]].definicion.peligro ?? 0) > 3 ? 1 : 0) - ((partida.jefes[b[1]].definicion.peligro ?? 0) > 3 ? 1 : 0) || a[0] - b[0]);
+    for (const [, k] of orden.slice(0, sobran)) { devolverRobos(partida, partida.jefes[k]); delete partida.jefes[k]; }
+  }
 }
+/** Criaturas vivas que se conservan en la partida al acabar un combate (las más antiguas se retiran). */
+export const MAX_CRIATURAS_FUERA = 24;
 
 /** Por qué un combatiente no puede actuar ni reaccionar (null = puede). */
 export function puedeActuar(c: Combatiente): string | null {
