@@ -61,3 +61,10 @@ Se añadió a `COMBATE` una línea («En combate la mesa sigue la iniciativa: tr
 | «(detalle en consultar_reglas)» tras raza, clase y personalidad; «no cambies en silencio lo que un PNJ tiene o hace» | (a) | La línea final «Detalle (nervios, raza, huecos): consultar_reglas»; «lo que cambie, cuéntalo como cambio, no en silencio» |
 
 Tamaño: completo 66.797 → 66.796 (umbral 66.800, **sin subirlo**); típico 45.643 → 45.642 (umbral 49.285). `t-prompt.ts` incluye la regla nueva entre las imprescindibles.
+
+## Acciones programadas y reacciones preparadas (punto 78 del README): sin tocar el prompt fijo
+
+Las dos reglas nuevas («Una acción preparada es una intención de antes…» y «cuando resuelvas turnos de enemigos que encajen con una reacción preparada…») viven solo en `bloqueTurnos` (`src/turnos.ts`), que es dinámico: se añaden únicamente en el turno que las necesita (hay una acción programada o una reacción preparada con la reacción libre) y no cuentan en el prompt fijo. Sin programadas ni reacciones el bloque es idéntico al anterior (comprobado en `tests/motor/t-programadas.ts`).
+
+Tamaño: completo **66.796** de 66.800 y típico **45.642** de 49.285, **sin cambios**; no hizo falta recortar nada ni subir el umbral de `t-prompt.ts`.
+

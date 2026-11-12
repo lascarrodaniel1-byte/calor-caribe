@@ -7,6 +7,7 @@
 import { condsDe, igual, localizar, type Combatiente } from "./combate.js";
 import { efectos } from "./condiciones.js";
 import type { Partida } from "./estado.js";
+import { MAX_ACCION } from "./formulario.js";
 
 export interface Jugador {
   id: string;
@@ -66,9 +67,12 @@ export interface Siguiente {
   nuevaRonda: boolean;
 }
 
-/** A quién pasa la palabra: el siguiente conectado en el orden; al dar la vuelta, empieza otra ronda. */
-export function siguiente(js: Jugador[], actualId: string, ahora: number): Siguiente | null {
-  const l = ordenar(js).filter((j) => activo(j, ahora) || j.id === actualId);
+/**
+ * A quién pasa la palabra: el siguiente conectado en el orden; al dar la vuelta, empieza otra ronda.
+ * `conProgramada`: ids de jugadores desconectados con una acción programada por ejecutar: también cuentan (su turno no se salta).
+ */
+export function siguiente(js: Jugador[], actualId: string, ahora: number, conProgramada?: ReadonlySet<string>): Siguiente | null {
+  const l = ordenar(js).filter((j) => activo(j, ahora) || j.id === actualId || !!conProgramada?.has(j.id));
   if (!l.length) return null;
   const i = l.findIndex((j) => j.id === actualId);
   if (i < 0) return { jugador: l[0], nuevaRonda: false };
@@ -77,9 +81,10 @@ export function siguiente(js: Jugador[], actualId: string, ahora: number): Sigui
 }
 
 /** ¿Puede este jugador saltar el turno del que le toca? Si éste se fue, enseguida; si sigue ahí, tras esperar. */
-export function puedeSaltar(js: Jugador[], o: Orden, yoId: string, ahora: number): boolean {
+export function puedeSaltar(js: Jugador[], o: Orden, yoId: string, ahora: number, conProgramada?: ReadonlySet<string>): boolean {
   const t = quienToca(js, o, ahora);
   if (!t || t.id === yoId) return false;
+  if (conProgramada?.has(t.id)) return false; // tiene una acción programada: se ejecuta, no se salta
   return !activo(t, ahora) || (o.desde > 0 && ahora - o.desde >= ESPERA_SALTO_MS);
 }
 
@@ -98,6 +103,10 @@ export interface InfoTurno {
   controla?: { personaje: string; dueno: string }[];
   /** Solo en combate (modo turnos): la mesa sigue la iniciativa. Sin esto, el texto es el de siempre. */
   combate?: InfoCombate;
+  /** La acción de este turno es una acción programada antes de tener la palabra. */
+  preparada?: boolean;
+  /** Solo en combate: reacciones preparadas de jugadores con la reacción libre (ya resumidas por `textoReaccionesPreparadas`). */
+  reacciones?: string;
 }
 
 export interface InfoCombate {
@@ -132,8 +141,13 @@ export function bloqueTurnos(t: InfoTurno): string {
     t.cierraRonda
       ? `${t.actuante} es el último de la ronda: tras narrar su acción, cierra la ronda: el mundo responde (los enemigos y los PNJ actúan, pasa el tiempo, la amenaza avanza) y la trama avanza un paso. Luego da la palabra a ${t.siguiente}, que abre la ronda siguiente.`
       : `Termina dándole la palabra a ${t.siguiente} por su nombre («¿Qué hace ${t.siguiente}?»), y deja abierta la situación para que le toque actuar.`,
+    ...(t.preparada ? [REGLA_PREPARADA] : []),
   ].join("\n");
 }
+
+/** Una acción programada es una intención de antes: el DM la juzga con la situación de ahora. */
+export const REGLA_PREPARADA = "Una acción preparada es una intención de antes: si la situación ha cambiado y ya no es posible o no tiene sentido, no la ejecutes; cuéntale qué cambió y deja que elija otra.";
+const REGLA_REACCIONES = "Cuando resuelvas turnos de enemigos que encajen con una reacción preparada de un jugador cuya reacción no se haya gastado, aplícala con las herramientas (reaccion, o atacar con reaccion: true…) y cuéntalo.";
 
 const ETIQUETA: Record<TipoEntrada, string> = { pj: "PJ", enemigo: "criatura", pnj: "PNJ" };
 
@@ -174,10 +188,12 @@ function bloqueCombate(t: InfoTurno, lleva: string[]): string {
     `Asalto ${c.asalto}: ${lineaOrden(c)}.`,
     ...lleva,
     `Acaba de actuar: ${t.actuante}. 1) Narra SOLO su acción y su consecuencia inmediata; no decidas por los demás jugadores. 2) ${hay ? `Después resuelve, en este mismo mensaje y en este orden, el turno de: ${lista} — cada uno con UNA sola acción (atacar/hechizo/habilidad; el programa rechaza el exceso), sin dar la palabra mientras no acabes.` : "Nadie más actúa entre él y el siguiente jugador."} 3) Entrega la palabra a ${t.siguiente} por su nombre. No resuelvas a quienes van después de ${t.siguiente}.${cierre}`,
+    ...(t.reacciones ? [t.reacciones, REGLA_REACCIONES] : []),
+    ...(t.preparada ? [REGLA_PREPARADA] : []),
   ].join("\n");
 }
 
-/** Mensaje al jugador que intenta hablar fuera de su turno. */
+/** Mensaje al jugador que intenta hablar fuera de su turno (cuando no puede programar su acción: aún se está sentando a la mesa). */
 export function textoFueraDeTurno(quien: string): string {
   return `No es tu turno: le toca a ${quien}. Ve preparando tu acción en la caja de texto; podrás enviarla en cuanto te llegue la palabra.`;
 }
@@ -341,4 +357,162 @@ export function siguienteEnCombate(partida: Partida, presentes: string[], contro
   }
   // Nadie más puede actuar (todos caídos o del DM): la palabra vuelve al propio actuante, y el DM resuelve a todos.
   return { jugador: A[i].jugador!, entrada: A[i].nombre, resolverAntes, cierraAsalto: true, asalto: c.ronda, entradaActuante: A[i].nombre, orden: A };
+}
+
+// ------------------------------------------------------------------ acciones programadas y reacciones preparadas
+// Un jugador puede dejar su acción escrita antes de tener la palabra (se envía sola en su turno) y una reacción preparada
+// (persistente mientras dure el combate). La página las guarda en `programadas/<idJugador>` con la forma de `Programada`.
+
+/** Cuántas rondas (de mesa; asaltos si se programó en combate) puede esperar una acción programada. */
+export const MAX_RONDAS_PROGRAMADA = 2;
+/** Tope de la reacción preparada (una línea) y de todas las reacciones juntas en el bloque del DM. */
+export const MAX_REACCION = 140;
+export const MAX_REACCIONES_BLOQUE = 300;
+/** Una programada abandonada (sesión muerta) caduca por antigüedad aunque la ronda no avance. */
+export const MAX_EDAD_PROGRAMADA_MS = 12 * 3_600_000;
+
+export interface Programada {
+  /** Acción programada ("" si solo hay reacción preparada). */
+  texto: string;
+  /** Reacción preparada: persiste mientras dure el combate. */
+  reaccion?: string;
+  ts: number;
+  /** Ronda de la mesa al programar la acción. */
+  ronda: number;
+  /** Asalto del combate al programar la acción; ausente si se programó fuera de combate. */
+  asalto?: number;
+  /** Asalto en que se dejó la reacción (siempre en combate). */
+  reaccionAsalto?: number;
+}
+
+/** Dónde está la mesa ahora: ronda de la mesa y, en combate, asalto del motor. */
+export interface ContextoProgramada {
+  ahora?: number;
+  ronda: number;
+  asalto?: number;
+}
+
+const limpia = (t: string | undefined, max: number) => String(t ?? "").replace(/[«»]/g, '"').replace(/\s+/g, " ").trim().slice(0, max);
+
+export type ResultadoProgramar = { ok: true; programada: Programada } | { ok: false; motivo: string };
+
+/**
+ * Programa (o sustituye) la acción de un jugador y/o su reacción preparada. Una sola programada por jugador: la nueva sustituye a la anterior.
+ * `texto` undefined deja la acción como estaba; `reaccion` undefined deja la reacción como estaba y "" la quita.
+ * La reacción solo se admite en combate (`ctx.asalto` definido).
+ */
+export function programarAccion(previa: Programada | null | undefined, entrada: { texto?: string; reaccion?: string }, ctx: ContextoProgramada): ResultadoProgramar {
+  const p: Programada = previa ? { ...previa } : { texto: "", ts: ctx.ahora ?? Date.now(), ronda: ctx.ronda };
+  if (entrada.texto !== undefined) {
+    const t = entrada.texto.trim();
+    if (!t) return { ok: false, motivo: "Escribe qué haces para programarlo." };
+    if (t.length > MAX_ACCION) return { ok: false, motivo: `La acción es demasiado larga (máximo ${MAX_ACCION} caracteres).` };
+    p.texto = t; p.ts = ctx.ahora ?? Date.now(); p.ronda = ctx.ronda;
+    if (ctx.asalto !== undefined) p.asalto = ctx.asalto; else delete p.asalto;
+  }
+  if (entrada.reaccion !== undefined) {
+    const r = limpia(entrada.reaccion, MAX_REACCION);
+    if (r && ctx.asalto === undefined) return { ok: false, motivo: "La reacción preparada solo se deja durante un combate." };
+    if (r) { p.reaccion = r; p.reaccionAsalto = ctx.asalto; } else { delete p.reaccion; delete p.reaccionAsalto; }
+  }
+  if (!p.texto && !p.reaccion) return { ok: false, motivo: "No hay nada que programar." };
+  return { ok: true, programada: p };
+}
+
+/** ¿Ha caducado la ACCIÓN programada? Si el combate acabó (o empezó otro, o uno que no estaba), si pasaron más de 2 rondas, o por antigüedad. */
+export function caducada(p: Programada, ctx: ContextoProgramada): boolean {
+  if (ctx.ahora !== undefined && ctx.ahora - p.ts > MAX_EDAD_PROGRAMADA_MS) return true;
+  if (p.asalto !== undefined) {
+    // Programada en combate: vale mientras siga ese combate, y hasta 2 asaltos después.
+    if (ctx.asalto === undefined || ctx.asalto < p.asalto) return true;
+    return ctx.asalto - p.asalto > MAX_RONDAS_PROGRAMADA;
+  }
+  if (ctx.asalto !== undefined) return true; // programada antes de que empezara el combate: ya es otra situación
+  return ctx.ronda - p.ronda > MAX_RONDAS_PROGRAMADA;
+}
+
+/** ¿Sigue vigente la REACCIÓN preparada? Solo mientras dure el combate. */
+export function reaccionVigente(p: Programada, ctx: ContextoProgramada): boolean {
+  if (!p.reaccion || ctx.asalto === undefined) return false;
+  return p.reaccionAsalto === undefined || ctx.asalto >= p.reaccionAsalto;
+}
+
+/** ¿Está caído (0 PV, incapacitado) o muerto el personaje con el que actúa el jugador? Si lleva varios y `entrada` no lo aclara, solo si lo están todos. */
+export function jugadorCaido(partida: Partida, jugador: string, entrada?: string): boolean {
+  const mios = Object.values(partida.personajes).filter((p) => p.jugador && sinTildes(p.jugador) === sinTildes(jugador));
+  const elegidos = entrada ? mios.filter((p) => igual(p.nombre, entrada)) : [];
+  const candidatos = elegidos.length ? elegidos : mios;
+  if (!candidatos.length) return true;
+  return candidatos.every((p) => p.condiciones.includes("muerto") || p.pv <= 0 || efectos(p.condiciones).incapacitado);
+}
+
+/** ¿Hay que entregar ahora esta acción programada? Con texto, sin caducar y con el personaje en pie (si no, ese turno lo resuelve el DM). */
+export function debeEntregarse(p: Programada | null | undefined, ctx: ContextoProgramada, caido: boolean): boolean {
+  return !!p && !!p.texto.trim() && !caducada(p, ctx) && !caido;
+}
+
+/** Lo que se guarda tras entregar la acción: la reacción preparada sigue (si el combate sigue); si no hay nada más, el documento se borra (null). */
+export function restoTrasEntregar(p: Programada, ctx: ContextoProgramada): Programada | null {
+  if (!reaccionVigente(p, ctx)) return null;
+  const { texto: _t, ts: _s, ronda: _r, asalto: _a, ...resto } = p;
+  return { ...resto, texto: "", ts: p.ts, ronda: p.ronda };
+}
+
+/** Ids de los jugadores con una acción programada por ejecutar (si están desconectados, su turno no se salta). */
+export function idsConProgramada(progs: Record<string, Programada>, ctx: ContextoProgramada, partida: Partida, jugadores: { id: string; nombre: string }[]): Set<string> {
+  const out = new Set<string>();
+  for (const j of jugadores) {
+    const p = progs[j.id];
+    if (p && debeEntregarse(p, ctx, jugadorCaido(partida, j.nombre))) out.add(j.id);
+  }
+  return out;
+}
+
+/** Línea de una acción para el DM: «Ana: texto», o, si la programó antes de tener la palabra, «Ana (acción preparada antes, de cuando aún no era su turno): texto». */
+export const lineaAccion = (a: { nombre: string; texto: string; programada?: boolean }): string =>
+  a.programada ? `${a.nombre} (acción preparada antes, de cuando aún no era su turno): ${a.texto}` : `${a.nombre}: ${a.texto}`;
+
+/**
+ * «Reacciones preparadas: Ana: «…»; Beto: «…»» de los jugadores en combate cuya reacción está libre este asalto (máx. ~300 caracteres).
+ * Vacío si no hay ninguna. `progs` va por nombre de jugador.
+ */
+export function textoReaccionesPreparadas(partida: Partida, progs: Record<string, Pick<Programada, "reaccion" | "reaccionAsalto">>): string {
+  const c = partida.combate;
+  if (!c) return "";
+  const gastada = (nombre: string) => {
+    const k = Object.keys(c.turnos ?? {}).find((x) => igual(x, nombre));
+    return !!(k && c.turnos![k].reaccion);
+  };
+  const piezas: string[] = [];
+  for (const [jugador, p] of Object.entries(progs)) {
+    if (!reaccionVigente({ texto: "", ts: 0, ronda: 0, ...p }, { ronda: 0, asalto: c.ronda })) continue;
+    // Algún personaje suyo en el orden de iniciativa, vivo, consciente y con la reacción sin gastar.
+    const libre = c.orden.some((o) => {
+      let cb: Combatiente;
+      try { cb = localizar(partida, o.nombre); } catch { return false; }
+      return cb.tipo === "pj" && !!cb.p.jugador && sinTildes(cb.p.jugador) === sinTildes(jugador) && !cb.p.condiciones.includes("muerto") && cb.p.pv > 0 && !efectos(condsDe(cb)).incapacitado && !gastada(cb.nombre);
+    });
+    if (libre) piezas.push(`${jugador}: «${limpia(p.reaccion, MAX_REACCION)}»`);
+  }
+  if (!piezas.length) return "";
+  let linea = "Reacciones preparadas: ";
+  const cabe: string[] = [];
+  for (const x of piezas) {
+    if ((linea + [...cabe, x].join("; ")).length > MAX_REACCIONES_BLOQUE) break;
+    cabe.push(x);
+  }
+  if (!cabe.length) cabe.push(piezas[0].slice(0, MAX_REACCIONES_BLOQUE - linea.length - 2) + "…»");
+  return linea + cabe.join("; ") + (cabe.length < piezas.length ? "…" : ".");
+}
+
+/**
+ * Cuántos turnos faltan para el jugador y quién va antes: «Eres el siguiente tras Aldo» / «Faltan 2 turnos para ti».
+ * `yo`: posiciones del jugador en el orden (puede llevar dos personajes); se toma la más cercana. Vacío si es su turno o no se sabe.
+ */
+export function textoCuentaAtras(orden: { nombre: string }[], actual: number, yo: number | number[]): string {
+  const N = orden.length;
+  const mias = (Array.isArray(yo) ? yo : [yo]).filter((i) => i >= 0 && i < N);
+  if (actual < 0 || actual >= N || !mias.length || mias.includes(actual)) return "";
+  const faltan = Math.min(...mias.map((i) => (((i - actual) % N) + N) % N)); // turnos hasta el mío, contando el actual como 0
+  return faltan === 1 ? `Eres el siguiente tras ${orden[actual].nombre}` : `Faltan ${faltan} turnos para ti`;
 }

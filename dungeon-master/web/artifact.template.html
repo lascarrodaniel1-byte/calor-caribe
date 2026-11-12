@@ -355,6 +355,14 @@
   .atajos .boton { font-size: 15px; padding: 7px 13px; }
   .quien { margin-left: auto; font-size: 15px; color: var(--lumbre); background: none; border: 0; cursor: pointer; text-decoration: underline dotted; }
   .escribir { display: flex; gap: 8px; align-items: flex-end; }
+  /* Acción programada y reacción preparada: una ficha discreta sobre el formulario (una línea cada una). */
+  .programada-caja { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ficha-programada { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px; border-radius: 3px; background: #2c1d12; border: 1px dashed #8a5410; color: #f0d9a8; font: 600 15px/1.3 var(--f-ui); }
+  .ficha-programada .texto-programada { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ficha-programada .boton { flex: none; font-size: 14px; padding: 4px 10px; }
+  .programada-caja input[type=text] { padding: 6px 10px; font-size: 16px; min-width: 0; }
+  @media (max-width: 600px) { .escribir #enviar { max-width: 116px; white-space: normal; line-height: 1.15; padding-inline: 10px; } .escribir textarea::placeholder { font-size: 16px; line-height: 1.25; } }
+  .aviso-turno .cuenta-atras { display: block; font: 500 14px/1.3 var(--f-ui); color: #cdb88f; opacity: .85; }
   textarea, input[type=text] {
     width: 100%; color: var(--tinta); background: linear-gradient(175deg, #efe2c4, #ddc89f);
     border: 1px solid #6b4a2a; border-radius: 3px; padding: 12px 16px; box-shadow: inset 0 1px 6px #8a6a3a66;
@@ -519,6 +527,14 @@
           </div>
           <button class="quien" id="quien" type="button"></button>
         </div>
+      </div>
+      <div class="programada-caja" id="programada-caja" hidden>
+        <div class="ficha-programada" id="ficha-programada" hidden>
+          <span class="texto-programada" id="texto-programada"></span>
+          <button class="boton sobrio" id="editar-programada" type="button">Editar</button>
+          <button class="boton sobrio" id="cancelar-programada" type="button">Cancelar</button>
+        </div>
+        <input type="text" id="reaccion" maxlength="140" autocomplete="off" aria-label="Reacción preparada (si…)" placeholder="Reacción preparada (si…): Si el ogro me ataca, me cubro con el escudo" hidden>
       </div>
       <form class="escribir" id="form-accion">
         <label for="accion" hidden>Tu acción</label>
@@ -733,6 +749,8 @@
   let versionEstado = 0;    // «actualizado» del estado que leímos al empezar a narrar: si cambia, alguien más guardó
   let leasePerdido = false; // se perdió el turno de narrador mientras narrábamos
   let pendienteLeido = null; // lo que el último guardado dejó apuntado (se lee al sincronizar)
+  let programadas = {};     // acciones programadas y reacciones preparadas: id del jugador → documento «programadas/<id>»
+  let estadoListo = false;  // ya se leyó la partida una vez (hasta entonces no se da nada por caducado)
   // Mis usos de Claude se agotaron (hasta cuándo, en mi reloj): mientras tanto narran los demás.
   let sinUsos = 0;
   const agotado = () => sinUsos > Date.now();
@@ -914,6 +932,14 @@
   // Si hay turnos y estoy en la lista, solo actúo si me toca; con un solo jugador, siempre.
   const esMiTurno = () => !porTurnos() || (estoySentado() && quienToca()?.id === miId);
 
+  // ---- acciones programadas y reacciones preparadas (documento «programadas/<id del jugador>», lo lee cualquier pestaña)
+  const ctxProg = () => ({ ahora: ahora(), ronda: orden.ronda || 1, asalto: enCombate() ? partida.combate.ronda : undefined });
+  const conProgramada = () => T.idsConProgramada(programadas, ctxProg(), partida, jugadores);
+  const programadaMia = () => programadas[miId] || null;
+  // El mismo id para la misma programada, la entregue quien la entregue: una entrega repetida no la duplica (y si ya se narró, se descarta).
+  const idProgramada = (jid, ts) => "prog_" + jid + "_" + ts;
+  const leerProgramadas = (docs) => { programadas = {}; docs.forEach((d) => { programadas[d.id] = d.data(); }); };
+
   // Un jugador se sienta a la mesa y sigue latiendo mientras tenga la página abierta.
   let cadenaJugador = Promise.resolve();
   async function registrarme(rename) {
@@ -944,14 +970,64 @@
     actualizarBotonPersonaje();
     actualizarBotonControl();
     const fuera = porTurnos() && !esMiTurno();
-    $("enviar").disabled = soloLectura || fuera;
-    $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
+    // Fuera de su turno (con personaje y sentado) el jugador puede programar su acción: se enviará sola cuando le llegue la palabra.
+    const programa = fuera && !soloLectura && estoySentado() && tieneFicha(partida, nombre);
+    $("enviar").disabled = soloLectura || (fuera && !programa);
+    $("enviar").textContent = programa ? "Programar para mi turno" : "Enviar";
+    $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : programa ? "Escribe tu acción: se enviará sola cuando te toque" : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
+    pintarProgramada();
+  }
+
+  // La ficha «⏳ Programada» y el campo de la reacción preparada, encima del formulario. También limpia lo caducado (de mi propio documento).
+  let limpiandoProg = false;
+  function pintarProgramada() {
+    const caja = $("programada-caja"), ficha = $("ficha-programada"), reac = $("reaccion");
+    const puede = !!db && !soloLectura && porTurnos() && estoySentado() && tieneFicha(partida, nombre);
+    const p = programadaMia(), c = ctxProg();
+    if (p && estadoListo && !limpiandoProg) {
+      const venceAccion = !!p.texto && T.caducada(p, c), venceReaccion = !!p.reaccion && !T.reaccionVigente(p, c);
+      if (venceAccion || venceReaccion) {
+        let q = venceAccion ? T.restoTrasEntregar(p, c) : p;
+        if (q?.reaccion && !T.reaccionVigente(q, c)) { const r = T.programarAccion(q, { reaccion: "" }, c); q = r.ok ? r.programada : null; }
+        limpiandoProg = true; // antes de avisar: pintar() no puede volver a entrar aquí
+        if (venceAccion) { privados.push("Tu acción programada caducó."); pintar(); }
+        guardarProgramada(q).finally(() => { limpiandoProg = false; });
+        return;
+      }
+    }
+    const verAccion = puede && !!p?.texto;
+    ficha.hidden = !verAccion;
+    if (verAccion) { $("texto-programada").textContent = `⏳ Programada: «${p.texto}»`; ficha.title = p.texto; }
+    reac.hidden = !(puede && enCombate());
+    if (!reac.hidden && document.activeElement !== reac) reac.value = p && T.reaccionVigente(p, c) ? p.reaccion : "";
+    caja.hidden = ficha.hidden && reac.hidden;
+  }
+  /** Guarda mi programada (null la borra). Va por delante en local para que la pantalla responda al instante. */
+  async function guardarProgramada(prog) {
+    if (prog) programadas[miId] = prog; else delete programadas[miId];
+    pintarProgramada();
+    try {
+      await reintentar(() => (prog ? db.doc("programadas/" + miId).set({ ...JSON.parse(JSON.stringify(prog)), jid: miId, nombre }) : db.doc("programadas/" + miId).delete()));
+      return true;
+    } catch {
+      privados.push("No se pudo guardar tu acción programada (fallo de conexión). Vuelve a intentarlo.");
+      pintar();
+      return false;
+    }
+  }
+  async function programar(texto) {
+    const r = T.programarAccion(programadaMia(), { texto }, ctxProg());
+    if (!r.ok) { $("accion").value = texto; privados.push(r.motivo); pintar(); return; }
+    if (!(await guardarProgramada(r.programada))) $("accion").value = texto; // no se pierde lo escrito
   }
 
   // La iniciativa completa: jugadores como fichas (resaltado quien actúa), el resto apagado y con su estado público (sin cifras).
-  function pintarOrdenCombate(ord, comb, toca) {
+  function actualDeCombate(comb, toca) {
     const suyo = (e) => e.jugador && toca && mismoNombre(e.jugador, toca.nombre);
-    const actual = comb.find((e) => suyo(e) && orden.entrada && mismoNombre(e.nombre, orden.entrada)) || comb.find((e) => suyo(e) && !e.tocaAlDM) || comb.find(suyo);
+    return comb.find((e) => suyo(e) && orden.entrada && mismoNombre(e.nombre, orden.entrada)) || comb.find((e) => suyo(e) && !e.tocaAlDM) || comb.find(suyo);
+  }
+  function pintarOrdenCombate(ord, comb, toca) {
+    const actual = actualDeCombate(comb, toca);
     const asalto = document.createElement("span"); asalto.className = "asalto-turnos"; asalto.textContent = `Asalto ${partida.combate.ronda}`; ord.append(asalto);
     let chipActual = null;
     comb.forEach((e, k) => {
@@ -1025,13 +1101,42 @@
       const aviso = $("aviso-turno");
       aviso.className = "aviso-turno" + (mio ? " mio" : "");
       aviso.textContent = turnoVivo ? `El DM responde a ${turnoVivo.por}…` : mio ? "Es tu turno: ¿qué haces?" : `Turno de ${toca?.nombre}`;
+      // Cuenta atrás discreta: cuántos turnos faltan para el mío (en combate cuentan también los del DM).
+      if (!mio && estoySentado()) {
+        let cuenta = "";
+        if (comb.length) {
+          const act = comb.indexOf(actualDeCombate(comb, toca));
+          cuenta = T.textoCuentaAtras(comb, act, comb.flatMap((e, k) => (e.jugador && !e.tocaAlDM && mismoNombre(e.jugador, nombre) ? [k] : [])));
+        } else {
+          const ronda = T.enRonda(jugadores, orden, t);
+          cuenta = T.textoCuentaAtras(ronda, ronda.findIndex((j) => j.id === toca?.id), ronda.findIndex((j) => j.id === miId));
+        }
+        if (cuenta) { const sp = document.createElement("span"); sp.className = "cuenta-atras"; sp.textContent = cuenta; aviso.append(sp); }
+      }
       $("pasar-turno").hidden = !(mio && !turnoVivo && !narrandoYo);
-      const salto = !turnoVivo && !narrandoYo && T.puedeSaltar(jugadores, orden, miId, t);
+      const salto = !turnoVivo && !narrandoYo && T.puedeSaltar(jugadores, orden, miId, t, conProgramada());
       $("saltar-turno").hidden = !salto;
       if (salto) $("saltar-turno").textContent = `Saltar el turno de ${toca?.nombre}`;
     }
     actualizarEntrada();
+    vigilarAvisoTurno();
   }
+
+  // Aviso de turno con la pestaña en segundo plano: el título parpadea suave (sin sonidos ni permisos) hasta volver o enviar.
+  const TITULO_BASE = document.title, TITULO_TURNO = "⚔ ¡Tu turno! — Mesa de Velmora";
+  let eraMiTurno = false, parpadeo = null;
+  function pararParpadeo() { if (parpadeo) { clearInterval(parpadeo); parpadeo = null; } document.title = TITULO_BASE; }
+  function vigilarAvisoTurno() {
+    const mio = porTurnos() && esMiTurno() && !turnoVivo && !narrandoYo;
+    if (mio && !eraMiTurno && document.hidden && !parpadeo) {
+      let encendido = true;
+      document.title = TITULO_TURNO;
+      parpadeo = setInterval(() => { encendido = !encendido; document.title = encendido ? TITULO_TURNO : TITULO_BASE; }, 2000);
+    }
+    if (parpadeo && (!mio || !document.hidden)) pararParpadeo();
+    eraMiTurno = mio;
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) pararParpadeo(); });
 
   // Pasar el turno sin pedir nada al DM (el propio, o el de alguien que se ha ido).
   async function avanzarTurno(saltando) {
@@ -1057,7 +1162,7 @@
     try {
       await sincronizar();
       const act = quienToca();
-      const sig = T.siguiente(jugadores, act.id, ahora());
+      const sig = T.siguiente(jugadores, act.id, ahora(), conProgramada());
       if (!sig) return;
       const ronda = orden.ronda + (sig.nuevaRonda ? 1 : 0);
       await escribirOrden({ turno: sig.jugador.id, ronda, entrada: "", desde: Date.now() });
@@ -1350,7 +1455,7 @@
   }
   function instrucciones() { return V.sistemaWeb(clasesEnMesa(), { artes: V.hayArtes(partida) }) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
 
-  const textoAcciones = (as) => as.map((a) => `${a.nombre}: ${a.texto}`).join("\n");
+  const textoAcciones = (as) => as.map((a) => T.lineaAccion(a)).join("\n");
 
   // Frases de diálogo ya usadas en los últimos turnos, para que el DM no las repita.
   function frasesDichas() {
@@ -1370,7 +1475,8 @@
   let ausentesPrevios = new Set();
   function presentesAhora(actuante) {
     const t = ahora();
-    return [...jugadores.filter((j) => T.activo(j, t)).map((j) => j.nombre), nombre, actuante].filter(Boolean);
+    const prog = conProgramada(); // quien se fue pero dejó una acción programada por ejecutar cuenta como presente: su turno no se salta
+    return [...jugadores.filter((j) => T.activo(j, t) || prog.has(j.id)).map((j) => j.nombre), nombre, actuante].filter(Boolean);
   }
   // Personajes de jugadores ausentes que lleva ahora un jugador (control prestado).
   function llevaActuante(jugador) {
@@ -1677,6 +1783,7 @@
         ...(p.limpiar || []).map((id) => reintentar(() => db.doc("turnos/" + id).delete()).catch(() => {})),
         p.orden ? escribirOrden(p.orden).catch(() => {}) : null,
         ...(p.ids || []).map((id) => reintentar(() => db.doc("acciones/" + id).delete()).catch(() => {})),
+        p.programada ? completarProgramada(p.programada).catch(() => {}) : null,
       ]);
     } else if (p.tipo === "deshacer") {
       await Promise.all([
@@ -1686,6 +1793,16 @@
         ...(p.acciones || []).map(({ id, ...a }) => reintentar(() => db.doc("acciones/" + id).set(a)).catch(() => {})),
       ]);
     }
+  }
+
+  /** La acción programada del jugador que recibe la palabra entra en la cola (mismo id: repetirlo no la duplica) y su documento se limpia. */
+  async function completarProgramada(g) {
+    if (g.doc) await reintentar(() => db.doc("acciones/" + g.id).set(g.doc));
+    // Solo se toca la programada que se entregó: si el jugador escribió otra mientras tanto, vale la nueva.
+    const ref = db.doc("programadas/" + g.jid);
+    const actual = await reintentar(() => ref.get());
+    if (!actual.exists || Number(actual.data().ts) !== Number(g.ts)) return;
+    await reintentar(() => (g.resto ? ref.set({ ...g.resto, jid: g.jid, nombre: actual.data().nombre || "" }) : ref.delete()));
   }
 
   // Suscripciones que se recuperan solas: si una muere, se vuelve a crear y se lee todo de nuevo.
@@ -1704,6 +1821,7 @@
     partida = V.normalizarPartida(d?.partida ? JSON.parse(JSON.stringify(d.partida)) : V.nuevaPartida());
     cronicaDM = String(d?.cronica || "");
     versionEstado = Number(d?.actualizado || 0);
+    estadoListo = true;
   }
 
   // La memoria (diario, anales, detalles) vive aparte: la escribe solo la compactación, en segundo plano,
@@ -1720,14 +1838,16 @@
   // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
   // Con `reparar` (solo quien tiene el turno de narrador), además completa lo que un turno anterior dejó a medias.
   async function sincronizar(reparar = true) {
-    const [e, t, js, o, mem, aventurasDoc] = await reintentar(() => Promise.all([
+    const [e, t, js, o, mem, aventurasDoc, prog] = await reintentar(() => Promise.all([
       db.doc("mesa/estado").get(),
       db.collection("turnos").orderBy("ts", "desc").limit(60).get(),
       db.collection("jugadores").get(),
       db.doc("mesa/orden").get(),
       db.doc("mesa/memoria").get(),
       db.doc("mesa/aventuras").get(),
+      db.collection("programadas").get(),
     ]));
+    leerProgramadas(prog.docs);
     aplicarEstado(e.exists ? e.data() : null);
     if (aventurasDoc?.exists) aventurasPrevias = V.aventuras.leerArchivo(aventurasDoc.data());
     if (mem.exists) aplicarMemoria(mem.data());
@@ -1776,10 +1896,49 @@
   function comprobarReintento() {
     if (sinUsos && !agotado()) { sinUsos = 0; registrarme(); } // ya pasó el tiempo: vuelvo a intentarlo yo
     relevoDeNarrador();
+    comprobarEntregaTardia();
     if (agotado()) return;
+    narrarProgramadaEnCola();
     if (!reintentoPendiente || narrandoYo || turnoVivo || soloLectura || !pendientes.length) return;
     reintentoPendiente = false;
     setTimeout(() => { if (!narrandoYo && !turnoVivo) narrarCola(); }, 400 + Math.random() * 600);
+  }
+  // Una acción programada que ya está en la cola y es del turno actual (la dejó otra pestaña, o el bucle de narración se cortó): se narra sola.
+  let progTimer = null;
+  function narrarProgramadaEnCola() {
+    if (progTimer || narrandoYo || turnoVivo || soloLectura || !sample || agotado() || !porTurnos()) return;
+    const toca = quienToca();
+    if (!toca || !pendientes.some((x) => x.programada && x.jid === toca.id && !idsNarradas.has(x.id))) return;
+    progTimer = setTimeout(() => { progTimer = null; if (!narrandoYo && !turnoVivo) narrarCola(); }, 600 + Math.random() * 1500);
+  }
+  // Si le toca a alguien con una acción programada y nadie la entregó (el guardado se cortó, o la programó con la palabra ya en camino),
+  // se entrega ahora: su propia página enseguida; si no está, cualquier otra pasados unos segundos. El id es el mismo: no se duplica.
+  let entregandoTardia = false;
+  async function comprobarEntregaTardia() {
+    if (!db || soloLectura || entregandoTardia || narrandoYo || turnoVivo || !estadoListo || !porTurnos()) return;
+    const toca = quienToca();
+    const prog = toca && programadas[toca.id];
+    if (!prog?.texto) return;
+    const c = ctxProg();
+    if (!T.debeEntregarse(prog, c, T.jugadorCaido(partida, toca.nombre, orden.entrada))) return;
+    const id = idProgramada(toca.id, prog.ts);
+    const yaNarrada = idsNarradas.has(id) || turnos.some((t) => (t.ids || []).includes(id));
+    if (!yaNarrada && pendientes.some((x) => x.jid === toca.id && !idsNarradas.has(x.id))) return; // ya tiene una acción en la cola
+    const espera = ahora() - (orden.desde || 0);
+    // Margen para que el narrador que da la palabra la entregue él en su guardado (lo normal): 4 s a su dueño, 15 s a otro (5 s si está desconectado).
+    if (espera < (toca.id === miId ? 4000 : T.activo(toca, ahora()) ? 15000 : 5000)) return;
+    entregandoTardia = true;
+    try {
+      const resto = T.restoTrasEntregar(prog, c);
+      if (!yaNarrada) {
+        const ts = Math.max(Date.now(), pendientes.reduce((m, x) => Math.max(m, x.ts || 0), 0) + 1, turnos.reduce((m, x) => Math.max(m, x.ts || 0), 0) + 1);
+        await reintentar(() => db.doc("acciones/" + id).set({ nombre: toca.nombre, uid: "", jid: toca.id, texto: prog.texto, ts, programada: true }));
+      }
+      await completarProgramada({ jid: toca.id, ts: prog.ts, resto });
+    } catch { return; } finally { entregandoTardia = false; }
+    if (yaNarrada) return;
+    if (agotado()) { relevoDeNarrador(); return; }
+    if (!turnoVivo) narrarCola(); else reintentoPendiente = true;
   }
   // Si a un jugador se le acabaron los usos, sus acciones las narra otro cuyos usos sigan disponibles.
   let relevoEn = false;
@@ -1845,25 +2004,35 @@
     yaNarradas.forEach((a) => reintentar(() => db.doc("acciones/" + a.id).delete()).catch(() => {}));
     cola = cola.filter((a) => !consumidas.has(a.id) && !idsNarradas.has(a.id));
     if (porTurnos()) { const toca = quienToca(); cola = cola.filter((a) => !a.jid || a.jid === toca?.id); }
-    if (!cola.length) return yaNarradas.length ? true : "vacio";
-    const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto) }));
+    // Una acción programada y otra escrita a mano por el mismo jugador a la vez: vale la escrita (la programada se descarta, no se duplica).
+    const sustituidas = cola.filter((a) => a.programada && cola.some((b) => b !== a && !b.programada && b.jid === a.jid));
+    if (sustituidas.length) {
+      sustituidas.forEach((a) => { idsNarradas.add(a.id); reintentar(() => db.doc("acciones/" + a.id).delete()).catch(() => {}); });
+      cola = cola.filter((a) => !sustituidas.includes(a));
+    }
+    if (!cola.length) return yaNarradas.length || sustituidas.length ? true : "vacio";
+    const acciones = cola.map((a) => ({ nombre: String(a.nombre), texto: String(a.texto), ...(a.programada ? { programada: true } : {}) }));
     const correccion = cola.find((a) => a.correccion)?.correccion || null; // si se repite un turno borrado por un error
     // Por turnos: quién actúa, a quién pasa la palabra y si cierra la ronda.
-    let infoTurno = null, siguienteJ = null;
+    let infoTurno = null, siguienteJ = null, actuanteJ = null;
     if (porTurnos()) {
       const actuante = jugadores.find((j) => j.id === cola[0]?.jid) || quienToca();
-      const sig = actuante && T.siguiente(jugadores, actuante.id, ahora());
+      const conProg = conProgramada();
+      const sig = actuante && T.siguiente(jugadores, actuante.id, ahora(), conProg);
       if (actuante && sig) {
+        actuanteJ = actuante;
         siguienteJ = sig;
-        infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda, creando: !tieneFicha(partida, actuante.nombre), controla: llevaActuante(actuante.nombre) };
+        infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda, creando: !tieneFicha(partida, actuante.nombre), controla: llevaActuante(actuante.nombre), ...(acciones.some((a) => a.programada) ? { preparada: true } : {}) };
         // En combate manda la iniciativa: quién da la palabra, qué turnos resuelve el DM en esta misma respuesta y si se cierra el asalto.
         // (Si el combate empieza en este turno, `partida` aún no lo tiene: la iniciativa rige desde el turno siguiente.)
         const cb = enCombate() && !infoTurno.creando ? T.siguienteEnCombate(partida, presentesAhora(actuante.nombre), controles, actuante.nombre, orden.turno === actuante.id ? orden.entrada : undefined) : null;
-        const jugCb = cb && jugadores.find((j) => mismoNombre(j.nombre, cb.jugador) && (T.activo(j, ahora()) || j.id === actuante.id));
+        const jugCb = cb && jugadores.find((j) => mismoNombre(j.nombre, cb.jugador) && (T.activo(j, ahora()) || j.id === actuante.id || conProg.has(j.id)));
         if (cb && jugCb) {
           siguienteJ = { jugador: jugCb, nuevaRonda: false, entrada: cb.entrada }; // la ronda de la mesa no avanza en combate
           infoTurno.siguiente = jugCb.nombre;
           infoTurno.cierraRonda = false;
+          const reacciones = T.textoReaccionesPreparadas(partida, Object.fromEntries(Object.values(programadas).filter((x) => x?.nombre && x.reaccion).map((x) => [x.nombre, x])));
+          if (reacciones) infoTurno.reacciones = reacciones;
           infoTurno.combate = { asalto: cb.asalto, orden: cb.orden.map(({ nombre: n, tipo, tocaAlDM }) => ({ nombre: n, tipo, tocaAlDM })), resolverAntes: cb.resolverAntes.map(({ nombre: n, tipo, motivo, nuevoAsalto }) => ({ nombre: n, tipo, ...(motivo ? { motivo } : {}), ...(nuevoAsalto ? { nuevoAsalto } : {}) })), cierraAsalto: cb.cierraAsalto, entrada: cb.entradaActuante };
         }
       }
@@ -1999,7 +2168,8 @@
       // Antes de guardar: ¿seguimos siendo quienes narran, y nadie más ha guardado mientras tanto?
       // Si no, se descarta este turno (las acciones siguen en cola) en vez de pisar el trabajo de otro.
       if (leasePerdido) throw { code: "lease_perdido" };
-      const [renovado, actual] = await Promise.all([ref.acquire({ holder: titular, ttlMs: TTL_TURNO }).catch(() => null), db.doc("mesa/estado").get()]);
+      const [renovado, actual, progSnap] = await Promise.all([ref.acquire({ holder: titular, ttlMs: TTL_TURNO }).catch(() => null), db.doc("mesa/estado").get(), db.collection("programadas").get().catch(() => null)]);
+      const progsFrescas = progSnap ? Object.fromEntries(progSnap.docs.map((d) => [d.id, d.data()])) : programadas;
       if (renovado && renovado.acquired === false) throw { code: "lease_perdido" };
       if (Number(actual.exists ? actual.data()?.actualizado || 0 : 0) !== versionEstado) throw { code: "conflicto" };
       // El turno ha terminado: la secuencia (lo ocurrido y lo pendiente) se anota y se guarda todo de una vez.
@@ -2047,9 +2217,25 @@
       if (siguienteJ && !tieneFicha(copia, infoTurno.actuante)) { siguienteJ = null; avisos.push({ pos: texto.length, texto: `✎ ${infoTurno.actuante} aún no ha terminado su personaje: sigue su turno.` }); }
       const siguienteOrden = siguienteJ ? { turno: siguienteJ.jugador.id, ronda: infoTurno.ronda + (siguienteJ.nuevaRonda ? 1 : 0), entrada: siguienteJ.entrada || "", desde: Date.now() } : null;
       const version = siguienteVersion();
+      // La acción programada de quien recibe la palabra pasa a la cola en este mismo guardado (va apuntada en `pendiente`):
+      // funciona aunque ese jugador haya cerrado la página. Caída, caducada o con el personaje caído, se descarta.
+      let entrega = null;
+      const sj = siguienteJ?.jugador;
+      if (siguienteOrden && sj && sj.id !== actuanteJ?.id) {
+        const prog = progsFrescas[sj.id];
+        if (prog?.texto) {
+          const ctxE = { ahora: Date.now(), ronda: siguienteOrden.ronda, asalto: copia.combate && orden.modo !== "libre" ? copia.combate.ronda : undefined };
+          const resto = T.restoTrasEntregar(prog, ctxE);
+          const yaTiene = pendientes.some((x) => x.jid === sj.id && !idsNarradas.has(x.id) && !cola.some((c) => c.id === x.id));
+          if (T.debeEntregarse(prog, ctxE, T.jugadorCaido(copia, sj.nombre, siguienteJ.entrada)) && !yaTiene) {
+            const id = idProgramada(sj.id, prog.ts);
+            entrega = { id, jid: sj.id, ts: prog.ts, resto, doc: { nombre: sj.nombre, uid: "", jid: sj.id, texto: prog.texto, ts: turnoDoc.ts + 1, programada: true } };
+          } else if (!yaTiene) entrega = { jid: sj.id, ts: prog.ts, resto }; // caducó o su personaje está caído: se descarta (el DM resuelve ese turno)
+        }
+      }
       // PUNTO DE CONFIRMACIÓN: una sola escritura guarda el estado nuevo y apunta lo que falta (el turno, el orden, la cola).
       // Si algo falla después, quien narre a continuación lo completa al sincronizar; nada se repite ni se pierde.
-      const pendiente = { tipo: "turno", id: turnoId, doc: turnoDoc, ids: turnoDoc.ids, orden: siguienteOrden, ...(porLimpiar.length ? { limpiar: porLimpiar } : {}) };
+      const pendiente = { tipo: "turno", id: turnoId, doc: turnoDoc, ids: turnoDoc.ids, orden: siguienteOrden, ...(porLimpiar.length ? { limpiar: porLimpiar } : {}), ...(entrega ? { programada: entrega } : {}) };
       await reintentar(() => db.doc("mesa/estado").set({ partida: sinHistorial, cronica: cronicaNueva, actualizado: version, pendiente }));
       partida = copia;
       cronicaDM = cronicaNueva;
@@ -2213,6 +2399,7 @@
     }
     if (!db) { privados.push("Esta vista no puede guardar la partida. Ábrela en claude.ai."); pintar(); return; }
     if (soloLectura) { avisarSoloLectura(); return; }
+    if (porTurnos() && !esMiTurno() && estoySentado() && tieneFicha(partida, nombre)) { await programar(texto); return; } // se guarda y se envía sola en su turno
     if (porTurnos() && !esMiTurno()) {
       $("accion").value = texto; // no se pierde: se queda preparada hasta que llegue su turno
       const aviso = estoySentado() ? T.textoFueraDeTurno(quienToca()?.nombre || "otro jugador") : "Aún te estás sentando a la mesa: espera un instante e inténtalo de nuevo.";
@@ -2220,6 +2407,19 @@
       pintar();
       return;
     }
+    // Con una acción programada: si ya entró en la cola no se envía otra (se duplicaría); si no, la que escribo ahora la sustituye.
+    if (pendientes.some((x) => x.jid === miId && x.programada && !idsNarradas.has(x.id))) {
+      $("accion").value = texto;
+      privados.push("Tu acción preparada ya está en cola y el DM la está recibiendo: espera su respuesta antes de enviar otra.");
+      pintar();
+      return;
+    }
+    const mia = programadaMia();
+    if (mia?.texto) {
+      await guardarProgramada(T.restoTrasEntregar(mia, ctxProg()));
+      privados.push("Tu acción programada se ha sustituido por esta.");
+    }
+    pararParpadeo();
     try {
       // La marca va por encima de las que ya veo (las acciones pendientes y el último turno), aunque mi reloj vaya atrasado.
       const tsAccion = Math.max(Date.now(), pendientes.reduce((m, p) => Math.max(m, p.ts || 0), 0) + 1, turnos.reduce((m, t) => Math.max(m, t.ts || 0), 0) + 1);
@@ -2271,6 +2471,27 @@
   caja.addEventListener("input", ajustar);
   caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
   $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
+  // Ficha de la acción programada: Editar la devuelve a la caja; Cancelar la quita (la reacción preparada, si hay, se queda).
+  $("cancelar-programada").onclick = async () => { const p = programadaMia(); if (p) await guardarProgramada(T.restoTrasEntregar(p, ctxProg())); };
+  $("editar-programada").onclick = async () => {
+    const p = programadaMia();
+    if (!p?.texto) return;
+    if (caja.value.trim()) { privados.push("Envía o borra primero lo que tienes escrito en la caja: así no se pisa tu acción programada."); pintar(); return; }
+    const texto = p.texto;
+    if (await guardarProgramada(T.restoTrasEntregar(p, ctxProg()))) { caja.value = texto; ajustar(); caja.focus(); }
+  };
+  // Reacción preparada: una línea; se guarda al terminar de escribir (Intro o salir del campo) y se mantiene mientras dure el combate.
+  $("reaccion").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); ev.target.blur(); } });
+  $("reaccion").addEventListener("change", async () => {
+    const previa = programadaMia(), nueva = $("reaccion").value.trim();
+    const r = T.programarAccion(previa, { reaccion: nueva }, ctxProg());
+    if (!r.ok) {
+      if (!nueva && previa && !previa.texto) await guardarProgramada(null); // quitar la única reacción borra el documento
+      else if (nueva) { privados.push(r.motivo); pintar(); }
+      return;
+    }
+    if ((previa?.reaccion || "") !== (r.programada.reaccion || "")) await guardarProgramada(r.programada);
+  });
   // «Razas y clases», «Viales», «Artes marciales» y «Ayuda» se abren y se cierran: pulsarlos otra vez quita la explicación.
   const abiertosCmd = new Map(); // comando → el texto que dejó en pantalla
   window.__refrescarAyudas = () => document.querySelectorAll("[data-cmd]").forEach((b) => {
@@ -2405,6 +2626,7 @@
   // Borra toda la partida compartida (la base de datos y lo que la página tiene en memoria). Lo usan «Reiniciar» e «Importar».
   async function vaciarMesa() {
     await borrarColeccion("acciones");
+    await borrarColeccion("programadas");
     await borrarColeccion("turnos");
     await db.doc("mesa/estado").delete();
     await db.doc("mesa/turno").delete();
@@ -2423,6 +2645,7 @@
     orden = T.ordenInicial();
     turnos = [];
     pendientes = [];
+    programadas = {};
     privados.length = 0;
   }
 
@@ -2865,7 +3088,8 @@
     anotar("velmora-id", miId);
     suscribir((ok, err) => db.collection("jugadores").onSnapshot(ok, err), (snap) => { jugadores = leerJugadores(snap.docs); pintarMesa(); });
     suscribir((ok, err) => db.doc("mesa/control").onSnapshot(ok, err), (snap) => { controles = (snap.exists && snap.data().c) || {}; marcarFichasAusentes(); pintarMesa(); });
-    suscribir((ok, err) => db.doc("mesa/orden").onSnapshot(ok, err), (snap) => { orden = leerOrden(snap.exists ? snap : null); pintarMesa(); });
+    suscribir((ok, err) => db.doc("mesa/orden").onSnapshot(ok, err), (snap) => { orden = leerOrden(snap.exists ? snap : null); pintarMesa(); comprobarEntregaTardia(); });
+    suscribir((ok, err) => db.collection("programadas").onSnapshot(ok, err), (snap) => { leerProgramadas(snap.docs); pintarMesa(); comprobarEntregaTardia(); });
     registrarme(false);
     setInterval(() => registrarme(false), 45000);
     setInterval(pintarMesa, 15000);
