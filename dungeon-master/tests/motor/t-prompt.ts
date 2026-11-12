@@ -68,6 +68,36 @@ const faltanOblig = obligatorias.filter((k) => !completo.toLowerCase().includes(
 t(faltanOblig.length === 0, "el prompt completo contiene las palabras clave de las reglas importantes", faltanOblig.join(", "));
 t(/competencia/i.test(completo), "el prompt completo habla de competencia (reglas de pruebas)", faltan.includes("COMPETENCIA") ? "(sin la palabra en mayúsculas)" : "");
 
+// ---- reglas imprescindibles siempre activas (auditoría del prompt: docs/AUDITORIA_PROMPT.md)
+// Si un recorte futuro borra una de estas reglas únicas, esta prueba falla. Deben estar en el prompt completo Y en el típico.
+{
+  const imprescindibles: [string, RegExp][] = [
+    ["Mapa: ubicacion al empezar, al llegar y viajando (viajando_hacia, progreso)", /ubicacion[^\n]{0,80}(empezar|llegar)[^\n]{0,120}viajando_hacia[^\n]{0,30}progreso/],
+    ["reutilizar los nombres de los lugares", /reutiliza los nombres de los lugares/],
+    ["pasar_tiempo mueve el reloj", /pasar_tiempo ya mueve el reloj/],
+    ["herramienta prueba y no inventar resultados", /herramienta prueba[^\n]{0,160}Nunca inventes un resultado/],
+    ["cita literal en heridas y saltos de tiempo", /NO inventes heridas ni saltos de tiempo[^\n]{0,260}cita literal/],
+    ["consultar_reglas", /consultar_reglas/],
+    ["fichas guardadas son la verdad (modificar_personaje)", /fichas guardadas son la verdad[^\n]{0,80}modificar_personaje/],
+    ["GÉNERO en la ficha", /GÉNERO: cada ficha trae el género/],
+    ["COMPETENCIA solo si la ficha la justifica", /competencia solo cuenta si/i],
+    ["formulario de personaje: guardar_personaje ya", /FORMULARIO DE PERSONAJE[^\n]{0,400}guardar_personaje YA/],
+    ["don arcano antes de crear cada personaje", /tirar_don_arcano \{jugador\}/],
+    ["encuentros aleatorios con la herramienta encuentro", /llama a encuentro/],
+    ["reloj: tiempo fijar al empezar", /tiempo fijar/],
+    ["plano mover antes de narrar", /plano mover ANTES de narrarlo/],
+    ["atacar para todo ataque con armas", /Todo ataque con armas[^\n]{0,40}atacar/],
+    ["iniciativa y terminar_combate", /iniciativa[^\n]{0,400}terminar_combate/],
+    ["nunca decidir por los jugadores", /Nunca decides lo que hacen, dicen o sienten/],
+    ["texto entre (( )) es fuera de personaje", /\(\( \)\)/],
+    ["abrir_arco al empezar la campaña", /abrir_arco/],
+  ];
+  for (const [nombre, re] of imprescindibles) {
+    t(re.test(completo), `regla imprescindible en el prompt completo: ${nombre}`);
+    t(re.test(tipico), `regla imprescindible en el prompt típico: ${nombre}`);
+  }
+}
+
 // ---- resumenConsumo
 {
   const docs = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000].map((e, i) => ({ entrada: e, salida: e / 10, herramientas: i % 2 ? 4 : 2, repaso: i < 3, sinNarracion: i === 9 }));
