@@ -77,7 +77,7 @@ const tieneFicha = (b: string, c: typeof ogro) => b.includes(`CA ${c.ca} · PV $
 {
   const r = consultarReglas("criatura", "Ogro");
   t(r === fichaCriatura(ogro) && r.includes(ogro.descripcion), "consultar_reglas criatura: ficha completa con descripción");
-  t(BESTIARIO.every((c) => fichaCriatura(c).includes(c.descripcion)), "fichaCriatura devuelve la descripción por defecto en las 44 criaturas");
+  t(BESTIARIO.every((c) => fichaCriatura(c).includes(c.descripcion)), "fichaCriatura devuelve la descripción por defecto en las 45 criaturas");
 }
 
 // ---- los jugadores (códice) y el estado de la criatura no cambian

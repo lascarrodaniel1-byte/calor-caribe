@@ -28,7 +28,7 @@ Todo se ejecuta desde `dungeon-master/`. No hay dependencias nuevas: motor y aud
   - `t-don` — Don Arcano y competencias recordadas en las tiradas.
   - `t-artes` — artes marciales: estilos, principios y técnicas automáticas.
   - `t-clima` — estaciones y clima por región: calendario, climaDe determinista, sed, hambre y viaje, encuentros por estación, luz, avisos, anomalías (larga, intensa, ambas, guardas), adaptación por raza y clase, Tritones y la lluvia, y que sin `calendario` todo es neutro.
-  - `t-vel` — velocidad por raza y de las 44 criaturas (incluidos los voladores).
+  - `t-vel` — velocidad por raza y de las 45 criaturas (incluidos los voladores).
   - `t-economia` — economía de acciones por asalto de criaturas y PNJ: ataques de la ficha, habilidad, reacción, acciones legendarias, `ataques_por_asalto` y bloque «quién ha actuado» del DM (dados fijos).
   - `t-iniciativa-mesa` — la mesa sigue la iniciativa en combate: `ordenDeCombate`, `siguienteEnCombate` (único humano, un enemigo, enemigo caído, ausentes, control prestado, caídos, sorprendidos), `bloqueTurnos` con y sin combate y `cerrarAsalto` idempotente (dados fijos).
   - `t-programadas` — acciones programadas y reacciones preparadas: `programarAccion`, `caducada`, `debeEntregarse`, `restoTrasEntregar`, `jugadorCaido`, jugador desconectado con programada (`siguiente`, `puedeSaltar`, combate), `textoReaccionesPreparadas`, `lineaAccion`, cuenta atrás y el bloque de turnos (idéntico sin programadas).

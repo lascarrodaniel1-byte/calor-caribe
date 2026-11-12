@@ -280,6 +280,53 @@ export const BESTIARIO: Criatura[] = [
     ],
   },
   {
+    nombre: "Gorgon",
+    alias: ["Gorgona", "Toro de hierro"],
+    blindaje: ["escamas_naturales"],
+    personalidad: ["temerario"],
+    temple: "bestia",
+    categoria: "bestia",
+    peligro: 3,
+    region: "Páramos de la Marca Hueca, canteras y laderas de las Agujas de Vahl, pozos de Karak-Dûm; fuentes y minas abandonadas",
+    descripcion:
+      "Un toro del tamaño de una carreta, cubierto de escamas de color herrumbre que tintinean al andar. Resuella un vaho gris que huele a piedra mojada y raspa la garganta, y escarba el suelo antes de cargar. Alrededor de su coto hay estatuas de ciervos, mulas y viajeros, todas con el gesto de quien acaba de darse la vuelta.",
+    ca: 18,
+    pv: "15d10+45",
+    velocidad: "12 m",
+    atributos: "FUE 20 DES 11 CON 20 INT 2 SAB 12 CAR 7",
+    ataques: ["Cornada: +8, 2d12+5 perforante", "Pezuñas (solo contra un objetivo derribado, con ventaja): +8, 2d6+5 contundente"],
+    rasgos: [
+      "Origen (secreto del DM, PROPUESTA a confirmar): criado de los dioses de la tierra, quedó enterrado a medias cuando murieron y se alimenta de mineral y de lo que su aliento deja petrificado; por eso sus cotos están sembrados de estatuas",
+      "Escamas de mena: el filo y la punta resbalan (blindaje escamas) y la maza o el golpe contundente lo hieren mejor; no tiene resistencias mágicas",
+      "Territorial: defiende su coto y no persigue más allá de él; una pieza de caza dejada lejos del grupo puede distraerlo (PROPUESTA a confirmar)",
+      "Petrificación reversible (PROPUESTA a confirmar): la piedra de su aliento vuelve a ser carne con su hiel (ver botín) si se aplica en las 24 h siguientes; sin hiel, la víctima sigue de piedra y la magia divina no la devuelve (deja Ceniza y no sirve)",
+    ],
+    habilidades: [
+      {
+        nombre: "Aliento petrificante",
+        descripcion:
+          "Cono de vaho gris de 9 m: la piedra empieza a subir por quien lo respira. Fase 1 (la resuelve el motor): quien falla queda retenido (petrificándose). Fase 2 (la resuelve el DM): al final del siguiente turno de cada retenido, salvación de CON CD 14 con prueba o tirar_dados; si falla, condicion aplicar «petrificado» (y quitar «retenido»); si tiene éxito, condicion quitar «retenido». Quien aparta la mirada y se tapa la boca tiene ventaja en la salvación.",
+        salvacion: "con",
+        cd: 14,
+        condicion: "retenido (petrificándose: la piedra le sube por el cuerpo; al final de su siguiente turno repite la salvación de CON o se vuelve estatua)",
+        recarga: 5,
+      },
+      {
+        nombre: "Embestida",
+        descripcion:
+          "Carga al menos 6 m en línea recta contra un objetivo y lo arrolla. Si cae derribado, el Gorgon puede rematarlo con Pezuñas (atacar con ventaja) en esa misma acción.",
+        salvacion: "fue",
+        cd: 16,
+        dano: "2d10+5",
+        tipo_dano: "contundente",
+        condicion: "derribado",
+        recarga: 5,
+      },
+    ],
+    botin:
+      "Escamas de mena (valen buen dinero a un herrero) y, si se abre la glándula bajo la lengua en la hora siguiente a su muerte, 1d3 viales de hiel de gorgon (PROPUESTA a confirmar): vertida sobre una víctima petrificada por su aliento en las 24 h siguientes, la piedra vuelve a ser carne en una hora (el DM quita «petrificado» con condicion) y la víctima queda con agotamiento 1; la hiel se corta y se vuelve piedra a las 24 h de sacada",
+  },
+  {
     nombre: "Banshee del Velo",
     temple: "espectro",
     categoria: "monstruo",
@@ -1404,7 +1451,7 @@ export const BESTIARIO: Criatura[] = [
 /** VD (valor de desafío) orientativo de cada criatura. Propuesto, a confirmar: es solo informativo (las reglas siguen usando el peligro 1–5). */
 export const VD: Record<string, string> = {
   Hambriento: "1", "Lobo de Ceniza": "1/2", Duende: "1", "Ghul de las fosas": "2", Ogro: "3", "Gárgola": "2", "Arpía": "2", "Hombre pez": "3", "Hombre lagarto": "3",
-  "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", "Banshee del Velo": "5", Ulfhedinn: "5", "Hombre oso": "6",
+  "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", Gorgon: "7", "Banshee del Velo": "5", Ulfhedinn: "5", "Hombre oso": "6",
   "Golem de carne": "5", "Elemental de fuego": "5", "Elemental de agua": "6", "Elemental de aire": "5", Grifo: "5", Sirena: "5",
   "Gigante de hueso": "10", "Dragón joven de ceniza": "11", "Apóstol": "12", Wendigo: "9", "Golem de piedra": "10", "Elemental de tierra": "9",
   Djinn: "6", Hidra: "10", Leshen: "9", Moira: "9", Lich: "16",
