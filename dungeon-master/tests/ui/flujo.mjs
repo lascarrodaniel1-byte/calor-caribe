@@ -32,7 +32,7 @@ await enviar("Pido una cerveza").catch(() => {}); await pg.waitForTimeout(1500);
 console.log("5. DM colgado → botón visible:", await pg.locator("#detener-dm").isVisible());
 await pg.click("#detener-dm"); await pg.waitForTimeout(800);
 await pg.evaluate(() => { window.__colgarDM = false; window.__textoDM = "El posadero sirve la cerveza."; });
-const t4 = await turnos(); const bot = pg.getByRole("button", { name: "Que el DM responda" }); if (await bot.count()) await bot.click(); await pg.waitForTimeout(7000);
+const t4 = await turnos(); const bot = pg.getByRole("button", { name: "Que el DM responda" }); if (await bot.count()) await bot.click(); await pg.waitForFunction((n) => [...window.__store.keys()].filter((k) => k.startsWith("turnos/")).length > n, t4, { timeout: 15000 }).catch(() => {}); // espera por condición, no 7 s fijos
 console.log("   tras detener, el DM vuelve a responder:", (await turnos()) > t4);
 console.log("errores de página:", errs.length, errs.map((e) => e.slice(0, 160)).join(" | "));
 console.log("registro:", (await pg.evaluate(() => document.getElementById("registro")?.innerText || "")).slice(-500).replace(/\n/g, " / "));
