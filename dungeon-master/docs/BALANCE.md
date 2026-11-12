@@ -336,3 +336,22 @@ Niveles 1-2 y 5+ no cambian (±0) salvo el jefe de los niveles 7-9 (-3/-4 puntos
 - **Efecto colateral**: con el Ataque adicional en el 4, los jefes sueltos de peligro 4-5 del nivel 4 (Lich 90%, Ysolde 97%) quedan muy fáciles en el simulador. El Lich ya lo era en el nivel 5 y el simulador no modela sus hechizos, su relicario ni su resistencia al daño no mágico (ver 9.4); no se ha tocado.
 - **Juez.** Las piezas y el PV no permiten llegar a la vez a 30-40% en el nivel 9 y 75-85% en el 13: la curva del Juez es la misma sigmoide desplazada. Medido (n = 200-400 según la variante): `loriga`+`yelmo`+`coraza`+`grebas` (1,45 PV de media) 12% / 86%; `loriga`+`yelmo`+`brigantina`+`grebas`+`gorjal` (1,61) 19% / 91%; **`loriga`+`yelmo`+`brigantina`+`grebas` (1,98) 27-28% / 95%**; `loriga`+`yelmo`+`gorjal`+`grebas` (2,18) 32% / 96%; `loriga`+`yelmo`+`grebas` (2,54) 39% / 98%; las placas completas (0,77) 3% / ~60%. Cambiar los PV no ayuda: +15% (207 PV) baja el nivel 9 unos 16 puntos y el 13 solo 3; quitarle PV sube más el 13 que el 9. Se eligió el punto que minimiza el mayor desvío (3 puntos por debajo en el 9, 10 por encima en el 13). Para llevar el 13 al 80% haría falta volver a placas (3% en el 9), que es lo que se quería evitar. Además, a nivel 13 y con el simulador sin habilidades de criaturas ni hechizos, el 95% sobrestima al grupo.
 - **Rasgos de clase del nivel 3 que quedan sin medir**: Furia, Castigo divino, Acción súbita, furtivo y Sangre del Flagelante no los usa el simulador, así que la dificultad real del nivel 3 es algo menor que la medida.
+
+## 11. Gorgon (bestia nueva, peligro 3, VD 7)
+
+Ficha: CA 18, 15d10+45 PV (~127), `escamas_naturales` (4/3/1: el filo y la punta resbalan, la maza no), un ataque por asalto (Cornada +8, 2d12+5; Pezuñas solo contra derribado), Aliento petrificante (CON CD 14, recarga 5-6) y Embestida (FUE CD 16, 2d10+5, derribado, recarga 5-6). Partió de CA 19 y 17d10+51 (~144 PV) y se bajó un punto de CA y dos dados de golpe: con esas cifras los niveles 1-3 acababan en tablas («sin final» en 20 asaltos) porque el grupo no atravesaba la piel.
+
+Medido con `npx tsx tests/balance/simular.ts --criatura <nombre> --n-detalle 200 --detalle --niveles 1,5,7,9` (victorias · asaltos · PJ caídos · PV restantes; **sin habilidades**, como todo el simulador: el aliento y la embestida añaden riesgo que aquí no se ve):
+
+| Criatura | N1 | N5 | N7 | N9 |
+|---|---|---|---|---|
+| **Gorgon** (P3, VD 7) | 0% · 7,1 · 100% · 0% | 100% · 5,7 · 20% · 71% | 100% · 4,8 · 11% · 81% | 100% · 4,0 · 4% · 87% |
+| Troll de ciénaga (P3, VD 6) | 12% · 5,8 · 94% | 100% · 2,3 · 5% · 84% | 100% · 2,1 · 0% | 100% · 2,0 · 0% |
+| Wyverno (P3, VD 6) | 49% · 8,3 · 74% | 100% · 2,6 · 0% · 92% | 100% · 2,4 · 0% | 100% · 2,2 · 0% |
+| Basilisco (P3, VD 5) | 44% · 7,4 · 76% | 100% · 2,1 · 1% · 92% | 100% · 2,0 · 0% | 100% · 1,8 · 0% |
+| Mantícora (P3, VD 5) | 96% · 5,7 · 30% | 100% · 2,0 · 0% · 96% | 100% · 1,9 · 0% | 100% · 1,7 · 0% |
+| (referencia) peligro 4, tabla principal, N5 | | 63% · 5,5 · 61% · 33% | | |
+
+Lectura: el Gorgon es el peligro 3 más duro (VD 7, un punto por encima de Troll y Wyverno), no es trivial a nivel 5 (5,7 asaltos y 1 de cada 5 PJ cae, frente a ~2 asaltos de sus vecinos) y deja de ser un problema a nivel 7-9 sin llegar a ser imposible. A nivel 1 es 🔴, como el peligro 4: no debe salir ahí (la rampa de los niveles 3-4 ya recorta el sorteo; ver 10). Si el dueño lo prefiere, el paso a peligro 4 es un cambio de una cifra (`peligro` en la ficha y en la plantilla `gorgon`), pero entonces sería más fácil que el peligro 4 medio.
+
+**Celdas del simulador que cambian** (`--n 40 --rapido`, semilla 1): solo «1 criatura, peligro 3» del nivel 1 (43% · 6,0 asaltos · 74% caídos · 25% PV pasa a 43% · 6,3 · 73% · 26%), porque la celda rota por las criaturas de peligro 3 y ahora hay una más; el resto de celdas y las filas de las demás criaturas del detalle son idénticas, y aparece la fila nueva del Gorgon. La fila de peligro 4, los jefes y el trío no cambian.
