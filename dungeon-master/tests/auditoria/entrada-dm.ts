@@ -42,5 +42,6 @@ const turno = (actuante: string, programada = false) => {
 informe("2. Combate: 4 PJ + 5 enemigos por iniciativa (clima, estilos, reacciones)", turno("Ana") + `\n\n# ACCIONES NUEVAS\n${lineaAccion({ nombre: "Ana", texto: "Ataco al ogro con mi espada" })}`);
 informe("3. Combate con una acción programada", turno("Beto", true) + `\n\n# ACCIONES NUEVAS\n${lineaAccion({ nombre: "Beto", texto: "Ataco al troll", programada: true })}`, "Beto");
 void REGLA_PREPARADA;
+{ const r = P.combate.ronda; P.combate.ronda = 2; const e2 = estadoParaDM(P, "Ana"); P.combate.ronda = r; console.log(`\n== 2b. Mismo combate en el asalto 2\n  estado del DM: ${nt(e2)} · «Criaturas en escena»: ${e2.split(/\n\n(?=## )/).find((x) => x.startsWith("## Criaturas"))!.length} car.`); }
 const e = estadoParaDM(P, "Ana"); console.log("\nLíneas más largas del estado (combate):\n" + e.split("\n").map((l) => [l.length, l.slice(0, 90)] as [number, string]).sort((a, b) => b[0] - a[0]).slice(0, 6).map((x) => x.join("  ")).join("\n"));
 if (process.env.VER) { const x = estadoParaDM(P, "Ana"); console.log("\n---\n" + x.split(/\n\n(?=## )/).filter((s) => /^## (Criaturas|Combate en curso)/.test(s)).join("\n\n").slice(0, 3500)); }

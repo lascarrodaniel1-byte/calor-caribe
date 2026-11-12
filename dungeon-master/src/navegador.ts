@@ -1,7 +1,7 @@
 // Punto de entrada de la versión web (artifact de claude.ai): el mismo motor que
 // la terminal, empaquetado para el navegador. El DM es Claude a través de la
 // capacidad "sample" del artifact, que llama al motor con la herramienta "motor".
-import { estadoTexto, fichaCriatura } from "./bestiario.js";
+import { describirEnEscena, estadoTexto, fichaCriatura } from "./bestiario.js";
 import { tiradaPendiente } from "./magia.js";
 import { sustentoVisible, textoSustento } from "./sustento.js";
 import { textoTrampas } from "./trampas.js";
@@ -153,11 +153,12 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
     partes.push(`## Notas de campaña (vigentes; si una cambia, corrígela con anotar_mundo reemplaza/olvidar)\n${p.notas_mundo.map((n) => `- ${n}`).join("\n")}`);
   const jefes = Object.values(p.jefes);
   if (jefes.length) {
+    const sinDescripcion = jefes.some((j) => !describirEnEscena(p, j));
     partes.push(
       `## Criaturas en escena (SECRETO)\n${jefes
         .map(
           (j) =>
-            `${fichaCriatura(j.definicion)}\nESTADO: ${j.pv}/${j.pv_max} PV (${estadoTexto(j)})` +
+            `${fichaCriatura(j.definicion, describirEnEscena(p, j))}\nESTADO: ${j.pv}/${j.pv_max} PV (${estadoTexto(j)})` +
             (j.presagios.length ? ` · presagios [${j.presagios.join(", ")}]` : "") +
             (j.gastadas.length ? ` · habilidades gastadas: ${j.gastadas.join(", ")}` : "") +
             (j.condiciones?.length ? ` · condiciones: ${j.condiciones.join(", ")}` : "") +
@@ -165,7 +166,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
             (mitigacion(p, j) ? ` · RUNAS: ${mitigacion(p, j)!.texto}` : "") +
             (j.robos.length ? ` · ha robado a: ${j.robos.map((r) => `${r.personaje} (${r.atributo} −${r.cantidad})`).join(", ")}` : ""),
         )
-        .join("\n\n")}`,
+        .join("\n\n")}${sinDescripcion ? `\n\n(descripción en consultar_reglas {tema: "criatura", nombre})` : ""}`,
     );
   }
   const objetos = Object.values(p.objetos);

@@ -132,6 +132,8 @@ export interface EstadoJefe {
   condiciones?: string[];
   /** Marcas de Ceniza permanentes (las que deja la furia de un Berserker). */
   ceniza?: number;
+  /** Asalto de combate en que entró en escena (0 = sin combate). Su descripción literaria solo se muestra al DM hasta ese asalto; sin el campo (partidas antiguas) se da por ya descrita. */
+  descritaEn?: number;
 }
 
 export const BESTIARIO: Criatura[] = [
@@ -1417,10 +1419,16 @@ export function buscarCriatura(nombre: string): Criatura | undefined {
   return BESTIARIO.find((c) => c.nombre.toLowerCase() === n) ?? BESTIARIO.find((c) => c.alias?.some((a) => a.toLowerCase() === n)) ?? BESTIARIO.find((c) => c.nombre.toLowerCase().includes(n));
 }
 
-export function fichaCriatura(c: Criatura): string {
+/** ¿Se le muestra aún al DM la descripción literaria de esta criatura en escena? Sin combate, siempre; en combate, solo en el asalto en que entró. */
+export function describirEnEscena(partida: Partida, j: EstadoJefe): boolean {
+  return !partida.combate || partida.combate.ronda <= (j.descritaEn ?? 0);
+}
+
+/** Ficha completa; `conDescripcion: false` omite solo la prosa literaria (el estado del DM en combate). */
+export function fichaCriatura(c: Criatura, conDescripcion = true): string {
   return [
     `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5${c.vd ? `, VD ${c.vd}` : ""} (${c.region})`,
-    c.descripcion,
+    conDescripcion ? c.descripcion : "",
     `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}${c.blindaje?.length ? ` · blindaje: ${c.blindaje.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
@@ -1455,7 +1463,7 @@ export function aparecer(partida: Partida, c: Criatura, alias?: string): string 
   const nombre = alias ?? c.nombre;
   const pv = /d/.test(c.pv) ? tirar(c.pv).total : Number(c.pv);
   const presagios = Array.from({ length: c.presagios ?? 0 }, () => tirar("1d20").total);
-  partida.jefes[nombre] = { nombre, pv, pv_max: pv, gastadas: [], definicion: c, presagios, robos: [] };
+  partida.jefes[nombre] = { nombre, pv, pv_max: pv, gastadas: [], definicion: c, presagios, robos: [], descritaEn: partida.combate?.ronda ?? 0 };
   return `${nombre} entra en escena con ${pv} PV.${presagios.length ? ` Presagios: [${presagios.join(", ")}].` : ""}\n${fichaCriatura(c)}`;
 }
 
