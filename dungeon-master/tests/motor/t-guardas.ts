@@ -182,6 +182,33 @@ const estados = (p: any) => Object.values<any>(p.personajes).map((x) => `${x.sus
   r = E("nave", { accion: "navegar", nave: "Gaviota", horas: 10, viento: "normal" });
   t(!r.error && seg(p) === a + 2 * 86400 + 36000, "sin contexto: nave 10 h sin cita permitida"); }
 
+// (i) viajar: guarda de cita desde 6 h (el reloj avanza exactamente `horas`; ritmo y terreno solo cambian los km)
+{ const { p, E, ana } = mesa();
+  (ana.inventario as any[]).push("Raciones de viaje (5)", "Odre de agua (2)");
+  const inv = () => JSON.stringify(Object.values<any>(p.personajes).map((x) => x.inventario));
+  fijarAccionesDelTurno(["Ana: Seguimos el camino hasta Pozonegro", "Varok: Miro el mapa"]);
+  const a = seg(p), i0 = inv(), s0 = estados(p);
+  let r = E("viajar", { horas: 8, ritmo: "normal", terreno: "camino", motivo: "Pozonegro" });
+  t(!!r.error && /No avances el reloj por tu cuenta/.test(r.contenido) && seg(p) === a && inv() === i0 && estados(p) === s0, "viajar 8 h sin cita: error, reloj, raciones y agua intactos", String(r.contenido).slice(0, 60));
+  r = E("viajar", { horas: 8, ritmo: "normal", terreno: "camino", cita: "esto no lo escribió nadie" });
+  t(!!r.error && seg(p) === a, "viajar 8 h con cita falsa: error y reloj intacto");
+  r = E("viajar", { horas: 5, ritmo: "lento", terreno: "dificil" });
+  t(!r.error && seg(p) === a + 5 * 3600, "viajar 5 h lento y difícil sin cita: permitido (ritmo y terreno no alargan el reloj)", String(r.error ? r.contenido : ""));
+  const b = seg(p);
+  r = E("viajar", { horas: 8, ritmo: "normal", terreno: "camino", cita: "seguimos el camino hasta Pozonegro" });
+  t(!r.error && seg(p) === b + 8 * 3600 && /comer y beber corren/.test(txt(r)), "viajar 8 h con cita: ok, reloj +8 h y aviso", String(r.error ? r.contenido : ""));
+  const c = seg(p);
+  r = E("viajar", { horas: 3, ritmo: "normal", terreno: "camino" });
+  t(!r.error && seg(p) === c + 3 * 3600 && !/comer y beber corren/.test(txt(r)), "viajar 3 h sin cita: permitido y sin aviso", String(r.error ? r.contenido : ""));
+  fijarAccionesDelTurno(null); }
+
+// viajar sin contexto: como antes
+{ const { p, E } = mesa();
+  fijarAccionesDelTurno(null);
+  const a = seg(p);
+  const r = E("viajar", { horas: 8, ritmo: "normal", terreno: "camino" });
+  t(!r.error && seg(p) === a + 8 * 3600 && !/comer y beber corren/.test(txt(r)), "sin contexto: viajar 8 h sin cita, sin aviso", String(r.error ? r.contenido : "")); }
+
 // (h) pasar_tiempo con personajes parciales
 { const { p, E } = mesa();
   let r = E("pasar_tiempo", { dias: 1, calidad: "esfuerzo", personajes: ["Ana"] });

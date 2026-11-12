@@ -817,6 +817,7 @@ const esquemas = {
     ritmo: z.enum(["lento", "normal", "rapido"]),
     terreno: z.enum(["camino", "abierto", "dificil"]),
     motivo: z.string().optional().describe("Adónde van"),
+    cita: z.string().min(5).max(200).optional().describe("Frase literal de la acción de un jugador de este turno que pide ese viaje (obligatoria si dura 6 h o más)"),
   }),
   idioma: z.object({
     accion: z.enum(["lista", "ver", "comprobar", "aprender"]),
@@ -888,7 +889,7 @@ const descripciones: Record<Nombre, string> = {
   sustento:
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   viajar:
-    "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas.",
+    "Caminar: horas, ritmo (lento, normal, rápido) y terreno (camino, abierto, difícil). Avanza el reloj, calcula los km y cobra la marcha forzada pasadas 8 horas. Un viaje de 6 horas o más exige cita literal de lo que pidieron los jugadores.",
   idioma:
     "Idiomas: lista, ver los del grupo, comprobar quién entiende uno (quien no lo entiende oye sonidos sin sentido) o aprender uno con un maestro (30 días, prueba de INT; exige cita literal de lo que pidieron los jugadores).",
   guarida:
@@ -1924,8 +1925,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "viajar": {
         const e = validado.data as z.infer<typeof esquemas.viajar>;
+        const largo = !!contextoTurno && e.horas >= 6; // viajar avanza el reloj exactamente `horas` (ritmo y terreno solo cambian los km)
+        if (largo) exigirCitaDeSalto(e.cita, `${e.horas} h`);
         const texto = viajar(partida, e);
-        return { contenido: texto, aviso: `🥾 ${texto.split("\n")[0]}` };
+        return { contenido: largo ? `${texto}\n${avisoSustento(`${e.horas} h`)}` : texto, aviso: `🥾 ${texto.split("\n")[0]}` };
       }
       case "idioma": {
         const e = validado.data as z.infer<typeof esquemas.idioma>;
