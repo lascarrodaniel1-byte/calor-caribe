@@ -222,3 +222,127 @@ OtroPersonaje: dónde está y qué hace ahora → a dónde se dirige
 - Los pendientes son lo que ha quedado abierto: enemigos vivos o en camino, una puerta abierta, una herida que sangra, un plazo, una promesa, una deuda. Escribe la lista entera cada vez: quita lo resuelto y añade lo nuevo.
 - Antes de escribirla repasa el tablero y la secuencia: no contradigas lo ocurrido. Con el cierre de ronda, resuelve los pendientes que correspondan antes de dar la palabra.
 - Si los jugadores te corrigen, tienen razón: acepta la corrección sin discutir y rehaz el turno con ella.`;
+
+// ---------------------------------------------------------------------------
+// Resultados del motor que NO deben vivir en el relato
+// ---------------------------------------------------------------------------
+
+/** Emojis con los que el motor encabeza sus avisos (tiradas, hora, viaje, heridas, clima, sustento…). */
+const EMOJIS_AVISO = "🎲|🕒|🧭|🗺|🩸|🩹|⏳|📜|✨|🌧|⏱|🪨|🛡|🌊|💃|🗡|👉|⚔|☠|🍖|💧|🏰|🧪|🩺|💀|🔥|🧂|🌤|🥵|🥶|🤒|⚠|🐎|⛵|🌩";
+const EMPIEZA_AVISO = new RegExp(`^[\\s*_>-]*(?:${EMOJIS_AVISO})\\uFE0F?`);
+/** Marcador que el programa pone delante de los resultados del motor y que el modelo a veces imita. */
+const MARCADOR = /\[\s*(?:resultados\s+del\s+motor|informaci[oó]n\s+del\s+programa|tirada\s+p[uú]blica)/i;
+
+const esLineaAviso = (l: string): boolean => {
+  if (!EMPIEZA_AVISO.test(l)) return false;
+  if (/^[\s*_>-]*🎲/.test(l)) return /vs\s+CD|→|=\s*\d|\[\d+\]/.test(l);
+  if (/^[\s*_>-]*🕒/.test(l)) return /D[ií]a\s+\d|\d{1,2}:\d{2}/.test(l);
+  return /\d|→/.test(l);
+};
+
+/** Quita los bloques copiados; puede devolver cadena vacía (si solo había bloque). */
+function quitarBloquesMotor(texto: string, parcial: boolean): string {
+  let t = texto;
+  // (a) desde el marcador hasta el final de su bloque
+  for (let guarda = 0; guarda < 20; guarda++) {
+    const m = MARCADOR.exec(t);
+    if (!m) break;
+    const antes = t.slice(0, m.index);
+    const lineas = t.slice(m.index).split("\n");
+    let j = 1;
+    for (; j < lineas.length; j++) {
+      if (lineas[j].trim()) continue;
+      const sig = lineas.slice(j + 1).find((l) => l.trim());
+      if (sig === undefined || !EMPIEZA_AVISO.test(sig)) break;
+    }
+    const despues = lineas.slice(j).join("\n").trim();
+    t = antes.trimEnd() + (antes.trim() && despues ? "\n\n" : "") + despues;
+  }
+  // (b) líneas de avisos del motor pegadas al final, tras el último párrafo de relato
+  const lineas = t.split("\n");
+  let fin = lineas.length;
+  let quitadas = 0;
+  while (fin > 0) {
+    const l = lineas[fin - 1];
+    if (!l.trim()) { fin--; continue; }
+    if (esLineaAviso(l)) { fin--; quitadas++; continue; }
+    break;
+  }
+  if (quitadas) t = lineas.slice(0, fin).join("\n").trimEnd();
+  // marcador a medio escribir (solo con el texto llegando a trozos)
+  if (parcial) {
+    const i = t.lastIndexOf("[");
+    const cola = i < 0 ? "" : t.slice(i).replace(/\s+/g, " ").toLowerCase();
+    if (cola && cola.length >= 2 && "[resultados del motor".startsWith(cola)) t = t.slice(0, i).trimEnd();
+  }
+  return t;
+}
+
+/**
+ * Quita de una narración los resultados del motor que el modelo haya copiado: el bloque «[Resultados del motor…]»
+ * (hasta su final) y las líneas de aviso (🎲 … vs CD, 🕒 Día N…) pegadas al final. Conservadora: si no hay nada
+ * que quitar devuelve el texto idéntico, y si solo hubiera bloque devuelve el original. Idempotente.
+ * `parcial`: el texto llega a trozos; también se oculta un marcador a medio escribir.
+ */
+export function limpiarNarracion(texto: string, parcial = false): string {
+  if (!texto) return texto;
+  const t = quitarBloquesMotor(texto, parcial);
+  if (t === texto) return texto;
+  return t.trim() ? t : parcial ? "" : texto;
+}
+
+export const AVISO_PROGRAMA = "[Información del programa, no es parte del relato y NO debes copiarla ni escribirla: resultados del motor del turno anterior]";
+
+export interface TurnoHistorial {
+  ts?: number;
+  acciones?: unknown[];
+  texto?: string;
+  avisos?: { texto: string }[];
+}
+export interface MensajeHistorial {
+  role: "user" | "assistant";
+  content: string;
+}
+export interface OpcionesHistorial {
+  /** Turnos con `ts` anterior o igual ya están compactados en el diario. */
+  compactadoHasta: number;
+  instrucciones: string;
+  textoAcciones: (acciones: any[]) => string;
+  /** Último mensaje (anales, estado, acciones nuevas). */
+  final: string;
+  /** Tope de tamaño de la entrada en bytes (por omisión 230000). */
+  maxBytes?: number;
+}
+
+/**
+ * Entrada del modelo: instrucciones, turnos recientes y bloque final. Los mensajes `assistant` llevan SOLO la narración;
+ * los resultados del motor de cada turno van en un mensaje `user` marcado, fundido con el siguiente mensaje `user`
+ * (las acciones del turno siguiente o el bloque final), de modo que los roles se alternan.
+ */
+export function armarHistorial(turnos: TurnoHistorial[], o: OpcionesHistorial): MensajeHistorial[] {
+  const salida: MensajeHistorial[] = [{ role: "user", content: o.instrucciones }];
+  const recientes = turnos.filter((t) => (t.ts || 0) > o.compactadoHasta && (t.texto || t.acciones?.length || t.avisos?.length)).slice(-24);
+  const recorta = (txt: string, n: number) => (txt.length > n ? txt.slice(0, n) + " […]" : txt);
+  let pendiente = "";
+  const poner = (role: "user" | "assistant", content: string) => {
+    if (role === "user" && pendiente) { content = `${pendiente}\n\n${content}`; pendiente = ""; }
+    salida.push({ role, content });
+  };
+  recientes.forEach((t, i) => {
+    const reciente = i >= recientes.length - 4;
+    const medio = i >= recientes.length - 12;
+    const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 350 : medio ? 220 : 100)).join("\n");
+    const narr = t.texto ? quitarBloquesMotor(t.texto, false) : "";
+    if (t.acciones?.length) poner("user", o.textoAcciones(t.acciones));
+    if (narr.trim()) {
+      poner("assistant", reciente ? narr : recorta(narr, medio ? 1200 : 280));
+      if (res) pendiente = `${AVISO_PROGRAMA}\n${res}`;
+    } else if (res) poner("user", `[Tirada pública]\n${res}`);
+  });
+  poner("user", o.final);
+  const tam = () => new TextEncoder().encode(salida.map((m) => m.content).join("")).length;
+  const tope = o.maxBytes ?? 230000;
+  while (tam() > tope && salida.length > 3) salida.splice(1, 1);
+  while (salida.length > 2 && salida[1].role === "assistant") salida.splice(1, 1);
+  return salida;
+}

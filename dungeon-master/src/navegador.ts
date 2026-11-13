@@ -14,6 +14,7 @@ import { textoAgua } from "./agua.js";
 import { textoNaves } from "./naves.js";
 import { fichaCorta, fichaTexto, normalizarPartida, nuevaPartida, type Partida } from "./estado.js";
 import * as secuencia from "./secuencia.js";
+import { limpiarNarracion } from "./secuencia.js";
 import * as dados from "./dados.js";
 import { accionesDelTurno, cerrarAsalto, ejecutar, fijarAccionesDelTurno, herramientas, tiempoDeTurno } from "./herramientas.js";
 import { ALTO, ANCHO, REGIONES, TERRITORIOS, territorioEn, textoMapa } from "./mapa.js";
@@ -188,7 +189,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
 
 export { clima };
 export const activarCalendario = clima.activarCalendario;
-export { bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { limpiarNarracion, bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 /** ¿Hay artes marciales en juego? Algún personaje con estilo (o Flagelante) o una criatura en escena que los domina. */
 export function hayArtes(p: Partida): boolean {
   return Object.values(p.personajes ?? {}).some((x) => artesDe(x).length > 0) ||

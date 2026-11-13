@@ -810,7 +810,7 @@
       cont.append(d);
     }
     // La narración se intercala con los resultados en el punto del texto donde ocurrieron.
-    const texto = t.texto || "";
+    const texto = V.limpiarNarracion(t.texto || ""); // turnos viejos con el bloque pegado: se pintan limpios (la base no se toca)
     const avisos = [...(t.avisos || [])].sort((x, y) => x.pos - y.pos);
     let desde = 0;
     const tramo = (hasta) => {
@@ -1507,20 +1507,9 @@
   }
 
   function construirEntrada(acciones, infoTurno, correccion) {
-    const turnosEntrada = [{ role: "user", content: instrucciones() }];
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
     // Nunca se descarta un turno sin compactar (si la compactación falló, van todos, los viejos más recortados).
     // Con la compactación al día son unos 8 o menos; el tope solo importa si lleva mucho tiempo fallando.
-    const recientes = turnos.filter((t) => (t.ts || 0) > compactadoHasta && (t.texto || t.acciones?.length || t.avisos?.length)).slice(-24);
-    const recorta = (txt, n) => (txt.length > n ? txt.slice(0, n) + " […]" : txt);
-    recientes.forEach((t, i) => {
-      const reciente = i >= recientes.length - 4;
-      const medio = i >= recientes.length - 12;
-      const res = (t.avisos || []).map((a) => recorta(a.texto, reciente ? 350 : medio ? 220 : 100)).join("\n");
-      if (t.acciones?.length) turnosEntrada.push({ role: "user", content: textoAcciones(t.acciones) });
-      if (t.texto) turnosEntrada.push({ role: "assistant", content: (reciente ? t.texto : recorta(t.texto, medio ? 1200 : 280)) + (res ? `\n\n[Resultados del motor en ese turno]\n${res}` : "") });
-      else if (res) turnosEntrada.push({ role: "user", content: `[Tirada pública]\n${res}` });
-    });
     const final =
       `# ANALES DE LA AVENTURA (capítulos ya vividos, en orden; es canon, respétalo)\n${anales.length ? anales.map((c, i) => `${i + 1}. ${c}`).join("\n") : "(aún vacíos: la aventura acaba de empezar)"}\n\n` +
       `# SITUACIÓN ACTUAL (antes de los turnos recientes)\n${diario || "(aún vacía)"}\n\n` +
@@ -1538,12 +1527,8 @@
         ? `# CORRECCIÓN DE LOS JUGADORES (hazles caso)\nTu respuesta anterior a esta acción tenía un error y se ha BORRADO con todos sus efectos (heridas, objetos, notas, ubicación): todo está como antes de ella.\nLo que estaba mal: ${correccion.texto || "no lo han dicho: revisa el tablero y la secuencia y evita cualquier contradicción."}\nLo que dijiste y NO debes repetir: «${correccion.malo}»\nRehaz el turno respetando la corrección y el tablero. ${correccion.tiradas?.length ? "LAS TIRADAS NO SE REPITEN: los dados que ya salieron vuelven a salir igual, en el mismo orden (corregir no sirve para intentar otra suerte ni para librarse de lo que ya pasó). Solo si el dato corregido es CLAVE para la acción que se tiró (por ejemplo, se tiró contra el objetivo equivocado o sin una circunstancia que cambiaba la ventaja o la dificultad) llama a reabrir_tiradas con el motivo, y los dados saldrán nuevos. Si el error era de narración, de consecuencia o de resultado, no la uses y respeta el resultado de los dados." : "Las tiradas se vuelven a hacer (esa respuesta no guardó sus dados)."}\n\n`
         : "") +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
-    turnosEntrada.push({ role: "user", content: final });
-    // Recorta conversación antigua si nos acercamos al límite de 256 KiB.
-    const tam = () => new Blob([turnosEntrada.map((t) => t.content).join("")]).size;
-    while (tam() > 230000 && turnosEntrada.length > 3) turnosEntrada.splice(1, 1);
-    while (turnosEntrada.length > 2 && turnosEntrada[1].role === "assistant") turnosEntrada.splice(1, 1);
-    return turnosEntrada;
+    // Los mensajes del DM llevan SOLO su narración; los resultados del motor van aparte, en un mensaje del programa (ver armarHistorial).
+    return V.secuencia.armarHistorial(turnos, { compactadoHasta, instrucciones: instrucciones(), textoAcciones, final });
   }
 
   // Salen del motor, para que ninguna acción nueva se quede fuera.
@@ -1569,7 +1554,7 @@
   function textoTurno(t) {
     const partes = [];
     if (t.acciones?.length) partes.push(textoAcciones(t.acciones));
-    if (t.texto) partes.push("DM: " + t.texto);
+    if (t.texto) partes.push("DM: " + V.limpiarNarracion(t.texto));
     const res = (t.avisos || []).map((a) => a.texto.split("\n").slice(0, 2).join(" ").slice(0, 240)).join(" | ");
     if (res) partes.push("Resultados: " + res);
     return partes.join("\n");
@@ -2154,10 +2139,10 @@
         modelTier: $("nivel").value,
         signal: ctl.signal,
         // La marca de secuencia del final no se enseña a los jugadores, ni siquiera mientras se escribe.
-        onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* un fallo al pintar no debe romper la respuesta del DM */ } },
+        onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.limpiarNarracion(V.secuencia.ocultarMarcaParcial(text), true); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* un fallo al pintar no debe romper la respuesta del DM */ } },
       }), ctl.signal);
       let marca = V.secuencia.extraerMarca(res.text);
-      texto = marca.limpio;
+      marca.limpio = texto = V.limpiarNarracion(marca.limpio); // si el modelo copió los resultados del motor, no pasan al relato
       consumo.salida = (res.text || "").length;
       // Red de seguridad: si el DM resolvió las tiradas pero terminó sin escribir la narración, se le pide una vez más (sin herramientas).
       if (texto.trim().length < 15 && !ctl.signal.aborted) {
@@ -2165,9 +2150,9 @@
         consumo.sinNarracion = true;
         try {
           const resultados = avisos.map((a) => a.texto).join("\n") || llamadasTurno.join(", ");
-          const r2 = await conCorte(sample(V.promptNarrar({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), resultados, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { modelTier: $("nivel").value, signal: ctl.signal, onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.secuencia.ocultarMarcaParcial(text); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* pintar no debe romper la respuesta */ } } }), ctl.signal);
+          const r2 = await conCorte(sample(V.promptNarrar({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), resultados, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { modelTier: $("nivel").value, signal: ctl.signal, onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.limpiarNarracion(V.secuencia.ocultarMarcaParcial(text), true); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* pintar no debe romper la respuesta */ } } }), ctl.signal);
           marca = V.secuencia.extraerMarca(r2.text);
-          texto = marca.limpio;
+          marca.limpio = texto = V.limpiarNarracion(marca.limpio);
           consumo.salida += (r2.text || "").length;
         } catch (e2) { if (e2?.code === "cancelled" || ctl.signal.aborted) throw e2; }
         if (texto.trim().length < 15) throw { code: "sin_narracion" };

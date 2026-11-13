@@ -100,6 +100,7 @@ t(/competencia/i.test(completo), "el prompt completo habla de competencia (regla
     ["nunca decidir por los jugadores", /Nunca decides lo que hacen, dicen o sienten/],
     ["texto entre (( )) es fuera de personaje", /\(\( \)\)/],
     ["abrir_arco al empezar la campaña", /abrir_arco/],
+    ["los resultados del motor no se copian en el relato", /los enseña el programa aparte: NUNCA los copies en el relato[^\n]{0,120}🎲 🕒/],
   ];
   for (const [nombre, re] of imprescindibles) {
     t(re.test(completo), `regla imprescindible en el prompt completo: ${nombre}`);
