@@ -105,6 +105,8 @@ export interface InfoTurno {
   combate?: InfoCombate;
   /** La acción de este turno es una acción programada antes de tener la palabra. */
   preparada?: boolean;
+  /** Hay un combate en curso en el que el actuante NO participa (su turno es normal: los enemigos no actúan en él). */
+  fueraDelCombate?: boolean;
   /** Solo en combate: reacciones preparadas de jugadores con la reacción libre (ya resumidas por `textoReaccionesPreparadas`). */
   reacciones?: string;
 }
@@ -141,6 +143,7 @@ export function bloqueTurnos(t: InfoTurno): string {
     t.cierraRonda
       ? `${t.actuante} es el último de la ronda: tras narrar su acción, cierra la ronda: el mundo responde (los enemigos y los PNJ actúan, pasa el tiempo, la amenaza avanza) y la trama avanza un paso. Luego da la palabra a ${t.siguiente}, que abre la ronda siguiente.`
       : `Termina dándole la palabra a ${t.siguiente} por su nombre («¿Qué hace ${t.siguiente}?»), y deja abierta la situación para que le toque actuar.`,
+    ...(t.fueraDelCombate ? [`Hay un combate en curso en el que ${t.actuante} NO participa: su turno es normal, los enemigos no actúan en él y no avances el asalto. Tras narrar su acción, da la palabra a ${t.siguiente}.`] : []),
     ...(t.preparada ? [REGLA_PREPARADA] : []),
   ].join("\n");
 }
@@ -272,6 +275,8 @@ export interface EntradaCombate {
   /** El DM resuelve este turno: criaturas, PNJ, personajes de ausentes, caídos o incapacitados, y sorprendidos en el asalto 1. */
   tocaAlDM: boolean;
   motivo?: string;
+  /** Solo PNJ: pelea del lado de los jugadores (no cuenta como rival). */
+  aliado?: boolean;
   /** Solo para pintar la barra: «ileso/herido/malherido» de criaturas y PNJ (sin cifras); en los PJ, ☠ (0 PV) o 💤 (incapacitado o sorprendido). */
   estado?: string;
 }
@@ -307,7 +312,7 @@ export function ordenDeCombate(partida: Partida, presentes: string[], controles:
     if (cb.tipo === "criatura" ? cb.j.pv <= 0 : (cb.n.pv ?? 1) <= 0) continue;
     const motivo = inc.incapacitado ? `incapacitado (${inc.motivos.join(", ")}): no actúa` : sorprendido ? "sorprendido: no actúa en el asalto 1" : undefined;
     out.push({
-      nombre: cb.nombre, tipo: cb.tipo === "criatura" ? "enemigo" : "pnj", tocaAlDM: true, ...(motivo ? { motivo } : {}),
+      nombre: cb.nombre, tipo: cb.tipo === "criatura" ? "enemigo" : "pnj", tocaAlDM: true, ...(motivo ? { motivo } : {}), ...(cb.tipo === "pnj" && cb.n.aliado ? { aliado: true } : {}),
       ...(cb.tipo === "criatura" ? { estado: estadoPublico(cb.j.pv, cb.j.pv_max) } : { estado: estadoPublico(cb.n.pv, cb.n.pv_max) }),
     });
   }
@@ -357,6 +362,55 @@ export function siguienteEnCombate(partida: Partida, presentes: string[], contro
   }
   // Nadie más puede actuar (todos caídos o del DM): la palabra vuelve al propio actuante, y el DM resuelve a todos.
   return { jugador: A[i].jugador!, entrada: A[i].nombre, resolverAntes, cierraAsalto: true, asalto: c.ronda, entradaActuante: A[i].nombre, orden: A };
+}
+
+/** Nombre del jugador → ¿tiene su turno atado a la iniciativa? (un PJ suyo está en el orden, aunque esté caído: ese turno lo resuelve el DM). */
+const enLaIniciativa = (orden: EntradaCombate[], jugador: string) => orden.some((e) => e.tipo === "pj" && !!e.jugador && sinTildes(e.jugador) === sinTildes(jugador));
+/** ¿Queda algún rival (criatura o PNJ hostil en pie)? Un combate sin rivales no ata a la mesa: rige la rotación normal. */
+const hayRivales = (orden: EntradaCombate[]) => orden.some((e) => e.tipo === "enemigo" || (e.tipo === "pnj" && !e.aliado));
+
+export interface PasoMesa {
+  jugador: Jugador;
+  /** Con qué entrada de la iniciativa actúa (solo si le da la palabra la iniciativa). */
+  entrada?: string;
+  /** La ronda de la mesa avanza (nunca en combate). */
+  nuevaRonda: boolean;
+  /** El actuante no está en la iniciativa de un combate con rivales en pie: juega su turno normal aparte. */
+  fuera?: boolean;
+  /** La resolución de la iniciativa para el actuante, si es del combate: turnos del DM a resolver y cierre del asalto. */
+  combate: SiguienteCombate | null;
+}
+
+/**
+ * A quién se da la palabra al acabar el turno de `actual`, con o sin combate. Sin combate (o sin rivales), la rotación normal.
+ * En combate manda la iniciativa SOLO entre quienes tienen un personaje en ella; los demás jugadores no quedan bloqueados:
+ * juegan su turno normal, uno detrás de otro, cuando se cierra cada asalto (tras el último combatiente), y la palabra vuelve
+ * después al primer jugador de la iniciativa. Al acabar el combate (`partida.combate` ya sin él) rige otra vez la rotación
+ * normal desde `actual`: nadie se salta ni se repite.
+ */
+export function pasarPalabra(js: Jugador[], actual: Jugador, ahora: number, conProgramada: ReadonlySet<string> | undefined, partida: Partida, presentes: string[], controles: Controles = {}, entrada?: string): PasoMesa | null {
+  const normal = siguiente(js, actual.id, ahora, conProgramada);
+  if (!normal) return null;
+  const rotacion: PasoMesa = { jugador: normal.jugador, nuevaRonda: normal.nuevaRonda, combate: null };
+  const c = partida.combate;
+  const A = c ? ordenDeCombate(partida, presentes, controles, c.ronda) : [];
+  if (!c || !A.length || !hayRivales(A)) return rotacion;
+  const lista = ordenar(js).filter((j) => activo(j, ahora) || j.id === actual.id || !!conProgramada?.has(j.id));
+  const libres = lista.filter((j) => !enLaIniciativa(A, j.nombre));
+  const aJugador = (nombre: string) => lista.find((j) => sinTildes(j.nombre) === sinTildes(nombre));
+  const cb = enLaIniciativa(A, actual.nombre) ? siguienteEnCombate(partida, presentes, controles, actual.nombre, entrada) : null;
+  if (cb) {
+    const sig = cb.cierraAsalto && libres.length ? libres[0] : aJugador(cb.jugador);
+    if (!sig) return rotacion;
+    return { jugador: sig, ...(sig === libres[0] && cb.cierraAsalto ? {} : { entrada: cb.entrada }), nuevaRonda: false, combate: cb };
+  }
+  // El actuante no está en la iniciativa: sigue la fila de los que no están en ella y, tras el último, vuelve el primer combatiente.
+  const i = libres.findIndex((j) => j.id === actual.id);
+  if (i < 0) return rotacion;
+  if (i + 1 < libres.length) return { jugador: libres[i + 1], nuevaRonda: false, fuera: true, combate: null };
+  const primero = A.find((e) => e.tipo === "pj" && e.jugador && !e.tocaAlDM) ?? A.find((e) => e.tipo === "pj" && e.jugador);
+  const j = primero && aJugador(primero.jugador!);
+  return j ? { jugador: j, entrada: primero!.nombre, nuevaRonda: false, fuera: true, combate: null } : rotacion;
 }
 
 // ------------------------------------------------------------------ acciones programadas y reacciones preparadas

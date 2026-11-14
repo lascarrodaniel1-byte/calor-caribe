@@ -1170,11 +1170,11 @@
     try {
       await sincronizar();
       const act = quienToca();
-      const sig = T.siguiente(jugadores, act.id, ahora(), conProgramada());
+      const sig = T.pasarPalabra(jugadores, act, ahora(), conProgramada(), partida, presentesAhora(act.nombre), controles, orden.entrada);
       if (!sig) return;
       const ronda = orden.ronda + (sig.nuevaRonda ? 1 : 0);
-      await escribirOrden({ turno: sig.jugador.id, ronda, entrada: "", desde: Date.now() });
-      orden = { ...orden, turno: sig.jugador.id, ronda, entrada: "" };
+      await escribirOrden({ turno: sig.jugador.id, ronda, entrada: sig.entrada || "", desde: Date.now() });
+      orden = { ...orden, turno: sig.jugador.id, ronda, entrada: sig.entrada || "" };
       const texto = saltando && act.id !== miId ? `${nombre} salta el turno de ${act.nombre}` : `${act.nombre} pasa su turno`;
       const ts = siguienteTs();
       await reintentar(() => db.doc("turnos/p" + ts.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts, acciones: [], texto: "", avisos: [{ pos: 0, texto: `⏭ ${texto}. Ahora le toca a ${sig.jugador.nombre}.` }] }));
@@ -2018,10 +2018,17 @@
         infoTurno = { actuante: actuante.nombre, orden: T.enRonda(jugadores, orden, ahora()).map((j) => j.nombre), ronda: orden.ronda, siguiente: sig.jugador.nombre, cierraRonda: sig.nuevaRonda, creando: !tieneFicha(partida, actuante.nombre), controla: llevaActuante(actuante.nombre), ...(acciones.some((a) => a.programada) ? { preparada: true } : {}) };
         // En combate manda la iniciativa: quién da la palabra, qué turnos resuelve el DM en esta misma respuesta y si se cierra el asalto.
         // (Si el combate empieza en este turno, `partida` aún no lo tiene: la iniciativa rige desde el turno siguiente.)
-        const cb = enCombate() && !infoTurno.creando ? T.siguienteEnCombate(partida, presentesAhora(actuante.nombre), controles, actuante.nombre, orden.turno === actuante.id ? orden.entrada : undefined) : null;
-        const jugCb = cb && jugadores.find((j) => mismoNombre(j.nombre, cb.jugador) && (T.activo(j, ahora()) || j.id === actuante.id || conProg.has(j.id)));
+        // Solo entre quienes están en la iniciativa; los demás jugadores siguen su turno normal (ver `pasarPalabra`).
+        const paso = enCombate() && !infoTurno.creando ? T.pasarPalabra(jugadores, actuante, ahora(), conProg, partida, presentesAhora(actuante.nombre), controles, orden.turno === actuante.id ? orden.entrada : undefined) : null;
+        const cb = paso?.combate ?? null, jugCb = paso?.jugador;
+        if (paso?.fuera) {
+          siguienteJ = { jugador: paso.jugador, nuevaRonda: false, entrada: paso.entrada || "" };
+          infoTurno.siguiente = paso.jugador.nombre;
+          infoTurno.cierraRonda = false;
+          infoTurno.fueraDelCombate = true;
+        }
         if (cb && jugCb) {
-          siguienteJ = { jugador: jugCb, nuevaRonda: false, entrada: cb.entrada }; // la ronda de la mesa no avanza en combate
+          siguienteJ = { jugador: jugCb, nuevaRonda: false, entrada: paso.entrada || "" }; // la ronda de la mesa no avanza en combate
           infoTurno.siguiente = jugCb.nombre;
           infoTurno.cierraRonda = false;
           const reacciones = T.textoReaccionesPreparadas(partida, Object.fromEntries(Object.values(programadas).filter((x) => x?.nombre && x.reaccion).map((x) => [x.nombre, x])));
@@ -2204,6 +2211,12 @@
       if (infoTurno?.combate?.cierraAsalto && combateAntes && copia.combate === combateAntes) {
         const cierre = V.cerrarAsalto(copia, asaltoAntes);
         if (cierre) for (const x of cierre.avisos) avisos.push({ pos: texto.length, texto: x });
+      }
+      // El combate acabó en este turno (el DM llamó a terminar_combate): la palabra sigue la rotación normal de la mesa desde quien actuó,
+      // no la iniciativa que se calculó antes de narrar (que podía saltarse o repetir a alguien).
+      if (combateAntes && !copia.combate && actuanteJ && siguienteJ) {
+        const p2 = T.pasarPalabra(jugadores, actuanteJ, ahora(), conProgramada(), copia, presentesAhora(actuanteJ.nombre), controles);
+        if (p2) siguienteJ = { jugador: p2.jugador, nuevaRonda: p2.nuevaRonda, entrada: "" };
       }
       const { historial, ...sinHistorial } = copia;
       // Mientras el personaje de quien actúa no esté completo (guardado), el turno no pasa: sigue creándolo.
