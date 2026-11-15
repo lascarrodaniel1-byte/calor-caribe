@@ -1,10 +1,10 @@
 # Catálogo de tipos de daño
 
-Estado: **fase 1 hecha** (catálogo y prueba, `src/danos.ts`, `tests/motor/t-danos.ts`). Nada del juego lo usa todavía: el cableado es la fase A en adelante y es **PROPUESTA** hasta que el dueño la confirme.
+Estado: **cableado (fases A, B y C hechas)**: catálogo (`src/danos.ts`), alias en todas las herramientas, función única de aplicación del daño y datos de resistencias por criatura. Lo que sigue abierto está al final como **PROPUESTA** hasta que el dueño lo confirme.
 
 ## Por qué
 
-Hasta ahora había dos vocabularios sin puente: el físico de armadura (`TIPOS_DANO = corte | punta | contundente` en `src/armadura.ts`, el único enum de zod, `atacar.tipo_dano`) y el libre (`z.string()` en criaturas, guaridas, trampas y `modificar_personaje`), con alias dispersos (cortante/corte, perforante/punta, frío/frio/hielo, eléctrico/rayo…). Consecuencias: `atacar` rechaza «perforante» y «cortante», y `tipoHerida` (bestiario) manda a «contusión» casi todo lo que no es físico, fuego, ácido o necrótico.
+Había dos vocabularios sin puente: el físico de armadura (`corte | punta | contundente`, ahora `TIPOS_DANO_ARMADURA` y `TipoDanoArmadura` en `src/armadura.ts`) y el libre (`z.string()` en criaturas, guaridas, trampas y `modificar_personaje`), con alias dispersos (cortante/corte, perforante/punta, frío/hielo, eléctrico/rayo…). `atacar` rechazaba «perforante» y `tipoHerida` mandaba a «contusión» casi todo lo no físico. Y las resistencias vivían en regex sobre texto libre y en prosa.
 
 ## Tipos canónicos
 
@@ -42,14 +42,25 @@ Se reconocen sin distinguir mayúsculas, tildes ni espacios sobrantes, y con pre
 
 ## Puente con armadura
 
-`aVocabularioArmadura`: cortante→corte, perforante→punta, contundente→contundente; lo no físico →`undefined`. `src/armadura.ts` no se toca: sigue con su vocabulario y su `TipoDano` (ojo: `danos.ts` también exporta un tipo `TipoDano`, el canónico; al cablear, renombrar uno de los dos).
+`aVocabularioArmadura` (cortante→corte, perforante→punta, contundente→contundente; lo no físico →`undefined`) y su inverso `deVocabularioArmadura`. `src/armadura.ts` conserva sus valores; solo se renombró su tipo (`TipoDanoArmadura`) para no chocar con `TipoDano` del catálogo. En `atacar` el tipo canónico se traduce para la armadura por regiones; un tipo no físico (fuego, frío…) no pasa por la armadura y no da el aviso «sin tipo de daño».
 
-## Plan de cableado (PROPUESTA)
+## Qué hay cableado
 
-- **A. `atacar` y habilidades aceptan alias.** `atacar.tipo_dano` y `habilidad.tipo_dano` (criaturas, guaridas, trampas, `modificar_personaje`, naves) pasan por `tipoDanoSchema` o `normalizarTipo`; en `atacar` se traduce con `aVocabularioArmadura` para la armadura. `tipoHerida` usa el catálogo (hoy decide con expresiones regulares). Sin cambio de reglas: solo deja de rechazar o de confundir. La Furia (`esDanoFisico` en `rasgos.ts`) pasa a `esFisico`.
-- **B. Función única de aplicación.** Un solo punto (`aplicarDano`) que reciba daño, tipo y fuente y aplique resistencias, armadura, Furia y raciales en un orden fijo, en lugar de las rutas actuales (atacar, habilidades, trampas, caída, tragado, `modificar_personaje`).
-- **C. Datos de resistencias por criatura.** Hoy resistencias, inmunidades y vulnerabilidades viven en la prosa de `rasgos`. Se pasarían a campos (`resiste`, `inmune`, `vulnerable` con `TipoDano` y `FuenteDano`), de modo que «resiste el daño no mágico salvo plata» sea comprobable.
+- **Alias en cada entrada (fase A).** `atacar.tipo_dano`, las habilidades de criatura (`habilidad_nueva`, aparecer/registrar), guaridas, trampas, `modificar_personaje.tipo_dano`, naves (`nave danar`) y `danar_criatura.tipo_dano` pasan por `tipoDanoSchema`: aceptan cualquier alias y el código trabaja con el tipo canónico. `atacar` ya no rechaza «perforante» ni «cortante». Un valor desconocido o una fuente («mágico», «plata») da un error claro. El fuego de las naves se decide por el tipo (`fuego`, con alias llama/incendiario…).
+- **`tipoHerida`** (heridas por habilidad) usa el catálogo: cortante→corte, perforante→perforación, contundente→contusión, fuego/ácido/**frío/eléctrico/radiante**→quemadura, veneno/necrótico→necrótica, trueno/psíquico/fuerza→contusión (valor neutro). Elección de criterio, **a confirmar**; las heridas solo son descriptivas salvo que corte, perforación y mordedura se pueden cauterizar.
+- **Raciales y Furia por tipo canónico.** Enano/veneno, Tritón/frío, Cenizo/fuego y Furia/físico ya no usan regex sobre texto libre: arreglado el falso positivo «llama sagrada» y los falsos negativos «calor» y «abrasador». `esDanoFisico` desapareció (usa `esFisico` del catálogo).
+- **Función única `aplicarDano`** (`src/danos.ts`; `perfilDePersonaje` y `aplicarDanoAPersonaje` en `src/rasgos.ts`). Orden 5e: bonificadores y armadura ya incluidos → mitad por salvación (redondeo abajo) → inmunidad (0) → resistencia (mitad, abajo) y vulnerabilidad (doble), que **se anulan** si coinciden en el mismo tipo; varias resistencias al mismo tipo no se acumulan. Devuelve `{ final, detalle }`; el aviso muestra «(Resistencia al frío del Tritón: 10 → 5)» solo donde ya había nota. Sustituye a `danoConResistencia` en `atacar`, habilidades y trampas, caída, tragado y `modificar_personaje`. Para un PJ: raciales, Furia (físico) y el **voto de Luz** del Caballero (necrótico; desde el nivel 5 y con el juramento sin romper: antes era solo texto), y en `atacar` también las raciales y la Luz (antes solo la Furia). El resultado de las pruebas existentes no cambió.
+- **Resistencias por criatura (fase C).** `resistencias`, `inmunidades` y `vulnerabilidades` en la ficha (`tipo`, `soloNoMagico`, `salvoMaterial`, `soloMaterial`), migradas solo de lo que la prosa ya decía (20 de 46 criaturas; ver `docs/BALANCE.md` §13). `atacar` y `danar_criatura` (con `tipo_dano`) las aplican; la ficha de la criatura lo dice («Daño por tipo… no lo restes tú»). Sin `tipo_dano`, `danar_criatura` sigue siendo «daño final» como siempre.
+- **Fuente del daño.** `fuente.magico` (arma mágica): `atacar` lo deduce de un objeto encantado, maldito, reliquia o legendario del inventario; el DM lo fuerza con `atacar {magico}` o `danar_criatura {magico}`; el castigo radiante es mágico; sin dato = no mágico. `material` (plata, llama gris…) se pasa igual.
+- **Armadura y ficha no se duplican.** La armadura por regiones se aplica antes; donde el blindaje ya frena el golpe no se suma la resistencia física de la ficha, y donde lo agrava no se suma la vulnerabilidad física (propuesta a confirmar, medida en el simulador).
 
-## Estado de los chequeos
+## Qué NO es un tipo de daño
 
-`npm run dead-exports` señala hoy `aVocabularioArmadura` y `tipoDanoSchema`, porque ningún otro módulo de `src/` los usa todavía: es la excepción esperada de la fase 1 (el chequeo es informativo) y desaparece con la fase A. `tsc --noEmit --noUnusedLocals`, `npm test` y `npm run audit` pasan; el prompt fijo no cambia (67.093 caracteres).
+«mágico», «no mágico», «plata», «adamantina», «hierro frío»: describen la **fuente**, no el elemento. El catálogo los rechaza como tipo; van en `FuenteDano` (`magico`, `material`). «Resiste el corte no mágico salvo plata» es tipo `cortante` + `soloNoMagico` + `salvoMaterial: "plata"`.
+
+## Propuestas que siguen abiertas (el dueño confirma)
+
+- El mapa de heridas por tipo (arriba), la lectura de «resistencia al daño no mágico» sin tipo como físico, y que la armadura mande sobre la resistencia de la ficha.
+- Las incoherencias de datos listadas en `docs/BALANCE.md` §13 (Ysolde y Vaerth necróticos sin inmunidad, no-muertos sin veneno, Hombre oso copia del Ulfhedinn…) y las criaturas que dejan de encajar con su peligro/VD sin armas mágicas.
+- Pendiente: inmunidades a condiciones (miedo, hechizo, agotamiento) como dato, vulnerabilidades por material (sal, hierro cálido), resistencia dinámica de Kuru y el estado «fuera del agua» de la Bakunawa; resistencias de PNJ y de objetos/condiciones (hoy prosa).
+- Daño de conjuros a criaturas: el DM aplica `danar_criatura {tipo_dano, magico: true}`; no hay herramienta de conjuro contra criaturas que lo haga sola.
