@@ -720,6 +720,9 @@ export interface DatosAtaque {
   duelo?: boolean;
 }
 
+/** Cómo se llama cada tipo de daño físico en los avisos de pantalla (solo presentación). */
+const NOMBRE_TIPO_AVISO: Record<string, string> = { corte: "cortante", punta: "perforante", contundente: "contundente" };
+
 export interface ResultadoAtaque {
   texto: string;
   aviso: string;
@@ -1126,6 +1129,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
   let dano = 0;
   let muerto: string | undefined;
+  let danoVisible = 0; // lo que enseña la tirada de daño antes de armadura y resistencias (para marcar «→ N» si cambia)
+  let danoTirado = ""; // la tirada de daño tal como la ve la mesa en el aviso («1d8[6]+3 = 9 perforante»)
   if (d.dano && (resultado === "impacto" || resultado === "critico" || resultado === "roce")) {
     // En furia, +2 al daño cuerpo a cuerpo (y otros +2 con la Furia de la luna del Varg).
     const lunaMas = at.tipo === "pj" && (at.p.luna ?? 0) > 0 && !distancia ? 2 : 0;
@@ -1186,6 +1191,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       lineas.push(`(Sin tipo de daño: no sé si es corte, punta o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
     }
     dano = Math.max(0, bruto - reduccion);
+    danoVisible = resultado === "roce" ? bruto : r.total;
+    danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipo ? ` ${NOMBRE_TIPO_AVISO[tipo as string] ?? tipo}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}`;
     if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipo || ["corte", "punta", "contundente"].includes(tipo as string))) {
       const antes = dano;
       dano = Math.floor(dano / 2);
@@ -1289,9 +1296,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
 
   const icono = resultado === "critico" ? "💥" : resultado === "impacto" ? "⚔️" : resultado === "roce" ? "🗡️" : "💨";
   const estadoObj = ob.tipo === "criatura" ? ` (${estadoTexto(ob.j)})` : ob.tipo === "pj" && dano ? ` (${ob.p.pv}/${ob.p.pv_max} PV)` : "";
-  let aviso =
-    `${icono} ${at.nombre} → ${ob.nombre}: ${resultado === "critico" ? "¡crítico!" : resultado === "torpeza" ? "torpeza" : resultado}` +
-    `${ob.tipo === "criatura" ? "" : ` (${t.total} vs CA ${ca})`}${dano ? `, ${dano} de daño` : d.dano && (resultado === "impacto" || resultado === "critico") ? ", la armadura aguanta" : ""}${estadoObj}`;
+  // El aviso que ve la mesa lleva la tirada (d20, bonificador, total) y la de daño; la CA solo se enseña si el aviso ya la enseñaba (no la de las criaturas).
+  const caras = t.descartados.length ? `${t.dados.join(", ")} | ${t.descartados.join(", ")}` : t.dados.join(", ");
+  const d20 = `d20${modo !== "normal" ? ` ${modo}` : ""} [${caras}]${t.modificador ? (t.modificador > 0 ? `+${t.modificador}` : `${t.modificador}`) : ""} = ${t.total}`;
+  const marcas = [d.reaccion ? "reacción" : "", d.legendaria ? "legendaria" : "", d.mano_secundaria ? "mano secundaria" : "", !d.reaccion && !d.legendaria && !d.mano_secundaria && !d.sin_contar && combate && (tAt.ataques ?? 0) > 1 ? `${tAt.ataques}.º ataque` : ""].filter(Boolean);
+  const etiquetaRes = resultado === "critico" ? `¡crítico! (${natural} natural)` : resultado === "torpeza" ? `torpeza (${natural} natural)` : resultado;
+  const tiradaAviso = `🎲 ${d20}${repetido ? " ↻ repite el 1" : ""}${ob.tipo === "criatura" ? "" : ` vs CA ${ca}`} → ${etiquetaRes}`;
+  const danoAviso = dano ? ` · daño ${danoTirado}${dano !== danoVisible ? ` → ${dano} efectivos` : ""}` : d.dano && (resultado === "impacto" || resultado === "critico") ? ` · daño ${danoTirado}, la armadura aguanta` : "";
+  let aviso = `${icono} ${at.nombre} → ${ob.nombre}${marcas.length ? ` (${marcas.join(", ")})` : ""}: ${tiradaAviso}${danoAviso}${estadoObj}`;
   // La furia deja marcas de Ceniza —permanentes— en todo el que hiere (una por individuo y furia); si el herido es otro
   // personaje, el propio Berserker carga también con una.
   if (at.tipo === "pj" && at.p.furia?.activa && dano > 0 && ob.nombre !== at.nombre) {
