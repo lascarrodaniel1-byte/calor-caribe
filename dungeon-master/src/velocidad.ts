@@ -19,6 +19,7 @@ export function velocidadDe(partida: Partida, c: Combatiente): { metros: number;
   const motivos: string[] = [];
   let v = BASE;
   let nada: number | undefined;
+  let soloAgua = false;
   if (c.tipo === "pj") { v = RAZAS.find((r) => r.nombre === c.p.raza)?.velocidad ?? BASE; if (v !== BASE) motivos.push(`velocidad de su raza: ${v} m`); }
   if (c.tipo === "criatura") {
     const txt = c.j.definicion.velocidad;
@@ -26,7 +27,9 @@ export function velocidadDe(partida: Partida, c: Combatiente): { metros: number;
     const anda = buena(numero(txt ?? "", /^\s*(\d+(?:[.,]\d+)?)\s*m/i));
     const vuela = buena(numero(txt ?? "", /volar\s+(\d+(?:[.,]\d+)?)/i));
     nada = buena(numero(txt ?? "", /nadar\s+(\d+(?:[.,]\d+)?)/i));
-    v = anda ?? BASE;
+    // «0 m en tierra, nadar 24 m» (Bakunawa): solo vive en el agua; fuera de ella no se mueve.
+    soloAgua = anda === undefined && nada !== undefined && vuela === undefined && /^\s*0\s*m/i.test(txt ?? "");
+    v = soloAgua ? 0 : anda ?? BASE;
     if (vuela !== undefined && vuela > v) { v = vuela; motivos.push(`vuela a ${vuela} m`); } // un volador se mueve a su velocidad de vuelo
     else if (vuela === undefined && anda === undefined && nada === undefined) v = BASE;
   }
@@ -35,6 +38,7 @@ export function velocidadDe(partida: Partida, c: Combatiente): { metros: number;
     if (esAcuatico(c) || conds.some((x) => /nadador/i.test(x))) { if (nada !== undefined) { v = nada; motivos.push(`nada a ${nada} m`); } }
     else { v = v / 2; motivos.push("mitad por el agua"); }
   }
+  if (soloAgua && v === 0) motivos.push("0 m en tierra: solo se mueve en el agua (agua {accion: entrar})");
   const ef = efectos(conds);
   if (ef.velocidad0) return { metros: 0, motivos: ["velocidad 0 (agarrado, sometido, paralizado…)"] };
   const ag = nivelAgotamiento(conds);

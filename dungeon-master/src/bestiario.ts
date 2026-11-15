@@ -73,6 +73,23 @@ export interface Regente {
   politica?: { objetivo: string; medios: string[]; agentes: string[] };
 }
 
+/** Tragar de verdad (ver tragado.ts): lo que sufre y cómo sale quien está dentro. Solo la Bakunawa lo tiene. */
+export interface Traga {
+  /** Cuántas criaturas puede tener dentro a la vez. */
+  max: number;
+  /** Daño que sufre quien está dentro al empezar su turno, y su tipo. */
+  dano: string;
+  tipo_dano: string;
+  /** Daño que debe causarle quien está dentro, en un solo turno suyo, para que ella deba escupirlo. */
+  umbral_dentro: number;
+  /** Daño total (de fuera y de dentro) en un asalto que la obliga a la misma salvación. */
+  umbral_asalto: number;
+  /** Salvación de CON de la criatura (CD) para aguantar y no vomitar. */
+  cd_vomito: number;
+  /** Prueba de Atletismo o Acrobacias (CD) para abrirse paso desde dentro. */
+  cd_escape: number;
+}
+
 export interface Criatura {
   nombre: string;
   /** Otros nombres con los que se la busca (hombre lobo, etc.). */
@@ -106,6 +123,10 @@ export interface Criatura {
   personalidad?: string[];
   /** Armadura o piel (ver PIEZAS en armadura.ts): escamas_naturales, pellejo, hueso, placas_completas… */
   blindaje?: string[];
+  /** Puede tragar a un personaje (ver Traga y tragado.ts). */
+  traga?: Traga;
+  /** Solo vive en el mar: el encuentro solo sale donde hay mar y el DM no la saca a tierra. */
+  solo_mar?: boolean;
 }
 
 export interface Robo {
@@ -134,6 +155,8 @@ export interface EstadoJefe {
   ceniza?: number;
   /** Asalto de combate en que entró en escena (0 = sin combate). Su descripción literaria solo se muestra al DM hasta ese asalto; sin el campo (partidas antiguas) se da por ya descrita. */
   descritaEn?: number;
+  /** Tragar: lo que ha recibido este asalto (para decidir si escupe). */
+  trago?: { ronda: number; fuera: number; dentro: number; probado: boolean };
 }
 
 export const BESTIARIO: Criatura[] = [
@@ -961,27 +984,30 @@ export const BESTIARIO: Criatura[] = [
     temple: "bestia",
     categoria: "monstruo",
     peligro: 5,
-    region: "Mar abierto frente a la Ciudad-Faro, estuarios de Hollín y cuevas costeras; solo se acerca a la costa en noches de luna",
+    region: "Solo en el mar: mar abierto frente a la Ciudad-Faro, aguas del estuario de Hollín y cuevas costeras con agua; nunca sale a tierra",
+    solo_mar: true,
+    traga: { max: 1, dano: "4d6", tipo_dano: "eléctrico", umbral_dentro: 25, umbral_asalto: 50, cd_vomito: 17, cd_escape: 20 },
     descripcion:
-      "Una serpiente-dragón marina tan larga como un muelle, de escamas azul pizarra con vetas de plata y una boca donde cabría una barca. Sube del agua en noches de luna llena con los ojos fijos en el cielo, y la luz se apaga a su alrededor como una vela tapada con la mano. Las aldeas de la costa dicen que se come la luna y que la devuelve cuando oye ruido.",
+      "Una serpiente-dragón marina tan larga como un muelle, de escamas azul pizarra con vetas de plata y una boca donde cabría una barca. Se alza del mar en noches de luna llena, sin soltar nunca el agua, con los ojos fijos en el cielo, y la luz se apaga a su alrededor como una vela tapada con la mano. Las aldeas de la costa dicen que se come la luna y que la devuelve cuando oye ruido.",
     ca: 20,
     pv: "20d20+100",
-    velocidad: "9 m, nadar 24 m",
+    velocidad: "0 m en tierra, nadar 24 m",
     atributos: "FUE 28 DES 12 CON 26 INT 14 SAB 16 CAR 20",
     ataques: [
-      "Mordisco devastador: +14, 3d10+9 perforante; agarrado (FUE CD 19 para zafarse); si ya lo tenía agarrado, puede tragarlo un instante (ver Tragar)",
+      "Mordisco devastador: +14, 3d10+9 perforante; agarrado (FUE CD 19 para zafarse); si ya lo tenía agarrado, puede tragarlo (ver Tragar)",
       "Coletazo (x2): +14, 3d8+9 contundente; derribado (FUE CD 19)",
     ],
     rasgos: [
       "Origen (secreto del DM, PROPUESTA a confirmar): una serpiente-dragón del mar que, en la época de los dioses, se tragó la luna de una noche y la escupió medio muerta; desde entonces la persigue en cada luna llena y, si la lleva a la boca, esa noche no hay luz en la costa. Las aldeas de la costa la espantan con ruido (ollas, gongs, cuernos) para que la suelte",
       "Ataque múltiple (2): un Mordisco y un Coletazo, o dos Coletazos",
-      "Escamas de mar profundo: el filo y la punta resbalan (blindaje escamas); inmune a ahogamiento, a envenenado y a todo efecto de marea, corriente o empuje de agua; resistencia al frío y al daño eléctrico; vulnerable al fuego solo si está fuera del agua",
-      "Gargantuana: ocupa 6 casillas de lado; no puede ser derribada ni agarrada por nada menor que ella, y arrolla a quien se interponga en su camino por la costa (FUE CD 19 o derribado)",
-      "Anfibia: nada a 24 m y respira aire y agua; no vuela (se alza sobre el agua, pero no se sostiene lejos de ella). Solo sale a la costa en noches de luna",
+      "Escamas de mar profundo: el filo y la punta resbalan (blindaje escamas); inmune a ahogamiento, a envenenado y a todo efecto de marea, corriente o empuje de agua; resistencia al frío y al daño eléctrico; vulnerable al fuego solo mientras esté fuera del agua, algo que ella nunca hace por su voluntad (solo si la varan o la encallan a la fuerza)",
+      "Gargantuana: ocupa 6 casillas de lado; no puede ser derribada ni agarrada por nada menor que ella, y arrolla a quien se interponga en su camino por el agua o por la orilla a su alcance (FUE CD 19 o derribado)",
+      "Anfibia: nada a 24 m y respira aire y agua; no vuela (se alza sobre el agua, pero no se sostiene lejos de ella). SOLO EN EL MAR: nunca sale a tierra (0 m en tierra, sin presencia fuera del agua); ataca naves, y la costa solo a pocos metros de la orilla (el DM la mantiene en el agua: agua {accion: entrar}); quien esté en tierra firme lejos de la orilla no puede ser alcanzado salvo por el Aliento de marea",
       "Eclipse del Bakunawa: mientras dure su oscuridad (ver habilidades), la luz de la luna y de las antorchas no mágicas no llega a más de 3 m: desventaja en ataques y pruebas por vista de quien no tenga visión mágica, y la Bakunawa los ve a todos (sentido de la luna a 36 m). Se rompe con ruido estruendoso y sostenido (gongs, campanas, cuernos, ollas, o un conjuro de trueno): al final de cada asalto de estruendo, 1d6; con 5-6 la luna vuelve",
-      "Se sumerge para huir: la primera vez que cae a la mitad de sus PV (o menos) estando a menos de 36 m del agua profunda, se zambulle como reacción y se aleja sin provocar; queda fuera de alcance bajo el agua hasta el final del siguiente asalto y reaparece 1d4 asaltos después, desde otro lado, o deja la costa hasta la siguiente luna llena (retirada táctica). No recupera PV al sumergirse",
+      "Se sumerge para huir: la primera vez que cae a la mitad de sus PV (o menos) estando a menos de 36 m del agua profunda, se zambulle como reacción y se aleja sin provocar; queda fuera de alcance bajo el agua hasta el final del siguiente asalto y reaparece 1d4 asaltos después, desde otro lado, o se aleja del lugar hasta la siguiente luna llena (retirada táctica; si lleva a alguien dentro, lo escupe antes). No recupera PV al sumergirse",
       "3 acciones legendarias por ronda (Coletazo de marea: un Coletazo; Sumergirse y reaparecer: moverse hasta 12 m a nado sin provocar; Rugido de la luna: SAB CD 19 o asustado hasta el fin de su siguiente turno)",
       "Resistencia legendaria (2/día): puede convertir una salvación fallada en éxito",
+      "TRAGADO (reglas que aplica el programa): solo una criatura Grande o menor a la vez, y solo si ya la tiene agarrada (habilidad Tragar, FUE CD 19, la misma del agarre). Dentro: cegada y retenida, con cobertura total (nadie de fuera puede atacarla ni alcanzarla con áreas; ella solo puede atacar a la Bakunawa, cuerpo a cuerpo con arma cortante o perforante, o con un conjuro). Al empezar su turno sufre 4d6 de daño eléctrico (el daño de dentro nunca mata de golpe; si cae a 0 PV queda inconsciente dentro y sigue sufriéndolo). ESCAPES: (1) DESDE DENTRO: si le causa 25 o más de daño a la Bakunawa en un solo turno suyo, la Bakunawa hace una salvación de CON (+8, sin Resistencia legendaria) CD 17 o la vomita; (2) ABRIRSE PASO: como acción, prueba de Atletismo o Acrobacias CD 20 (maniobra escapar) y sale por la garganta; (3) AYUDA DE FUERA: los aliados no pueden alcanzarla, pero cada daño que reciba la Bakunawa cuenta: si en un mismo asalto recibe 50 o más en total (de fuera y de dentro), hace esa misma salvación (una sola vez por asalto); (4) al morir, o al sumergirse en su retirada táctica, escupe a los tragados antes. Quien sale cae derribado a 3 m de la Bakunawa",
       "Resaca (reacción, 2/combate): cuando un ataque cuerpo a cuerpo la impacta, retrocede en el agua y el atacante, si está en el agua o a su borde, es arrastrado 3 m hacia ella (FUE CD 19 o derribado)",
     ],
     habilidades: [
@@ -1007,13 +1033,9 @@ export const BESTIARIO: Criatura[] = [
       {
         nombre: "Tragar",
         descripcion:
-          "Solo contra un objetivo que ya tenga agarrado: lo traga y lo escupe al final de su siguiente turno (o antes, si le hacen 30 o más de daño de una vez): dentro está retenido y cegado, y recibe 2d6 de ácido al empezar el turno de la Bakunawa. No mata por sí solo: la criatura quiere la luna, no el alimento, y lo suelta. Resuélvelo con condicion (retenido, cegado) y daño manual.",
-        salvacion: "des",
+          "Solo contra UNA criatura Grande o menor que ya tenga agarrada y mientras no tenga a nadie dentro: salvación de FUE; si falla, se la traga y queda tragada (cegada, retenida, con cobertura total) hasta que escape (ver el rasgo TRAGADO: daño eléctrico 4d6 al empezar su turno, que nunca mata de golpe; se sale con 25 de daño desde dentro en un turno, con Atletismo o Acrobacias CD 20, por la presión de los aliados o porque la Bakunawa muera o se sumerja). Pasa la habilidad con un solo objetivo: el programa aplica el estado y el daño.",
+        salvacion: "fue",
         cd: 19,
-        dano: "4d6",
-        tipo_dano: "ácido",
-        mitad_si_exito: true,
-        condicion: "retenido (tragado un instante: sin moverse y a oscuras; ácido al empezar el turno de la Bakunawa)",
         recarga: 5,
       },
     ],
@@ -1640,7 +1662,7 @@ export function danar(e: EstadoJefe, cantidad: number): string {
   return `${e.nombre}: ${cantidad >= 0 ? `−${cantidad}` : `+${-cantidad}`} PV → ${e.pv}/${e.pv_max} (${estadoTexto(e)}).`;
 }
 
-export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0, esquivan: string[] = []): string {
+export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0, esquivan: string[] = [], alFallar?: (p: Personaje, log: string[]) => void): string {
   const log: string[] = [];
   const quien = e?.nombre ?? "La criatura";
   const sello = e?.sellos?.find((s) => h.nombre.toLowerCase().includes(s.habilidad.toLowerCase()) || s.habilidad.toLowerCase().includes(h.nombre.toLowerCase()));
@@ -1690,6 +1712,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
       }
     }
     if (falla) {
+      if (alFallar) alFallar(p, log);
       if (h.condicion) {
         agregarCondicion(p.condiciones, h.condicion);
         log.push(`  Condición: ${h.condicion}.${textoEfectos([h.condicion]) ? ` Efecto: ${textoEfectos([h.condicion])}` : ""}`);

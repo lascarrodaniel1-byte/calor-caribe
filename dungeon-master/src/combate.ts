@@ -25,7 +25,8 @@ import { ajusteAgua, danoEnAgua, esArmaDePunta, esAcuatico, estaEnAgua, estaSume
 import { ventajaMontada } from "./montura.js";
 import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
-import { agregarCondicion, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento } from "./condiciones.js";
+import { agregarCondicion, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento, tragadoPor } from "./condiciones.js";
+import { liberarTragados } from "./tragado.js";
 
 import { nvl } from "./niveles.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
@@ -465,7 +466,7 @@ const CONDICIONES_DESVENTAJA = /jadeando/i; // condición propia de la magia; el
 
 /** Al acabar el combate caducan las condiciones pasajeras (agarrado, derribado, aturdido…); las que duran (veneno, petrificado, agotamiento…) se quedan. */
 export function limpiarTrasCombate(partida: Partida): void {
-  const pasajeras = new Set(["agarrado", "derribado", "retenido", "aturdido", "incapacitado", "asustado", "cegado", "ensordecido", "invisible", "hechizado"]);
+  const pasajeras = new Set(["agarrado", "derribado", "retenido", "tragado", "aturdido", "incapacitado", "asustado", "cegado", "ensordecido", "invisible", "hechizado"]);
   for (const p of Object.values(partida.personajes)) p.condiciones = p.condiciones.filter((x) => !pasajeras.has(reconocer(x)?.id ?? ""));
   for (const j of Object.values(partida.jefes)) j.condiciones = [];
   // Tope: las criaturas que sobreviven (huyeron, se perdonaron…) se quedaban para siempre en `jefes` y en el estado del DM.
@@ -495,6 +496,7 @@ export function puedeActuar(c: Combatiente): string | null {
 /** Una criatura que ha muerto sale de escena: se devuelve lo que robó y se quita del orden de iniciativa. */
 export function retirarCaido(partida: Partida, j: EstadoJefe): string[] {
   const devueltos = devolverRobos(partida, j);
+  liberarTragados(partida, j.nombre); // quien estaba dentro sale (el aviso lo da presionDeDano)
   registrarBaja(partida, j.nombre, pxCriatura(j.definicion)); // su experiencia se reparte al cerrar el combate
   delete partida.jefes[j.nombre];
   if (partida.combate) partida.combate.orden = partida.combate.orden.filter((o) => !igual(o.nombre, j.nombre));
@@ -851,6 +853,14 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let notaRedir = "";
   if (redir) { ob = localizar(partida, redir.objetivo); d = { ...d, objetivo: redir.objetivo, desventaja: d.desventaja || redir.desventaja }; notaRedir = redir.nota; }
   if (ob.tipo === "pj" && ob.p.condiciones.includes("muerto")) throw new Error(`${ob.nombre} ya está muerto: no se le puede atacar.`);
+  // Tragado: cobertura total frente a lo de fuera, y desde dentro solo se ataca a quien lo tragó (cuerpo a cuerpo, con arma cortante o perforante).
+  const tragaOb = tragadoPor(condsDe(ob)), tragaAt = tragadoPor(condsDe(at));
+  if (tragaOb && !igual(tragaOb, at.nombre)) throw new Error(`${ob.nombre} está tragado por ${tragaOb}: tiene cobertura total frente a todo lo de fuera. Los aliados solo pueden ayudarlo dañando a ${tragaOb} (cada daño cuenta como presión para que lo escupa).`);
+  if (tragaAt) {
+    if (!igual(tragaAt, ob.nombre)) throw new Error(`${at.nombre} está tragado por ${tragaAt}: desde dentro solo puede atacar a ${tragaAt}.`);
+    const tipoDentro = d.tipo_dano ?? reconocerArma(d.arma)?.tipo;
+    if (d.a_distancia || tipoDentro === "contundente") throw new Error(`${at.nombre} está dentro de ${tragaAt}: solo puede atacar cuerpo a cuerpo con arma cortante o perforante (o lanzar un conjuro y aplicar el daño con danar_criatura {por: «${at.nombre}»}).`);
+  }
   if (ob.tipo === "pnj" && ob.n.pv !== undefined && ob.n.pv <= 0) throw new Error(`${ob.nombre} ya ha caído (0 PV): no se le puede atacar.`);
   const distancia = !!d.a_distancia;
   const sal = bloqueoDeSal(partida, at, ob, distancia);

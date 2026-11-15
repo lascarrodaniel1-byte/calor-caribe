@@ -54,6 +54,6 @@ for (const [bicho, v] of [["Grifo", 24], ["Wyverno", 24]] as const) {
   const r2 = txt(E("plano", { mover: [{ nombre: bicho, direccion: "N", metros: 3 }] })); t(/se queda corto/.test(r2), `${bicho} no pasa de su velocidad de vuelo`, r2.slice(0, 100)); }
 // 10. todo el bestiario: velocidad finita y > 0 sin condiciones
 {   const malos: string[] = [];
-  for (const c of BESTIARIO) { const { p } = mk("Humano del Faro", c.nombre); let v: number; try { v = velocidadDe(p, localizar(p, c.nombre)).metros; } catch (e) { malos.push(`${c.nombre}: error`); continue; } if (!Number.isFinite(v) || v <= 0) malos.push(`${c.nombre}: ${v} (${c.velocidad})`); }
-  t(malos.length === 0, `las ${BESTIARIO.length} criaturas tienen velocidad finita > 0`, malos.join("; ")); }
+  for (const c of BESTIARIO) { const { p } = mk("Humano del Faro", c.nombre); let v: number; try { v = velocidadDe(p, localizar(p, c.nombre)).metros; } catch (e) { malos.push(`${c.nombre}: error`); continue; } if (!Number.isFinite(v) || (v <= 0 && !(c.solo_mar && /^0 m/.test(c.velocidad)))) malos.push(`${c.nombre}: ${v} (${c.velocidad})`); }
+  t(malos.length === 0, `las ${BESTIARIO.length} criaturas tienen velocidad finita > 0 (salvo la que solo vive en el mar: 0 m en tierra)`, malos.join("; ")); }
 console.log(`${ok} ok, ${mal} fallas`);

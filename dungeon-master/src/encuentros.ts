@@ -21,6 +21,8 @@ export interface Plantilla {
   peligro: 1 | 2 | 3 | 4 | 5;
   cuantos: [number, number];
   momento?: "noche" | "dia";
+  /** Solo en el mar: la plantilla solo entra en el sorteo si el grupo está en el mar, en una costa o puerto, o a bordo de una nave (ver enMar). */
+  mar?: boolean;
   /** Estaciones en que más abunda (con calendario: peso ×2 en ellas y ×0,5 fuera; sin calendario no cuenta). */
   estaciones?: string[];
   peso: number;
@@ -31,6 +33,20 @@ export interface Plantilla {
   salida: string;
   /** Para encuentros sin bestiario: bonificador de ataque, CA y PV orientativos de cada uno. */
   stats?: string;
+}
+
+const PALABRAS_MAR = /\b(mar|mares|oc[eé]ano|costa|costero|costera|litoral|bah[ií]a|golfo|estuario|arrecife|puerto|muelle|embarcadero|isla|islote|faro)\b/i;
+
+/**
+ * ¿Está el grupo en el mar? Sí si va a bordo de una nave que no se ha hundido, si el lugar donde está es un puerto o su nombre o región nombra el mar o la costa,
+ * o si `region` (la que fuerza el DM) los nombra. Las regiones de tierra («Aldenmar», «Las Ciénagas de Hollín») no cuentan por sí solas.
+ */
+export function enMar(partida: Partida, region?: string): boolean {
+  if (region !== undefined && PALABRAS_MAR.test(region)) return true;
+  if (Object.values(partida.personajes).some((p) => p.nave && partida.naves?.[p.nave] && partida.naves[p.nave].estado !== "hundida")) return true;
+  if (region !== undefined) return false;
+  const l = partida.mapa.lugares[partida.mapa.posicion ?? ""];
+  return !!l && (l.tipo === "puerto" || PALABRAS_MAR.test(`${l.nombre} ${l.region}`));
 }
 
 export const TABLA: Plantilla[] = [
@@ -59,7 +75,7 @@ export const TABLA: Plantilla[] = [
   { id: "basilisco", nombre: "Basilisco en las ruinas", familia: "monstruos", tipo: "peligro", regiones: ["Karak", "Marca Hueca"], peligro: 3, cuantos: [1, 1], peso: 2, bestiario: "Basilisco", quienes: "Estatuas de viajeros en un patio: algo de ojos fríos las hizo.", quieren: "Que nadie turbe su nido.", salida: "Espejos, mirar de reojo, rodear por arriba." },
   { id: "manticora", nombre: "Mantícora en los páramos", familia: "monstruos", tipo: "combate", regiones: ["Marca Hueca"], peligro: 3, cuantos: [1, 1], peso: 2, bestiario: "Mantícora", quienes: "Una bestia de rostro casi humano que juega con la comida.", quieren: "Presa y conversación cruel.", salida: "Le gustan los acertijos: hablar puede ganar tiempo." },
   { id: "gorgon", nombre: "Gorgon en su coto", familia: "fauna", tipo: "combate", regiones: ["Marca Hueca", "Agujas", "Karak"], peligro: 3, cuantos: [1, 1], estaciones: ["Primavera", "Verano", "Otoño"], peso: 2, bestiario: "Gorgon", quienes: "Un toro de escamas de herrumbre que escarba entre estatuas de ciervos, mulas y viajeros: su coto, en una cantera, una fuente seca o una mina abandonada.", quieren: "Defender su territorio y comer mineral; embiste y respira su vaho gris contra quien se adentra en el coto.", salida: "No cruzar su coto (lo marcan las estatuas); dejarle carne de caza lejos del grupo; no mirar ni respirar el vaho gris (taparse la boca y apartar la vista); una maza lo hiere mejor que el filo." },
-  { id: "bakunawa", nombre: "Bakunawa en la costa de luna", familia: "monstruos", tipo: "peligro", regiones: ["Aldenmar", "Hollín"], peligro: 5, cuantos: [1, 1], momento: "noche", peso: 1, bestiario: "Bakunawa", quienes: "Una serpiente-dragón marina que sube del agua en una noche de luna llena con los ojos en el cielo: la luz se apaga a su alrededor y las aldeas de la costa están a oscuras, con la gente golpeando ollas y gongs.", quieren: "La luna: se la lleva a la boca; ataca solo a lo que se le pone delante o a quien le roba la oscuridad.", salida: "Ruido estruendoso y sostenido (gongs, campanas, cuernos, ollas) que le hace soltar la luna; esconderse lejos del agua y no mirarla; no luchar de noche cerca del mar; se sumerge y se va si se la hiere mucho cerca de la costa." },
+  { id: "bakunawa", nombre: "Bakunawa en el mar", familia: "monstruos", tipo: "peligro", regiones: [], mar: true, peligro: 5, cuantos: [1, 1], momento: "noche", peso: 1, bestiario: "Bakunawa", quienes: "Una serpiente-dragón marina que se alza del agua en una noche de luna llena con los ojos en el cielo: la luz se apaga a su alrededor y, en la costa o a bordo, la gente golpea ollas y gongs. Nunca sale a tierra: solo ataca naves y la orilla a pocos metros del agua.", quieren: "La luna: se la lleva a la boca; ataca solo a lo que se le pone delante (naves, gente en la orilla) o a quien le roba la oscuridad.", salida: "Ruido estruendoso y sostenido (gongs, campanas, cuernos, ollas) que le hace soltar la luna; alejarse del agua y no mirarla (en tierra firme lejos de la orilla no puede alcanzar a nadie, salvo con el aliento); no luchar de noche cerca del mar; se sumerge y se va si se la hiere mucho, y si tenía a alguien dentro, lo escupe antes." },
   // ---- humanos
   { id: "bandoleros", nombre: "Bandoleros del camino", familia: "humanos", tipo: "combate", regiones: [], peligro: 1, cuantos: [3, 6], peso: 8, quienes: "Salteadores desesperados: campesinos arruinados y desertores con garrotes y ballestas viejas.", quieren: "Bolsas, armas y caballos; no quieren morir por unas monedas.", salida: "Se rinden o huyen si su cabecilla cae; se les puede pagar un peaje o convencerlos.", stats: "ataque +3, CA 12, 9 PV, garrote o ballesta" },
   { id: "desertores", nombre: "Desertores de la Compañía del Cuervo", familia: "humanos", tipo: "social", regiones: ["Aldenmar", "Marca Hueca"], peligro: 2, cuantos: [2, 4], peso: 4, quienes: "Mercenarios que huyen de una paga que no llegó (o de algo que vieron en la muralla).", quieren: "Pasar desapercibidos y comer; saben cosas que el Cuervo oculta.", salida: "Se les puede comprar información, ayudar, delatar o enfrentar.", stats: "ataque +4, CA 14, 16 PV, veteranos" },
@@ -285,7 +301,7 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
   const ultimas2 = h.slice(-2);
   if (ultimas2.length === 2 && ultimas2[0].familia === ultimas2[1].familia) prohibidas.add(ultimas2[0].familia);
   const pesoInf = pesoPorInfluencia(partida, region);
-  const pesos = TABLA.filter((t) => (!d.tipo || t.tipo === d.tipo) && !prohibidas.has(t.familia)).map((t) => {
+  const pesos = TABLA.filter((t) => (!d.tipo || t.tipo === d.tipo) && !prohibidas.has(t.familia) && (!t.mar || enMar(partida, d.region))).map((t) => {
     let w = t.peso;
     if (t.regiones.length) w *= t.regiones.some((r) => region.toLowerCase().includes(r.toLowerCase())) ? 3 : 0.25;
     if (t.momento && noche !== null) w *= (t.momento === "noche") === noche ? 1.6 : 0.3;

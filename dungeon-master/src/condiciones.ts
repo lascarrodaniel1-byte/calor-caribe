@@ -36,6 +36,7 @@ export const CATALOGO: Condicion[] = [
   { id: "envenenado", nombre: "envenenado", patron: /envenenad/i, regla: "desventaja en tiradas de ataque y pruebas de característica", ataca: "desventaja", pruebas: "desventaja" },
   { id: "derribado", nombre: "derribado", patron: /derribad|tumbad|caíd[oa]\b/i, regla: "solo puede arrastrarse (o levantarse gastando la mitad de su movimiento); sus ataques tienen desventaja; los ataques cuerpo a cuerpo contra él tienen ventaja y los de distancia, desventaja", ataca: "desventaja", contraCuerpo: "ventaja", contraDistancia: "desventaja" },
   { id: "retenido", nombre: "retenido", patron: /retenid|inmovilizad|^atrapad[oa]\s*(\(|$)|enredad/i, regla: "velocidad 0; desventaja en sus ataques y en las salvaciones de DES; los ataques contra él tienen ventaja", ataca: "desventaja", contraCuerpo: "ventaja", contraDistancia: "ventaja", velocidad0: true, salvDesDesv: true },
+  { id: "tragado", nombre: "tragado", patron: /^tragad[oa] \(por /i, regla: "dentro de una criatura (Bakunawa): cegado y retenido (velocidad 0), con cobertura total frente a todo lo de fuera (nadie lo ataca ni lo alcanza con áreas); solo puede atacar a quien lo tragó, con arma cortante o perforante o con un conjuro; sufre su daño al empezar su turno; sale si lo escupe, si se abre paso (maniobra escapar: Atletismo o Acrobacias CD 20) o si la criatura cae o se sumerge", ataca: "desventaja", velocidad0: true },
   { id: "aturdido", nombre: "aturdido", patron: /aturdid/i, regla: "incapacitado, sin moverse y hablando a duras penas; falla las salvaciones de FUE y DES; los ataques contra él tienen ventaja", incapacitado: true, velocidad0: true, falla: ["fue", "des"], contraCuerpo: "ventaja", contraDistancia: "ventaja" },
   { id: "nervio", nombre: "brazo entumecido", patron: /brazo entumecido|nervio da[ñn]ado/i, regla: "un brazo no le responde (nervio golpeado): suelta lo que sostiene con él; desventaja en sus ataques y en pruebas de característica", ataca: "desventaja", pruebas: "desventaja" },
   { id: "pierna", nombre: "pierna entumecida", patron: /pierna entumecida/i, regla: "no puede moverse (velocidad 0) y tiene desventaja en las salvaciones de DES (nervio de la pierna golpeado)", velocidad0: true, salvDesDesv: true },
@@ -73,6 +74,12 @@ export const REGLA_AGOTAMIENTO = [
   "5: velocidad 0",
   "6: muerte",
 ];
+
+/** Quién lo ha tragado («tragado (por Bakunawa)»), o null si no está tragado. */
+export function tragadoPor(conds: string[]): string | null {
+  for (const c of conds) { const m = /^tragad[oa] \(por ([^)]+)\)/i.exec(c); if (m) return m[1].trim(); }
+  return null;
+}
 
 /** La condición del catálogo a la que se refiere el texto (si alguna). */
 export function reconocer(texto: string): Condicion | undefined {

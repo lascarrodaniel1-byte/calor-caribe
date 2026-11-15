@@ -5,7 +5,8 @@ import { tiene } from "./dotes_base.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida } from "./estado.js";
 import { aplicarCondicion, condsDe, igual, localizar, puedeActuar, retirarCaido, turnoDe, type Combatiente } from "./combate.js";
-import { efectos, reconocer } from "./condiciones.js";
+import { efectos, reconocer, tragadoPor } from "./condiciones.js";
+import { abrirsePaso } from "./tragado.js";
 import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
@@ -66,6 +67,12 @@ export function maniobra(partida: Partida, d: DatosManiobra): string {
   if (igual(at.nombre, ob.nombre)) throw new Error("Atacante y objetivo son el mismo.");
   const m = sinAccion(at);
   if (m) throw new Error(m + ".");
+  // Tragado: escapar es abrirse paso por la garganta (Atletismo o Acrobacias contra la CD de la criatura), sin importar la distancia.
+  if (d.tipo === "escapar" && at.tipo === "pj" && tragadoPor(at.p.condiciones)) {
+    const atl = bonoManiobra(at, "atletismo", d.bono_atacante), acr = bonoManiobra(at, "acrobacias", d.bono_atacante);
+    const mejor = atl.bono >= acr.bono ? { ...atl, hab: "Atletismo" } : { ...acr, hab: "Acrobacias" };
+    return abrirsePaso(partida, at.p, mejor.bono, mejor.hab, d.ventaja && !d.desventaja ? "ventaja" : d.desventaja && !d.ventaja ? "desventaja" : "normal");
+  }
   const dist = distanciaPlano(partida, at.nombre, ob.nombre);
   // Atado con cadenas (Flagelante): se escapa aunque quien lo ata esté a distancia.
   const conCadenas = d.tipo === "escapar" && condsDe(at).some((x) => reconocer(x)?.id === "agarrado" && /cadenas de/i.test(x));

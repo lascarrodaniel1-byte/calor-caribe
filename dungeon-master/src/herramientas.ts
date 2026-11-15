@@ -69,7 +69,9 @@ import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
 import { agregarCondicion, mismaCondicion } from "./condiciones.js";
 import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
-import { registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
+import { enMar, registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
+import { danoDeTragados, presionDeDano, tragarA, validarTragar } from "./tragado.js";
+import { tragadoPor } from "./condiciones.js";
 import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
@@ -542,6 +544,7 @@ const esquemas = {
   danar_criatura: z.object({
     nombre: z.string(),
     cantidad: z.number().int().describe("Daño final tras resistencias; negativo para curarla o regenerar"),
+    por: z.string().optional().describe("Quién le causa el daño (un conjuro de un tragado cuenta como daño desde dentro)"),
   }),
   habilidad_criatura: z.object({
     criatura: z.string().describe("Nombre de la criatura en escena"),
@@ -1181,6 +1184,11 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
     if (s.texto) { r.texto += `\n${s.texto}`; r.aviso += `\n${s.texto}`; }
     if (s.muerto && !r.muerto) r.muerto = s.muerto;
   }
+  if ((r.dano ?? 0) > 0) { // la Bakunawa con alguien dentro: el daño de fuera y de dentro cuenta como presión para que lo escupa
+    const ob = Object.values(partida.jefes).find((x) => x.nombre.toLowerCase() === e.objetivo.toLowerCase());
+    const pres = ob ? presionDeDano(partida, ob, r.dano ?? 0, e.atacante) : [];
+    if (pres.length) { r.texto += `\n${pres.join("\n")}`; r.aviso += `\n${pres.join("\n")}`; }
+  }
   const nervio = golpeNervio(partida, e, r);
   if (nervio) { r.texto += `\n${nervio}`; r.aviso += `\n${nervio}`; }
   // Segador: anota a quién hirió (sangre fresca) y siega el alma de quien cae (paga Deuda).
@@ -1553,6 +1561,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`Llevas dos encuentros seguidos con enemigos de la familia «${rep}»: este sería el tercero. Varía: llama a encuentro (tira de verdad según región, hora y nivel y evita lo reciente). Si la trama exige repetir, vuelve a llamar con repetir=true.`);
         registrarEnemigo(partida, def.nombre);
         let texto = aparecer(partida, def, e.nombre);
+        if (def.solo_mar && !enMar(partida)) texto += `\n⚠ ${def.nombre} SOLO vive en el mar: no sale a tierra (0 m en tierra). Colócala en el agua o a pocos metros de la orilla y no la hagas perseguir a nadie tierra adentro (solo el Aliento de marea llega lejos).`;
         // Si ya hay un combate en marcha, la criatura tira su iniciativa y entra en el orden.
         if (partida.combate) {
           try { texto += "\n" + agregarAlCombate(partida, [e.nombre]); } catch { /* sin datos suficientes para tirar: lo hará el DM con iniciativa {sumar:true} */ }
@@ -1563,7 +1572,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.danar_criatura>;
         const j = enEscena(partida, e.nombre);
         let texto = danar(j, e.cantidad);
-        let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}`;
+        const presion = presionDeDano(partida, j, e.cantidad, e.por); // si lleva a alguien tragado: ¿lo escupe?
+        if (presion.length) texto += `\n${presion.join("\n")}`;
+        let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}${presion.length ? `\n${presion.join("\n")}` : ""}`;
         if (j.pv <= 0) {
           const devueltos = retirarCaido(partida, j);
           if (devueltos.length) {
@@ -1584,10 +1595,13 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           throw new Error(`No encuentro esa habilidad. Habilidades de ${e.criatura}: ${hay}. Usa habilidad_nueva para improvisar.`);
         }
         const objetivos = e.objetivos.map((n) => buscar(partida, n));
+        for (const o of objetivos) { const dentro = tragadoPor(o.condiciones); if (dentro && !(j && dentro.toLowerCase() === j.nombre.toLowerCase())) throw new Error(`${o.nombre} está tragado por ${dentro}: tiene cobertura total, ninguna habilidad de fuera lo alcanza.`); }
+        const tragando = !!(j && j.definicion.traga && h.nombre === "Tragar");
+        if (j && tragando) validarTragar(partida, j, objetivos);
         const gasto = j ? exigirHabilidadDisponible(partida, j, h, !!e.legendaria) : null; // antes de tirar nada: si se excede, se rechaza sin efecto
         const mit = j ? mitigacion(partida, j) : null;
         const esquivan = Object.entries(partida.combate?.turnos ?? {}).filter(([, t]) => t.esquiva).map(([k]) => k.toLowerCase());
-        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0, esquivan) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
+        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0, esquivan, tragando ? (p, log) => tragarA(partida, j!, p, log) : undefined) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
         if (j && gasto && !texto.includes("Elige otra acción.")) gastarHabilidad(partida, j, gasto); // si no se recargó o está sellada, no se gasta
         if (j) registrarMagia(partida, { hechizo: h.nombre, lanzador: j.nombre, victima: objetivos[0]?.nombre, negra: esMagiaNegra(undefined, `${h.nombre} ${h.descripcion} ${h.condicion ?? ""}`) && /no-muerto|vampiro|espectro|hechic|brujo|bruja|mago|culti/i.test(`${j.definicion.temple ?? ""} ${j.definicion.nombre}`), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
         return { contenido: texto, aviso: `💀 ${texto}` };
@@ -1625,6 +1639,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.lanzar_hechizo>;
         const p = buscar(partida, e.lanzador);
         const objetivo = e.objetivo ? buscar(partida, e.objetivo) : undefined;
+        if (objetivo && tragadoPor(objetivo.condiciones) && objetivo !== p) throw new Error(`${objetivo.nombre} está tragado: cobertura total, ningún conjuro de fuera lo alcanza.`);
         const texto0 = lanzar(p, { ...e, objetivo });
         const hzc = e.hechizo_nuevo ?? (e.hechizo ? buscarHechizo(e.hechizo) : undefined);
         const deuda = hzc && !/no sabe magia|aún no ha jurado|perdió su juramento|juramento roto/.test(texto0) ? deudaPorHechizo(p, Math.max(hzc.circulo, e.circulo ?? hzc.circulo), hzc.nombre) : "";
@@ -1937,7 +1952,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
-        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida), ...avisoGuaridas(partida)].join("\n");
+        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...danoDeTragados(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida), ...avisoGuaridas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "montura": {
