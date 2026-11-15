@@ -247,9 +247,12 @@ async function programar(pg, x) { await pg.fill("#accion", x); await pg.keyboard
   await pg.waitForFunction(() => (window.__entradas || []).length >= 1, null, { timeout: 25000 }).catch(() => {});
   await pg.waitForTimeout(500);
   t(!/Reacciones preparadas/.test((await entradas(pg))[0] || ""), "con la reacción ya gastada este asalto no se menciona");
+  t((await visible(pg, "#nota-reaccion")) && /^no vigente: ya gastaste tu reacción este asalto$/.test(await texto(pg, "#nota-reaccion")), "y el campo avisa: «no vigente: ya gastaste tu reacción este asalto»", await texto(pg, "#nota-reaccion"));
+  t((await pg.getAttribute("#reaccion", "aria-describedby")) === "nota-reaccion", "la nota se asocia al campo (aria-describedby)");
   // quitarla
   await pg.fill("#reaccion", ""); await pg.keyboard.press("Enter"); await pg.waitForTimeout(500);
   t((await store(pg, "programadas/u1"))?.reaccion === undefined, "el jugador puede quitar la reacción");
+  t(!(await visible(pg, "#nota-reaccion")), "sin reacción escrita no hay nota");
   void nombres;
   await pg.close();
   // fin del combate: la reacción caduca

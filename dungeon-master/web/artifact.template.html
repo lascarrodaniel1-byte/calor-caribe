@@ -440,6 +440,8 @@
   .redaccion .atajos { order: 5; flex: 0 0 auto; flex-wrap: nowrap; gap: 4px; margin-left: auto; }
   .redaccion .ficha-programada { order: 6; flex: 3 1 360px; padding: 0 4px 0 8px; min-height: 30px; gap: 4px; font-size: 14px; }
   #reaccion { order: 7; flex: 2 1 260px; min-height: 30px; padding: 3px 10px; font-size: 16px; line-height: 1.25; }
+  #nota-reaccion { order: 8; flex: 1 0 100%; font: 600 12px/1.2 var(--f-ui); color: #f0b45a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+  #reaccion.sin-efecto { border-style: dashed; border-color: #8a5410; opacity: .85; }
   .redaccion .escribir { order: 9; flex: 0 0 100%; gap: 6px; align-items: flex-end; margin: 0; }
   .redaccion .boton, .redaccion .quien { position: relative; min-height: 30px; padding: 0 10px; font-size: 14px; line-height: 1.15; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
   .redaccion .quien { margin-left: 0; padding: 0 6px; }
@@ -584,6 +586,7 @@
           <button class="boton sobrio" id="cancelar-programada" type="button" aria-label="Cancelar la acción programada" title="Cancelar"><span aria-hidden="true">✕</span><span class="largo"> Cancelar</span></button>
         </div>
         <input type="text" id="reaccion" maxlength="140" autocomplete="off" aria-label="Reacción preparada (si…)" placeholder="Reacción preparada (si…): Si el ogro me ataca, me cubro con el escudo" hidden>
+        <div class="nota-reaccion" id="nota-reaccion" role="status" hidden></div>
       </div>
       <form class="escribir" id="form-accion">
                 <textarea id="accion" rows="1" maxlength="2000" aria-label="Tu acción" placeholder="¿Qué haces?"></textarea>
@@ -1057,6 +1060,12 @@
     if (verAccion) { $("texto-programada").textContent = `⏳ Programada: «${p.texto}»`; ficha.title = p.texto; }
     reac.hidden = !(puede && enCombate());
     if (!reac.hidden && document.activeElement !== reac) reac.value = p && T.reaccionVigente(p, c) ? p.reaccion : "";
+    // Si hay una reacción escrita pero no va a entregarse (ya gastó la reacción, su personaje no está en la iniciativa o está caído), se dice por qué.
+    const motivo = !reac.hidden && p ? T.motivoReaccionNoVigente(partida, nombre, p) : "";
+    const nota = $("nota-reaccion");
+    nota.hidden = !motivo; nota.textContent = motivo;
+    if (motivo) reac.setAttribute("aria-describedby", "nota-reaccion"); else reac.removeAttribute("aria-describedby");
+    reac.classList.toggle("sin-efecto", !!motivo);
     caja.hidden = ficha.hidden && reac.hidden;
   }
   /** Guarda mi programada (null la borra). Va por delante en local para que la pantalla responda al instante. */
@@ -2090,7 +2099,10 @@
           siguienteJ = { jugador: jugCb, nuevaRonda: false, entrada: paso.entrada || "" }; // la ronda de la mesa no avanza en combate
           infoTurno.siguiente = jugCb.nombre;
           infoTurno.cierraRonda = false;
-          const reacciones = T.textoReaccionesPreparadas(partida, Object.fromEntries(Object.values(programadas).filter((x) => x?.nombre && x.reaccion).map((x) => [x.nombre, x])));
+          // Lectura fresca de «programadas»: la caché de esta pestaña puede ir por detrás de lo que otro jugador acaba de preparar (respaldo: la caché).
+          let progsReac = programadas;
+          try { const fresco = await db.collection("programadas").get(); progsReac = Object.fromEntries(fresco.docs.map((d) => [d.id, d.data()])); } catch { /* sin red: vale la caché */ }
+          const reacciones = T.textoReaccionesPreparadas(partida, Object.fromEntries(Object.values(progsReac).filter((x) => x?.nombre && x.reaccion).map((x) => [x.nombre, x])));
           if (reacciones) infoTurno.reacciones = reacciones;
           infoTurno.combate = { asalto: cb.asalto, orden: cb.orden.map(({ nombre: n, tipo, tocaAlDM }) => ({ nombre: n, tipo, tocaAlDM })), resolverAntes: cb.resolverAntes.map(({ nombre: n, tipo, motivo, nuevoAsalto }) => ({ nombre: n, tipo, ...(motivo ? { motivo } : {}), ...(nuevoAsalto ? { nuevoAsalto } : {}) })), cierraAsalto: cb.cierraAsalto, entrada: cb.entradaActuante };
         }

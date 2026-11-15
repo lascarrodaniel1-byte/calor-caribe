@@ -527,26 +527,52 @@ export const lineaAccion = (a: { nombre: string; texto: string; programada?: boo
   a.programada ? `${a.nombre} (acción preparada antes, de cuando aún no era su turno): ${a.texto}` : `${a.nombre}: ${a.texto}`;
 
 /**
+ * Estado de la reacción de un jugador en el combate: «libre» (algún personaje suyo en la iniciativa, vivo, consciente y con la reacción sin gastar),
+ * «gastada» (la usó este asalto), «caido» (todos los suyos en la iniciativa están caídos, muertos o incapacitados) o «fuera» (ninguno está en la iniciativa).
+ * Sin combate, «fuera».
+ */
+export function estadoReaccion(partida: Partida, jugador: string): "libre" | "gastada" | "caido" | "fuera" {
+  const c = partida.combate;
+  if (!c) return "fuera";
+  const gastada = (nombre: string) => {
+    const k = Object.keys(c.turnos ?? {}).find((x) => igual(x, nombre));
+    return !!(k && c.turnos![k].reaccion);
+  };
+  let suyos = 0, enPie = 0;
+  for (const o of c.orden) {
+    let cb: Combatiente;
+    try { cb = localizar(partida, o.nombre); } catch { continue; }
+    if (cb.tipo !== "pj" || !cb.p.jugador || sinTildes(cb.p.jugador) !== sinTildes(jugador)) continue;
+    suyos++;
+    if (cb.p.condiciones.includes("muerto") || cb.p.pv <= 0 || efectos(condsDe(cb)).incapacitado) continue;
+    enPie++;
+    if (!gastada(cb.nombre)) return "libre";
+  }
+  return !suyos ? "fuera" : enPie ? "gastada" : "caido";
+}
+
+/**
+ * Nota corta para el jugador que tiene una reacción preparada pero no va a entregarse: «no vigente: ya gastaste tu reacción este asalto» /
+ * «tu personaje no está en el combate» / «tu personaje está caído». Vacía si no hay reacción escrita, no hay combate o está vigente.
+ */
+export function motivoReaccionNoVigente(partida: Partida, jugador: string, p: Pick<Programada, "reaccion" | "reaccionAsalto"> | null | undefined): string {
+  if (!p?.reaccion || !partida.combate) return "";
+  const e = estadoReaccion(partida, jugador);
+  if (e === "libre") return "";
+  return e === "gastada" ? "no vigente: ya gastaste tu reacción este asalto" : e === "caido" ? "no vigente: tu personaje está caído" : "no vigente: tu personaje no está en el combate";
+}
+
+/**
  * «Reacciones preparadas: Ana: «…»; Beto: «…»» de los jugadores en combate cuya reacción está libre este asalto (máx. ~300 caracteres).
  * Vacío si no hay ninguna. `progs` va por nombre de jugador.
  */
 export function textoReaccionesPreparadas(partida: Partida, progs: Record<string, Pick<Programada, "reaccion" | "reaccionAsalto">>): string {
   const c = partida.combate;
   if (!c) return "";
-  const gastada = (nombre: string) => {
-    const k = Object.keys(c.turnos ?? {}).find((x) => igual(x, nombre));
-    return !!(k && c.turnos![k].reaccion);
-  };
   const piezas: string[] = [];
   for (const [jugador, p] of Object.entries(progs)) {
     if (!reaccionVigente({ texto: "", ts: 0, ronda: 0, ...p }, { ronda: 0, asalto: c.ronda })) continue;
-    // Algún personaje suyo en el orden de iniciativa, vivo, consciente y con la reacción sin gastar.
-    const libre = c.orden.some((o) => {
-      let cb: Combatiente;
-      try { cb = localizar(partida, o.nombre); } catch { return false; }
-      return cb.tipo === "pj" && !!cb.p.jugador && sinTildes(cb.p.jugador) === sinTildes(jugador) && !cb.p.condiciones.includes("muerto") && cb.p.pv > 0 && !efectos(condsDe(cb)).incapacitado && !gastada(cb.nombre);
-    });
-    if (libre) piezas.push(`${jugador}: «${limpia(p.reaccion, MAX_REACCION)}»`);
+    if (estadoReaccion(partida, jugador) === "libre") piezas.push(`${jugador}: «${limpia(p.reaccion, MAX_REACCION)}»`);
   }
   if (!piezas.length) return "";
   let linea = "Reacciones preparadas: ";

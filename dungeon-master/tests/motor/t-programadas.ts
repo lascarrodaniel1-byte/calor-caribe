@@ -5,7 +5,7 @@ import { ejecutar } from "../../src/herramientas.ts";
 import { MAX_ACCION } from "../../src/formulario.ts";
 import {
   bloqueTurnos, siguienteEnCombate, siguiente, puedeSaltar, programarAccion, caducada, reaccionVigente, debeEntregarse, restoTrasEntregar,
-  jugadorCaido, idsConProgramada, lineaAccion, textoReaccionesPreparadas, textoCuentaAtras, REGLA_PREPARADA, MAX_REACCION, MAX_REACCIONES_BLOQUE,
+  jugadorCaido, idsConProgramada, lineaAccion, textoReaccionesPreparadas, estadoReaccion, motivoReaccionNoVigente, textoCuentaAtras, REGLA_PREPARADA, MAX_REACCION, MAX_REACCIONES_BLOQUE,
   type InfoTurno, type Jugador, type Programada,
 } from "../../src/turnos.ts";
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
@@ -147,6 +147,21 @@ const mk = (criaturas: string[], orden: string[]) => {
   t(big.length <= MAX_REACCIONES_BLOQUE && /Ana/.test(big) && !/Cris/.test(big) && big.endsWith("…"), "con muchas reacciones largas se corta en ~300 caracteres", String(big.length));
   // reacción de un combate anterior no vale
   t(textoReaccionesPreparadas(p, { Ana: { reaccion: "x", reaccionAsalto: 9 } }) === "", "una reacción de otro combate (asalto posterior al actual) no vale");
+  // nota para el jugador: por qué su reacción preparada no va a entregarse
+  const rx = { reaccion: "Me cubro", reaccionAsalto: 1 };
+  t(estadoReaccion(p, "Ana") === "libre" && motivoReaccionNoVigente(p, "Ana", rx) === "", "con la reacción libre no hay nota");
+  p.combate!.turnos = { ...(p.combate!.turnos ?? {}), Aldo: { reaccion: true } };
+  t(estadoReaccion(p, "Ana") === "gastada" && motivoReaccionNoVigente(p, "Ana", rx) === "no vigente: ya gastaste tu reacción este asalto", "reacción gastada: «ya gastaste tu reacción este asalto»");
+  delete p.combate!.turnos!.Aldo;
+  p.combate!.orden = p.combate!.orden.filter((o) => o.nombre !== "Aldo");
+  t(estadoReaccion(p, "Ana") === "fuera" && motivoReaccionNoVigente(p, "Ana", rx) === "no vigente: tu personaje no está en el combate", "personaje fuera de la iniciativa: «tu personaje no está en el combate»");
+  t(textoReaccionesPreparadas(p, { Ana: rx }) === "", "y tampoco se entrega al DM (misma regla)");
+  p.combate!.orden.unshift({ nombre: "Aldo", total: 30 });
+  p.personajes.Aldo.pv = 0;
+  t(estadoReaccion(p, "Ana") === "caido" && /caído/.test(motivoReaccionNoVigente(p, "Ana", rx)), "personaje caído: «tu personaje está caído»");
+  p.personajes.Aldo.pv = 40;
+  t(motivoReaccionNoVigente(p, "Ana", { reaccion: "" }) === "" && motivoReaccionNoVigente(p, "Ana", null) === "" && motivoReaccionNoVigente(nuevaPartida(), "Ana", rx) === "", "sin reacción escrita, sin programada o sin combate no hay nota");
+  t(estadoReaccion(p, "Ana") === "libre", "restaurado, vuelve a estar libre");
   void E;
 
   // bloque: sin programadas ni reacciones es idéntico al de siempre; con ellas añade solo las líneas nuevas
