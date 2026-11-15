@@ -10,7 +10,7 @@ import { tiene } from "./dotes_base.js";
 import { danar, devolverRobos, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
-import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDano } from "./armadura.js";
+import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDanoArmadura } from "./armadura.js";
 import { infligir, tirarUbicacion, type Ubicacion } from "./heridas.js";
 import { competencia, mod, salvacion, signo, valor } from "./reglas.js";
 import { dadosCastigo, esCaballero, juramentoActivo } from "./juramento_base.js";
@@ -33,7 +33,8 @@ import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { dadoHaemajitsu } from "./estilos_base.js";
 import { distanciaPlano } from "./espacio.js";
 import { bonoClima } from "./clima.js";
-import { ataquesPorAccion, criticoVeterano, desviaProyectiles, esDanoFisico, presaMarcada, temerarioActivo } from "./rasgos.js";
+import { aVocabularioArmadura, deVocabularioArmadura, esFisico, tipoHeridaDe, type TipoDano } from "./danos.js";
+import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
 
@@ -685,6 +686,7 @@ export interface DatosAtaque {
   ventaja?: boolean;
   desventaja?: boolean;
   ca?: number;
+  /** Tipo canónico del daño (el esquema ya traduce los alias). */
   tipo_dano?: TipoDano;
   /** Región a la que apunta, o "hueco" para buscar las juntas de la armadura. */
   apuntar?: Ubicacion | "hueco";
@@ -720,8 +722,6 @@ export interface DatosAtaque {
   duelo?: boolean;
 }
 
-/** Cómo se llama cada tipo de daño físico en los avisos de pantalla (solo presentación). */
-const NOMBRE_TIPO_AVISO: Record<string, string> = { corte: "cortante", punta: "perforante", contundente: "contundente" };
 
 export interface ResultadoAtaque {
   texto: string;
@@ -784,11 +784,11 @@ function ataqueRacial(partida: Partida, d: DatosAtaque): DatosAtaque | null {
   if (/^mordisco vamp[ií]rico$/.test(arma)) {
     if (p.raza !== "Nacido Pálido") throw new Error(`${p.nombre} no es un Nacido Pálido: no tiene Mordisco vampírico.`);
     if ((p.gastados?.["Mordisco vampírico"] ?? 0) >= 1) throw new Error(`${p.nombre} ya usó su Mordisco vampírico (1 por descanso corto).`);
-    return { ...d, dano: d.dano ?? `1d4${signo(mod(valor(p, "con")))}`, atributo: d.atributo ?? (valor(p, "fue") >= valor(p, "des") ? "fue" : "des"), tipo_dano: d.tipo_dano ?? "punta", a_distancia: false };
+    return { ...d, dano: d.dano ?? `1d4${signo(mod(valor(p, "con")))}`, atributo: d.atributo ?? (valor(p, "fue") >= valor(p, "des") ? "fue" : "des"), tipo_dano: d.tipo_dano ?? "perforante", a_distancia: false };
   }
   if (/^mordisco$/.test(arma)) {
     if (p.raza !== "Varg" && p.raza !== "Nacido Pálido") return null;
-    return { ...d, dano: d.dano ?? `1d6${signo(mod(valor(p, "fue")))}`, atributo: d.atributo ?? "fue", tipo_dano: d.tipo_dano ?? "punta", a_distancia: false };
+    return { ...d, dano: d.dano ?? `1d6${signo(mod(valor(p, "fue")))}`, atributo: d.atributo ?? "fue", tipo_dano: d.tipo_dano ?? "perforante", a_distancia: false };
   }
   if (/^llama sagrada$/.test(arma)) {
     if (p.raza !== "Cenizo") throw new Error(`${p.nombre} no es un Cenizo: no conoce el truco Llama sagrada.`);
@@ -861,7 +861,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (tragaOb && !igual(tragaOb, at.nombre)) throw new Error(`${ob.nombre} está tragado por ${tragaOb}: tiene cobertura total frente a todo lo de fuera. Los aliados solo pueden ayudarlo dañando a ${tragaOb} (cada daño cuenta como presión para que lo escupa).`);
   if (tragaAt) {
     if (!igual(tragaAt, ob.nombre)) throw new Error(`${at.nombre} está tragado por ${tragaAt}: desde dentro solo puede atacar a ${tragaAt}.`);
-    const tipoDentro = d.tipo_dano ?? reconocerArma(d.arma)?.tipo;
+    const tipoDentro = d.tipo_dano ?? deVocabularioArmadura(reconocerArma(d.arma)?.tipo);
     if (d.a_distancia || tipoDentro === "contundente") throw new Error(`${at.nombre} está dentro de ${tragaAt}: solo puede atacar cuerpo a cuerpo con arma cortante o perforante (o lanzar un conjuro y aplicar el daño con danar_criatura {por: «${at.nombre}»}).`);
   }
   if (ob.tipo === "pnj" && ob.n.pv !== undefined && ob.n.pv <= 0) throw new Error(`${ob.nombre} ya ha caído (0 PV): no se le puede atacar.`);
@@ -1163,7 +1163,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     // Sin arma nombrada, la primera del inventario del PJ.
     const delInventario = !d.arma && at.tipo === "pj" ? at.p.inventario.find((x) => reconocerArma(x)) : undefined;
     const arma = reconocerArma(d.arma) ?? reconocerArma(lineaAtaque) ?? reconocerArma(delInventario);
-    const tipo = d.tipo_dano ?? arma?.tipo;
+    // `tipoCanon`: el tipo del daño (canónico, con todos sus elementos); `tipo`: su traducción al vocabulario de armadura (solo lo físico).
+    const tipoCanon: TipoDano | undefined = d.tipo_dano ?? deVocabularioArmadura(arma?.tipo);
+    const tipo: TipoDanoArmadura | undefined = d.tipo_dano ? aVocabularioArmadura(d.tipo_dano) : arma?.tipo;
     // El agua frena a quien no es del agua: sumergido, la mitad del daño (un tercio menos con armas de punta); en el agua, −2 en cuerpo a cuerpo.
     const dAgua = danoEnAgua(estadoAgua, distancia, bruto, esArmaDePunta(tipo, d.arma ?? delInventario ?? lineaAtaque));
     if (dAgua.nota) { bruto = dAgua.dano; lineas.push(dAgua.nota); }
@@ -1190,13 +1192,13 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
           `${pen ? `; ${arma!.nombre} ${pen > 0 ? `penetra ${pen}` : `es ligera contra el metal (+${-pen})`}` : ""}` +
           ` → ${reduccion < 0 ? `vulnerable: +${-reduccion} de daño` : `frena ${reduccion}`}.`,
       );
-    } else {
-      lineas.push(`(Sin tipo de daño: no sé si es corte, punta o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
+    } else if (!tipoCanon) {
+      lineas.push(`(Sin tipo de daño: no sé si es cortante, perforante o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
     }
     dano = Math.max(0, bruto - reduccion);
     danoVisible = (resultado === "roce" ? bruto : r.total) + (rad ? rad.total : 0);
-    danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipo ? ` ${NOMBRE_TIPO_AVISO[tipo as string] ?? tipo}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}${rad ? ` + ${rad.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")} radiante` : ""}`;
-    if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipo || esDanoFisico(tipo))) { // la Furia se aplica una sola vez, tras la armadura (sin tipo se supone físico)
+    danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipoCanon ? ` ${tipoCanon}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}${rad ? ` + ${rad.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")} radiante` : ""}`;
+    if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipoCanon || esFisico(tipoCanon))) { // la Furia se aplica una sola vez, tras la armadura (sin tipo se supone físico)
       const antes = dano;
       dano = Math.floor(dano / 2);
       lineas.push(`🔥 Furia: resiste el daño físico (${antes} → ${dano}).`);
@@ -1273,7 +1275,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       const causa =
         dano === 0 || resultado === "roce" ? (p.pv === 0 ? "cero_pv" : null) : resultado === "critico" ? "critico" : p.pv === 0 ? "cero_pv" : dano >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : null;
       if (causa && !p.condiciones.includes("muerto")) {
-        const tipoHerida = tipo === "contundente" ? "contusion" : tipo === "corte" ? "corte" : arma?.nombre === "colmillos" ? "mordedura" : "perforacion";
+        const tipoHerida = tipo === "contundente" ? "contusion" : tipo === "corte" ? "corte" : arma?.nombre === "colmillos" ? "mordedura" : tipoCanon && !tipo ? tipoHeridaDe(tipoCanon) : "perforacion";
         const podre = /podre/i.test(lineaAtaque) || (at.tipo === "criatura" && /no-muerto/.test(at.j.definicion.temple ?? "") && arma?.nombre === "colmillos");
         const cdPodre = Number(/cd_podre\s*(\d+)/i.exec(lineaAtaque)?.[1]) || undefined;
         lineas.push(

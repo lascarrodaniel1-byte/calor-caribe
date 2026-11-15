@@ -1,4 +1,5 @@
 // Botes, balsas y barcos: navegar, aguantar el mar, el casco, los incendios, hundirse y el abordaje.
+import type { TipoDano } from "./danos.js";
 import { tiene } from "./dotes_base.js";
 import { alAgua, gastarAireDe } from "./agua.js";
 import { tirar } from "./dados.js";
@@ -90,7 +91,7 @@ export interface DatosNave {
   horas?: number;
   viento?: Viento;
   cantidad?: number;
-  tipo_dano?: string;
+  tipo_dano?: TipoDano;
   mar?: Mar;
   /** reparar: achicar (gana tiempo), remendar (repara casco) o apagar (el fuego). */
   tarea?: "achicar" | "remendar" | "apagar";
@@ -167,7 +168,7 @@ export function nave(partida: Partida, d: DatosNave): { texto: string; publico: 
   }
   if (d.accion === "danar") {
     if (!d.cantidad) throw new Error("danar: di cuánto daño recibe el casco (cantidad).");
-    const fuego = /fuego|llama|incendi/i.test(d.tipo_dano ?? "");
+    const fuego = d.tipo_dano === "fuego";
     const total = fuego ? d.cantidad * 2 : d.cantidad; // la madera arde
     n.casco = Math.max(0, n.casco - total);
     const lineas = [`${n.nombre} recibe ${total} de daño${fuego ? " (fuego: doble contra la madera)" : ""} → casco ${n.casco}/${n.casco_max}.`];

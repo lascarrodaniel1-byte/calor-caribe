@@ -1,9 +1,11 @@
 // Catálogo de tipos de daño (src/danos.ts): alias, tildes/mayúsculas, puente con armadura, esquema zod y COBERTURA de los
-// tipos literales que usan hoy el bestiario, las guaridas, las trampas, el juramento y las herramientas. Fase 1: sin cablear.
+// tipos literales que usan hoy el bestiario, las guaridas, las trampas, el juramento y las herramientas, y su cableado (fase A):
+// tipoHerida, resistencias raciales y Furia por tipo canónico, y atacar/habilidades/modificar_personaje/nave con alias.
 import { readFileSync } from "node:fs";
-import { ALIAS_DE_DANO, PSEUDO_TIPOS_NO_DANO, TIPOS_DANO_CANONICOS, aVocabularioArmadura, esFisico, etiqueta, normalizarTipo, tipoDanoSchema } from "../../src/danos.ts";
+import { ALIAS_DE_DANO, PSEUDO_TIPOS_NO_DANO, TIPOS_DANO_CANONICOS, aVocabularioArmadura, deVocabularioArmadura, esFisico, etiqueta, normalizarTipo, tipoDanoSchema, tipoHeridaDe } from "../../src/danos.ts";
+import { danoConResistencia } from "../../src/rasgos.ts";
 import type { TipoDano } from "../../src/danos.ts";
-import { TIPOS_DANO as TIPOS_ARMADURA } from "../../src/armadura.ts";
+import { TIPOS_DANO_ARMADURA as TIPOS_ARMADURA } from "../../src/armadura.ts";
 import { BESTIARIO } from "../../src/bestiario.ts";
 import { GUARIDAS } from "../../src/guarida.ts";
 import { VOTOS } from "../../src/juramento_base.ts";
@@ -40,6 +42,7 @@ t(aVocabularioArmadura("cortante") === "corte" && aVocabularioArmadura("perforan
 for (const c of TIPOS_DANO_CANONICOS.filter((x) => !esFisico(x))) t(aVocabularioArmadura(c) === undefined && !esFisico(c), `no físico ${c}: sin puente`);
 t(aVocabularioArmadura(undefined) === undefined && !esFisico(undefined), "puente y esFisico con undefined");
 t(TIPOS_DANO_CANONICOS.filter(esFisico).length === 3, "exactamente 3 tipos físicos");
+t(TIPOS_ARMADURA.every((a) => deVocabularioArmadura(a) === normalizarTipo(a) && aVocabularioArmadura(deVocabularioArmadura(a)) === a), "ida y vuelta con el vocabulario de armadura");
 t(TIPOS_ARMADURA.every((a) => aVocabularioArmadura(normalizarTipo(a)) === a), `el vocabulario de armadura (${TIPOS_ARMADURA.join("/")}) da la vuelta completa`);
 t(TIPOS_DANO_CANONICOS.filter(esFisico).every((c) => (TIPOS_ARMADURA as readonly string[]).includes(aVocabularioArmadura(c)!)), "todo físico cae en un valor de armadura");
 
@@ -87,12 +90,28 @@ for (const [s, donde] of prosa) {
   }
   for (const m of s.matchAll(/(?:inmune|vulnerable|resiste|resistencia)\s+(?:al?|el)\s+(\p{L}+)/giu)) if (/^(fuego|frío|frio|veneno|ácido|acido|necrótico|necrotico|radiante|psíquico|psiquico|trueno|eléctrico|hielo|rayo)$/iu.test(m[1])) ver(m[1], `${donde} (prosa)`);
 }
-// Raíces que usa tipoHerida (bestiario.ts): cada una debe ser prefijo de algún nombre o alias del catálogo.
-const th = fuente("bestiario.ts").match(/function tipoHerida[\s\S]*?\n\}/)?.[0] ?? "";
-const raices = [...th.matchAll(/\/([^/\n]+)\/\.test/g)].flatMap((m) => m[1].split("|"));
-t(raices.length >= 4, "se extrajeron las raíces de tipoHerida", raices.join(","));
-const plano = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-for (const r of raices) t([...TIPOS_DANO_CANONICOS, ...ALIAS_DE_DANO.map((x) => x.alias)].some((n) => plano(n).startsWith(plano(r))), `raíz de tipoHerida «${r}» cubierta por el catálogo`);
+// tipoHerida usa el catálogo: cada tipo canónico da una herida (solo descriptiva) y cada alias, la de su canónico.
+const HERIDA: Record<string, string> = { cortante: "corte", perforante: "perforacion", contundente: "contusion", fuego: "quemadura", ácido: "quemadura", frío: "quemadura", eléctrico: "quemadura", radiante: "quemadura", veneno: "necrotica", necrótico: "necrotica", trueno: "contusion", psíquico: "contusion", fuerza: "contusion" };
+for (const c of TIPOS_DANO_CANONICOS) t(tipoHeridaDe(c) === HERIDA[c], `tipoHeridaDe(${c}) = ${HERIDA[c]}`, tipoHeridaDe(c));
+t(Object.keys(HERIDA).length === TIPOS_DANO_CANONICOS.length, "la tabla de heridas cubre todos los tipos");
+t(tipoHeridaDe(undefined) === "contusion", "sin tipo: contusión (como siempre)");
+for (const x of ALIAS_DE_DANO) t(tipoHeridaDe(normalizarTipo(x.alias)) === HERIDA[x.tipo], `herida por alias «${x.alias}»`);
+t(fuente("bestiario.ts").includes("tipoHeridaDe(h.tipo_dano)") && !/function tipoHerida\b/.test(fuente("bestiario.ts")), "el bestiario usa el catálogo (sin regex propias)");
+t(!/esDanoFisico/.test(fuente("rasgos.ts")), "rasgos.ts ya no tiene esDanoFisico (usa esFisico del catálogo)");
+t(!/\/(?:veneno|fr\[ií\]o|fuego)[^/]*\/i\.test\(tipo\)/.test(fuente("rasgos.ts")), "las razas ya no usan regex sobre texto libre");
+
+// Resistencias raciales y de la Furia por tipo canónico (cualquier alias; sin falsos positivos ni negativos).
+{
+  const mkp = (raza: string, furia = false) => ({ raza, furia: furia ? { activa: true, asaltos: 5 } : undefined }) as any;
+  const r = (p: any, x: string) => danoConResistencia(p, 10, x).dano;
+  for (const x of ["veneno", "tóxico", "ponzoña", "Veneno"]) t(r(mkp("Enano de Karak-Dûm"), x) === 5, `Enano resiste «${x}»`);
+  for (const x of ["frío", "hielo", "gélido", "escarcha", "Frio"]) t(r(mkp("Tritón de las Mareas"), x) === 5, `Tritón resiste «${x}»`);
+  for (const x of ["fuego", "llama", "calor", "abrasador", "ígneo", "ardiente"]) t(r(mkp("Cenizo"), x) === 5, `Cenizo resiste «${x}» (el calor y lo abrasador ya cuentan)`);
+  for (const x of ["llama sagrada", "radiante", "sagrado", "quemadura", "fuegos fatuos", "mágico"]) t(r(mkp("Cenizo"), x) === 10, `Cenizo NO resiste «${x}» (falso positivo de la regex vieja o no es tipo)`);
+  t(r(mkp("Enano de Karak-Dûm"), "fuego") === 10 && r(mkp("Tritón de las Mareas"), "veneno") === 10 && r(mkp("Humano del Faro"), "veneno") === 10, "cada raza solo resiste lo suyo");
+  for (const x of ["corte", "cortante", "punta", "perforante", "contundente", "filo", "golpe"]) t(r(mkp("Humano del Faro", true), x) === 5, `Furia resiste «${x}»`);
+  for (const x of ["fuego", "frío", "radiante", "eléctrico", "trueno", "psíquico"]) t(r(mkp("Humano del Faro", true), x) === 10, `Furia no resiste «${x}»`);
+}
 
 const sinReconocer: string[] = [];
 for (const [v, donde] of hallados) {

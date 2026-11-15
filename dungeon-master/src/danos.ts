@@ -1,8 +1,9 @@
 // Catálogo de tipos de daño (puro, sin dependencias de la página). Una sola lista de tipos canónicos con
 // sus alias, para que «perforante», «punta», «hielo» o «Frio» signifiquen lo mismo en cualquier herramienta.
-// FASE 1: solo el catálogo y su prueba (tests/motor/t-danos.ts); todavía no está cableado a atacar,
-// habilidades ni tipoHerida (ver docs/DANOS.md). La ESTRUCTURA FuenteDano es solo documentación para fases siguientes.
+// Fase A cableada: atacar, habilidades, guardas, trampas, naves, tragado y modificar_personaje aceptan cualquier alias y
+// trabajan con el tipo canónico; tipoHerida y las resistencias raciales y de la Furia usan este catálogo (ver docs/DANOS.md).
 import { z } from "zod";
+import type { TipoDanoArmadura } from "./armadura.js";
 
 /** Tipos canónicos (con tilde, tal como se muestran). Los tres primeros son los físicos. */
 export const TIPOS_DANO_CANONICOS = [
@@ -24,7 +25,7 @@ export const ALIAS_DE_DANO: readonly AliasDano[] = [
   ...a("cortante", "corte", "filo", "tajo", "cortantes"),
   ...a("perforante", "punta", "penetrante", "perforacion", "pinchazo", "perforantes"),
   ...a("contundente", "contusion", "golpe", "aplastante", "contundentes"),
-  ...a("fuego", "llama", "llamas", "igneo", "abrasador", "ardiente"),
+  ...a("fuego", "llama", "llamas", "igneo", "abrasador", "ardiente", "incendiario", "incendiaria"),
   d("fuego", "calor", "El calor ambiental (desierto, horno) se trata como fuego; no hay tipo «calor»."),
   ...a("frío", "frio", "gelido", "helado", "congelante", "escarcha"),
   d("frío", "hielo", "«hielo» es también un id de magia (herramientas.ts); como tipo de daño es frío."),
@@ -43,7 +44,7 @@ export const ALIAS_DE_DANO: readonly AliasDano[] = [
 /** Pseudo-tipos que NO son tipos de daño: describen la fuente (magia, material), no el elemento. Ver FuenteDano. */
 export const PSEUDO_TIPOS_NO_DANO: readonly string[] = ["mágico", "no mágico", "plata", "adamantina"];
 
-/** SOLO ESTRUCTURA DOCUMENTADA (fase C, sin usar): lo que hoy se escribe como «mágico», «no mágico», «plata»… va aparte del tipo. */
+/** SOLO ESTRUCTURA DOCUMENTADA (fase C): lo que hoy se escribe como «mágico», «no mágico», «plata»… va aparte del tipo. */
 export interface FuenteDano {
   /** true si el daño es mágico (por conjuro, arma mágica o criatura mágica); omitido = no se sabe. */
   magico?: boolean;
@@ -72,10 +73,27 @@ export function normalizarTipo(s: string | null | undefined): TipoDano | undefin
 export const esFisico = (t: TipoDano | undefined): boolean => !!t && FISICOS.includes(t);
 
 /** Puente con el vocabulario de armadura.ts (`TIPOS_DANO`): cortante→corte, perforante→punta; undefined si no es físico. */
-export function aVocabularioArmadura(t: TipoDano | undefined): "corte" | "punta" | "contundente" | undefined {
+export function aVocabularioArmadura(t: TipoDano | undefined): TipoDanoArmadura | undefined {
   if (!esFisico(t)) return undefined;
   return t === "cortante" ? "corte" : t === "perforante" ? "punta" : "contundente";
 }
+
+/** Al revés: el tipo de un arma reconocida por armadura.ts (corte/punta/contundente) en el vocabulario canónico. */
+export const deVocabularioArmadura = (t: TipoDanoArmadura | undefined): TipoDano | undefined =>
+  t === "corte" ? "cortante" : t === "punta" ? "perforante" : t;
+
+/** Tipos de herida de heridas.ts (solo descriptivos, salvo que corte, perforación y mordedura se pueden cauterizar). */
+export type TipoHerida = "corte" | "perforacion" | "contusion" | "quemadura" | "mordedura" | "necrotica";
+/** Qué herida deja cada tipo de daño. Decisión de criterio (a confirmar): lo que quema o abrasa (fuego, ácido, frío, eléctrico, radiante) es
+ *  «quemadura»; el veneno y lo necrótico, «necrotica» (tejido muerto); el trueno es una onda de choque (contusión); y lo psíquico y la fuerza
+ *  no abren la carne: «contusion» es el valor neutro (el de siempre cuando no se sabe). Sin tipo: contusión. */
+const HERIDA_DE_TIPO: Record<TipoDano, TipoHerida> = {
+  cortante: "corte", perforante: "perforacion", contundente: "contusion",
+  fuego: "quemadura", ácido: "quemadura", frío: "quemadura", eléctrico: "quemadura", radiante: "quemadura",
+  veneno: "necrotica", necrótico: "necrotica",
+  trueno: "contusion", psíquico: "contusion", fuerza: "contusion",
+};
+export const tipoHeridaDe = (t: TipoDano | undefined): TipoHerida => (t ? HERIDA_DE_TIPO[t] : "contusion");
 
 /** Nombre para mostrar (con tilde). */
 export function etiqueta(t: TipoDano): string {

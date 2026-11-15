@@ -4,6 +4,7 @@ import { BESTIARIO, buscarCriatura, fichaCriatura } from "../../src/bestiario.ts
 import { RAZAS } from "../../src/mundo.ts";
 import { TABLA } from "../../src/encuentros.ts";
 import { danoConResistencia, rasgosAutomaticos } from "../../src/rasgos.ts";
+import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const txt = (r: any) => (typeof r === "string" ? r : r?.contenido ?? JSON.stringify(r));
 const P = nuevaPartida(); normalizarPartida(P);
@@ -56,5 +57,31 @@ console.log(`${ok} ok, ${mal} fallas`);
   const Z = nuevaPartida(); normalizarPartida(Z);
   const ap = txt(ejecutar("aparecer_criatura", { nombre: "Hombre lagarto", cantidad: 3 }, Z)); t(!/no existe|no hay/i.test(ap), "aparecer_criatura lo acepta", ap.slice(0, 80));
   t(TABLA.some((e) => e.bestiario === "Hombre lagarto") && TABLA.every((e) => !e.bestiario || !!buscarCriatura(e.bestiario)), "encuentro con plantilla válida");
+}
+// ---- Fase A: cualquier alias del catálogo vale en cada punto de entrada del daño (resistencia del Tritón al frío)
+{
+  const Q = nuevaPartida(); normalizarPartida(Q);
+  const E = (n: string, d: object): any => ejecutar(n, d, Q);
+  E("guardar_personaje", { don_arcano: false, nombre: "Nerea", jugador: "Nerea", raza: "Tritón de las Mareas", clase: "Mercenario del Cuervo", nivel: 1, pv_max: 100, ca: 12, atributos: { fue: 14, des: 12, con: 14, int: 10, sab: 10, car: 10 }, inventario: [] });
+  const pv = () => Q.personajes.Nerea.pv;
+  for (const alias of ["frío", "frio", "hielo", "gélido", "escarcha", "Helado"]) {
+    const a = pv(); const r = E("modificar_personaje", { nombre: "Nerea", pv_cambio: -10, tipo_dano: alias });
+    t(!r.error && a - pv() === 5, `modificar_personaje «${alias}»: el Tritón recibe la mitad`, r.contenido?.slice(-80));
+  }
+  { const a = pv(); const r = E("modificar_personaje", { nombre: "Nerea", pv_cambio: -10, tipo_dano: "calor" }); t(!r.error && a - pv() === 10, "«calor» (fuego) no lo resiste el Tritón"); }
+  { const r = E("modificar_personaje", { nombre: "Nerea", pv_cambio: -10, tipo_dano: "plata" }); t(!!r.error && /no son tipos de daño/.test(r.contenido), "«plata» no es un tipo de daño: error claro"); }
+  E("aparecer_criatura", { nombre: "Hambriento" });
+  iniciarRegistroDados([{ caras: 6, valor: 5 }, { caras: 6, valor: 5 }]);
+  { const a = pv(); const r = E("habilidad_criatura", { criatura: "Hambriento", habilidad_nueva: { nombre: "Aliento", descripcion: "x", dano: "2d6", tipo_dano: "hielo" }, objetivos: ["Nerea"] }); t(!r.error && a - pv() === 5, "habilidad_nueva «hielo»: mitad al Tritón", r.contenido?.slice(-100)); }
+  E("trampa", { accion: "colocar", nombre: "Escarcha", cd_detectar: 10, efecto: { nombre: "Escarcha", descripcion: "x", dano: "2d6", tipo_dano: "gélido" } });
+  iniciarRegistroDados([{ caras: 6, valor: 5 }, { caras: 6, valor: 5 }]);
+  { const a = pv(); const r = E("trampa", { accion: "disparar", nombre: "Escarcha", quienes: ["Nerea"] }); t(!r.error && a - pv() === 5, "trampa «gélido»: mitad al Tritón", r.contenido?.slice(-100)); }
+  liberarDados();
+  E("nave", { accion: "crear", nave: "Gaviota", tipo: "bote" });
+  const c0 = Q.naves?.Gaviota?.casco ?? 0;
+  const rn = E("nave", { accion: "danar", nave: "Gaviota", cantidad: 5, tipo_dano: "llama" });
+  t(!rn.error && /doble/.test(rn.contenido) && c0 - Q.naves.Gaviota.casco === 10, "nave danar «llama»: doble (fuego) y prende", rn.contenido.slice(0, 120));
+  const rh = E("nave", { accion: "danar", nave: "Gaviota", cantidad: 1, tipo_dano: "hielo" });
+  t(!rh.error && !/doble/.test(rh.contenido), "nave danar «hielo»: no es fuego");
 }
 console.log(`${ok} ok, ${mal} fallas`);

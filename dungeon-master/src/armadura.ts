@@ -5,9 +5,9 @@
 import type { Personaje } from "./estado.js";
 import type { Ubicacion } from "./heridas.js";
 
-export const TIPOS_DANO = ["corte", "punta", "contundente"] as const;
-export type TipoDano = (typeof TIPOS_DANO)[number];
-type Prot = Record<TipoDano, number>;
+export const TIPOS_DANO_ARMADURA = ["corte", "punta", "contundente"] as const;
+export type TipoDanoArmadura = (typeof TIPOS_DANO_ARMADURA)[number];
+type Prot = Record<TipoDanoArmadura, number>;
 
 type Region = "cabeza" | "cuello" | "torso" | "abdomen" | "brazos" | "piernas";
 const TODO: Region[] = ["cabeza", "cuello", "torso", "abdomen", "brazos", "piernas"];
@@ -47,7 +47,7 @@ export const NOMBRES_PIEZAS = Object.keys(PIEZAS) as [string, ...string[]];
 interface Arma {
   nombre: string;
   patron: RegExp;
-  tipo: TipoDano;
+  tipo: TipoDanoArmadura;
   /** Resta a la protección (negativa si el arma es ligera contra el metal). */
   penetracion: number;
   /** Las armas pensadas para romper (mazas, martillos) agravan la herida. */
@@ -124,7 +124,7 @@ export interface Proteccion {
 }
 
 /** Protección en una región contra un tipo de daño: la mejor capa más la mitad de la segunda. */
-export function proteccion(piezas: string[], region: Region, tipo: TipoDano, soloBlandas = false): Proteccion {
+export function proteccion(piezas: string[], region: Region, tipo: TipoDanoArmadura, soloBlandas = false): Proteccion {
   const capas = piezas
     .map((k) => PIEZAS[k])
     .filter((x): x is Pieza => !!x && x.regiones.includes(region) && (!soloBlandas || !x.metal))

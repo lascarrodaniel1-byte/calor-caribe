@@ -9,6 +9,7 @@ import { clase, raza } from "./mundo.js";
 import { ATRIBUTOS, marcarMuerto, salvacion, valor, type Atributo } from "./reglas.js";
 
 import { danoConResistencia } from "./rasgos.js";
+import { tipoHeridaDe, type TipoDano } from "./danos.js";
 export interface Habilidad {
   nombre: string;
   descripcion: string;
@@ -16,7 +17,7 @@ export interface Habilidad {
   salvacion?: Atributo;
   cd?: number;
   dano?: string;
-  tipo_dano?: string;
+  tipo_dano?: TipoDano;
   mitad_si_exito?: boolean;
   /** Muerte instantánea si se falla la salvación por este margen o más (0 = cualquier fallo). */
   muerte_si_falla_por?: number;
@@ -79,7 +80,7 @@ export interface Traga {
   max: number;
   /** Daño que sufre quien está dentro al empezar su turno, y su tipo. */
   dano: string;
-  tipo_dano: string;
+  tipo_dano: TipoDano;
   /** Daño que debe causarle quien está dentro, en un solo turno suyo, para que ella deba escupirlo. */
   umbral_dentro: number;
   /** Daño total (de fuera y de dentro) en un asalto que la obliga a la misma salvación. */
@@ -1717,7 +1718,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
         agregarCondicion(p.condiciones, h.condicion);
         log.push(`  Condición: ${h.condicion}.${textoEfectos([h.condicion]) ? ` Efecto: ${textoEfectos([h.condicion])}` : ""}`);
       }
-      if (h.herida) log.push("  " + infligir(p, { causa: h.herida, tipo: tipoHerida(h.tipo_dano), descripcion: h.nombre }).replace(/\n/g, "\n  "));
+      if (h.herida) log.push("  " + infligir(p, { causa: h.herida, tipo: tipoHeridaDe(h.tipo_dano), descripcion: h.nombre }).replace(/\n/g, "\n  "));
       if (h.sangre) {
         const sub: string[] = [];
         perderSangre(p, h.sangre, sub);
@@ -1731,15 +1732,6 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
     }
   }
   return log.join("\n");
-}
-
-function tipoHerida(t?: string) {
-  if (!t) return "contusion" as const;
-  if (/cort/.test(t)) return "corte" as const;
-  if (/perfor/.test(t)) return "perforacion" as const;
-  if (/fuego|ácido|acido/.test(t)) return "quemadura" as const;
-  if (/necr/.test(t)) return "necrotica" as const;
-  return "contusion" as const;
 }
 
 export function textoBestiario(): string {

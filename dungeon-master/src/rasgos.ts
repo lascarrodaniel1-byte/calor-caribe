@@ -1,6 +1,7 @@
 // Rasgos que el MOTOR aplica solo (sin que el DM tenga que acordarse). Los umbrales de nivel pasan por nvl() (niveles.ts).
 // Lo que no está aquí lo aplica el DM con su herramienta o lo narra; ver docs/AUDITORIA_RASGOS.md.
 import type { Personaje } from "./estado.js";
+import { esFisico, normalizarTipo } from "./danos.js";
 import { nvl, NIVEL_ATAQUE_ADICIONAL, NIVEL_PRESA_MARCADA, NIVEL_VETERANO } from "./niveles.js";
 
 /** Clases con Ataque adicional (nivel real 4, sin desplazar: ver NIVEL_ATAQUE_ADICIONAL). El Degollador y el Hechicero no lo tienen. */
@@ -19,18 +20,17 @@ export const desviaProyectiles = (p: Personaje): boolean => p.clase === "Flagela
 /** Sentido del peligro (Berserker, base nivel 2): ventaja en salvaciones de DES. */
 export const sentidoDelPeligro = (p: Personaje): boolean => p.clase === "Berserker de Ceniza" && p.nivel >= nvl(2);
 
-/** Resistencia racial al daño de un elemento (mitad de daño): el Enano al veneno, el Cenizo al fuego, el Tritón al frío. */
+/** Resistencia racial al daño de un elemento (mitad de daño): el Enano al veneno, el Cenizo al fuego, el Tritón al frío. Decide por el tipo canónico (cualquier alias vale). */
 export function resisteRacial(p: Personaje, tipo?: string): string | null {
-  if (!tipo) return null;
-  if (p.raza === "Enano de Karak-Dûm" && /veneno|ponzo/i.test(tipo)) return "Resistencia enana al veneno";
-  if (p.raza === "Tritón de las Mareas" && /fr[ií]o|hielo|helad|escarcha|gélid|gelid/i.test(tipo)) return "Resistencia al frío del Tritón";
-  if (p.raza === "Cenizo" && /fuego|llama|ígneo|igneo|quemadura/i.test(tipo)) return "Resistencia al fuego del Cenizo";
+  const t = normalizarTipo(tipo);
+  if (!t) return null;
+  if (p.raza === "Enano de Karak-Dûm" && t === "veneno") return "Resistencia enana al veneno";
+  if (p.raza === "Tritón de las Mareas" && t === "frío") return "Resistencia al frío del Tritón";
+  if (p.raza === "Cenizo" && t === "fuego") return "Resistencia al fuego del Cenizo";
   return null;
 }
-/** ¿Es un tipo de daño físico (corte/cortante, punta/perforante, contundente; con o sin tildes)? */
-export const esDanoFisico = (tipo?: string): boolean => !!tipo && /^\s*(corte|cortante|punta|perforante|contundente)\s*$/i.test(tipo.normalize("NFD").replace(/[̀-ͯ]/g, ""));
 /** Resistencia de la Furia (Berserker): mitad del daño físico mientras `furia.activa`. El radiante, el fuego, el eléctrico… no cuentan. */
-export const resisteFuria = (p: Personaje, tipo?: string): boolean => !!p.furia?.activa && esDanoFisico(tipo);
+export const resisteFuria = (p: Personaje, tipo?: string): boolean => !!p.furia?.activa && esFisico(normalizarTipo(tipo));
 /** Aplica la resistencia a un daño ya completo (tras bonificadores, ventaja y mitad por salvación): racial o Furia, UNA sola mitad
  *  aunque coincidan varias fuentes (no se suman). Devuelve el daño final y la nota (vacía si no hay). */
 export function danoConResistencia(p: Personaje, dano: number, tipo?: string): { dano: number; nota: string } {

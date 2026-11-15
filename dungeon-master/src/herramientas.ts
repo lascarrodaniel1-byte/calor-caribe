@@ -74,13 +74,14 @@ import { danoDeTragados, presionDeDano, tragarA, validarTragar } from "./tragado
 import { tragadoPor } from "./condiciones.js";
 import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.js";
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
-import { NOMBRES_PIEZAS, TIPOS_DANO } from "./armadura.js";
+import { NOMBRES_PIEZAS } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
 import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS, exigirHabilidadDisponible, gastarHabilidad } from "./combate.js";
 import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { danoConResistencia } from "./rasgos.js";
+import { tipoDanoSchema } from "./danos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
 import { actualizarCodice, criaturasEnEscena, descubrirCodice } from "./codice.js";
@@ -90,7 +91,7 @@ const habilidad = z.object({
   salvacion: z.enum(ATRIBUTOS).optional().describe("Salvación de los objetivos; omítela si el efecto no admite salvación"),
   cd: z.number().int().optional(),
   dano: z.string().optional().describe('Dados de daño, p. ej. "8d10"'),
-  tipo_dano: z.string().optional(),
+  tipo_dano: tipoDanoSchema.optional(),
   mitad_si_exito: z.boolean().optional(),
   muerte_si_falla_por: z
     .number()
@@ -169,7 +170,7 @@ const esquemas = {
   modificar_personaje: z.object({
     nombre: z.string(),
     pv_cambio: z.number().int().optional().describe("Negativo para daño, positivo para curación"),
-    tipo_dano: z.string().optional().describe("Con pv_cambio negativo: el elemento del daño (fuego, veneno…). El Enano resiste el veneno y el Cenizo el fuego: el programa les aplica la mitad"),
+    tipo_dano: tipoDanoSchema.optional().describe("Con pv_cambio negativo: el tipo del daño (fuego, veneno…). Enano/veneno, Cenizo/fuego, Tritón/frío y Furia/físico: el programa aplica la mitad"),
     oro_cambio: z.number().int().optional(),
     agregar_objetos: z.array(z.string()).optional(),
     quitar_objetos: z.array(z.string()).optional(),
@@ -677,7 +678,7 @@ const esquemas = {
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
     ca: z.number().int().optional().describe("Sustituye la CA del objetivo (cobertura, escudo alzado…)"),
-    tipo_dano: z.enum(TIPOS_DANO).optional().describe("corte, punta o contundente, si el arma no se reconoce por su nombre"),
+    tipo_dano: tipoDanoSchema.optional().describe("tipo del daño si el arma no se reconoce por su nombre (cortante, perforante, contundente…)"),
     apuntar: z.enum([...UBICACIONES, "hueco"]).optional().describe('Región a la que apunta (−2; cabeza o cuello −4) o "hueco": las juntas de la armadura, con daga o estoque'),
   }),
   pnj: z.object({
@@ -796,7 +797,7 @@ const esquemas = {
     cita: z.string().min(5).max(200).optional().describe("navegar 6 h o más: frase literal de la acción de un jugador de este turno que pide ese viaje (obligatoria)"),
     viento: z.enum(["favorable", "normal", "calmo", "contrario", "tormenta"]).optional(),
     cantidad: z.number().int().min(1).optional().describe("danar: daño al casco"),
-    tipo_dano: z.string().optional().describe("danar: si es de fuego, hace el doble y prende"),
+    tipo_dano: tipoDanoSchema.optional().describe("danar: el fuego hace el doble y prende"),
     mar: z.enum(["calmo", "picado", "tormenta"]).optional(),
     tarea: z.enum(["achicar", "remendar", "apagar"]).optional().describe("reparar"),
     otra: z.string().optional().describe("abordaje: la otra nave"),
@@ -1080,7 +1081,7 @@ function aligerar(x: unknown): unknown {
 }
 
 export const herramientas: Anthropic.Beta.BetaTool[] = (Object.keys(esquemas) as Nombre[]).map((nombre) => {
-  const { $schema: _ignorado, ...schema } = aligerar(z.toJSONSchema(esquemas[nombre])) as Record<string, unknown>;
+  const { $schema: _ignorado, ...schema } = aligerar(z.toJSONSchema(esquemas[nombre], { io: "input" })) as Record<string, unknown>;
   return {
     name: nombre,
     description: descripciones[nombre],

@@ -4,7 +4,9 @@
 import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { ejecutar } from "../../src/herramientas.ts";
 import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
-import { danoConResistencia, esDanoFisico } from "../../src/rasgos.ts";
+import { danoConResistencia } from "../../src/rasgos.ts";
+import { esFisico, normalizarTipo } from "../../src/danos.ts";
+const esDanoFisico = (s: string) => esFisico(normalizarTipo(s)); // el catálogo decide qué es físico (cualquier alias)
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const txt = (r: any) => (typeof r === "string" ? r : r?.contenido ?? JSON.stringify(r));
 const dados = (caras: number, ...v: number[]) => v.map((valor) => ({ caras, valor }));
@@ -74,6 +76,11 @@ function atacando(furia: boolean, extra: object = {}, tipo = "corte") {
 { const a = atacando(true); t(perdida(a.m) === 5, "atacar corte 10 → 5 en furia (una sola vez)", txt(a.r).slice(-160)); }
 { const a = atacando(false); t(perdida(a.m) === 10, "atacar 10 sin furia: 10"); }
 { const a = atacando(true, {}, "punta"); t(perdida(a.m) === 5, "atacar punta 10 → 5 en furia"); }
+// Fase A: atacar acepta cualquier alias del catálogo (ya no rechaza «perforante» ni «cortante») y trabaja con el tipo canónico.
+for (const tipo of ["cortante", "perforante", "contundente", "Perforante", "filo", "pinchazo", "golpe"]) { const a = atacando(true, {}, tipo); t(!a.m.p.combate && !a.r.error && perdida(a.m) === 5, `atacar ${tipo} 10 → 5 en furia`, txt(a.r).slice(-120)); }
+for (const tipo of ["fuego", "frío", "hielo", "eléctrico", "veneno", "radiante", "llama sagrada"]) { const a = atacando(true, {}, tipo); const ok_ = tipo === "llama sagrada" ? !!a.r.error : (!a.r.error && perdida(a.m) === 10); t(ok_, `atacar ${tipo}: la Furia no lo resiste (10) y no rechaza el alias`, txt(a.r).slice(-120)); }
+{ const a = atacando(true, {}, "mágico"); t(!!a.r.error && /no son tipos de daño/.test(txt(a.r)), "atacar «mágico»: error claro (es una fuente, no un tipo)"); }
+{ const a = atacando(false, {}, "fuego"); t(!/Sin tipo de daño/.test(txt(a.r)) && !/Cae en/.test(txt(a.r)), "atacar fuego: sin aviso de «sin tipo» y la armadura por regiones no cuenta (no es físico)", txt(a.r).slice(0, 200)); }
 
 // Castigo radiante: se suma sin resistirse (arma 10 físico → 5; radiante 2d8 intacto).
 {
