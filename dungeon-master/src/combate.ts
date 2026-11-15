@@ -7,7 +7,7 @@
 // dan ventaja, pero a un veterano cuesta más sorprenderlo, y la personalidad
 // (arrogancia, prudencia, impulsividad…) cambia lo fácil que es engañar a alguien.
 import { tiene } from "./dotes_base.js";
-import { danar, devolverRobos, estadoTexto, type Criatura, type EstadoJefe } from "./bestiario.js";
+import { danar, devolverRobos, estadoTexto, perfilDeCriatura, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDanoArmadura } from "./armadura.js";
@@ -33,7 +33,8 @@ import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { dadoHaemajitsu } from "./estilos_base.js";
 import { distanciaPlano } from "./espacio.js";
 import { bonoClima } from "./clima.js";
-import { aVocabularioArmadura, deVocabularioArmadura, tipoHeridaDe, type TipoDano } from "./danos.js";
+import { aplicarDano, aVocabularioArmadura, deVocabularioArmadura, esFisico, tipoHeridaDe, type FuenteDano, type TipoDano } from "./danos.js";
+import { armaEsMagica } from "./equipo.js";
 import { aplicarDanoAPersonaje, ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
@@ -682,6 +683,10 @@ export interface DatosAtaque {
   a_distancia?: boolean;
   atributo?: "fue" | "des" | "car" | "sab" | "int";
   bono_arma?: number;
+  /** Fuente del daño para las resistencias «no mágicas» de la criatura atacada: true si el arma es mágica (se deduce si es un objeto encantado del inventario). */
+  magico?: boolean;
+  /** Material del arma para «salvo plata» y vulnerabilidades a un material (plata, llama gris…). */
+  material?: string;
   bono?: number;
   ventaja?: boolean;
   desventaja?: boolean;
@@ -1154,7 +1159,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + presaStr) : d.dano + presaStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
     // El radiante del Castigo NO es físico: se tira aparte y se suma al final, sin pasar por la armadura ni la resistencia de la Furia.
     const rad = castigoStr ? tirarDano(resultado === "critico" ? doblarDados(castigoStr.slice(1)) : castigoStr.slice(1)) : undefined;
-    const radFinal = rad ? (resultado === "roce" ? Math.floor(rad.total / 2) : rad.total) : 0;
+    let radFinal = rad ? (resultado === "roce" ? Math.floor(rad.total / 2) : rad.total) : 0;
     if (furiaMas - lunaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     if (lunaMas) lineas.push("🌕 Furia de la luna: +2 al daño cuerpo a cuerpo.");
     let bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
@@ -1196,11 +1201,23 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       lineas.push(`(Sin tipo de daño: no sé si es cortante, perforante o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
     }
     dano = Math.max(0, bruto - reduccion);
+    // Fuente del daño (para las resistencias «no mágicas» y de material de las criaturas): el DM puede pasarla; si no, se deduce del arma.
+    const fuente: FuenteDano = { magico: d.magico ?? (at.tipo === "pj" && armaEsMagica(partida, at.p.inventario, d.arma ?? at.p.manos?.principal ?? delInventario)), material: d.material };
     danoVisible = (resultado === "roce" ? bruto : r.total) + (rad ? rad.total : 0);
     danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipoCanon ? ` ${tipoCanon}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}${rad ? ` + ${rad.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")} radiante` : ""}`;
     if (ob.tipo === "pj" && dano > 0) { // resistencias del PJ (Furia, raciales, voto de Luz) en una sola mitad, tras la armadura; sin tipo se supone físico
       const res = aplicarDanoAPersonaje(ob.p, dano, tipoCanon, { sinTipoEsFisico: true });
       if (res.detalle.length) { dano = res.final; lineas.push(`🔥 ${res.detalle.join("; ")}.`); }
+    }
+    if (ob.tipo === "criatura" && dano > 0) { // resistencias, inmunidades y vulnerabilidades de la ficha (tras la armadura, como la Furia)
+      // La armadura por regiones y la ficha describen lo mismo (la dureza de la piel): donde el blindaje ya frena el golpe, manda el blindaje y no se suma la
+      // resistencia física de la ficha; donde ya lo agrava (reducción negativa), no se suma la vulnerabilidad física. No se duplica nada.
+      const perfil = perfilDeCriatura(ob.j.definicion);
+      const fisica = (r: { tipo: TipoDano; soloNoMagico?: boolean }) => esFisico(r.tipo);
+      if (reduccion > 0) perfil.resiste = perfil.resiste?.filter((r) => !fisica(r));
+      if (reduccion < 0) perfil.vulnerable = perfil.vulnerable?.filter((r) => !fisica(r));
+      const res = aplicarDano({ objetivo: perfil, cantidad: dano, tipo: tipoCanon, fuente });
+      if (res.detalle.length) { dano = res.final; lineas.push(`🛡 ${res.detalle.join("; ")}.`); }
     }
     // Desviar proyectiles (Flagelante): reacción automática que reduce el daño de un proyectil que lo alcanza.
     if (dano > 0 && distancia && ob.tipo === "pj" && desviaProyectiles(ob.p) && combate && !tOb.reaccion && ob.p.pv > 0 && !efOb.incapacitado) {
@@ -1238,6 +1255,10 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       else { const s3 = tirar(`1d20${signo(ob.tipo === "criatura" ? Math.max(mod(Number(/FUE\s+(\d+)/i.exec(ob.j.definicion.atributos)?.[1] ?? 10)), mod(Number(/DES\s+(\d+)/i.exec(ob.j.definicion.atributos)?.[1] ?? 10))) : 0)}`); sal = { exito: s3.total >= cdD, texto: `salvación ${describir(s3)} contra CD ${cdD}` }; }
       if (sal.exito) lineas.push(`🗡 Desarmar: ${ob.nombre} aguanta el arma (${sal.texto}).`);
       else { agregarCondicion(condsDe(ob), "desarmado"); lineas.push(`🗡 Desarmar: ${ob.nombre} suelta el arma (${sal.texto}); recogerla le cuesta una acción y, mientras, ataca sin ella.`); }
+    }
+    if (radFinal > 0 && ob.tipo === "criatura") { // el radiante del Castigo es mágico y puede topar con la ficha (inmunidad o vulnerabilidad al radiante)
+      const rr = aplicarDano({ objetivo: perfilDeCriatura(ob.j.definicion), cantidad: radFinal, tipo: "radiante", fuente: { magico: true } });
+      if (rr.detalle.length) { lineas.push(`🛡 ${rr.detalle.join("; ")}.`); radFinal = rr.final; }
     }
     if (radFinal > 0) { dano += radFinal; lineas.push(`☀ Radiante: ${rad!.texto}${resultado === "roce" ? ` → la mitad, ${radFinal}` : ""}; no es daño físico: ni la armadura ni la Furia lo frenan.`); }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);

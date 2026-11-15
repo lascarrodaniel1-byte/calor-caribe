@@ -18,6 +18,7 @@ import {
   buscarCriatura,
   danar,
   estadoTexto,
+  perfilDeCriatura,
   presagio,
   usarHabilidad,
   type Criatura,
@@ -81,7 +82,7 @@ import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { aplicarDanoAPersonaje } from "./rasgos.js";
-import { notaDano, tipoDanoSchema } from "./danos.js";
+import { aplicarDano, notaDano, tipoDanoSchema } from "./danos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
 import { actualizarCodice, criaturasEnEscena, descubrirCodice } from "./codice.js";
@@ -544,7 +545,10 @@ const esquemas = {
   }),
   danar_criatura: z.object({
     nombre: z.string(),
-    cantidad: z.number().int().describe("Daño final tras resistencias; negativo para curarla o regenerar"),
+    cantidad: z.number().int().describe("Sin tipo_dano: daño FINAL ya con resistencias; negativo para curarla. Con tipo_dano: daño bruto y el programa aplica las resistencias, inmunidades y vulnerabilidades de su ficha (no las apliques tú)"),
+    tipo_dano: tipoDanoSchema.optional().describe("Tipo del daño (conjuro, trampa…): activa las resistencias de la ficha"),
+    magico: z.boolean().optional().describe("true si el daño es mágico (conjuro, arma encantada)"),
+    material: z.string().optional().describe("plata, llama gris… (para «salvo plata» y vulnerabilidades a un material)"),
     por: z.string().optional().describe("Quién le causa el daño (un conjuro de un tragado cuenta como daño desde dentro)"),
   }),
   habilidad_criatura: z.object({
@@ -661,6 +665,8 @@ const esquemas = {
     a_distancia: z.boolean().optional(),
     atributo: z.enum(["fue", "des", "car", "sab", "int"]).optional().describe("Solo PJ: por defecto el mejor de FUE/DES (DES a distancia)"),
     bono_arma: z.number().int().optional().describe("Bonificador mágico o de calidad del arma"),
+    magico: z.boolean().optional().describe("true si el daño es mágico (arma encantada o +N sin objeto registrado): salta las resistencias «no mágicas» de la criatura. Un objeto encantado del inventario se deduce solo"),
+    material: z.string().optional().describe("Material del arma para «salvo plata» o vulnerabilidades a un material (plata, llama gris…)"),
     cobertura: z.enum(["media", "tres_cuartos", "total"]).optional().describe("Cobertura del objetivo: +2 CA, +5 CA o no se le puede atacar"),
     nervio: z.enum(["brazo", "pierna", "columna"]).optional().describe("Barbero-Cirujano: golpea un nervio (−2, columna −3): si hiere, CON o brazo entumecido, pierna entumecida o paralizado un asalto"),
     dardo: z.enum(["sano", "impregnado"]).optional().describe("Cerbatana del Degollador: qué dardo sopla (por defecto, uno impregnado si tiene)"),
@@ -1572,8 +1578,10 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "danar_criatura": {
         const e = validado.data as z.infer<typeof esquemas.danar_criatura>;
         const j = enEscena(partida, e.nombre);
-        let texto = danar(j, e.cantidad);
-        const presion = presionDeDano(partida, j, e.cantidad, e.por); // si lleva a alguien tragado: ¿lo escupe?
+        let cantidad = e.cantidad, notaTipo = "";
+        if (e.tipo_dano && cantidad > 0) { const r = aplicarDano({ objetivo: perfilDeCriatura(j.definicion), cantidad, tipo: e.tipo_dano, fuente: { magico: e.magico, material: e.material } }); cantidad = r.final; notaTipo = notaDano(r.detalle); }
+        let texto = danar(j, cantidad) + notaTipo;
+        const presion = presionDeDano(partida, j, cantidad, e.por); // si lleva a alguien tragado: ¿lo escupe?
         if (presion.length) texto += `\n${presion.join("\n")}`;
         let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}${presion.length ? `\n${presion.join("\n")}` : ""}`;
         if (j.pv <= 0) {

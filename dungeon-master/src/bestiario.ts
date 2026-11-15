@@ -9,7 +9,7 @@ import { clase, raza } from "./mundo.js";
 import { ATRIBUTOS, marcarMuerto, salvacion, valor, type Atributo } from "./reglas.js";
 
 import { aplicarDanoAPersonaje } from "./rasgos.js";
-import { notaDano, tipoHeridaDe, type TipoDano } from "./danos.js";
+import { notaDano, tipoHeridaDe, type PerfilDano, type ReglaDano, type ReglaFicha, type TipoDano } from "./danos.js";
 export interface Habilidad {
   nombre: string;
   descripcion: string;
@@ -122,6 +122,10 @@ export interface Criatura {
   temple?: string;
   /** Carácter en combate (arrogante, calculador…): ver PERSONALIDADES en combate.ts. */
   personalidad?: string[];
+  /** Resistencias (mitad), inmunidades (0) y vulnerabilidades (doble) por tipo de daño; las aplica `aplicarDano` (danos.ts) en `atacar` y `danar_criatura`. «No mágico» = `soloNoMagico`. Lo que no es un tipo (condiciones, sal, hierro cálido) se queda en `rasgos`. */
+  resistencias?: ReglaFicha[];
+  inmunidades?: ReglaFicha[];
+  vulnerabilidades?: ReglaFicha[];
   /** Armadura o piel (ver PIEZAS en armadura.ts): escamas_naturales, pellejo, hueso, placas_completas… */
   blindaje?: string[];
   /** Puede tragar a un personaje (ver Traga y tragado.ts). */
@@ -159,6 +163,11 @@ export interface EstadoJefe {
   /** Tragar: lo que ha recibido este asalto (para decidir si escupe). */
   trago?: { ronda: number; fuera: number; dentro: number; probado: boolean };
 }
+
+// Atajos para las resistencias de las fichas. «Resistencia al daño no mágico» (sin tipo) se lee como el daño FÍSICO no mágico, como en 5e.
+const tipos = (...t: TipoDano[]): ReglaFicha[] => t.map((tipo) => ({ tipo }));
+const noMagico = (...t: TipoDano[]): ReglaFicha[] => t.map((tipo) => ({ tipo, soloNoMagico: true }));
+const FISICO_NO_MAGICO = noMagico("cortante", "perforante", "contundente");
 
 export const BESTIARIO: Criatura[] = [
   // ------------------------------------------------------------ comunes
@@ -352,6 +361,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Banshee del Velo",
+    resistencias: FISICO_NO_MAGICO,
+    inmunidades: tipos("necrótico"),
     temple: "espectro",
     categoria: "monstruo",
     peligro: 3,
@@ -369,6 +380,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Gigante de hueso",
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: tipos("contundente"),
     blindaje: ["hueso"],
     temple: "no-muerto torpe",
     categoria: "monstruo",
@@ -387,6 +400,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Dragón joven de ceniza",
+    inmunidades: tipos("fuego"),
     blindaje: ["escamas_naturales"],
     temple: "bestia",
     categoria: "monstruo",
@@ -406,6 +420,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Apóstol",
+    inmunidades: tipos("veneno"),
     personalidad: ["arrogante"],
     categoria: "monstruo",
     peligro: 4,
@@ -425,6 +440,9 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Lich",
+    resistencias: FISICO_NO_MAGICO,
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }, { tipo: "radiante", soloMaterial: "luz solar primigenia" }],
     temple: "no-muerto",
     personalidad: ["calculador"],
     blindaje: ["hueso"],
@@ -455,6 +473,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Wendigo",
+    inmunidades: tipos("frío"),
+    vulnerabilidades: tipos("fuego"),
     temple: "bestia",
     personalidad: ["temerario"],
     blindaje: ["pellejo"],
@@ -484,6 +504,9 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ulfhedinn",
+    resistencias: FISICO_NO_MAGICO,
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }],
     alias: ["Hombre lobo"],
     temple: "no-muerto",
     personalidad: ["temerario"],
@@ -516,6 +539,9 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Hombre oso",
+    resistencias: FISICO_NO_MAGICO,
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }],
     temple: "no-muerto",
     personalidad: ["temerario"],
     blindaje: ["pellejo"],
@@ -547,6 +573,9 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Gárgola",
+    resistencias: noMagico("cortante", "perforante"),
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: tipos("contundente"),
     temple: "bestia",
     blindaje: ["piedra"],
     categoria: "monstruo",
@@ -572,6 +601,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Golem de piedra",
+    resistencias: noMagico("cortante", "perforante"),
+    inmunidades: tipos("veneno"),
     temple: "constructo",
     blindaje: ["piedra"],
     categoria: "monstruo",
@@ -597,6 +628,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Golem de carne",
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: tipos("fuego"),
     temple: "constructo",
     blindaje: ["pellejo"],
     categoria: "monstruo",
@@ -622,6 +655,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de fuego",
+    resistencias: FISICO_NO_MAGICO,
+    inmunidades: tipos("fuego", "veneno"),
     temple: "elemental",
     categoria: "monstruo",
     peligro: 3,
@@ -645,6 +680,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de agua",
+    resistencias: [...tipos("fuego"), ...FISICO_NO_MAGICO],
+    inmunidades: tipos("veneno"),
     temple: "elemental",
     categoria: "monstruo",
     peligro: 3,
@@ -668,6 +705,9 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de tierra",
+    resistencias: noMagico("cortante", "perforante"),
+    inmunidades: tipos("veneno"),
+    vulnerabilidades: tipos("trueno"),
     temple: "elemental",
     blindaje: ["piedra"],
     categoria: "monstruo",
@@ -693,6 +733,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de aire",
+    resistencias: FISICO_NO_MAGICO,
+    inmunidades: tipos("veneno"),
     temple: "elemental",
     categoria: "monstruo",
     peligro: 3,
@@ -717,6 +759,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Djinn",
+    resistencias: tipos("eléctrico", "trueno"),
+    inmunidades: tipos("veneno"),
     temple: "elemental",
     personalidad: ["calculador"],
     categoria: "monstruo",
@@ -925,6 +969,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Leshen",
+    vulnerabilidades: tipos("fuego"),
     temple: "bestia",
     personalidad: ["calculador"],
     blindaje: ["pellejo"],
@@ -979,6 +1024,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Bakunawa",
+    resistencias: tipos("frío", "eléctrico"),
     alias: ["Devoralunas", "Serpiente de la luna"],
     blindaje: ["escamas_naturales"],
     personalidad: ["arrogante"],
@@ -1214,6 +1260,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "La Madre de los Hambrientos",
+    inmunidades: tipos("veneno", "necrótico"),
     temple: "no-muerto",
     categoria: "jefe",
     peligro: 5,
@@ -1395,6 +1442,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Kharoth, Dragón Antiguo del Sol Herido",
+    inmunidades: tipos("fuego"),
     blindaje: ["escamas_naturales"],
     personalidad: ["arrogante"],
     categoria: "jefe",
@@ -1569,6 +1617,7 @@ export function fichaCriatura(c: Criatura, conDescripcion = true): string {
     `CA ${c.ca} · PV ${c.pv} · Vel. ${c.velocidad} · ${c.atributos}${c.temple ? ` · temple: ${c.temple}` : ""}${c.personalidad?.length ? ` · carácter: ${c.personalidad.join(", ")}` : ""}${c.blindaje?.length ? ` · blindaje: ${c.blindaje.join(", ")}` : ""}`,
     `Ataques: ${c.ataques.join(" | ")}`,
     c.rasgos.length ? `Rasgos: ${c.rasgos.join(" | ")}` : "",
+    lineaResistencias(c) ? `Daño por tipo (lo aplica el programa en atacar y en danar_criatura con tipo_dano; no lo restes tú): ${lineaResistencias(c)}.` : "",
     c.trasfondo
       ? `TRASFONDO (secreto del DM; los PNJ solo saben rumores): ${c.trasfondo.origen}${c.trasfondo.enemigos ? ` ENEMIGOS: ${c.trasfondo.enemigos}` : ""}${c.trasfondo.propuesto?.length ? ` PROPUESTO (sin confirmar; úsalo con criterio): ${c.trasfondo.propuesto.join(" · ")}` : ""}${c.trasfondo.pistas?.length ? ` PISTAS para revelarlo poco a poco: ${c.trasfondo.pistas.join(" · ")}.` : ""}${c.trasfondo.abierto?.length ? ` AÚN ABIERTO: ${c.trasfondo.abierto.join(" ")}` : ""}${c.trasfondo.mision ? ` MISIÓN SEMILLA «${c.trasfondo.mision.nombre}» (${c.trasfondo.mision.estado}): INICIO: ${c.trasfondo.mision.inicio} NUDO: ${c.trasfondo.mision.nudo} DESENLACES POSIBLES: ${c.trasfondo.mision.desenlaces.join(" | ")} PNJ: ${c.trasfondo.mision.pnjs.join(" | ")} GANCHOS: ${c.trasfondo.mision.ganchos.join(" | ")}. Para jugarla: trama abrir_arco con su premisa, registra a los PNJ con agenda (pnj) y avanza el arco con avanzar_arco.` : ""}`
       : "",
@@ -1656,6 +1705,18 @@ function robarEsencia(e: EstadoJefe | undefined, p: Personaje, dados: string, lo
     marcarMuerto(p);
     log.push(`  ☠ ${p.nombre} se queda vacío: no queda nada de quien era. Ha muerto, y ${quien} se queda con su forma.`);
   }
+}
+
+const textoRegla = (r: ReglaFicha) => `${r.tipo}${r.soloNoMagico ? " no mágico" : ""}${r.salvoMaterial ? ` salvo ${r.salvoMaterial}` : ""}${r.soloMaterial ? ` (${r.soloMaterial})` : ""}`;
+/** Lo que la ficha de una criatura resiste, no sufre o sufre doble, como perfil para `aplicarDano`. */
+export function perfilDeCriatura(c: Pick<Criatura, "resistencias" | "inmunidades" | "vulnerabilidades">): PerfilDano {
+  const con = (rs: ReglaFicha[] | undefined, pre: string): ReglaDano[] => (rs ?? []).map((r) => ({ ...r, motivo: `${pre} ${textoRegla(r)}` }));
+  return { resiste: con(c.resistencias, "resistencia a"), inmune: con(c.inmunidades, "inmune a"), vulnerable: con(c.vulnerabilidades, "vulnerable a") };
+}
+/** Una línea para el DM con lo que el programa aplica solo a esta criatura (vacía si no tiene datos). */
+export function lineaResistencias(c: Pick<Criatura, "resistencias" | "inmunidades" | "vulnerabilidades">): string {
+  const g = (rs: ReglaFicha[] | undefined, pre: string) => (rs?.length ? [`${pre} ${rs.map(textoRegla).join(", ")}`] : []);
+  return [...g(c.inmunidades, "inmune a"), ...g(c.resistencias, "resiste"), ...g(c.vulnerabilidades, "vulnerable a")].join("; ");
 }
 
 export function danar(e: EstadoJefe, cantidad: number): string {

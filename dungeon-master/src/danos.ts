@@ -127,6 +127,8 @@ export interface ReglaDano {
   /** Solo vale si la fuente es de este material («vulnerable a la plata»). */
   soloMaterial?: string;
 }
+/** La regla tal como se escribe en la ficha de una criatura (sin motivo: lo genera `perfilDeCriatura` en bestiario.ts). */
+export type ReglaFicha = Omit<ReglaDano, "motivo">;
 /** Lo que un objetivo resiste, no sufre o sufre doble. Lo construyen `perfilDePersonaje` (rasgos.ts) y, para criaturas, su ficha. */
 export interface PerfilDano { resiste?: readonly ReglaDano[]; inmune?: readonly ReglaDano[]; vulnerable?: readonly ReglaDano[] }
 export interface ResultadoDano {

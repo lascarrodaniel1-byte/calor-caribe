@@ -315,3 +315,17 @@ export const REGLAS_EQUIPO = `## Equipamiento y botín (usa generar_botin, crear
 - Lo maldito parece encantado: muestra a los jugadores solo la apariencia. Revela la maldición en la ficción cuando se manifieste por primera vez o cuando la descubran (Arcanos CD 15, un rito, un experto) y entonces llama a examinar_objeto con revelar=true.
 - No dependas solo de las tablas: crea con crear_objeto armas con nombre e historia, objetos únicos de la aventura, armas de jefes caídos, recompensas de misiones. Las tiendas de Aldenmar tienen casi de todo lo normal; lo encantado se encuentra, se gana o se compra en el mercado negro a precios abusivos.
 - Respeta los efectos de los objetos en tus arbitrajes (bonificadores, resistencias, maldiciones).`;
+
+/** ¿El arma que usa el personaje es mágica? Sí si es un objeto del inventario (con su [O#]) de calidad encantado, maldito, reliquia o legendario cuyo nombre coincide
+ *  con el del arma. Sin objeto registrado se supone NO mágica: si el DM sabe otra cosa, pasa `magico: true` en atacar. */
+export function armaEsMagica(partida: Partida, inventario: readonly string[], arma?: string): boolean {
+  const q = (arma ?? "").toLowerCase().trim();
+  if (!q) return false;
+  for (const item of inventario) {
+    const o = /\[(O\d+)\]/.exec(item) ? partida.objetos[/\[(O\d+)\]/.exec(item)![1]] : undefined;
+    if (!o || !["encantado", "maldito", "reliquia", "legendario"].includes(o.calidad)) continue;
+    const n = `${item} ${o.nombre}`.toLowerCase();
+    if (n.includes(q) || q.includes(o.nombre.toLowerCase())) return true;
+  }
+  return false;
+}
