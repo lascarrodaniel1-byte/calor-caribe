@@ -437,3 +437,26 @@ Datos y prosa dicen lo mismo, y la prueba de coherencia de `t-resistencias` (pro
 **Propuestas a confirmar (NO tocadas; peligro y VD intactos).** Siguen fuera de banda frente a un grupo sin armas mágicas, como ya se dijo en §13: Hombre oso (P3, VD 6: 0% en N1, 100% en N5), Elemental de fuego y de aire (P3), Banshee y Ulfhedinn (P3, VD 5: 50% en N1) y el Lich (P5, VD 16: 92% en N5, el P5 más blando); Ysolde (P5, VD 16: 100% desde N5) también queda muy por debajo de su peligro en el simulador (que no modela sus habilidades ni su Corte). Opciones: subir el peligro un punto o dar al grupo un arma mágica de partida.
 
 **Otras incoherencias vistas y NO cambiadas (dudosas).** (a) Wyverno y Basilisco atacan con veneno y no son inmunes (en 5e tampoco; es un rasgo de bestia, no de no-muerto). (b) Ulfhedinn y Hombre oso hacen daño de fuego («Ceniza de la furia») y son vulnerables al fuego de la Llama Gris, pero no inmunes al fuego corriente: es coherente con su prosa. (c) Psíquico: Banshee, Moira, Ilvara, Juez y Kharoth lo usan sin inmunidad; la 5e no la da. (d) El Juez Sin Ojos ataca con fuego (Veredicto) sin inmunidad, pese a ser el inquisidor de la Llama Gris: la ficha no lo dice. (e) Ysolde teme la luz solar primigenia («regeneración falla salvo luz solar») pero no hay vulnerabilidad al radiante como en el Lich: la prosa no dice «vulnerable». (f) El Elemental de fuego «recibe doble daño del agua»: «agua» no es un tipo de daño del catálogo. El Elemental de agua «se congela» (inmovilizado) sin vulnerabilidad al frío estructurada. (g) La 6 y la 7 de §13 (Gorgon y condiciones) siguen abiertas.
+
+### 14 bis. Incoherencias restantes de §14 (confirmado por el dueño: «Arregla incoherencias y sube peligro», parte 1)
+
+Datos y prosa a la vez; la prueba de coherencia de `t-resistencias` ahora también cubre resistencias y vulnerabilidades (incluidas las de material «agua», «hierro frío», «luz solar») en los dos sentidos. No cambia ningún peligro, VD, PV, CA ni ataque. Simulador (`--n 40 --rapido` y `--detalle --n-detalle 60 --niveles 1,5,9,13`): **salida idéntica** a la de antes (el grupo simulado no usa psíquico ni material).
+
+| Criatura | Antes | Después | Por qué |
+|---|---|---|---|
+| Banshee del Velo | usa psíquico (Lamento), sin protección | **resiste** el psíquico (dato y rasgo) | es un espíritu hecho de duelo y memoria, pero se la aplaca hablándole (ver su encuentro): no es inmune |
+| Ilvara | usa psíquico (Agujas del telar), sin protección | **resiste** el psíquico (rasgo «Mente prevista») | «sabe lo que vas a pensar antes de que lo pienses»; jefa: resistencia, no inmunidad |
+| El Juez Sin Ojos | fuego (Veredicto y Espadón de llama gris) sin protección | **resiste** el fuego (rasgo «Hijo del sol») | hijo del dios del sol Ka'i y regente de la Llama Gris; resistencia, no inmunidad (jefe) |
+| Ysolde | solo «regeneración falla con la luz solar» | **vulnerable** al radiante de la luz solar y de la luz solar primigenia (doble; dato `soloMaterial` y rasgo «Teme la luz solar») | igual que el Lich, que ya lo era de la primigenia |
+| Elemental de fuego | prosa «doble daño del agua», sin dato | vulnerable a `contundente` con material «agua» (el agua se trata como golpe contundente de material agua, igual que el Golpe de agua del Elemental de agua) y su resistencia física la **exceptúa** (`salvoMaterial: "agua"`, si no, resistencia y vulnerabilidad se anularían) | «agua» no es tipo del catálogo; se usa el mecanismo de material de la fase C, sin tocar el motor |
+| Duende | prosa «doble daño del hierro frío», sin dato | vulnerable a cortante, perforante y contundente con material «hierro frío» | misma clase que el Elemental de fuego |
+
+**Sin cambio, con motivo.**
+- *Wyverno y Basilisco* (veneno): **sin inmunidad ni resistencia.** Son bestias (temple «bestia»), su lore no habla de sangre ni de cuerpo inmune, el veneno es un arma (aguijón, mordisco) y la 5e tampoco se la da. Fijado por prueba.
+- *Moira* (psíquico): sin cambio. Ve el futuro con presagios, pero ni su ficha ni su lore dicen que su mente esté blindada; «Cortar el hilo» es su poder, no un rasgo defensivo.
+- *El Juez* (psíquico, Confesión) y *Kharoth* (psíquico, Palabra del dios devorado): sin cambio, son jefes y nada en su lore apoya una resistencia (la «vista ciega» del Juez es percepción; la palabra de Kharoth es de un dios que devoró, no un escudo mental). Kharoth ya es inmune al fuego.
+- *Elemental de agua* («se congela»): sin cambio. La prosa dice que el hielo la **inmoviliza** (velocidad 0), no que reciba más daño: una vulnerabilidad al frío sería inventarla. *Elemental de aire* («vulnerable al vacío») y *de tierra* («armas pesadas contundentes» sin tipo en el catálogo): sin cambio.
+- *Ulfhedinn y Hombre oso* (fuego de «Ceniza de la furia»): sin cambio, ya decidido en §14.
+
+**Dudosas, listadas sin cambiar.** (1) Sirena y Hombre pez («hierro cálido y sal en abundancia, le quema la piel») y la sal en abundancia del Elemental de fuego, Madre y Lich: no hay tipo claro (¿fuego? ¿ácido?) ni material «sal» definido. (2) «Armas pesadas contundentes» del Elemental de tierra y el «golpe contundente lo hiere mejor» del Gorgon: el catálogo no distingue armas pesadas; su blindaje ya lo refleja. (3) Vaerth (necrótico sin inmunidad): ya en §14. (4) Condiciones como dato (miedo, hechizo, agotamiento): sigue abierto.
+

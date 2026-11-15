@@ -168,6 +168,8 @@ export interface EstadoJefe {
 const tipos = (...t: TipoDano[]): ReglaFicha[] => t.map((tipo) => ({ tipo }));
 const noMagico = (...t: TipoDano[]): ReglaFicha[] => t.map((tipo) => ({ tipo, soloNoMagico: true }));
 const FISICO_NO_MAGICO = noMagico("cortante", "perforante", "contundente");
+/** Lo mismo con una fuente de material concreta (el hierro frío, el agua): `aplicarDano` solo lo cuenta si el DM pasa ese `material`. */
+const deMaterial = (material: string, ...t: TipoDano[]): ReglaFicha[] => t.map((tipo) => ({ tipo, soloMaterial: material }));
 
 export const BESTIARIO: Criatura[] = [
   // ------------------------------------------------------------ comunes
@@ -363,7 +365,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Banshee del Velo",
-    resistencias: FISICO_NO_MAGICO,
+    resistencias: [...FISICO_NO_MAGICO, ...tipos("psíquico")],
     inmunidades: tipos("necrótico", "veneno"),
     temple: "espectro",
     categoria: "monstruo",
@@ -375,7 +377,7 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "0 m, volar 12 m (incorpórea)",
     atributos: "FUE 1 DES 14 CON 10 INT 12 SAB 11 CAR 17",
     ataques: ["Toque marchito: +4, 3d6+2 necrótico"],
-    rasgos: ["Incorpórea: resistencia al daño no mágico; inmune al necrótico y al veneno (es un espíritu, no un cuerpo)"],
+    rasgos: ["Incorpórea: resistencia al daño no mágico; inmune al necrótico y al veneno (es un espíritu, no un cuerpo); resistencia al daño psíquico (es duelo y memoria, pero a un espíritu se le puede hablar: no es inmune)"],
     habilidades: [
       { nombre: "Lamento", descripcion: "Una vez al día; todos los que la oigan a 9 m.", salvacion: "con", cd: 13, dano: "3d6", tipo_dano: "psíquico", muerte_si_falla_por: 5 },
     ],
@@ -657,8 +659,9 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de fuego",
-    resistencias: FISICO_NO_MAGICO,
+    resistencias: FISICO_NO_MAGICO.map((r) => ({ ...r, salvoMaterial: "agua" })),
     inmunidades: tipos("fuego", "veneno"),
+    vulnerabilidades: deMaterial("agua", "contundente"),
     temple: "elemental",
     categoria: "monstruo",
     peligro: 3,
@@ -671,8 +674,8 @@ export const BESTIARIO: Criatura[] = [
     atributos: "FUE 10 DES 17 CON 15 INT 4 SAB 10 CAR 6",
     ataques: ["Toque ardiente: +6, 2d8+3 fuego; prende lo inflamable"],
     rasgos: [
-      "Fuego: inmune al fuego y al veneno; resistencia al daño no mágico",
-      "Se apaga con agua: recibe doble daño del agua y de la sal en abundancia",
+      "Fuego: inmune al fuego y al veneno; resistencia al daño no mágico (salvo el del agua)",
+      "Se apaga con agua: vulnerable al agua (doble daño; el agua cuenta como daño contundente de material «agua» y no la frena la resistencia); la sal en abundancia también le hace doble daño (solo prosa)",
       "Ilumina y prende: a 3 m, las llamas se avivan y la ropa y la madera arden",
     ],
     habilidades: [
@@ -789,6 +792,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Duende",
+    vulnerabilidades: deMaterial("hierro frío", "cortante", "perforante", "contundente"),
     temple: "bestia",
     personalidad: ["impulsivo"],
     categoria: "monstruo",
@@ -803,7 +807,7 @@ export const BESTIARIO: Criatura[] = [
     ataques: ["Daga diminuta: +6, 1d4+2 perforante"],
     rasgos: [
       "Invisible a voluntad (rompe al atacar)",
-      "Hierro: recibe doble daño del hierro frío y huye de él",
+      "Hierro: vulnerable al hierro frío (doble daño de corte, punta o contundente de hierro frío) y huye de él",
       "Travesura: ventaja en Juego de manos y en Sigilo",
       "Palabra dada: no puede mentir si se le ha pedido por su nombre verdadero",
     ],
@@ -1157,6 +1161,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "El Juez Sin Ojos",
+    resistencias: tipos("fuego"),
     blindaje: ["loriga", "yelmo", "brigantina", "grebas"], // malla con yelmo, brigantina y grebas: intermedio entre las placas completas (una espada apenas le hacía daño) y la loriga con yelmo (casi sin defensa a nivel 13)
     personalidad: ["calculador"],
     categoria: "jefe",
@@ -1200,7 +1205,7 @@ export const BESTIARIO: Criatura[] = [
         agentes: ["Inquisidores de incógnito", "Escribanos y jueces comprados", "Confesores espías", "Capitana Veyra y su patrulla"],
       },
     },
-    rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "Semidiós: los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa (reliquias, maldiciones, Ceniza, criaturas sagradas o aberrantes) y de custodiar todo lo divino", "REGENTE: nunca está solo; sus subordinados cumplen sus sentencias lejos de él y, si da la cara, lo rodea su séquito", "Resistencia legendaria (3/día)"],
+    rasgos: ["Ciego pero con vista ciega a 36 m: inmune a ilusiones e invisibilidad", "Hijo del sol: resistencia al daño de fuego (su padre es Ka'i, el dios del sol, y empuña la Llama Gris que usa en el Veredicto); no es inmune", "Semidiós: los dioses le dieron la habilidad de ver la naturaleza divina y maldita de cada cosa (reliquias, maldiciones, Ceniza, criaturas sagradas o aberrantes) y de custodiar todo lo divino", "REGENTE: nunca está solo; sus subordinados cumplen sus sentencias lejos de él y, si da la cara, lo rodea su séquito", "Resistencia legendaria (3/día)"],
     habilidades: [
       { nombre: "Convocar a los suyos", descripcion: "Una campana de la catedral suena y acuden 1d4+1 inquisidores y acólitos por las puertas en la ronda siguiente (aparecer_criatura o pnj)." },
       { nombre: "Veredicto", descripcion: "Señala a un culpable.", salvacion: "sab", cd: 18, dano: "8d10", tipo_dano: "fuego", mitad_si_exito: true, muerte_si_falla_por: 5, recarga: 5 },
@@ -1212,6 +1217,7 @@ export const BESTIARIO: Criatura[] = [
     nombre: "Ysolde, la Reina Pálida",
     personalidad: ["arrogante"],
     inmunidades: tipos("veneno", "necrótico"),
+    vulnerabilidades: [...deMaterial("luz solar", "radiante"), ...deMaterial("luz solar primigenia", "radiante")],
     temple: "vampiro",
     categoria: "jefe",
     peligro: 5,
@@ -1254,7 +1260,7 @@ export const BESTIARIO: Criatura[] = [
         agentes: ["Cortesanos pálidos infiltrados", "Nobles endeudados", "Esbirros de la Corte con una invitación", "Fieles del Primus que fingen servirla"],
       },
     },
-    rasgos: ["No-muerta: inmune al veneno y al necrótico (vive de la vida ajena, y la muerte ya no la toca)", "Regeneración 20 salvo luz solar o agua bendecida con sal", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "REGENTE: rodeada de su Corte; envía esbirros e invitaciones a su voluntad y, en persona, nunca llega sola", "Resistencia legendaria (3/día)"],
+    rasgos: ["No-muerta: inmune al veneno y al necrótico (vive de la vida ajena, y la muerte ya no la toca)", "Regeneración 20 salvo luz solar o agua bendecida con sal", "Teme la luz solar: vulnerable al daño radiante de la luz solar y del Rayo de luz solar primigenia (doble daño)", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "REGENTE: rodeada de su Corte; envía esbirros e invitaciones a su voluntad y, en persona, nunca llega sola", "Resistencia legendaria (3/día)"],
     habilidades: [
       { nombre: "Convocar a la Corte", descripcion: "Chasquea los dedos y acuden 1d4 esbirros o caballeros por el pasillo más cercano en la ronda siguiente (aparecer_criatura o pnj)." },
       { nombre: "Mirada de la Reina", descripcion: "Un objetivo que la vea.", salvacion: "sab", cd: 19, condicion: "hechizado: la ve como su más querida aliada 1 hora" },
@@ -1338,6 +1344,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ilvara, la Tejedora de Mañanas",
+    resistencias: tipos("psíquico"),
     categoria: "jefe",
     peligro: 5,
     region: "El monasterio más alto de las Agujas de Vahl",
@@ -1350,6 +1357,7 @@ export const BESTIARIO: Criatura[] = [
     ataques: ["Agujas del telar (x3): +10, 1d8+4 perforante + 2d8 psíquico", "Hilo estrangulador: +10, apresado (CD 18)"],
     rasgos: [
       "Presciencia: no puede ser sorprendida; ventaja en iniciativa y en salvaciones de DES",
+      "Mente prevista: resistencia al daño psíquico (sabe lo que vas a pensar antes de que lo pienses: ya vio venir cada intrusión en su mente); no es inmune",
       "Presagios: empieza el combate con 3 resultados de d20 ya vistos y recupera 1 al inicio de cada ronda (máx. 3). Puede sustituir con uno cualquier tirada que vea: un ataque, una salvación, una prueba (usa presagio_criatura)",
       "Ya lo vi (3/día, reacción): un ataque que la impactaría falla",
       "Ceguera ante lo absurdo: solo ve futuros probables. Un plan disparatado, una acción que nadie dijo en voz alta o algo que contradiga la naturaleza del personaje le impone desventaja y no puede usar presagios contra ello (a juicio del DM)",

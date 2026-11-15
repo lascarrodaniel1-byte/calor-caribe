@@ -34,7 +34,7 @@ t(tiene("Bakunawa", "resistencias", "frío") && tiene("Bakunawa", "resistencias"
   // Excepciones conocidas: «inmune al fuego» de Kharoth/Dragón joven/Elemental ya están; la Bakunawa solo resiste (no es inmune al veneno: su ficha dice «envenenado»).
   t(falta.length === 0, "todo «inmune a …» (tipo de daño) de la prosa está en los datos", [...new Set(falta)].join(" | "));
 }
-t(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length === 23, "23 criaturas con datos de resistencias (20 de la fase C + Hambriento, Ghul de las fosas e Ysolde)", String(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length));
+t(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length === 26, "26 criaturas con datos de resistencias (20 de la fase C + Hambriento, Ghul de las fosas, Ysolde, Duende, Ilvara y el Juez)", String(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length));
 t(/Daño por tipo.*inmune a fuego, veneno/.test(fichaCriatura(C("Elemental de fuego"))) && !/Daño por tipo/.test(fichaCriatura(C("Ogro"))), "la ficha dice qué aplica el programa (y nada en las criaturas sin datos)");
 t(lineaResistencias(C("Lich")).includes("vulnerable a fuego (llama gris)"), "línea de la ficha del Lich", lineaResistencias(C("Lich")));
 { const pf = perfilDeCriatura(C("Wendigo")); t(aplicarDano({ objetivo: pf, cantidad: 10, tipo: "fuego" }).final === 20 && aplicarDano({ objetivo: pf, cantidad: 10, tipo: "frío" }).final === 0 && aplicarDano({ objetivo: pf, cantidad: 10, tipo: "cortante" }).final === 10, "perfilDeCriatura: Wendigo fuego ×2, frío 0, resto igual"); }
@@ -63,6 +63,34 @@ t(!C("Vaerth, el Sin Rostro").inmunidades && !C("Vaerth, el Sin Rostro").resiste
 { const b = C("Bakunawa"); const r = b.rasgos.find((x) => /Escamas de mar profundo/.test(x))!;
   t(/inmune al veneno y a la condición envenenado/.test(r) && !/inmune a ahogamiento, a envenenado/.test(r) && tiene("Bakunawa", "inmunidades", "veneno") && tiene("Bakunawa", "resistencias", "frío") && tiene("Bakunawa", "resistencias", "eléctrico"), "Bakunawa: inmune al veneno (dato) y a la condición envenenado (solo prosa), sigue resistiendo frío y eléctrico", r.slice(0, 160));
   t(!(b.inmunidades ?? []).some((x) => (x.tipo as string) === "envenenado") && BESTIARIO.every((c) => (c.inmunidades ?? []).every((x) => !!normalizarTipo(x.tipo))), "ninguna inmunidad de datos es una condición: todas son tipos de daño del catálogo"); }
+
+// --- Corrección de incoherencias restantes (docs/BALANCE.md §14 bis): psíquico, fuego del Juez, luz solar de Ysolde, agua del Elemental de fuego, hierro del Duende
+{ const A = (n: string, k: "resistencias" | "inmunidades" | "vulnerabilidades") => (C(n)[k] ?? []).map((r) => r.tipo).join();
+  // psíquico: decisión por criatura (no todas inmunes por inercia). Resisten: Banshee (espíritu) e Ilvara (presciencia); inmune: nadie; sin cambio: Moira, Juez y Kharoth
+  t(tiene("Banshee del Velo", "resistencias", "psíquico") && tiene("Ilvara, la Tejedora de Mañanas", "resistencias", "psíquico"), "psíquico: resisten la Banshee (espíritu) e Ilvara (presciencia)");
+  t(!BESTIARIO.some((c) => tiene(c.nombre, "inmunidades", "psíquico")), "nadie es inmune al psíquico (solo resistencias donde el lore lo apoya)");
+  for (const n of ["Moira", "El Juez Sin Ojos", "Kharoth, Dragón Antiguo del Sol Herido"]) t(!tiene(n, "resistencias", "psíquico") && !tiene(n, "inmunidades", "psíquico") && !C(n).rasgos.some((r) => /psíquico/i.test(r)), `${n}: sin resistencia al psíquico (sin lore que la apoye; decisión documentada en §14 bis)`);
+  // fuego del Juez: resistencia (hijo del dios del sol, empuña la Llama Gris), no inmunidad
+  t(tiene("El Juez Sin Ojos", "resistencias", "fuego") && !tiene("El Juez Sin Ojos", "inmunidades", "fuego") && C("El Juez Sin Ojos").rasgos.some((r) => /^Hijo del sol: resistencia al daño de fuego/.test(r) && /dios del sol/.test(r)), "Juez: resiste el fuego (hijo del dios del sol), no es inmune; la prosa lo dice");
+  // veneno de bestias: Wyverno y Basilisco SIN inmunidad ni resistencia (decisión documentada)
+  for (const n of ["Wyverno", "Basilisco"]) t(!C(n).inmunidades && !C(n).resistencias && !C(n).rasgos.some((r) => /inmune/i.test(r)), `${n}: sin inmunidad al veneno (su veneno es un arma, no un rasgo del cuerpo; decisión documentada)`);
+  // Ysolde: vulnerable al radiante de la luz solar (y a la primigenia), como dato y como prosa
+  t(tiene("Ysolde, la Reina Pálida", "vulnerabilidades", "radiante", { soloMaterial: "luz solar" }) && tiene("Ysolde, la Reina Pálida", "vulnerabilidades", "radiante", { soloMaterial: "luz solar primigenia" }) && C("Ysolde, la Reina Pálida").rasgos.some((r) => /^Teme la luz solar: vulnerable al daño radiante/.test(r)), "Ysolde: vulnerable al radiante de la luz solar y de la luz solar primigenia (dato y prosa)");
+  // Elemental de fuego: el agua cuenta doble (contundente, material «agua») y la resistencia física no la frena; Elemental de agua: «se congela» NO es vulnerabilidad (inmoviliza), sin cambio
+  t(tiene("Elemental de fuego", "vulnerabilidades", "contundente", { soloMaterial: "agua" }) && FIS.every((f) => tiene("Elemental de fuego", "resistencias", f, { soloNoMagico: true, salvoMaterial: "agua" })) && C("Elemental de fuego").rasgos.some((r) => /vulnerable al agua \(doble daño/.test(r)), "Elemental de fuego: vulnerable al agua (dato y prosa) y la resistencia física la exceptúa");
+  t(A("Elemental de agua", "vulnerabilidades") === "" && C("Elemental de agua").rasgos.some((r) => /^Se congela: el hielo la inmoviliza/.test(r)), "Elemental de agua: «se congela» es inmovilización, no daño doble: sin vulnerabilidad al frío");
+  t(A("Elemental de aire", "vulnerabilidades") === "" && A("Elemental de tierra", "vulnerabilidades") === "trueno", "Elementales de aire (vulnerable al vacío, no es daño) y de tierra (trueno; «armas pesadas» sin tipo en el catálogo): sin cambio");
+  // Duende: hierro frío ×2 (corte, punta y contundente de hierro frío)
+  t(["cortante", "perforante", "contundente"].every((f) => tiene("Duende", "vulnerabilidades", f, { soloMaterial: "hierro frío" })) && C("Duende").rasgos.some((r) => /^Hierro: vulnerable al hierro frío \(doble daño/.test(r)), "Duende: vulnerable al hierro frío (dato y prosa)"); }
+// coherencia prosa ↔ datos para resistencias y vulnerabilidades por material (los dos sentidos)
+{ const falta: string[] = []; const FISICOS = ["cortante", "perforante", "contundente"];
+  for (const c of BESTIARIO) for (const r of c.rasgos) {
+    for (const m of r.matchAll(/resistencia\b([^;.:()]*)/giu)) for (const w of m[1].toLowerCase().split(/[^\p{L}]+/u)) { const tp = normalizarTipo(w); if (tp && !FISICOS.includes(tp) && !c.resistencias?.some((x) => x.tipo === tp)) falta.push(`${c.nombre}: resiste ${tp}`); }
+    for (const m of r.matchAll(/vulnerable al (agua|hierro frío|luz solar)/giu)) if (!c.vulnerabilidades?.some((x) => !!x.soloMaterial && x.soloMaterial.startsWith(m[1].toLowerCase()))) falta.push(`${c.nombre}: vulnerable ${m[1]}`);
+  }
+  for (const c of BESTIARIO) for (const rs of (c.resistencias ?? []).filter((x) => !FISICOS.includes(x.tipo))) if (!c.rasgos.some((r) => /resistencia|resiste/i.test(r) && r.toLowerCase().split(/[^\p{L}]+/u).some((w) => normalizarTipo(w) === rs.tipo))) falta.push(`${c.nombre}: dato resiste ${rs.tipo} sin prosa`);
+  for (const c of BESTIARIO) for (const v of c.vulnerabilidades ?? []) if (!c.rasgos.some((r) => /vulnerable|doble daño/i.test(r) && (v.soloMaterial ? r.toLowerCase().includes(v.soloMaterial.split(" ").slice(0, 2).join(" ")) : r.toLowerCase().split(/[^\p{L}]+/u).some((w) => normalizarTipo(w) === v.tipo || (v.tipo === "contundente" && /contundente/.test(w)))))) falta.push(`${c.nombre}: dato vulnerable ${v.tipo}${v.soloMaterial ? ` (${v.soloMaterial})` : ""} sin prosa`);
+  t(falta.length === 0, "resistencias y vulnerabilidades (también por material) de la prosa y de los datos coinciden en los dos sentidos", falta.join(" | ")); }
 
 // --- atacar
 function mk(criatura: string, inventario: string[] = ["Espada larga"]) {
@@ -121,7 +149,7 @@ function golpe(m: ReturnType<typeof mk>, tipo: string | undefined, extra: object
 }
 { // Corrección §14: los nuevos inmunes no reciben ese daño
   t(golpe(mk("Hambriento"), "veneno").d === 0 && golpe(mk("Ghul de las fosas"), "veneno").d === 0, "Hambriento y Ghul: el veneno no les hace nada");
-  const y = mk("Ysolde, la Reina Pálida"); t(golpe(y, "necrótico").d === 0 && golpe(y, "veneno").d === 0 && golpe(y, "radiante", { magico: true }).d === 10, "Ysolde: necrótico y veneno 0; el radiante pasa entero (no hay vulnerabilidad en su ficha)");
+  const y = mk("Ysolde, la Reina Pálida"); t(golpe(y, "necrótico").d === 0 && golpe(y, "veneno").d === 0 && golpe(y, "radiante", { magico: true }).d === 10, "Ysolde: necrótico y veneno 0; el radiante que no es luz solar pasa entero");
   const l = mk("Lich"); t(golpe(l, "necrótico").d === 0, "Lich: inmune al necrótico");
   const b = mk("Banshee del Velo"); t(golpe(b, "veneno").d === 0, "Banshee: inmune al veneno");
   const k = mk("Bakunawa"); t(golpe(k, "veneno").d === 0 && golpe(k, "frío").d === 5, "Bakunawa: veneno 0 (y el frío sigue a la mitad)");
@@ -139,4 +167,16 @@ function golpe(m: ReturnType<typeof mk>, tipo: string | undefined, extra: object
 }
 // --- las criaturas sin datos no cambian
 { const m = mk("Ogro"); const g = golpe(m, "fuego"); t(g.d === 10, "Ogro (sin datos): el fuego pasa entero"); }
+{ // Corrección §14 bis aplicada por atacar y danar_criatura
+  const b = mk("Banshee del Velo"); t(golpe(b, "psíquico").d === 5 && golpe(b, "psíquico", { magico: true }).d === 5, "Banshee: el psíquico (mágico o no) se reduce a la mitad: resistencia, no inmunidad");
+  const il = mk("Ilvara, la Tejedora de Mañanas"); t(golpe(il, "psíquico").d === 5 && golpe(il, "fuego").d === 10, "Ilvara: psíquico 10 → 5; el fuego pasa entero");
+  const j = mk("El Juez Sin Ojos"); t(golpe(j, "fuego").d === 5 && golpe(j, "psíquico").d === 10 && golpe(j, "radiante", { magico: true }).d === 10, "Juez: fuego 10 → 5; psíquico y radiante, enteros");
+  const y = mk("Ysolde, la Reina Pálida"); const r1 = golpe(y, "radiante", { magico: true, material: "luz solar" }); t(r1.d === 20 && /vulnerable a radiante \(luz solar\): 10 → 20/.test(r1.s), "Ysolde: radiante de la luz solar ×2 y lo dice", r1.s.slice(-90));
+  t(golpe(y, "radiante", { magico: true, material: "luz solar primigenia" }).d === 20 && golpe(y, "radiante", { magico: true }).d === 10, "Ysolde: la luz solar primigenia también ×2; el radiante sin material, entero");
+  const ef = mk("Elemental de fuego");
+  const ag = golpe(ef, "contundente", { material: "agua" }); t(ag.d === 20 && /vulnerable a contundente \(agua\): 10 → 20/.test(ag.s), "Elemental de fuego: el agua (contundente, material agua) hace doble, sin que la resistencia física la frene", ag.s.slice(-90));
+  t(golpe(ef, "contundente").d === 5 && golpe(ef, "contundente", { magico: true }).d === 10 && golpe(ef, "contundente", { magico: true, material: "agua" }).d === 20, "Elemental de fuego: un mazazo no mágico sigue a la mitad; mágico, entero; el agua mágica, doble");
+  const du = mk("Duende"); const fe = golpe(du, "perforante", { material: "hierro frío" }); t(fe.d === 20 && golpe(du, "cortante", { material: "hierro frío" }).d === 20 && golpe(du, "perforante").d === 10 && golpe(du, "perforante", { material: "acero" }).d === 10, "Duende: el hierro frío hace doble (corte y punta); el acero o el arma sin material, normal", fe.s.slice(-90));
+  const w = mk("Wyverno"), ba = mk("Basilisco"); t(golpe(w, "veneno").d === 10 && golpe(ba, "veneno").d === 10, "Wyverno y Basilisco: el veneno pasa entero (sin inmunidad, decisión documentada)");
+  const dm = mk("Elemental de fuego"); dm.E("danar_criatura", { nombre: dm.j.nombre, cantidad: 10, tipo_dano: "contundente", material: "agua" }); t(dm.perdida() === 20, "danar_criatura {tipo_dano: contundente, material: agua} al Elemental de fuego: doble"); }
 console.log(`${ok} ok, ${mal} fallas`);

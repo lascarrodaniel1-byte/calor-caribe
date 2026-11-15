@@ -64,11 +64,10 @@ for (const [s, e] of [["perforante", "perforante"], ["punta", "perforante"], ["H
 // Excepciones explícitas: palabras que aparecen tras «daño…» en la prosa y NO son tipos de daño.
 const EXCEPCIONES: Record<string, string> = {
   "mágico": "pseudo-tipo: describe la fuente (FuenteDano.magico), no el elemento",
-  "hierro": "material («hierro frío»): FuenteDano.material",
-  "agua": "medio, no tipo: «daño de agua» no existe en el juego",
   "cuerpo": "«daño cuerpo a cuerpo»: alcance, no tipo",
   "mayor": "gramática («daño mayor»)",
-  de: "gramática («doble daño del agua y de la sal»)", o: "gramática", un: "gramática", a: "gramática", que: "gramática", dentro: "gramática («daño dentro de…»)",
+  // «hierro frío» y «agua» ya no aparecen tras «daño…»: son materiales de datos (vulnerabilidades del Duende y del Elemental de fuego, BALANCE §14 bis)
+  o: "gramática", un: "gramática", a: "gramática", que: "gramática", dentro: "gramática («daño dentro de…»)",
 };
 const hallados = new Map<string, Set<string>>(); // texto crudo → dónde
 const ver = (v: string | undefined, donde: string) => { if (v === undefined) return; (hallados.get(v) ?? hallados.set(v, new Set()).get(v)!).add(donde); };
