@@ -61,6 +61,6 @@ Se reconocen sin distinguir mayúsculas, tildes ni espacios sobrantes, y con pre
 ## Propuestas que siguen abiertas (el dueño confirma)
 
 - El mapa de heridas por tipo (arriba), la lectura de «resistencia al daño no mágico» sin tipo como físico, y que la armadura mande sobre la resistencia de la ficha.
-- Las incoherencias de datos listadas en `docs/BALANCE.md` §13 (Ysolde y Vaerth necróticos sin inmunidad, no-muertos sin veneno, Hombre oso copia del Ulfhedinn…) y las criaturas que dejan de encajar con su peligro/VD sin armas mágicas.
+- Las incoherencias de datos de §13 ya están corregidas (`docs/BALANCE.md` §14: inmunidades de no-muertos al veneno y al necrótico, Hombre oso con ficha propia, redacción daño ↔ condición; Vaerth queda sin cambio y las dudosas están listadas ahí). Siguen abiertas las criaturas que dejan de encajar con su peligro/VD sin armas mágicas.
 - Pendiente: inmunidades a condiciones (miedo, hechizo, agotamiento) como dato, vulnerabilidades por material (sal, hierro cálido), resistencia dinámica de Kuru y el estado «fuera del agua» de la Bakunawa; resistencias de PNJ y de objetos/condiciones (hoy prosa).
 - Daño de conjuros a criaturas: el DM aplica `danar_criatura {tipo_dano, magico: true}`; no hay herramienta de conjuro contra criaturas que lo haga sola.

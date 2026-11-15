@@ -173,6 +173,7 @@ export const BESTIARIO: Criatura[] = [
   // ------------------------------------------------------------ comunes
   {
     nombre: "Hambriento",
+    inmunidades: tipos("veneno"),
     temple: "no-muerto torpe",
     categoria: "monstruo",
     peligro: 1,
@@ -183,7 +184,7 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "6 m",
     atributos: "FUE 13 DES 6 CON 16 INT 3 SAB 6 CAR 5",
     ataques: ["Mordisco: +3, 1d6+1 perforante; puede transmitir la Podre (de_no_muerto, cd_podre 11)", "Agarrón: +3, apresado (CD 11)"],
-    rasgos: ["Tenacidad de los muertos: al caer a 0 PV, salvación de CON CD 5 + daño o se queda con 1 PV (no con fuego ni críticos)", "Manada: ventaja si hay otro Hambriento adyacente al objetivo"],
+    rasgos: ["No-muerto: inmune al veneno", "Tenacidad de los muertos: al caer a 0 PV, salvación de CON CD 5 + daño o se queda con 1 PV (no con fuego ni críticos)", "Manada: ventaja si hay otro Hambriento adyacente al objetivo"],
     habilidades: [],
     botin: "Lo que llevaba en vida: monedas, un anillo, una carta sin enviar",
   },
@@ -204,6 +205,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ghul de las fosas",
+    inmunidades: tipos("veneno"),
     temple: "no-muerto",
     categoria: "monstruo",
     peligro: 2,
@@ -214,7 +216,7 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "9 m",
     atributos: "FUE 13 DES 15 CON 10 INT 7 SAB 10 CAR 6",
     ataques: ["Mordisco: +2, 2d6+2 perforante (Podre, cd_podre 13)", "Garras: +4, 2d4+2 cortante"],
-    rasgos: ["Visión en la oscuridad"],
+    rasgos: ["Visión en la oscuridad", "No-muerto: inmune al veneno"],
     habilidades: [
       { nombre: "Toque paralizante", descripcion: "Al acertar con las garras.", salvacion: "con", cd: 10, condicion: "paralizado 1 minuto (repite al final de cada turno)" },
     ],
@@ -362,7 +364,7 @@ export const BESTIARIO: Criatura[] = [
   {
     nombre: "Banshee del Velo",
     resistencias: FISICO_NO_MAGICO,
-    inmunidades: tipos("necrótico"),
+    inmunidades: tipos("necrótico", "veneno"),
     temple: "espectro",
     categoria: "monstruo",
     peligro: 3,
@@ -373,7 +375,7 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "0 m, volar 12 m (incorpórea)",
     atributos: "FUE 1 DES 14 CON 10 INT 12 SAB 11 CAR 17",
     ataques: ["Toque marchito: +4, 3d6+2 necrótico"],
-    rasgos: ["Incorpórea: resistencia al daño no mágico; inmune a necrótico"],
+    rasgos: ["Incorpórea: resistencia al daño no mágico; inmune al necrótico y al veneno (es un espíritu, no un cuerpo)"],
     habilidades: [
       { nombre: "Lamento", descripcion: "Una vez al día; todos los que la oigan a 9 m.", salvacion: "con", cd: 13, dano: "3d6", tipo_dano: "psíquico", muerte_si_falla_por: 5 },
     ],
@@ -393,7 +395,7 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "12 m",
     atributos: "FUE 23 DES 9 CON 19 INT 6 SAB 10 CAR 5",
     ataques: ["Puño de huesos (x2): +10, 3d8+6 contundente", "Roca: +10, 4d10+6"],
-    rasgos: ["Vulnerable al daño contundente", "Inmune a veneno y miedo"],
+    rasgos: ["Vulnerable al daño contundente", "Inmune al veneno y a la condición asustado"],
     habilidades: [
       { nombre: "Pisotón", descripcion: "Aplasta a un objetivo derribado.", salvacion: "des", cd: 17, dano: "6d10", tipo_dano: "contundente", herida: "golpe_masivo", muerte_si_falla_por: 10 },
     ],
@@ -432,7 +434,7 @@ export const BESTIARIO: Criatura[] = [
     velocidad: "12 m",
     atributos: "FUE 24 DES 14 CON 22 INT 12 SAB 12 CAR 16",
     ataques: ["Forma demoníaca (x3): +11, 3d10+7 del tipo que encaje con su forma", "Mordisco: +11, 4d8+7 perforante"],
-    rasgos: ["Regeneración 10 salvo fuego o armas de plata", "Forma humana: puede volver a ella a voluntad", "Inmune a miedo y veneno", "La marca del sacrificio de los marcados sangra en su presencia"],
+    rasgos: ["Regeneración 10 salvo fuego o armas de plata", "Forma humana: puede volver a ella a voluntad", "Inmune al veneno y a la condición asustado", "La marca del sacrificio de los marcados sangra en su presencia"],
     habilidades: [
       { nombre: "Devorar", descripcion: "Contra un objetivo apresado o derribado.", salvacion: "con", cd: 18, dano: "6d10", tipo_dano: "perforante", herida: "critico", muerte_si_falla_por: 10 },
       { nombre: "Horror verdadero", descripcion: "Muestra su forma verdadera por primera vez.", salvacion: "sab", cd: 16, condicion: "asustado 1 minuto" },
@@ -441,7 +443,7 @@ export const BESTIARIO: Criatura[] = [
   {
     nombre: "Lich",
     resistencias: FISICO_NO_MAGICO,
-    inmunidades: tipos("veneno"),
+    inmunidades: tipos("veneno", "necrótico"),
     vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }, { tipo: "radiante", soloMaterial: "luz solar primigenia" }],
     temple: "no-muerto",
     personalidad: ["calculador"],
@@ -458,7 +460,7 @@ export const BESTIARIO: Criatura[] = [
     ataques: ["Toque gélido: +11, 3d8+4 necrótico y la víctima queda con agotamiento 1 si falla CON CD 17", "Bastón de hueso: +8, 1d8+2 contundente"],
     rasgos: [
       "Relicario: mientras su relicario exista, si lo destruyen se reforma junto a él en 1d10 días, con todos sus PV. Para acabar con él hay que encontrar y romper el relicario (guárdalo en un lugar ligado a su historia) y darle el rito de sal y fuego a sus restos",
-      "No-muerto: inmune a veneno, miedo, hechizo, sueño y agotamiento; no necesita comer, beber ni respirar",
+      "No-muerto: inmune al veneno y al necrótico (su cuerpo está vaciado por la magia negra), y a las condiciones asustado, hechizado y agotado y al sueño; no necesita comer, beber ni respirar",
       "Resistencia a la magia: ventaja en sus salvaciones contra hechizos y efectos mágicos; resiste el daño de corte, punta y contundente no mágico",
       "Vulnerable al fuego de la Llama Gris y al Rayo de luz solar primigenia (doble daño); la sal en círculo le impide cruzar",
       "Aura de sepulcro: a 3 m de él, nadie recupera PV con curación y las llamas se apagan",
@@ -526,7 +528,7 @@ export const BESTIARIO: Criatura[] = [
       "Piel fusionada: el pelo y el hocico son suyos y no se arrancan; ataca con garras y mordisco además del hacha",
       "Furia sin fin: nunca sale de la furia (+2 al daño cuerpo a cuerpo, resistencia al daño de corte, punta y contundente no mágico, ignora las penalizaciones de sus heridas)",
       "En trance: no distingue aliados de enemigos; cada ataque cae sobre quien tenga a su alcance (el DM lo decide al azar entre los cercanos)",
-      "No-muerto: inmune a veneno, miedo y agotamiento; no siente dolor ni se cura; vulnerable al fuego de la Llama Gris",
+      "No-muerto: inmune al veneno y a las condiciones asustado y agotado; no siente dolor ni se cura; vulnerable al fuego de la Llama Gris",
       "Descansa si se le da el rito de sal y fuego sobre su cuerpo caído: no vuelve a alzarse",
       "Olfato de lobo: ventaja en Percepción por el olor; los lobos y los lobos de ceniza no lo atacan",
     ],
@@ -547,27 +549,27 @@ export const BESTIARIO: Criatura[] = [
     blindaje: ["pellejo"],
     categoria: "monstruo",
     peligro: 3,
-    region: "Las Agujas de Vahl y el Bosque de Velo Rojo; claros y campos de berserkers caídos",
+    region: "Cuevas y claros de las Agujas de Vahl y del Bosque de Velo Rojo, entre árboles arañados a media altura",
     descripcion:
-      "Un hombre oso: un gigante cubierto de pelo gris ceniza que ya no se distingue de la piel, de hocico romo y garras como hoces, ojos de brasa y los brazos hinchados como troncos. Camina encorvado, ruge en lugar de hablar y destroza lo que encuentra. Se oye venir por el crujido de ramas y el olor a ceniza.",
+      "Un hombre oso: una mole de hombros enormes con la cabeza de oso hundida entre ellos, como un yelmo que ya no se quita, y unas zarpas negras del tamaño de una pala. Gruñe en lugar de hablar, olfatea el aire, se yergue sobre las patas traseras y no se aparta de su cubil si alguien lo pisa. Huele a ceniza fría y a miel rancia, y delata su paso por la corteza arañada de los árboles.",
     ca: 15,
     pv: "13d10+39",
     velocidad: "12 m",
     atributos: "FUE 21 DES 10 CON 19 INT 6 SAB 10 CAR 7",
     ataques: ["Garras (x2): +8, 2d6+5 cortante", "Mordisco: +8, 2d8+5 perforante", "Hacha de leñador: +8, 1d12+5 cortante"],
     rasgos: [
-      "Origen (secreto del DM): un Berserker de Ceniza que murió durante su furia vistiendo una piel de oso y no recibió el rito de sal y fuego: se alzó sin salir de ella y la piel se le fundió con la carne, hasta hacerlo un hombre oso. No es un cambiaformas: no puede volver a ser hombre",
-      "Piel fusionada: el pelo y el hocico son suyos y no se arrancan; ataca con garras y mordisco además del hacha",
-      "Furia sin fin: nunca sale de la furia (+2 al daño cuerpo a cuerpo, resistencia al daño de corte, punta y contundente no mágico, ignora las penalizaciones de sus heridas)",
-      "En trance: no distingue aliados de enemigos; cada ataque cae sobre quien tenga a su alcance (el DM lo decide al azar entre los cercanos)",
-      "No-muerto: inmune a veneno, miedo y agotamiento; no siente dolor ni se cura; vulnerable al fuego de la Llama Gris",
-      "Descansa si se le da el rito de sal y fuego sobre su cuerpo caído: no vuelve a alzarse",
-      "Olfato de oso: ventaja en Percepción por el olor y en rastrear a quien huya",
+      "Origen (secreto del DM): un Berserker de Ceniza que murió durante su furia, solo y en pleno invierno, vistiendo una piel de oso y refugiado en una cueva; no recibió el rito de sal y fuego y se alzó sin salir de ella: la piel se le fundió con la carne, hasta hacerlo un hombre oso. No es un cambiaformas: no puede volver a ser hombre, y ya no recuerda otra cosa que su cubil",
+      "Piel fusionada: la cabeza y las zarpas de oso son suyas y no se arrancan; destroza con garras y mordisco además del hacha de leñador",
+      "Furia de cubil: la furia de su muerte no se apaga mientras alguien esté en su territorio (+2 al daño cuerpo a cuerpo, ignora las penalizaciones de sus heridas); la grasa y el pelaje apelmazado de ceniza le dan resistencia al daño de corte, punta y contundente no mágico",
+      "Rabia ciega: no distingue aliados de enemigos; cada zarpazo cae sobre lo que tenga más cerca (el DM lo decide al azar entre los cercanos)",
+      "Carne vieja: no-muerto, inmune al veneno y a las condiciones asustado y agotado; no siente dolor ni se cura; el fuego de la Llama Gris prende en su pelaje seco como en leña vieja (vulnerable: doble daño)",
+      "Solo reposa de verdad con el rito de sal y fuego sobre su cuerpo caído: entonces no vuelve a alzarse",
+      "Olfato de oso: ventaja en Percepción por el olor y en rastrear a quien huya; hiberna la furia si lo dejan en paz, pero huele la sangre y la miel a un kilómetro",
     ],
     habilidades: [
       { nombre: "Abrazo de oso", descripcion: "Agarra a un objetivo con ambos brazos y lo aprieta.", salvacion: "fue", cd: 16, dano: "3d8+5", tipo_dano: "contundente", condicion: "agarrado", recarga: 5 },
       { nombre: "Rugido de furia", descripcion: "Un rugido que se oye a un kilómetro; todos a 9 m.", salvacion: "sab", cd: 14, condicion: "asustado 1 minuto", recarga: 6 },
-      { nombre: "Ceniza de la furia", descripcion: "El fuego viejo de su pelo prende a quien lo toca.", salvacion: "con", cd: 15, dano: "2d6", tipo_dano: "fuego", ceniza: 1, recarga: 5 },
+      { nombre: "Ceniza de la furia", descripcion: "Al sacudirse, las brasas dormidas de su pelaje se avivan y prenden a quien lo tiene agarrado o encima.", salvacion: "con", cd: 15, dano: "2d6", tipo_dano: "fuego", ceniza: 1, recarga: 5 },
     ],
     botin: "Garras y colmillos (trofeos), una piel de oso gris (se puede desollar: abriga muchísimo) y, a veces, la señal de Ceniza que llevaba al morir",
   },
@@ -592,7 +594,7 @@ export const BESTIARIO: Criatura[] = [
       "Estatua: inmóvil se confunde con piedra tallada; ventaja en iniciativa y en la emboscada si la sorprenden quietos",
       "Piedra: resistencia al daño cortante y perforante no mágico; vulnerable al contundente",
       "Guardiana: no se aleja más de 36 m del lugar que guarda",
-      "Inmune a veneno y a quedar agotada, no come ni respira",
+      "Inmune al veneno y a quedar agotada, no come ni respira",
     ],
     habilidades: [
       { nombre: "Caída del cielo", descripcion: "Se deja caer sobre un objetivo desde lo alto.", salvacion: "des", cd: 13, dano: "3d6+3", tipo_dano: "contundente", mitad_si_exito: true, recarga: 5 },
@@ -617,7 +619,7 @@ export const BESTIARIO: Criatura[] = [
     ataques: ["Puñetazo (x2): +9, 3d8+6 contundente"],
     rasgos: [
       "Palabra de la frente: si se borra o rompe la inscripción, el golem se detiene; quien la conoce puede darle órdenes",
-      "Inmune a veneno, miedo, hechizo y agotamiento; resiste el daño no mágico salvo contundente",
+      "Inmune al veneno y a las condiciones asustado, hechizado y agotado; resiste el daño no mágico salvo contundente",
       "Magia que lo ralentiza: la magia de hielo o de agua reduce su velocidad a la mitad un asalto",
       "Obedece al pie de la letra: se burla con órdenes ambiguas",
     ],
@@ -694,7 +696,7 @@ export const BESTIARIO: Criatura[] = [
     atributos: "FUE 18 DES 14 CON 16 INT 5 SAB 10 CAR 8",
     ataques: ["Golpe de agua (x2): +7, 2d8+4 contundente"],
     rasgos: [
-      "Agua: inmune al veneno y al agotamiento; resistencia al fuego y al daño no mágico",
+      "Agua: inmune al veneno y a quedar agotado; resistencia al fuego y al daño no mágico",
       "Se congela: el hielo la inmoviliza (velocidad 0 hasta que se rompa o derrita)",
       "Se funde con cualquier agua: invisible dentro de un charco o la niebla",
     ],
@@ -721,7 +723,7 @@ export const BESTIARIO: Criatura[] = [
     atributos: "FUE 22 DES 6 CON 20 INT 5 SAB 10 CAR 5",
     ataques: ["Puñetazo (x2): +9, 3d8+6 contundente"],
     rasgos: [
-      "Roca: inmune al veneno y al agotamiento; resistencia al daño no mágico salvo contundente",
+      "Roca: inmune al veneno y a quedar agotado; resistencia al daño no mágico salvo contundente",
       "Excavar: se mueve bajo tierra y emerge sin avisar (ventaja en la sorpresa)",
       "Vulnerable al trueno y a las armas pesadas contundentes",
       "Al morir se desploma en una lluvia de roca a 3 m (2d6 contundente; DES CD 14 para la mitad)",
@@ -747,7 +749,7 @@ export const BESTIARIO: Criatura[] = [
     atributos: "FUE 14 DES 20 CON 14 INT 5 SAB 10 CAR 6",
     ataques: ["Golpe de viento (x2): +8, 2d8+5 contundente"],
     rasgos: [
-      "Aire: inmune al veneno, al agotamiento, a quedar agarrado o derribado; resistencia al daño no mágico",
+      "Aire: inmune al veneno y a quedar agotado, agarrado o derribado; resistencia al daño no mágico",
       "Apaga las llamas pequeñas y las antorchas a 6 m",
       "Vulnerable al vacío: dentro de un cuarto sin aire o sellado pierde fuerza",
       "Incorpóreo en rendijas: pasa por cualquier hueco de un dedo",
@@ -776,7 +778,7 @@ export const BESTIARIO: Criatura[] = [
     rasgos: [
       "Sujeto a un objeto: si se rompe su vaso o lámpara y no tiene dueño, puede irse; quien lo posee le da órdenes (y él las cumple al pie de la letra)",
       "Pacto: concede un favor a cambio de algo de valor (años de vida, un recuerdo, un nombre): el precio lo fija él",
-      "Aéreo: inmune al veneno y al agotamiento; resistencia al daño de rayo y trueno",
+      "Aéreo: inmune al veneno y a quedar agotado; resistencia al daño de rayo y trueno",
       "Cambia de forma: humo, hombre o torbellino a voluntad",
     ],
     habilidades: [
@@ -1025,6 +1027,7 @@ export const BESTIARIO: Criatura[] = [
   {
     nombre: "Bakunawa",
     resistencias: tipos("frío", "eléctrico"),
+    inmunidades: tipos("veneno"),
     alias: ["Devoralunas", "Serpiente de la luna"],
     blindaje: ["escamas_naturales"],
     personalidad: ["arrogante"],
@@ -1047,7 +1050,7 @@ export const BESTIARIO: Criatura[] = [
     rasgos: [
       "Origen (secreto del DM, PROPUESTA a confirmar): una serpiente-dragón del mar que, en la época de los dioses, se tragó la luna de una noche y la escupió medio muerta; desde entonces la persigue en cada luna llena y, si la lleva a la boca, esa noche no hay luz en la costa. Las aldeas de la costa la espantan con ruido (ollas, gongs, cuernos) para que la suelte",
       "Ataque múltiple (2): un Mordisco y un Coletazo, o dos Coletazos",
-      "Escamas de mar profundo: el filo y la punta resbalan (blindaje escamas); inmune a ahogamiento, a envenenado y a todo efecto de marea, corriente o empuje de agua; resistencia al frío y al daño eléctrico; vulnerable al fuego solo mientras esté fuera del agua, algo que ella nunca hace por su voluntad (solo si la varan o la encallan a la fuerza)",
+      "Escamas de mar profundo: el filo y la punta resbalan (blindaje escamas); inmune al veneno y a la condición envenenado, al ahogamiento y a todo efecto de marea, corriente o empuje de agua; resistencia al frío y al daño eléctrico; vulnerable al fuego solo mientras esté fuera del agua, algo que ella nunca hace por su voluntad (solo si la varan o la encallan a la fuerza)",
       "Gargantuana: ocupa 6 casillas de lado; no puede ser derribada ni agarrada por nada menor que ella, y arrolla a quien se interponga en su camino por el agua o por la orilla a su alcance (FUE CD 19 o derribado)",
       "Anfibia: nada a 24 m y respira aire y agua; no vuela (se alza sobre el agua, pero no se sostiene lejos de ella). SOLO EN EL MAR: nunca sale a tierra (0 m en tierra, sin presencia fuera del agua); ataca naves, y la costa solo a pocos metros de la orilla (el DM la mantiene en el agua: agua {accion: entrar}); quien esté en tierra firme lejos de la orilla no puede ser alcanzado salvo por el Aliento de marea",
       "Eclipse del Bakunawa: mientras dure su oscuridad (ver habilidades), la luz de la luna y de las antorchas no mágicas no llega a más de 3 m: desventaja en ataques y pruebas por vista de quien no tenga visión mágica, y la Bakunawa los ve a todos (sentido de la luna a 36 m). Se rompe con ruido estruendoso y sostenido (gongs, campanas, cuernos, ollas, o un conjuro de trueno): al final de cada asalto de estruendo, 1d6; con 5-6 la luna vuelve",
@@ -1208,6 +1211,7 @@ export const BESTIARIO: Criatura[] = [
   {
     nombre: "Ysolde, la Reina Pálida",
     personalidad: ["arrogante"],
+    inmunidades: tipos("veneno", "necrótico"),
     temple: "vampiro",
     categoria: "jefe",
     peligro: 5,
@@ -1250,7 +1254,7 @@ export const BESTIARIO: Criatura[] = [
         agentes: ["Cortesanos pálidos infiltrados", "Nobles endeudados", "Esbirros de la Corte con una invitación", "Fieles del Primus que fingen servirla"],
       },
     },
-    rasgos: ["Regeneración 20 salvo luz solar o agua bendecida con sal", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "REGENTE: rodeada de su Corte; envía esbirros e invitaciones a su voluntad y, en persona, nunca llega sola", "Resistencia legendaria (3/día)"],
+    rasgos: ["No-muerta: inmune al veneno y al necrótico (vive de la vida ajena, y la muerte ya no la toca)", "Regeneración 20 salvo luz solar o agua bendecida con sal", "Forma de niebla al caer a 0 PV: solo muere si se la estaca en su ataúd", "REGENTE: rodeada de su Corte; envía esbirros e invitaciones a su voluntad y, en persona, nunca llega sola", "Resistencia legendaria (3/día)"],
     habilidades: [
       { nombre: "Convocar a la Corte", descripcion: "Chasquea los dedos y acuden 1d4 esbirros o caballeros por el pasillo más cercano en la ronda siguiente (aparecer_criatura o pnj)." },
       { nombre: "Mirada de la Reina", descripcion: "Un objetivo que la vea.", salvacion: "sab", cd: 19, condicion: "hechizado: la ve como su más querida aliada 1 hora" },
@@ -1304,7 +1308,7 @@ export const BESTIARIO: Criatura[] = [
         agentes: ["Devotos del Dios Hambriento infiltrados", "Sepultureros sobornados", "Ghuls que guían a la manada", "Contrabandistas de Hollín"],
       },
     },
-    rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "REGENTE: pare y envía a los suyos; sus Hambrientos, ghuls y devotos actúan por ella a distancia y la rodean si se la ataca", "Regeneración 10 al inicio de su turno, salvo que haya recibido más de 10 de fuego o sal en la ronda; el Colmillo de Hierro la anula y permite destruirla","Inmune a veneno, necrótico, miedo"],
+    rasgos: ["Parto de muertos: al inicio de cada ronda nacen 1d4 Hambrientos", "REGENTE: pare y envía a los suyos; sus Hambrientos, ghuls y devotos actúan por ella a distancia y la rodean si se la ataca", "Regeneración 10 al inicio de su turno, salvo que haya recibido más de 10 de fuego o sal en la ronda; el Colmillo de Hierro la anula y permite destruirla","Inmune al veneno y al necrótico, y a la condición asustada"],
     habilidades: [
       { nombre: "Abrazo de la fosa", descripcion: "Contra un objetivo apresado al inicio de su turno: lo hunde en la masa. Quien muere así es absorbido: su cuerpo pasa a formar parte de la Madre.", salvacion: "fue", cd: 17, dano: "4d10", tipo_dano: "contundente", muerte_si_falla_por: 5 },
       { nombre: "Vómito de Podre", descripcion: "Cono de 9 m de carne licuada.", salvacion: "con", cd: 16, dano: "8d8", tipo_dano: "necrótico", mitad_si_exito: true, herida: "menor", recarga: 5 },
@@ -1535,7 +1539,7 @@ export const BESTIARIO: Criatura[] = [
       "Plan trazado (acción adicional, 1/combate): elige un rival; los ataques de sus aliados contra él tienen ventaja hasta el final del siguiente asalto",
       "Ya lo había pensado: reacción, 2/combate; convierte en fallo un ataque que le impacta (su plan lo había previsto)",
       "Resistencia legendaria (1/día)",
-      "Nunca pierde la calma: inmune a asustado",
+      "Nunca pierde la calma: inmune a la condición asustado",
     ],
     habilidades: [
       { nombre: "Orden de retirada", descripcion: "Grita una orden: hasta 6 aliados se desenganchan y se mueven sin provocar ataques de oportunidad." },

@@ -34,10 +34,35 @@ t(tiene("Bakunawa", "resistencias", "frío") && tiene("Bakunawa", "resistencias"
   // Excepciones conocidas: «inmune al fuego» de Kharoth/Dragón joven/Elemental ya están; la Bakunawa solo resiste (no es inmune al veneno: su ficha dice «envenenado»).
   t(falta.length === 0, "todo «inmune a …» (tipo de daño) de la prosa está en los datos", [...new Set(falta)].join(" | "));
 }
-t(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length === 20, "20 criaturas con datos de resistencias", String(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length));
+t(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length === 23, "23 criaturas con datos de resistencias (20 de la fase C + Hambriento, Ghul de las fosas e Ysolde)", String(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length));
 t(/Daño por tipo.*inmune a fuego, veneno/.test(fichaCriatura(C("Elemental de fuego"))) && !/Daño por tipo/.test(fichaCriatura(C("Ogro"))), "la ficha dice qué aplica el programa (y nada en las criaturas sin datos)");
 t(lineaResistencias(C("Lich")).includes("vulnerable a fuego (llama gris)"), "línea de la ficha del Lich", lineaResistencias(C("Lich")));
 { const pf = perfilDeCriatura(C("Wendigo")); t(aplicarDano({ objetivo: pf, cantidad: 10, tipo: "fuego" }).final === 20 && aplicarDano({ objetivo: pf, cantidad: 10, tipo: "frío" }).final === 0 && aplicarDano({ objetivo: pf, cantidad: 10, tipo: "cortante" }).final === 10, "perfilDeCriatura: Wendigo fuego ×2, frío 0, resto igual"); }
+
+
+// --- Corrección de incoherencias (docs/BALANCE.md §14): inmunidades de no-muertos y necróticos, y redacción daño ↔ condición
+const NOMUERTOS = ["Hambriento", "Ghul de las fosas", "Banshee del Velo", "Gigante de hueso", "Lich", "Ulfhedinn", "Hombre oso", "La Madre de los Hambrientos", "Ysolde, la Reina Pálida"];
+const habla = (n: string, tipo: string) => C(n).rasgos.some((r) => /inmune/i.test(r) && new RegExp(`\\b${tipo}\\b`, "i").test(r));
+for (const n of NOMUERTOS) t(tiene(n, "inmunidades", "veneno") && habla(n, "veneno"), `${n}: no-muerto, inmune al veneno (dato y prosa)`);
+t(["Hambriento", "Ghul de las fosas", "Banshee del Velo", "Ysolde, la Reina Pálida"].every((n) => /^(no-muerto|no-muerto torpe|espectro|vampiro)$/.test(C(n).temple ?? "")), "Hambriento, Ghul, Banshee e Ysolde son de veras no-muertos por su temple");
+for (const n of ["Lich", "Ysolde, la Reina Pálida", "Banshee del Velo", "La Madre de los Hambrientos"]) t(tiene(n, "inmunidades", "necrótico") && habla(n, "necrótico"), `${n}: inmune al necrótico (dato y prosa)`);
+// Vaerth (cambiaformas, no es no-muerto) ataca con necrótico pero se queda SIN inmunidad: sin razón narrativa (ver §14)
+t(!C("Vaerth, el Sin Rostro").inmunidades && !C("Vaerth, el Sin Rostro").resistencias && !C("Vaerth, el Sin Rostro").rasgos.some((r) => /inmune/i.test(r)), "Vaerth: ni inmunidad ni resistencia al necrótico (decisión documentada)");
+// regla general: un no-muerto (temple) que ataca con daño necrótico es inmune a él
+{ const mal: string[] = [];
+  for (const c of BESTIARIO) if (/^(no-muerto|no-muerto torpe|espectro|vampiro)$/.test(c.temple ?? "") && (c.ataques.some((a) => /necrótico/i.test(a)) || c.habilidades.some((h) => h.tipo_dano === "necrótico")) && !tiene(c.nombre, "inmunidades", "necrótico")) mal.push(c.nombre);
+  t(mal.length === 0, "todo no-muerto que ataca con necrótico es inmune al necrótico", mal.join(" | ")); }
+// los datos de inmunidad están dichos en la prosa (sentido inverso de la prueba de arriba)
+{ const falta: string[] = [];
+  for (const c of BESTIARIO) for (const i of c.inmunidades ?? []) if (!c.rasgos.some((r) => /inmune/i.test(r) && r.split(/[;:]/).some((trozo) => /inmune/i.test(trozo) && trozo.toLowerCase().split(/[^\p{L}]+/u).some((w) => normalizarTipo(w) === i.tipo)))) falta.push(`${c.nombre}: ${i.tipo}`);
+  t(falta.length === 0, "toda inmunidad de los datos aparece en un rasgo «inmune…»", falta.join(" | ")); }
+// redacción: daño y condición separados (nunca «inmune a envenenado/asustado/miedo/hechizo/agotamiento» a secas)
+{ const mal: string[] = [];
+  for (const c of BESTIARIO) for (const r of c.rasgos) if (/inmune\s+(?:a|al|a la|a los)\s+(?:envenenad|asustad|miedo|hechiz|agotamiento|sueño)/i.test(r) || /inmune[^;.]*,\s*(?:miedo|hechizo|agotamiento|sueño)\b/i.test(r) || /inmune a veneno/i.test(r)) mal.push(`${c.nombre}: ${r.slice(0, 70)}`);
+  t(mal.length === 0, "redacción de inmunidades: «al veneno» (daño) y «a quedar/a la condición …» (condiciones), sin mezclar", mal.join(" | ")); }
+{ const b = C("Bakunawa"); const r = b.rasgos.find((x) => /Escamas de mar profundo/.test(x))!;
+  t(/inmune al veneno y a la condición envenenado/.test(r) && !/inmune a ahogamiento, a envenenado/.test(r) && tiene("Bakunawa", "inmunidades", "veneno") && tiene("Bakunawa", "resistencias", "frío") && tiene("Bakunawa", "resistencias", "eléctrico"), "Bakunawa: inmune al veneno (dato) y a la condición envenenado (solo prosa), sigue resistiendo frío y eléctrico", r.slice(0, 160));
+  t(!(b.inmunidades ?? []).some((x) => (x.tipo as string) === "envenenado") && BESTIARIO.every((c) => (c.inmunidades ?? []).every((x) => !!normalizarTipo(x.tipo))), "ninguna inmunidad de datos es una condición: todas son tipos de daño del catálogo"); }
 
 // --- atacar
 function mk(criatura: string, inventario: string[] = ["Espada larga"]) {
@@ -94,6 +119,13 @@ function golpe(m: ReturnType<typeof mk>, tipo: string | undefined, extra: object
 { // Golem de piedra: contundente sin resistencia
   const m = mk("Golem de piedra"); t(golpe(m, "contundente", {}, "2d6+10").d > 0, "Golem de piedra recibe contundente");
 }
+{ // Corrección §14: los nuevos inmunes no reciben ese daño
+  t(golpe(mk("Hambriento"), "veneno").d === 0 && golpe(mk("Ghul de las fosas"), "veneno").d === 0, "Hambriento y Ghul: el veneno no les hace nada");
+  const y = mk("Ysolde, la Reina Pálida"); t(golpe(y, "necrótico").d === 0 && golpe(y, "veneno").d === 0 && golpe(y, "radiante", { magico: true }).d === 10, "Ysolde: necrótico y veneno 0; el radiante pasa entero (no hay vulnerabilidad en su ficha)");
+  const l = mk("Lich"); t(golpe(l, "necrótico").d === 0, "Lich: inmune al necrótico");
+  const b = mk("Banshee del Velo"); t(golpe(b, "veneno").d === 0, "Banshee: inmune al veneno");
+  const k = mk("Bakunawa"); t(golpe(k, "veneno").d === 0 && golpe(k, "frío").d === 5, "Bakunawa: veneno 0 (y el frío sigue a la mitad)");
+  const v = mk("Vaerth, el Sin Rostro"); t(golpe(v, "necrótico").d === 10, "Vaerth: el necrótico pasa entero (sin cambio)"); }
 // --- el castigo radiante y la inmunidad (Madre: necrótico; el radiante pasa)
 // --- danar_criatura con tipo
 {

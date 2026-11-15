@@ -50,6 +50,20 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
   const u = BESTIARIO.find((c) => c.nombre === "Ulfhedinn")!, h = BESTIARIO.find((c) => c.nombre === "Hombre oso")!;
   t([u, h].every((c) => c.rasgos.some((r) => /Piel fusionada/.test(r)) && c.rasgos.some((r) => /se le fundió con la carne/.test(r))) && /hombre lobo/i.test(u.descripcion) && /hombre oso/i.test(h.descripcion), "la piel se fusiona con ellos: son hombres lobo y hombres oso, no hombres con una piel");
   const { encuentrosDe } = { encuentrosDe: null as any }; void encuentrosDe; }
+// Hombre oso con identidad propia (BALANCE §14): misma mecánica y mismo lore de fondo, pero ni descripción ni rasgos ni habilidades copiados del Ulfhedinn
+{ const u = BESTIARIO.find((c) => c.nombre === "Ulfhedinn")!, h = BESTIARIO.find((c) => c.nombre === "Hombre oso")!;
+  const pal = (x: string) => new Set(x.toLowerCase().split(/[^\p{L}]+/u).filter((w) => w.length > 3));
+  const jac = (a: string, b: string) => { const A = pal(a), B = pal(b); let i = 0; for (const w of A) if (B.has(w)) i++; return i / (A.size + B.size - i); };
+  t(h.descripcion !== u.descripcion && jac(h.descripcion, u.descripcion) < 0.3, "Hombre oso: descripción propia, no copia de la del Ulfhedinn", jac(h.descripcion, u.descripcion).toFixed(2));
+  t(!h.rasgos.some((r) => u.rasgos.includes(r)), "Hombre oso: ningún rasgo idéntico al del Ulfhedinn", h.rasgos.filter((r) => u.rasgos.includes(r)).join("|"));
+  t(!/Furia sin fin|En trance/.test(h.rasgos.join("|")) && h.rasgos.some((r) => /^Furia de cubil/.test(r)) && h.rasgos.some((r) => /^Rabia ciega/.test(r)), "Hombre oso: «Furia de cubil» y «Rabia ciega» en lugar de los rasgos del Ulfhedinn");
+  t(h.habilidades.every((x) => !u.habilidades.some((y) => y.descripcion === x.descripcion)), "Hombre oso: ninguna habilidad con la descripción del Ulfhedinn");
+  t(h.region !== u.region && h.botin !== u.botin, "Hombre oso: región y botín propios");
+  t(h.peligro === 3 && h.vd === "6" && h.pv === "13d10+39" && h.ca === 15 && h.temple === "no-muerto" && h.ataques.length === 3 && h.habilidades.length === 3 && h.habilidades.map((x) => x.nombre).join() === "Abrazo de oso,Rugido de furia,Ceniza de la furia", "Hombre oso conserva peligro 3, VD 6, 13d10+39, CA 15, no-muerto, ataques y habilidades");
+  const cond = (c: typeof h, k: "resistencias" | "inmunidades" | "vulnerabilidades") => JSON.stringify(c[k]);
+  t(cond(h, "resistencias") === cond(u, "resistencias") && cond(h, "inmunidades") === cond(u, "inmunidades") && cond(h, "vulnerabilidades") === cond(u, "vulnerabilidades"), "Hombre oso: sus resistencias, inmunidad y vulnerabilidad (datos) no cambian");
+  t(h.rasgos.some((r) => /resistencia al daño de corte, punta y contundente no mágico/.test(r)) && h.rasgos.some((r) => /inmune al veneno/.test(r)) && h.rasgos.some((r) => /Llama Gris[^;]*vulnerable/.test(r)), "Hombre oso: la prosa sigue diciendo lo que dicen los datos");
+  t(!/ojos de brasa|pelo gris ceniza/i.test(h.descripcion) && /oso/i.test(h.descripcion), "Hombre oso: la descripción pública no repite las frases del Ulfhedinn"); }
 // El Juez lleva loriga, yelmo, brigantina y grebas: INTERMEDIO entre las placas completas (un 1d8+4 de espada dejaba pasar ~0,8 PV) y la loriga con yelmo (~3,6); el Djinn es de peligro 3
 { const juez = BESTIARIO.find((c) => c.nombre === "El Juez Sin Ojos")!; const pesos: [Region, number][] = [["cabeza", 1], ["cuello", 1], ["torso", 4], ["abdomen", 3], ["brazos", 4], ["piernas", 7]]; let medio = 0;
   for (const [r, w] of pesos) { const prot = proteccion(juez.blindaje ?? [], r, "corte").valor; let suma = 0; for (let d = 1; d <= 8; d++) suma += Math.max(0, d + 4 - prot); medio += (w / 20) * (suma / 8); }
