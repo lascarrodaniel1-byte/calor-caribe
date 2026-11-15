@@ -12,6 +12,7 @@ import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
 import { danoEnSuelo } from "./muerte.js";
 import { danar } from "./bestiario.js";
+import { danoConResistencia } from "./rasgos.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
@@ -207,16 +208,19 @@ export function caida(partida: Partida, d: { quien: string; metros: number; blan
   if (c.tipo === "pj") {
     const p = c.p;
     const antes = p.pv;
-    p.pv = Math.max(0, p.pv - t.total);
-    if (antes <= 0) { const s = danoEnSuelo(p, t.total, false); if (s) lineas.push(s); if (p.condiciones.includes("muerto")) return lineas.join("\n"); }
+    const res = danoConResistencia(p, t.total, "contundente"); // Furia: mitad del contundente
+    const dn = res.dano;
+    if (res.nota) lineas.push(res.nota.trim());
+    p.pv = Math.max(0, p.pv - dn);
+    if (antes <= 0) { const s = danoEnSuelo(p, dn, false); if (s) lineas.push(s); if (p.condiciones.includes("muerto")) return lineas.join("\n"); }
     lineas.push(`${p.nombre}: PV ${p.pv}/${p.pv_max}.`);
-    if (t.total - antes >= p.pv_max) {
+    if (dn - antes >= p.pv_max) {
       marcarMuerto(p);
-      lineas.push(`☠ El golpe sobrante (${t.total - antes}) iguala o supera sus PV máximos (${p.pv_max}): muerte instantánea.`);
+      lineas.push(`☠ El golpe sobrante (${dn - antes}) iguala o supera sus PV máximos (${p.pv_max}): muerte instantánea.`);
       return lineas.join("\n");
     }
-    if (t.total >= Math.ceil(p.pv_max / 2) || t.total >= 10) lineas.push("Herida:\n" + infligir(p, { causa: t.total >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : "menor", tipo: "contusion", descripcion: "caída" }));
-    else if (t.total >= 3) lineas.push("Herida:\n" + infligir(p, { causa: "menor", tipo: "contusion", descripcion: "caída" }));
+    if (dn >= Math.ceil(p.pv_max / 2) || dn >= 10) lineas.push("Herida:\n" + infligir(p, { causa: dn >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : "menor", tipo: "contusion", descripcion: "caída" }));
+    else if (dn >= 3) lineas.push("Herida:\n" + infligir(p, { causa: "menor", tipo: "contusion", descripcion: "caída" }));
   } else if (c.tipo === "criatura") {
     lineas.push(danar(c.j, t.total));
     if (c.j.pv <= 0) { retirarCaido(partida, c.j); return lineas.join("\n"); } // ya no está en escena: no hay nada más que derribar

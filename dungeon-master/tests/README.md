@@ -21,6 +21,7 @@ Todo se ejecuta desde `dungeon-master/`. No hay dependencias nuevas: motor y aud
   - `t-rampa` — rampa de los niveles 3-4: tope firme de peligro del sorteo de encuentros por nivel medio y jefes en persona solo desde el nivel 7 (dados fijos).
   - `t-bestiario` — fichas del bestiario, temples, piezas de armadura, condiciones y temas de saber.
   - `t-tragado` — Tragar de verdad (Bakunawa): estado «tragado», daño eléctrico al abrirse el asalto, límite de 1, cobertura total, las cuatro vías de escape (daño desde dentro, presión de fuera, Atletismo/Acrobacias, retirada y muerte), y «solo en el mar» (filtro del encuentro, aparecer_criatura, velocidad y ficha) (dados fijos).
+  - `t-furia-resistencia` — la Furia resiste el daño físico (corte/cortante, punta/perforante, contundente) en habilidades de criaturas, trampas, caída, tragado, `modificar_personaje` y `atacar` (una sola mitad, tras la armadura); sin acumular con la racial; el radiante del Castigo y lo no físico no se resisten (dados fijos).
   - `t-monstruos` — conjuros y ataques de monstruos, PX y consulta de reglas.
   - `t-control` — control de personajes ausentes (quién lleva a quién) y bloque de turnos.
   - `t-triton` — raza Tritón, plantillas de encuentro, resistencias y rasgos automáticos.

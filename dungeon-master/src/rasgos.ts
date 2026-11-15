@@ -27,9 +27,14 @@ export function resisteRacial(p: Personaje, tipo?: string): string | null {
   if (p.raza === "Cenizo" && /fuego|llama|ígneo|igneo|quemadura/i.test(tipo)) return "Resistencia al fuego del Cenizo";
   return null;
 }
-/** Aplica la resistencia racial a un daño: devuelve el daño final y la nota (vacía si no hay). */
+/** ¿Es un tipo de daño físico (corte/cortante, punta/perforante, contundente; con o sin tildes)? */
+export const esDanoFisico = (tipo?: string): boolean => !!tipo && /^\s*(corte|cortante|punta|perforante|contundente)\s*$/i.test(tipo.normalize("NFD").replace(/[̀-ͯ]/g, ""));
+/** Resistencia de la Furia (Berserker): mitad del daño físico mientras `furia.activa`. El radiante, el fuego, el eléctrico… no cuentan. */
+export const resisteFuria = (p: Personaje, tipo?: string): boolean => !!p.furia?.activa && esDanoFisico(tipo);
+/** Aplica la resistencia a un daño ya completo (tras bonificadores, ventaja y mitad por salvación): racial o Furia, UNA sola mitad
+ *  aunque coincidan varias fuentes (no se suman). Devuelve el daño final y la nota (vacía si no hay). */
 export function danoConResistencia(p: Personaje, dano: number, tipo?: string): { dano: number; nota: string } {
-  const r = resisteRacial(p, tipo);
+  const r = resisteRacial(p, tipo) ?? (resisteFuria(p, tipo) ? "Furia: resiste el daño físico" : null);
   return r ? { dano: Math.floor(dano / 2), nota: ` (${r}: ${dano} → ${Math.floor(dano / 2)})` } : { dano, nota: "" };
 }
 

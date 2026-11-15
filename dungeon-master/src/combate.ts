@@ -33,7 +33,7 @@ import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { dadoHaemajitsu } from "./estilos_base.js";
 import { distanciaPlano } from "./espacio.js";
 import { bonoClima } from "./clima.js";
-import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
+import { ataquesPorAccion, criticoVeterano, desviaProyectiles, esDanoFisico, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
 
@@ -1151,7 +1151,10 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       const herido = ob.tipo === "criatura" ? ob.j.pv < ob.j.pv_max : ob.tipo === "pnj" ? ob.n.pv !== undefined && ob.n.pv_max !== undefined && ob.n.pv < ob.n.pv_max : ob.p.pv < ob.p.pv_max;
       if (herido) { presaStr = "+1d8"; tAt.presa = true; lineas.push("🎯 Presa marcada: +1d8 contra una criatura ya herida."); }
     }
-    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + castigoStr + presaStr) : d.dano + castigoStr + presaStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
+    const r = tirarDano((resultado === "critico" ? doblarDados(d.dano + presaStr) : d.dano + presaStr) + (furiaMas ? `+${furiaMas}` : ""), !!d.repetir_bajos);
+    // El radiante del Castigo NO es físico: se tira aparte y se suma al final, sin pasar por la armadura ni la resistencia de la Furia.
+    const rad = castigoStr ? tirarDano(resultado === "critico" ? doblarDados(castigoStr.slice(1)) : castigoStr.slice(1)) : undefined;
+    const radFinal = rad ? (resultado === "roce" ? Math.floor(rad.total / 2) : rad.total) : 0;
     if (furiaMas - lunaMas) lineas.push("🔥 Furia: +2 al daño cuerpo a cuerpo.");
     if (lunaMas) lineas.push("🌕 Furia de la luna: +2 al daño cuerpo a cuerpo.");
     let bruto = resultado === "roce" ? Math.floor(r.total / 2) : r.total;
@@ -1191,9 +1194,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       lineas.push(`(Sin tipo de daño: no sé si es corte, punta o contundente; pasa tipo_dano o un arma reconocible para que cuente la armadura.)`);
     }
     dano = Math.max(0, bruto - reduccion);
-    danoVisible = resultado === "roce" ? bruto : r.total;
-    danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipo ? ` ${NOMBRE_TIPO_AVISO[tipo as string] ?? tipo}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}`;
-    if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipo || ["corte", "punta", "contundente"].includes(tipo as string))) {
+    danoVisible = (resultado === "roce" ? bruto : r.total) + (rad ? rad.total : 0);
+    danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipo ? ` ${NOMBRE_TIPO_AVISO[tipo as string] ?? tipo}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}${rad ? ` + ${rad.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")} radiante` : ""}`;
+    if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipo || esDanoFisico(tipo))) { // la Furia se aplica una sola vez, tras la armadura (sin tipo se supone físico)
       const antes = dano;
       dano = Math.floor(dano / 2);
       lineas.push(`🔥 Furia: resiste el daño físico (${antes} → ${dano}).`);
@@ -1235,6 +1238,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       if (sal.exito) lineas.push(`🗡 Desarmar: ${ob.nombre} aguanta el arma (${sal.texto}).`);
       else { agregarCondicion(condsDe(ob), "desarmado"); lineas.push(`🗡 Desarmar: ${ob.nombre} suelta el arma (${sal.texto}); recogerla le cuesta una acción y, mientras, ataca sin ella.`); }
     }
+    if (radFinal > 0) { dano += radFinal; lineas.push(`☀ Radiante: ${rad!.texto}${resultado === "roce" ? ` → la mitad, ${radFinal}` : ""}; no es daño físico: ni la armadura ni la Furia lo frenan.`); }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
     // Quien duerme despierta al recibir daño.
     if (dano > 0) {
