@@ -59,7 +59,7 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
 // Gorgon: bestia con forma de toro, aliento petrificante (retenido y luego petrificado) y embestida
 { const G = BESTIARIO.find((c) => c.nombre === "Gorgon")!;
   const buscar = (n: string) => BESTIARIO.find((c) => c.nombre.toLowerCase() === n.toLowerCase()) ?? BESTIARIO.find((c) => c.alias?.some((a) => a.toLowerCase() === n.toLowerCase()));
-  t(!!G && G.categoria === "bestia" && G.temple === "bestia" && G.peligro === 3 && G.vd === "7" && BESTIARIO.length === 45, "el Gorgon es una bestia de peligro 3, VD 7 (45 criaturas)");
+  t(!!G && G.categoria === "bestia" && G.temple === "bestia" && G.peligro === 3 && G.vd === "7" && BESTIARIO.length === 46, "el Gorgon es una bestia de peligro 3, VD 7 (46 criaturas)");
   t(buscar("Gorgona")?.nombre === "Gorgon" && buscar("Toro de hierro")?.nombre === "Gorgon" && buscarCriatura("Gorgona")?.nombre === "Gorgon", "«Gorgona» y «Toro de hierro» son alias del Gorgon");
   const alias = BESTIARIO.flatMap((c) => [c.nombre, ...(c.alias ?? [])].map((a) => a.toLowerCase())); t(new Set(alias).size === alias.length, "ningún nombre ni alias se repite entre criaturas");
   t((G.blindaje ?? []).length > 0 && G.blindaje!.every((b) => (NOMBRES_PIEZAS as string[]).includes(b)) && !G.blindaje!.includes("placas_completas"), "blindaje válido (escamas naturales), sin ser inmune");
@@ -94,4 +94,38 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
   t(g1.derrotadas === 1 && g1.secciones.every((s) => !s.bloqueada || s.titulo !== "Cómo ataca") && /Aliento petrificante|Cornada/.test(js) && !/Origen \(secreto/.test(js) && !/dioses de la tierra/.test(js) && /Petrificación reversible/.test(js), "al derrotarlo, el grupo ve cómo ataca y sus rasgos, sin la nota secreta del DM");
   const d = nuevaPartida(); normalizarPartida(d); const dd = descubrirCodice(d, { tema: "Gorgona", texto: "Teme al fuego grande" }); t(/Gorgon/.test(dd) && bestiarioGrupo(d).entradas.find((x) => x.nombre === "Gorgon")!.notas.length === 1, "descubrirCodice anota una nota del grupo sobre el Gorgon por alias");
   t(textoBestiario().includes("- Gorgon (peligro 3, VD 7"), "textoBestiario (consultar_reglas bestiario) lista al Gorgon"); }
+// Bakunawa: serpiente-dragón marina (monstruo de peligro 5, VD 18), legendaria, con Eclipse, Aliento de marea y retirada al agua
+{ const B = BESTIARIO.find((c) => c.nombre === "Bakunawa")!;
+  t(!!B && B.categoria === "monstruo" && B.peligro === 5 && B.vd === "18" && B.temple === "bestia" && BESTIARIO.length === 46, "la Bakunawa es un monstruo de peligro 5, VD 18 (46 criaturas)");
+  t(buscarCriatura("Devoralunas")?.nombre === "Bakunawa" && buscarCriatura("Serpiente de la luna")?.nombre === "Bakunawa", "«Devoralunas» y «Serpiente de la luna» son alias de la Bakunawa");
+  const alias = BESTIARIO.flatMap((c) => [c.nombre, ...(c.alias ?? [])].map((a) => a.toLowerCase())); t(new Set(alias).size === alias.length, "ningún nombre ni alias se repite (con la Bakunawa)");
+  t((B.blindaje ?? []).length > 0 && B.blindaje!.every((b) => (NOMBRES_PIEZAS as string[]).includes(b)) && !B.blindaje!.includes("placas_completas"), "blindaje válido (escamas naturales), sin ser inmune");
+  const peor = BESTIARIO.filter((c) => c.categoria === "monstruo" && c.nombre !== "Bakunawa").map((c) => Number(c.vd)); t(Number(B.vd) > Math.max(...peor), "su VD supera al de todos los monstruos (es el jefe de campaña de su clase)");
+  const k = BESTIARIO.find((c) => c.nombre.startsWith("Kharoth"))!; t(Number(B.vd) < Number(k.vd), "y queda por debajo del dragón antiguo Kharoth (VD 24)");
+  t(ataquesDeCriatura(B) === 2 && legendariasDe(B) === 3 && B.rasgos.some((r) => /Resistencia legendaria \(2\/día\)/.test(r)) && B.rasgos.some((r) => /Resaca \(reacción/.test(r)), "economía: 2 ataques por asalto, 3 acciones legendarias, resistencia legendaria y reacción (Resaca)");
+  t(/nadar 24 m/.test(B.velocidad) && !/volar/.test(B.velocidad), "nada a 24 m y no vuela");
+  t(B.rasgos.some((r) => /^Eclipse del Bakunawa/.test(r) && /desventaja/.test(r)) && B.rasgos.some((r) => /Se sumerge para huir/.test(r) && /retirada/.test(r)), "rasgos únicos: Eclipse (desventaja a la vista) y retirada al agua");
+  t(B.habilidades.some((h) => h.nombre === "Eclipse del Bakunawa" && !!h.condicion) && B.habilidades.some((h) => h.nombre === "Aliento de marea" && h.salvacion === "fue" && h.recarga === 5 && reconocer(h.condicion ?? "")?.id === "derribado") && B.habilidades.some((h) => h.nombre === "Tragar" && h.muerte_si_falla_por === undefined && reconocer(h.condicion ?? "")?.id === "retenido"), "habilidades: Eclipse, Aliento de marea (FUE, derribado) y Tragar (retenido) con condiciones del catálogo");
+  t(B.habilidades.every((h) => h.muerte_si_falla_por === undefined) && !/muerte instant/i.test(JSON.stringify(B)), "sin muerte instantánea");
+  t(B.habilidades.some((h) => /agua \{accion: sumergir/.test(h.descripcion)), "el Aliento de marea remite al sistema de agua (agua sumergir)");
+  t(/PROPUESTA a confirmar/.test(B.botin ?? "") && B.rasgos.some((r) => /^Origen \(secreto/.test(r) && /PROPUESTA/.test(r)), "el origen y las perlas de luna están marcados como propuesta");
+  const p = nuevaPartida(); normalizarPartida(p); const E = (n: string, d: object): any => ejecutar(n, d, p);
+  E("tirar_don_arcano", { jugador: "Ana" }); E("guardar_personaje", { nombre: "Aldo", jugador: "Ana", raza: "Humano del Faro", clase: "Mercenario del Cuervo", nivel: 1, pv_max: 500, ca: 12, atributos: { fue: 10, des: 10, con: 10, int: 10, sab: 10, car: 10 }, inventario: ["Daga"], don_arcano: false, dote: "Terco" });
+  const a = E("aparecer_criatura", { nombre: "Devoralunas" }); const pv = p.jefes["Devoralunas"]?.pv_max ?? 0;
+  t(!a.error && p.jefes["Devoralunas"]?.definicion.nombre === "Bakunawa" && pv >= 20 + 100 && pv <= 20 * 20 + 100, "aparecer_criatura crea a la Bakunawa (por alias) con sus PV", String(pv));
+  iniciarRegistroDados(Array.from({ length: 50 }, () => ({ caras: 20, valor: 1 })));
+  const r = E("habilidad_criatura", { criatura: "Devoralunas", habilidad: "Aliento de marea", objetivos: ["Aldo"] });
+  t(!r.error && /derribado/.test(p.personajes["Aldo"].condiciones.join("|")) && p.personajes["Aldo"].pv < 500, "el Aliento de marea (salvación de FUE fallada) daña y derriba", String(r.contenido).slice(-120));
+  const e = E("habilidad_criatura", { criatura: "Devoralunas", habilidad: "Eclipse del Bakunawa", objetivos: ["Aldo"] });
+  t(!e.error && p.personajes["Aldo"].condiciones.some((c: string) => /eclipse/i.test(c)), "el Eclipse deja la condición «bajo el eclipse» sin salvación", String(e.contenido).slice(-120));
+  const q = E("agua", { accion: "sumergir", quienes: ["Aldo"] }); t(!q.error && !!p.personajes["Aldo"].sumergido, "el DM lo arrastra al mar con agua sumergir (sistema de agua)");
+  liberarDados();
+  // encuentro
+  const enc = TABLA.find((x) => x.id === "bakunawa"); t(!!enc && enc.familia === "monstruos" && enc.bestiario === "Bakunawa" && !!buscarCriatura(enc.bestiario) && enc.cuantos[0] === 1 && enc.cuantos[1] === 1 && enc.momento === "noche" && enc.regiones.some((r) => /Hollín/.test(r)) && enc.regiones.some((r) => /Aldenmar/.test(r)) && enc.peligro === B.peligro, "el encuentro «bakunawa» (1, de noche, Aldenmar/Hollín) apunta a una plantilla válida");
+  // códice del grupo
+  const g0 = bestiarioGrupo(nuevaPartida() as any).entradas.find((x) => x.nombre === "Bakunawa"); t(!!g0 && g0.secciones.some((s) => s.titulo === "Cómo ataca" && !!s.bloqueada) && g0.secciones.some((s) => s.titulo === "Rasgos y puntos débiles" && !!s.bloqueada), "la Bakunawa sale en el bestiario del grupo con «Cómo ataca» y «Rasgos» bloqueados");
+  const r3 = nuevaPartida(); normalizarPartida(r3); const E3 = (n: string, d: object): any => ejecutar(n, d, r3); E3("aparecer_criatura", { nombre: "Bakunawa" }); E3("danar_criatura", { nombre: "Bakunawa", cantidad: 9999 });
+  const g1 = bestiarioGrupo(r3).entradas.find((x) => x.nombre === "Bakunawa")!; const js = JSON.stringify(g1);
+  t(g1.derrotadas === 1 && g1.secciones.every((s) => !s.bloqueada || s.titulo !== "Cómo ataca") && /Aliento de marea|Coletazo/.test(js) && !/Origen \(secreto/.test(js) && !/escupió medio muerta/.test(js), "al derrotarla, el grupo ve cómo ataca y sus rasgos, sin la nota secreta del DM");
+  t(textoBestiario().includes("- Bakunawa (peligro 5, VD 18"), "textoBestiario (consultar_reglas bestiario) lista a la Bakunawa"); }
 console.log(`${ok} ok, ${mal} fallas`);

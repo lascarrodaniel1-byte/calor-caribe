@@ -355,3 +355,22 @@ Medido con `npx tsx tests/balance/simular.ts --criatura <nombre> --n-detalle 200
 Lectura: el Gorgon es el peligro 3 más duro (VD 7, un punto por encima de Troll y Wyverno), no es trivial a nivel 5 (5,7 asaltos y 1 de cada 5 PJ cae, frente a ~2 asaltos de sus vecinos) y deja de ser un problema a nivel 7-9 sin llegar a ser imposible. A nivel 1 es 🔴, como el peligro 4: no debe salir ahí (la rampa de los niveles 3-4 ya recorta el sorteo; ver 10). Peligro 3 / VD 7 confirmado por el dueño; subirlo a peligro 4 lo dejaría más fácil que un peligro 4 medio. El lore y la cura (hiel de gorgon) también están confirmados.
 
 **Celdas del simulador que cambian** (`--n 40 --rapido`, semilla 1): solo «1 criatura, peligro 3» del nivel 1 (43% · 6,0 asaltos · 74% caídos · 25% PV pasa a 43% · 6,3 · 73% · 26%), porque la celda rota por las criaturas de peligro 3 y ahora hay una más; el resto de celdas y las filas de las demás criaturas del detalle son idénticas, y aparece la fila nueva del Gorgon. La fila de peligro 4, los jefes y el trío no cambian.
+
+## 12. Bakunawa (monstruo nuevo, peligro 5, VD 18)
+
+Ficha: serpiente-dragón marina Gargantuana, CA 20, 20d20+100 PV (~305), 9 m y nadar 24 m (no vuela), `escamas_naturales`, 2 ataques por asalto (Mordisco devastador +14, 3d10+9 con agarre; Coletazo x2 +14, 3d8+9 con derribo), 3 acciones legendarias, resistencia legendaria 2/día, reacción (Resaca) y retirada al agua al caer a la mitad de PV cerca del mar. Habilidades: Eclipse del Bakunawa (recarga 6; oscuridad mágica, desventaja a la vista; se rompe con ruido), Aliento de marea (FUE CD 20, 10d8, derribo, recarga 5-6; el DM sigue con `agua sumergir`) y Tragar (retenido un instante, sin muerte instantánea).
+
+Es la criatura más fuerte de la categoría «monstruo» (antes el Lich, peligro 5, VD 16): por eso peligro 5 y VD 18, por encima del Lich y de todos los monstruos y por debajo de Kharoth (VD 24). Es la única del peligro 5 de monstruos que el simulador puede perder, lo que sitúa el VD frente a los jefes. Medido con `npx tsx tests/balance/simular.ts --solo-comparar --criatura Bakunawa --n-detalle 200 --detalle --niveles 1,5,7,9,13` (victorias; **sin habilidades, legendarias, reacción ni retirada**: el simulador solo usa el Coletazo x2, así que la dureza real es mayor):
+
+| Criatura | N1 | N5 | N7 | N9 | N13 |
+|---|---|---|---|---|---|
+| **Bakunawa** (P5, VD 18) | 0% | 0% | 0% | 4% (8,9 asaltos, 99% caídos) | 75% (9,8 asaltos, 62% caídos, 31% PV) |
+| Lich (P5, VD 16) | | 100% | | 100% | 100% |
+| Apóstol (P4, VD 12) | 0% | 0% | | 80% | 100% |
+| El Juez Sin Ojos (P5, VD 14) | | 0% | | 3% | 60% |
+| Kuru (P5, VD 15) | | 0% | | 0% | 45% |
+| Kharoth (P5, VD 24) | | 0% | | 0% | 56% |
+
+Lectura: no hay banda libre en la tabla de peligros, y se ha colocado en el peligro 5 (el techo; `topePeligro` solo lo permite desde el nivel 9, o desde el 7 con dificultad «mortal»). Es inalcanzable por debajo del nivel 9 (como los jefes) y a nivel 13 es 🟢 (75%), entre el Juez y el Lich; con sus habilidades en mesa debería quedar entre el Juez y Kharoth. Opciones si el dueño lo quiere distinto: bajarlo a peligro 4 (VD ~14; entonces solo estaría al nivel de un Apóstol y no sería un jefe de campaña), o subirlo a categoría «jefe» (entonces entra en la rotación del escenario «1 jefe» del simulador y cambia esa fila; además exige trasfondo y códice de jefe).
+
+**Celdas del simulador que cambian** (`--n 40 --rapido`, semilla 1): solo «1 criatura, peligro 5», porque la celda rota por los monstruos de peligro 5 y ahora hay dos (Lich y Bakunawa): N1 0% · 4,2 asaltos, N5 98% → 48%, N9 100% → 53%, N13 100% → 93%. El resto de celdas, el trío y el escenario del jefe no cambian. La plantilla de encuentro `bakunawa` (peligro 5, noche, Aldenmar / Hollín, tipo «peligro») obligó a ampliar el tipo `Plantilla.peligro` de `1|2|3|4` a `1|2|3|4|5`; ninguna otra plantilla es de peligro 5.
