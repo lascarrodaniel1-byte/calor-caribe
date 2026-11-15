@@ -80,8 +80,8 @@ import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, t
 import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
-import { danoConResistencia } from "./rasgos.js";
-import { tipoDanoSchema } from "./danos.js";
+import { aplicarDanoAPersonaje } from "./rasgos.js";
+import { notaDano, tipoDanoSchema } from "./danos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
 import { actualizarCodice, criaturasEnEscena, descubrirCodice } from "./codice.js";
@@ -1417,7 +1417,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         }
         if (e.pv_cambio) {
           let cambio = e.pv_cambio, nota = "";
-          if (cambio < 0) { const r = danoConResistencia(p, -cambio, e.tipo_dano); cambio = -r.dano; nota = r.nota; }
+          if (cambio < 0) { const r = aplicarDanoAPersonaje(p, -cambio, e.tipo_dano); cambio = -r.final; nota = notaDano(r.detalle); }
           p.pv = Math.max(0, Math.min(p.pv_max, p.pv + cambio));
           cambios.push(`${cambio > 0 ? "+" : ""}${cambio} PV (${p.pv}/${p.pv_max})${nota}`);
         }

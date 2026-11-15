@@ -3,7 +3,9 @@
 // tipoHerida, resistencias raciales y Furia por tipo canónico, y atacar/habilidades/modificar_personaje/nave con alias.
 import { readFileSync } from "node:fs";
 import { ALIAS_DE_DANO, PSEUDO_TIPOS_NO_DANO, TIPOS_DANO_CANONICOS, aVocabularioArmadura, deVocabularioArmadura, esFisico, etiqueta, normalizarTipo, tipoDanoSchema, tipoHeridaDe } from "../../src/danos.ts";
-import { danoConResistencia } from "../../src/rasgos.ts";
+import { aplicarDanoAPersonaje } from "../../src/rasgos.ts";
+import { normalizarTipo as _nt, notaDano as _nd } from "../../src/danos.ts";
+const danoConResistencia = (p: any, dano: number, tipo?: string) => { const r = aplicarDanoAPersonaje(p, dano, _nt(tipo)); return { dano: r.final, nota: _nd(r.detalle) }; }; // atajo de prueba: el tipo llega como texto libre
 import type { TipoDano } from "../../src/danos.ts";
 import { TIPOS_DANO_ARMADURA as TIPOS_ARMADURA } from "../../src/armadura.ts";
 import { BESTIARIO } from "../../src/bestiario.ts";

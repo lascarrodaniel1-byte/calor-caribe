@@ -12,7 +12,8 @@ import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
 import { danoEnSuelo } from "./muerte.js";
 import { danar } from "./bestiario.js";
-import { danoConResistencia } from "./rasgos.js";
+import { aplicarDanoAPersonaje } from "./rasgos.js";
+import { notaDano } from "./danos.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
@@ -208,9 +209,9 @@ export function caida(partida: Partida, d: { quien: string; metros: number; blan
   if (c.tipo === "pj") {
     const p = c.p;
     const antes = p.pv;
-    const res = danoConResistencia(p, t.total, "contundente"); // Furia: mitad del contundente
-    const dn = res.dano;
-    if (res.nota) lineas.push(res.nota.trim());
+    const res = aplicarDanoAPersonaje(p, t.total, "contundente"); // Furia: mitad del contundente
+    const dn = res.final;
+    if (res.detalle.length) lineas.push(notaDano(res.detalle).trim());
     p.pv = Math.max(0, p.pv - dn);
     if (antes <= 0) { const s = danoEnSuelo(p, dn, false); if (s) lineas.push(s); if (p.condiciones.includes("muerto")) return lineas.join("\n"); }
     lineas.push(`${p.nombre}: PV ${p.pv}/${p.pv_max}.`);

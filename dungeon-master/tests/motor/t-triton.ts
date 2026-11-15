@@ -3,7 +3,10 @@ import { ejecutar } from "../../src/herramientas.ts";
 import { BESTIARIO, buscarCriatura, fichaCriatura } from "../../src/bestiario.ts";
 import { RAZAS } from "../../src/mundo.ts";
 import { TABLA } from "../../src/encuentros.ts";
-import { danoConResistencia, rasgosAutomaticos } from "../../src/rasgos.ts";
+import { aplicarDanoAPersonaje } from "../../src/rasgos.ts";
+import { normalizarTipo as _nt, notaDano as _nd } from "../../src/danos.ts";
+const danoConResistencia = (p: any, dano: number, tipo?: string) => { const r = aplicarDanoAPersonaje(p, dano, _nt(tipo)); return { dano: r.final, nota: _nd(r.detalle) }; }; // atajo de prueba: el tipo llega como texto libre
+import { rasgosAutomaticos } from "../../src/rasgos.ts";
 import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const txt = (r: any) => (typeof r === "string" ? r : r?.contenido ?? JSON.stringify(r));

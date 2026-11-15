@@ -44,7 +44,7 @@ export const ALIAS_DE_DANO: readonly AliasDano[] = [
 /** Pseudo-tipos que NO son tipos de daño: describen la fuente (magia, material), no el elemento. Ver FuenteDano. */
 export const PSEUDO_TIPOS_NO_DANO: readonly string[] = ["mágico", "no mágico", "plata", "adamantina"];
 
-/** SOLO ESTRUCTURA DOCUMENTADA (fase C): lo que hoy se escribe como «mágico», «no mágico», «plata»… va aparte del tipo. */
+/** La fuente del daño (no su elemento): lo que hoy se escribe como «mágico», «no mágico», «plata»… va aparte del tipo y decide las resistencias «no mágicas». */
 export interface FuenteDano {
   /** true si el daño es mágico (por conjuro, arma mágica o criatura mágica); omitido = no se sabe. */
   magico?: boolean;
@@ -112,3 +112,58 @@ export const tipoDanoSchema = z.string().transform((s, ctx): TipoDano => {
   }
   return t;
 });
+
+// ---------------------------------------------------------------- aplicación del daño (fase B)
+
+/** Una resistencia, inmunidad o vulnerabilidad: a qué tipo se aplica, por qué (texto para el aviso) y, si hace falta, bajo qué condición de la fuente. */
+export interface ReglaDano {
+  tipo: TipoDano;
+  /** Motivo que sale en el aviso («Resistencia enana al veneno», «Furia: resiste el daño físico»). */
+  motivo: string;
+  /** Solo vale si el daño NO es mágico (`fuente.magico !== true`). Sin dato de la fuente se trata como no mágico. */
+  soloNoMagico?: boolean;
+  /** No vale si la fuente es de este material («resiste el corte no mágico salvo plata»). */
+  salvoMaterial?: string;
+  /** Solo vale si la fuente es de este material («vulnerable a la plata»). */
+  soloMaterial?: string;
+}
+/** Lo que un objetivo resiste, no sufre o sufre doble. Lo construyen `perfilDePersonaje` (rasgos.ts) y, para criaturas, su ficha. */
+export interface PerfilDano { resiste?: readonly ReglaDano[]; inmune?: readonly ReglaDano[]; vulnerable?: readonly ReglaDano[] }
+export interface ResultadoDano {
+  final: number;
+  /** Una línea por cada paso que cambió el daño por su tipo (inmunidad, resistencia, vulnerabilidad), con «antes → después»; vacío si no cambió nada. La mitad por salvación no sale aquí. */
+  detalle: string[];
+}
+
+const mismoMaterial = (a: string | undefined, b: string | undefined) => !!a && !!b && limpiar(a) === limpiar(b);
+function aplica(r: ReglaDano, tipo: TipoDano | undefined, fuente: FuenteDano | undefined, sinTipoEsFisico: boolean): boolean {
+  if (tipo ? r.tipo !== tipo : !(sinTipoEsFisico && esFisico(r.tipo))) return false;
+  if (r.soloNoMagico && fuente?.magico === true) return false;
+  if (r.salvoMaterial && mismoMaterial(fuente?.material, r.salvoMaterial)) return false;
+  if (r.soloMaterial && !mismoMaterial(fuente?.material, r.soloMaterial)) return false;
+  return true;
+}
+
+/** UNA sola función para aplicar el daño por su tipo, con el orden de 5e:
+ *  1. los bonificadores y la armadura ya vienen incluidos en `cantidad`; `mitadSalvacion` aplica la mitad (redondeada abajo) de la salvación;
+ *  2. inmunidad: 0;
+ *  3. resistencia (mitad, redondeada abajo) y vulnerabilidad (doble): si coinciden en el mismo tipo SE ANULAN; varias resistencias al mismo tipo
+ *     no se acumulan (una sola mitad), ni varias vulnerabilidades (un solo doble).
+ *  Sin tipo no se aplica nada (salvo `sinTipoEsFisico`: «sin tipo se supone físico», como la Furia en atacar). */
+export function aplicarDano(a: { objetivo: PerfilDano; cantidad: number; tipo?: TipoDano; fuente?: FuenteDano; mitadSalvacion?: boolean; sinTipoEsFisico?: boolean }): ResultadoDano {
+  let c = Math.max(0, Math.trunc(a.cantidad));
+  if (a.mitadSalvacion) c = Math.floor(c / 2);
+  const detalle: string[] = [];
+  if (c === 0) return { final: 0, detalle };
+  const f = (rs: readonly ReglaDano[] | undefined) => (rs ?? []).find((r) => aplica(r, a.tipo, a.fuente, !!a.sinTipoEsFisico));
+  const inm = f(a.objetivo.inmune);
+  if (inm) return { final: 0, detalle: [`${inm.motivo}: ${c} → 0`] };
+  const res = f(a.objetivo.resiste), vul = f(a.objetivo.vulnerable);
+  if (res && vul) return { final: c, detalle: [`${res.motivo} y ${vul.motivo} se anulan: ${c}`] };
+  if (res) { const n = Math.floor(c / 2); return { final: n, detalle: [`${res.motivo}: ${c} → ${n}`] }; }
+  if (vul) return { final: c * 2, detalle: [`${vul.motivo}: ${c} → ${c * 2}`] };
+  return { final: c, detalle };
+}
+
+/** El detalle de `aplicarDano` como nota breve de una línea para el aviso: « (Resistencia al frío del Tritón: 10 → 5)»; vacío si no hubo nada. */
+export const notaDano = (detalle: readonly string[]): string => (detalle.length ? ` (${detalle.join("; ")})` : "");

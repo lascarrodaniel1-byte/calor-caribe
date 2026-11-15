@@ -1,7 +1,8 @@
 // Rasgos que el MOTOR aplica solo (sin que el DM tenga que acordarse). Los umbrales de nivel pasan por nvl() (niveles.ts).
 // Lo que no está aquí lo aplica el DM con su herramienta o lo narra; ver docs/AUDITORIA_RASGOS.md.
 import type { Personaje } from "./estado.js";
-import { esFisico, normalizarTipo } from "./danos.js";
+import { aplicarDano, type FuenteDano, type PerfilDano, type ReglaDano, type ResultadoDano, type TipoDano } from "./danos.js";
+import { juramentoActivo } from "./juramento_base.js";
 import { nvl, NIVEL_ATAQUE_ADICIONAL, NIVEL_PRESA_MARCADA, NIVEL_VETERANO } from "./niveles.js";
 
 /** Clases con Ataque adicional (nivel real 4, sin desplazar: ver NIVEL_ATAQUE_ADICIONAL). El Degollador y el Hechicero no lo tienen. */
@@ -20,23 +21,20 @@ export const desviaProyectiles = (p: Personaje): boolean => p.clase === "Flagela
 /** Sentido del peligro (Berserker, base nivel 2): ventaja en salvaciones de DES. */
 export const sentidoDelPeligro = (p: Personaje): boolean => p.clase === "Berserker de Ceniza" && p.nivel >= nvl(2);
 
-/** Resistencia racial al daño de un elemento (mitad de daño): el Enano al veneno, el Cenizo al fuego, el Tritón al frío. Decide por el tipo canónico (cualquier alias vale). */
-export function resisteRacial(p: Personaje, tipo?: string): string | null {
-  const t = normalizarTipo(tipo);
-  if (!t) return null;
-  if (p.raza === "Enano de Karak-Dûm" && t === "veneno") return "Resistencia enana al veneno";
-  if (p.raza === "Tritón de las Mareas" && t === "frío") return "Resistencia al frío del Tritón";
-  if (p.raza === "Cenizo" && t === "fuego") return "Resistencia al fuego del Cenizo";
-  return null;
+/** Lo que resiste un personaje, como datos: raciales (Enano/veneno, Tritón/frío, Cenizo/fuego), Furia (todo el daño físico) y el voto de Luz
+ *  del Caballero Juramentado (necrótico, desde el nivel 5 y mientras el juramento no esté roto). El orden de aplicación está en `aplicarDano`. */
+export function perfilDePersonaje(p: Personaje): PerfilDano {
+  const resiste: ReglaDano[] = [];
+  if (p.raza === "Enano de Karak-Dûm") resiste.push({ tipo: "veneno", motivo: "Resistencia enana al veneno" });
+  if (p.raza === "Tritón de las Mareas") resiste.push({ tipo: "frío", motivo: "Resistencia al frío del Tritón" });
+  if (p.raza === "Cenizo") resiste.push({ tipo: "fuego", motivo: "Resistencia al fuego del Cenizo" });
+  if (p.furia?.activa) for (const tipo of ["cortante", "perforante", "contundente"] as const) resiste.push({ tipo, motivo: "Furia: resiste el daño físico" });
+  if (juramentoActivo(p) && p.nivel >= nvl(3) && p.juramento!.votos.includes("luz")) resiste.push({ tipo: "necrótico", motivo: "Voto de Luz: resiste el daño necrótico" });
+  return { resiste };
 }
-/** Resistencia de la Furia (Berserker): mitad del daño físico mientras `furia.activa`. El radiante, el fuego, el eléctrico… no cuentan. */
-export const resisteFuria = (p: Personaje, tipo?: string): boolean => !!p.furia?.activa && esFisico(normalizarTipo(tipo));
-/** Aplica la resistencia a un daño ya completo (tras bonificadores, ventaja y mitad por salvación): racial o Furia, UNA sola mitad
- *  aunque coincidan varias fuentes (no se suman). Devuelve el daño final y la nota (vacía si no hay). */
-export function danoConResistencia(p: Personaje, dano: number, tipo?: string): { dano: number; nota: string } {
-  const r = resisteRacial(p, tipo) ?? (resisteFuria(p, tipo) ? "Furia: resiste el daño físico" : null);
-  return r ? { dano: Math.floor(dano / 2), nota: ` (${r}: ${dano} → ${Math.floor(dano / 2)})` } : { dano, nota: "" };
-}
+/** Aplica a un personaje un daño ya completo (tras bonificadores, armadura y ventaja) por su tipo: ver `aplicarDano`. */
+export const aplicarDanoAPersonaje = (p: Personaje, cantidad: number, tipo?: TipoDano, o: { fuente?: FuenteDano; mitadSalvacion?: boolean; sinTipoEsFisico?: boolean } = {}): ResultadoDano =>
+  aplicarDano({ objetivo: perfilDePersonaje(p), cantidad, tipo, ...o });
 
 const MIEDO = /asust|miedo|terror|pavor|pánico|panico|intimid|aterr/i;
 const HECHIZO = /hechiz|encant|embrujo|domin(a|ar|io)|fascin/i;

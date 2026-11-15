@@ -4,7 +4,9 @@
 import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { ejecutar } from "../../src/herramientas.ts";
 import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
-import { danoConResistencia } from "../../src/rasgos.ts";
+import { aplicarDanoAPersonaje } from "../../src/rasgos.ts";
+import { normalizarTipo as _nt, notaDano as _nd } from "../../src/danos.ts";
+const danoConResistencia = (p: any, dano: number, tipo?: string) => { const r = aplicarDanoAPersonaje(p, dano, _nt(tipo)); return { dano: r.final, nota: _nd(r.detalle) }; }; // atajo de prueba: el tipo llega como texto libre
 import { esFisico, normalizarTipo } from "../../src/danos.ts";
 const esDanoFisico = (s: string) => esFisico(normalizarTipo(s)); // el catálogo decide qué es físico (cualquier alias)
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };

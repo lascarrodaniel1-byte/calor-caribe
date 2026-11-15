@@ -7,7 +7,8 @@ import { describir, tirar } from "./dados.js";
 import type { EstadoJefe, Traga } from "./bestiario.js";
 import type { Partida, Personaje } from "./estado.js";
 import { danoEnSuelo } from "./muerte.js";
-import { danoConResistencia } from "./rasgos.js";
+import { aplicarDanoAPersonaje } from "./rasgos.js";
+import { notaDano } from "./danos.js";
 import { mod, signo } from "./reglas.js";
 
 const igual = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -52,11 +53,11 @@ export function danoDeTragados(partida: Partida): string[] {
     if (!c || j.pv <= 0) continue;
     for (const p of dentroDe(partida, j.nombre)) {
       const t = tirar(c.dano);
-      const res = danoConResistencia(p, t.total, c.tipo_dano);
+      const res = aplicarDanoAPersonaje(p, t.total, c.tipo_dano), nota = notaDano(res.detalle);
       const suelo = p.pv <= 0;
-      p.pv = Math.max(0, p.pv - res.dano);
-      out.push(`🎲⚡ ${p.nombre}, tragado por ${j.nombre}, sufre ${describir(t)} de daño ${c.tipo_dano} al empezar su turno${res.nota}: PV ${p.pv}/${p.pv_max}.`);
-      if (suelo && res.dano > 0) { const s = danoEnSuelo(p, Math.min(res.dano, Math.max(1, p.pv_max - 1)), false); if (s) out.push(`  ${s}`); } // sin muerte instantánea
+      p.pv = Math.max(0, p.pv - res.final);
+      out.push(`🎲⚡ ${p.nombre}, tragado por ${j.nombre}, sufre ${describir(t)} de daño ${c.tipo_dano} al empezar su turno${nota}: PV ${p.pv}/${p.pv_max}.`);
+      if (suelo && res.final > 0) { const s = danoEnSuelo(p, Math.min(res.final, Math.max(1, p.pv_max - 1)), false); if (s) out.push(`  ${s}`); } // sin muerte instantánea
       else if (p.pv === 0) out.push(`  ¡${p.nombre} cae a 0 PV dentro! Sigue tragado: sus aliados deben presionar a ${j.nombre} (${c.umbral_asalto}+ de daño en un asalto) o él seguirá sufriéndolo.`);
     }
   }

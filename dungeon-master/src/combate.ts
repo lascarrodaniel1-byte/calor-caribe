@@ -33,8 +33,8 @@ import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { dadoHaemajitsu } from "./estilos_base.js";
 import { distanciaPlano } from "./espacio.js";
 import { bonoClima } from "./clima.js";
-import { aVocabularioArmadura, deVocabularioArmadura, esFisico, tipoHeridaDe, type TipoDano } from "./danos.js";
-import { ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
+import { aVocabularioArmadura, deVocabularioArmadura, tipoHeridaDe, type TipoDano } from "./danos.js";
+import { aplicarDanoAPersonaje, ataquesPorAccion, criticoVeterano, desviaProyectiles, presaMarcada, temerarioActivo } from "./rasgos.js";
 export const VETERANIAS = ["recluta", "curtido", "veterano", "leyenda"] as const;
 export type Veterania = (typeof VETERANIAS)[number];
 
@@ -1198,10 +1198,9 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     dano = Math.max(0, bruto - reduccion);
     danoVisible = (resultado === "roce" ? bruto : r.total) + (rad ? rad.total : 0);
     danoTirado = `${r.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")}${tipoCanon ? ` ${tipoCanon}` : ""}${resultado === "roce" ? ` (mitad: ${bruto})` : ""}${rad ? ` + ${rad.texto.replace(/ \+ -/g, "-").replace(/ \+ /g, "+")} radiante` : ""}`;
-    if (ob.tipo === "pj" && ob.p.furia?.activa && dano > 0 && (!tipoCanon || esFisico(tipoCanon))) { // la Furia se aplica una sola vez, tras la armadura (sin tipo se supone físico)
-      const antes = dano;
-      dano = Math.floor(dano / 2);
-      lineas.push(`🔥 Furia: resiste el daño físico (${antes} → ${dano}).`);
+    if (ob.tipo === "pj" && dano > 0) { // resistencias del PJ (Furia, raciales, voto de Luz) en una sola mitad, tras la armadura; sin tipo se supone físico
+      const res = aplicarDanoAPersonaje(ob.p, dano, tipoCanon, { sinTipoEsFisico: true });
+      if (res.detalle.length) { dano = res.final; lineas.push(`🔥 ${res.detalle.join("; ")}.`); }
     }
     // Desviar proyectiles (Flagelante): reacción automática que reduce el daño de un proyectil que lo alcanza.
     if (dano > 0 && distancia && ob.tipo === "pj" && desviaProyectiles(ob.p) && combate && !tOb.reaccion && ob.p.pv > 0 && !efOb.incapacitado) {
