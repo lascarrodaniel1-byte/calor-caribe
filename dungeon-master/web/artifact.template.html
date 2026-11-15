@@ -33,6 +33,7 @@
   [hidden] { display: none !important; }
   html, body { height: 100%; }
   body {
+    margin: 0;
     color: var(--texto);
     font: 18px/1.6 var(--f-ui);
     background-color: var(--roble);
@@ -420,6 +421,54 @@
     .barra select { font-size: 14px; padding: 4px 6px; }
     .vacio h2 { font-size: 32px; }
   }
+
+  /* Barra inferior compacta: todo en pocas filas (orden, aviso y botones; ficha y reacción; formulario). Los objetivos táctiles miden 40 px en el móvil
+     aunque el aspecto sea más bajo (zona de pulsación ampliada con ::after). */
+  .redaccion { padding-block: 5px calc(5px + env(safe-area-inset-bottom, 0px)); padding-inline: 12px; border-top-width: 3px; }
+  .redaccion .columna { max-width: 1100px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+  .redaccion .fila-meta, .redaccion .turnos-barra, .redaccion .programada-caja { display: contents; }
+  .redaccion .orden { order: 1; flex: 0 1 auto; max-width: 52%; min-width: 0; margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 4px; }
+  .redaccion .orden.en-combate { flex: 0 1 auto; padding-bottom: 0; }
+  .redaccion .orden .ficha-turno, .redaccion .orden .ficha-turno.npc { padding: 3px 7px; font-size: 13px; line-height: 1.2; }
+  .redaccion .orden .asalto-turnos { font-size: 12px; }
+  .redaccion .orden > [aria-hidden="true"] { font-size: 13px; line-height: 1; }
+  .redaccion .orden .ficha-turno.actual { box-shadow: none; }
+  .redaccion .aviso-turno { order: 2; flex: 1 1 90px; min-width: 0; font: 600 15px/1.2 var(--f-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .redaccion .aviso-turno .cuenta-atras { display: inline; font-size: 13px; }
+  .redaccion .aviso-turno .cuenta-atras::before { content: " · "; }
+  #pasar-turno { order: 3; } #saltar-turno { order: 4; }
+  .redaccion .atajos { order: 5; flex: 0 0 auto; flex-wrap: nowrap; gap: 4px; margin-left: auto; }
+  .redaccion .ficha-programada { order: 6; flex: 3 1 360px; padding: 0 4px 0 8px; min-height: 30px; gap: 4px; font-size: 14px; }
+  #reaccion { order: 7; flex: 2 1 260px; min-height: 30px; padding: 3px 10px; font-size: 16px; line-height: 1.25; }
+  .redaccion .escribir { order: 9; flex: 0 0 100%; gap: 6px; align-items: flex-end; margin: 0; }
+  .redaccion .boton, .redaccion .quien { position: relative; min-height: 30px; padding: 0 10px; font-size: 14px; line-height: 1.15; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+  .redaccion .quien { margin-left: 0; padding: 0 6px; }
+  .redaccion .ficha-programada .boton { min-height: 26px; padding: 0 8px; }
+  .redaccion .largo { display: none; }
+  .redaccion .ficha-programada .largo { display: inline; }
+  .redaccion textarea { min-height: 34px; max-height: 84px; padding: 5px 10px; font-size: 16px; line-height: 1.25; overflow-y: auto; }
+  .redaccion .escribir #enviar { max-width: none; min-height: 34px; white-space: nowrap; }
+  .menu-panel .boton { min-height: 40px; justify-content: flex-start; }
+  .redaccion .menu-panel .largo { display: inline; }
+  @media (max-width: 800px) {
+    .redaccion { padding-block: 4px calc(4px + env(safe-area-inset-bottom, 0px)); border-top-width: 2px; }
+    .redaccion .columna { row-gap: 2px; }
+    .redaccion .orden { display: none; }
+    .redaccion .orden.en-combate { display: flex; flex: 1 0 100%; max-width: 100%; }
+    .redaccion .orden .ficha-turno, .redaccion .orden .ficha-turno.npc { padding: 1px 6px; font-size: 12px; }
+    .redaccion .aviso-turno { font-size: 14px; flex-basis: 70px; }
+    .redaccion .boton, .redaccion .quien { min-height: 28px; }
+    .redaccion .ficha-programada { min-height: 28px; flex: 1 1 150px; }
+    .redaccion .ficha-programada .largo { display: none; }
+    .redaccion .ficha-programada .boton { min-height: 24px; min-width: 34px; padding: 0 6px; }
+    #reaccion { min-height: 30px; padding-block: 4px; flex: 1 1 150px; }
+    /* zona de pulsación de 40 px aunque el botón sea más bajo */
+    .redaccion .boton::after, .redaccion .quien::after { content: ""; position: absolute; inset: -7px -2px; }
+    .redaccion .ficha-programada .boton::after { inset: -9px -2px; }
+    .redaccion .menu-panel .boton::after { display: none; }
+    .redaccion .escribir .boton::after { inset: -4px -2px; } /* el de abajo no debe sobresalir de la pantalla */
+    .redaccion .escribir #enviar { white-space: normal; max-width: 112px; font-size: 13px; padding: 0 8px; line-height: 1.1; }
+  }
 </style>
 
 <div class="app">
@@ -512,13 +561,13 @@
         <div class="turnos-barra" id="barra-turnos" hidden>
           <div class="orden" id="orden-turnos" aria-label="Orden de los turnos"></div>
           <div class="aviso-turno" id="aviso-turno" role="status"></div>
-          <button class="boton sobrio" id="pasar-turno" type="button" hidden>Pasar turno</button>
+          <button class="boton sobrio" id="pasar-turno" type="button" aria-label="Pasar turno" hidden><span aria-hidden="true">⏭</span> Pasar<span class="largo"> turno</span></button>
           <button class="boton sobrio" id="saltar-turno" type="button" hidden></button>
         </div>
         <div class="atajos">
-          <button class="boton" type="button" id="crear-personaje" hidden>📜 Crear personaje</button>
-          <button class="boton sobrio" type="button" id="llevar-personaje" hidden title="Lleva el personaje de un jugador que no está, sin crear el tuyo">🎭 Llevar un personaje ausente</button>
-          <button class="boton sobrio" type="button" id="menu-ayudas" aria-haspopup="true" aria-expanded="false" aria-controls="panel-ayudas" title="Razas y clases, viales, artes marciales y ayuda">❔ Ayudas</button>
+          <button class="boton" type="button" id="crear-personaje" aria-label="Crear personaje" title="Crear personaje" hidden><span aria-hidden="true">📜</span><span class="largo"> Crear personaje</span></button>
+          <button class="boton sobrio" type="button" id="llevar-personaje" aria-label="Llevar un personaje ausente" hidden title="Lleva el personaje de un jugador que no está, sin crear el tuyo"><span aria-hidden="true">🎭</span><span class="largo"> Llevar un personaje ausente</span></button>
+          <button class="boton sobrio" type="button" id="menu-ayudas" aria-haspopup="true" aria-expanded="false" aria-controls="panel-ayudas" aria-label="Ayudas" title="Razas y clases, viales, artes marciales y ayuda"><span aria-hidden="true">❔</span><span class="largo"> Ayudas</span></button>
           <div class="menu-panel arriba" id="panel-ayudas" role="menu" hidden>
             <button class="boton sobrio" type="button" data-cmd="/razas">Razas y clases</button>
             <button class="boton sobrio" type="button" data-cmd="/viales">Viales</button>
@@ -531,14 +580,13 @@
       <div class="programada-caja" id="programada-caja" hidden>
         <div class="ficha-programada" id="ficha-programada" hidden>
           <span class="texto-programada" id="texto-programada"></span>
-          <button class="boton sobrio" id="editar-programada" type="button">Editar</button>
-          <button class="boton sobrio" id="cancelar-programada" type="button">Cancelar</button>
+          <button class="boton sobrio" id="editar-programada" type="button" aria-label="Editar la acción programada" title="Editar"><span aria-hidden="true">✎</span><span class="largo"> Editar</span></button>
+          <button class="boton sobrio" id="cancelar-programada" type="button" aria-label="Cancelar la acción programada" title="Cancelar"><span aria-hidden="true">✕</span><span class="largo"> Cancelar</span></button>
         </div>
         <input type="text" id="reaccion" maxlength="140" autocomplete="off" aria-label="Reacción preparada (si…)" placeholder="Reacción preparada (si…): Si el ogro me ataca, me cubro con el escudo" hidden>
       </div>
       <form class="escribir" id="form-accion">
-        <label for="accion" hidden>Tu acción</label>
-        <textarea id="accion" rows="1" maxlength="2000" placeholder="¿Qué haces?"></textarea>
+                <textarea id="accion" rows="1" maxlength="2000" aria-label="Tu acción" placeholder="¿Qué haces?"></textarea>
         <button class="boton" id="enviar" type="submit">Enviar</button>
       </form>
     </div>
@@ -982,7 +1030,8 @@
     const programa = fuera && !soloLectura && estoySentado() && tieneFicha(partida, nombre);
     $("enviar").disabled = soloLectura || (fuera && !programa);
     $("enviar").textContent = programa ? "Programar para mi turno" : "Enviar";
-    $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : programa ? "Escribe tu acción: se enviará sola cuando te toque" : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
+    const estrecho = !!window.matchMedia?.("(max-width: 600px)").matches; // en el móvil el texto de ayuda cabe en una sola línea
+    $("accion").placeholder = soloLectura ? "Solo puedes mirar la partida" : programa ? (estrecho ? "Programa tu acción para tu turno" : "Escribe tu acción: se enviará sola cuando te toque") : fuera ? `Turno de ${quienToca()?.nombre || "otro jugador"}…` : "¿Qué haces?";
     pintarProgramada();
   }
 
@@ -1124,7 +1173,12 @@
       $("pasar-turno").hidden = !(mio && !turnoVivo && !narrandoYo);
       const salto = !turnoVivo && !narrandoYo && T.puedeSaltar(jugadores, orden, miId, t, conProgramada());
       $("saltar-turno").hidden = !salto;
-      if (salto) $("saltar-turno").textContent = `Saltar el turno de ${toca?.nombre}`;
+      if (salto) {
+        const sb = $("saltar-turno"); sb.textContent = "";
+        const ic = document.createElement("span"); ic.setAttribute("aria-hidden", "true"); ic.textContent = "⏭";
+        const lg = document.createElement("span"); lg.className = "largo"; lg.textContent = ` el turno de ${toca?.nombre}`;
+        sb.append(ic, " Saltar", lg); sb.setAttribute("aria-label", `Saltar el turno de ${toca?.nombre}`);
+      }
     }
     actualizarEntrada();
     vigilarAvisoTurno();
@@ -1199,7 +1253,12 @@
     $("estado-texto").textContent = turnoVivo
       ? `El DM narra (lo pidió ${turnoVivo.por})…`
       : pendientes.length ? `${pendientes.length} acción(es) esperando al DM` : "El DM espera vuestras acciones";
-    $("quien").textContent = nombre ? `Juegas como ${nombre} · cambiar` : "Elegir nombre";
+    {
+      const q = $("quien"); q.textContent = "";
+      const ic = document.createElement("span"); ic.setAttribute("aria-hidden", "true"); ic.textContent = "👤";
+      const lg = document.createElement("span"); lg.className = "largo"; lg.textContent = nombre ? ` Juegas como ${nombre} · cambiar` : " Elegir nombre";
+      q.append(ic, lg); q.setAttribute("aria-label", nombre ? `Juegas como ${nombre}: cambiar nombre` : "Elegir nombre"); q.title = nombre ? `Juegas como ${nombre} · cambiar` : "Elegir nombre";
+    }
     actualizarBotonPersonaje();
   }
 
@@ -2473,7 +2532,7 @@
   $("empezar").onclick = () => enviar("Hola, queremos jugar una partida nueva de D&D. ¡Empecemos!");
 
   const caja = $("accion");
-  const ajustar = () => { caja.style.height = "auto"; caja.style.height = Math.min(caja.scrollHeight, 180) + "px"; };
+  const ajustar = () => { caja.style.height = "auto"; caja.style.height = Math.min(caja.scrollHeight, 84) + "px"; };
   caja.addEventListener("input", ajustar);
   caja.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); $("form-accion").requestSubmit(); } });
   $("form-accion").onsubmit = (ev) => { ev.preventDefault(); const t = caja.value; caja.value = ""; ajustar(); enviar(t); };
