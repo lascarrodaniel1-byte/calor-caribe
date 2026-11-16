@@ -35,6 +35,7 @@ import type { RegistroEncuentro } from "./encuentros.js";
 import type { Calendario } from "./clima.js";
 import { secuenciaVacia, type Secuencia } from "./secuencia.js";
 import { valor } from "./reglas.js";
+import { normalizarBuscados } from "./buscados.js";
 
 import { nvl } from "./niveles.js";
 export interface Personaje {
@@ -200,6 +201,8 @@ export interface Partida {
   hechizos?: RegistroMagia[];
   /** Política de los regentes: influencia, espías, relaciones y jugadas. */
   regentes?: EstadoRegentes;
+  /** Tablero de buscados de la Llama Gris: contratos, carteles de la trama y reputación (ver buscados.ts). Falta hasta que se usa. */
+  buscados?: import("./buscados.js").EstadoBuscados;
 }
 
 export function nuevaPartida(): Partida {
@@ -238,6 +241,7 @@ export function normalizarPartida(partida: Partida): Partida {
   partida.reloj ??= { segundos: 8 * 3600, auto: true }; // el tiempo siempre corre (el hambre, la sed y las enfermedades lo cuentan): empieza el día 1 a las 08:00
   for (const pj of Object.values(partida.personajes)) pj.idiomas ??= idiomasIniciales(pj).idiomas; // partidas anteriores a los idiomas
   migrarMapa(partida.mapa);
+  normalizarBuscados(partida);
   for (const j of Object.values(partida.jefes)) {
     j.presagios ??= [];
     j.robos ??= [];

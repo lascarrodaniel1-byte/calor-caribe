@@ -38,6 +38,8 @@ import { lineaClimaFicha, textoEstacion } from "./clima.js";
 import * as clima from "./clima.js";
 import { rasgosAutomaticos } from "./rasgos.js";
 import { bestiarioGrupo } from "./codice.js";
+import * as buscadosMotor from "./buscados.js";
+import { lineaBuscados } from "./buscados.js";
 export const NOMBRES_ACCIONES = herramientas.map((h) => h.name);
 
 /** Catálogo compacto de las acciones del motor, para el prompt del DM. */
@@ -87,6 +89,8 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
   if (variedad) partes.push(variedad);
   const reg = regentes.textoRegentes(p);
   if (reg) partes.push(reg);
+  const cazar = lineaBuscados(p);
+  if (cazar) partes.push(cazar);
   const runas = textoRunas(p);
   if (runas) partes.push(runas);
   const plano = espacio.textoPlano(p.plano);
@@ -189,6 +193,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
 }
 
 export { clima };
+export { buscadosMotor as buscados };
 export const activarCalendario = clima.activarCalendario;
 export { nivelEfectivo, limpiarNarracion, bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 /** ¿Hay artes marciales en juego? Algún personaje con estilo (o Flagelante) o una criatura en escena que los domina. */

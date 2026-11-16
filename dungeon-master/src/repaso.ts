@@ -38,6 +38,9 @@ export function sucesoDeHerramienta(partida: Partida, nombre: string, entrada: u
     case "experiencia": case "subir_nivel": case "eleccion_nivel": case "modificar_personaje": case "tratar_herida": case "infligir_herida":
       anotarSuceso(partida, `✎ ${primera}`);
       break;
+    case "buscados":
+      if (["aceptar", "entregar", "capturar", "abandonar", "cartel"].includes(String(e.accion))) anotarSuceso(partida, `📜 ${primera}`);
+      break;
     case "crear_objeto": case "behelit": case "regente":
       anotarSuceso(partida, `✎ ${nombre}: ${primera}`);
       break;

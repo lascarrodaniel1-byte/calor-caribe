@@ -27,6 +27,7 @@ import {
 import { aceptar, CIRCUNSTANCIAS, crearCarmesi, despertar, RAZONES, rechazar, type Circunstancia } from "./behelit.js";
 import { CALIDADES_OBJETO, crearObjeto, ORIGENES } from "./equipo.js";
 import { CATEGORIAS_BOTIN, generarBotinDe } from "./botin.js";
+import { ACCIONES_BUSCADOS, buscados } from "./buscados.js";
 import { fichaTexto, normalizar, type Partida, type Personaje } from "./estado.js";
 import {
   CALIDADES,
@@ -259,6 +260,13 @@ const esquemas = {
     criatura: z.string().optional().describe("Criatura saqueada: sus trofeos y su peligro"),
     categorias: z.array(z.enum(CATEGORIAS_BOTIN as [string, ...string[]])).optional().describe("Limita el reparto a estas categorías"),
     cofre: z.boolean().optional().describe("Es un cofre: el oro sugerido se multiplica (×2). Las trampas con cofre y los tesoros de guarida ya lo son"),
+  }),
+  buscados: z.object({
+    accion: z.enum(ACCIONES_BUSCADOS),
+    id: z.string().optional().describe("Id del cartel (B01, G01, P01) o el nombre del buscado"),
+    quien: z.string().optional().describe("El personaje del grupo que lleva el contrato"),
+    estado: z.enum(["vivo", "muerto"]).optional().describe("entregar: cómo llega el buscado"),
+    datos: z.record(z.string(), z.unknown()).optional().describe("pista: habilidad · entregar: pruebas, equivocado · ver: region, todos, renovar · cartel: nombre, delito, descripcion, viva, firma, rango_firma, peligro, plazo, solo_vivo, muerta, lugar, region, pista_rumor, pista_erudita, visible, nota (con id: solo visible) · consultar_reglas {tema: buscados}"),
   }),
   crear_objeto: z.object({
     nombre: z.string(),
@@ -971,6 +979,7 @@ const descripciones: Record<Nombre, string> = {
     "Usa un vial (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra). El programa aplica efectos y riesgos y lo descuenta del inventario del portador.",
   generar_botin:
     "Genera botín al azar según el origen (compra, saqueo, hallazgo, jefe); con peligro, región o criatura reparte además materiales, comida, documentos, trofeos y oro sugerido (consultar_reglas tesoro).",
+  buscados: "Cazarrecompensas: tablero de buscados de la Llama Gris (consultar_reglas buscados).",
   crear_objeto: "Registra un objeto único inventado por ti (con su verdad oculta si está maldito).",
   examinar_objeto: "Consulta la verdad de un objeto registrado; con revelar=true, los jugadores la descubren.",
   aparecer_criatura:
@@ -1582,6 +1591,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.generar_botin>;
         const b = generarBotinDe(partida, e as Parameters<typeof generarBotinDe>[1]);
         return { contenido: b.dm, aviso: b.jugadores ? `💰 ${e.origen === "compra" ? "A la venta" : "Botín"}:\n${b.jugadores}` : null };
+      }
+      case "buscados": {
+        const e = validado.data as z.infer<typeof esquemas.buscados>;
+        const r = buscados(partida, e);
+        return { contenido: r.texto, aviso: r.publico };
       }
       case "crear_objeto": {
         const e = validado.data as z.infer<typeof esquemas.crear_objeto>;

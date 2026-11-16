@@ -8,6 +8,7 @@ import { REGLAS_COMBATE } from "./combate.js";
 import { REGLAS_EQUIPO } from "./equipo.js";
 import { textoTesoro } from "./tesoro.js";
 import { REGLAS_ESTADOS } from "./estados.js";
+import { REGLAS_BUSCADOS } from "./buscados.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
 import { herramientas } from "./herramientas.js";
 import { REGLAS_HECHICERO, REGLAS_MAGIA } from "./magia.js";
@@ -143,7 +144,7 @@ export function catalogoCompacto(): string {
   return `## Acciones del motor (herramienta "motor")
 ${lineas.join("\n")}
 - actualizar_cronica(texto) — reescribe tu crónica completa (tu memoria).
-- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | tesoro | estados | behelits | bestiario | mapa | magia | artes | arcos | saber | clima | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
+- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | tesoro | estados | behelits | bestiario | mapa | magia | artes | arcos | saber | clima | buscados | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 
@@ -205,6 +206,8 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return REGLAS_EQUIPO;
     case "tesoro":
       return textoTesoro(nombre);
+    case "buscados":
+      return REGLAS_BUSCADOS;
     case "estados":
       return REGLAS_ESTADOS;
     case "behelits":
@@ -237,6 +240,6 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return h ? `${h.name}: ${h.description}\nEsquema: ${JSON.stringify(h.input_schema)}` : `No existe la acción "${nombre}". Acciones: ${herramientas.map((x) => x.name).join(", ")}.`;
     }
     default:
-      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, tesoro, estados, behelits, bestiario, mapa, magia, artes, arcos, saber, clima, criatura, accion, compania.`);
+      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, tesoro, estados, behelits, bestiario, mapa, magia, artes, arcos, saber, clima, buscados, criatura, accion, compania.`);
   }
 }
