@@ -187,7 +187,7 @@ const VIALES_ORIGEN: Record<Origen, { prob: number; tabla: [number, NombreVial][
 
 const deTabla = <T>(t: [number, T][], d: number) => t.find(([max]) => d <= max)![1];
 /** Elige al azar un elemento. Con uno solo no se tira dado (un `1d1` no existe); con la lista vacía es un error de datos. */
-const elegir = <T>(lista: readonly T[]): T => {
+export const elegir = <T>(lista: readonly T[]): T => {
   if (!lista.length) throw new Error("elegir: lista vacía (error de datos del equipo)");
   return lista.length === 1 ? lista[0] : lista[tirar(`1d${lista.length}`).total - 1];
 };

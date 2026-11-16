@@ -71,7 +71,7 @@ for (const origen of ORIGENES) {
 // Clase pedida: todos los objetos de esa clase base
 for (const clase of ["arma", "armadura", "accesorio"] as const) {
   const p = nueva(); const r = generarBotin(p, { origen: "hallazgo", cantidad: 8, clase, calidad: "normal", incluir_viales: false });
-  const nombres = Object.values<any>(p.objetos).map((o) => o.nombre);
+  const nombres = Object.values<any>(p.objetos).map((o) => o.nombre).filter((n) => !n.startsWith("Huevo de piedra")); // el Behelit (3 por mil) es otro objeto: sin él la prueba fallaba ~1 de cada 14 veces
   t(nombres.length === 8 && nombres.every((n) => BASES.some((b) => b.clase === clase && n.startsWith(b.nombre))), `clase «${clase}» respetada`, r.dm.slice(0, 60));
 }
 // Calidad pedida respetada (no legendaria; el Behelit raro es otro objeto, siempre reliquia)

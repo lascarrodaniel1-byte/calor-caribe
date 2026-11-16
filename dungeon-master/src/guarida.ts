@@ -6,6 +6,8 @@ import type { Partida, Personaje } from "./estado.js";
 
 interface DefGuarida {
   lugar: string;
+  /** El tesoro de la guarida: una línea para el DM y las piezas del catálogo (ids de tesoro.ts) con su % de hallarse allí (`generar_botin {origen: hallazgo, criatura}`). */
+  tesoro: { texto: string; piezas: { id: string; probabilidad: number }[] };
   acciones: Habilidad[];
   /** Cómo cambia la región mientras el jefe viva (sin tiradas: lo narra el DM). */
   regional: string[];
@@ -16,6 +18,7 @@ const h = (nombre: string, descripcion: string, salvacion: Habilidad["salvacion"
 export const GUARIDAS: Record<string, DefGuarida> = {
   "Vaskar, el Lobo del Eclipse": {
     lugar: "el Corazón del Bosque de Velo Rojo",
+    tesoro: { texto: "Ofrendas, huesos de cazadores y savia roja entre las raíces del claro; nada de oro: el bosque se queda con él.", piezas: [{ id: "ofrendas_bosque", probabilidad: 60 }, { id: "frasco_savia_roja", probabilidad: 60 }, { id: "resina_cicatriz", probabilidad: 50 }, { id: "silbato_voces", probabilidad: 30 }] },
     acciones: [
       h("Luna muerta", "La luz del claro se apaga como si el eclipse bajara al bosque.", "sab", 17, { condicion: "cegado (1 asalto)" }),
       h("Raíces del bosque", "Raíces rojas brotan del suelo y agarran piernas.", "fue", 16, { condicion: "retenido (raíces)" }),
@@ -25,6 +28,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "El Juez Sin Ojos": {
     lugar: "la catedral sumergida bajo Aldenmar",
+    tesoro: { texto: "Lo que el agua negra no se llevó: joyas de ahogados, rosarios y estatuillas de dioses muertos, en cofres hundidos.", piezas: [{ id: "joyas_ahogados", probabilidad: 70 }, { id: "cuenta_rosario", probabilidad: 60 }, { id: "estatuilla_dios", probabilidad: 40 }, { id: "cofre_naufragio", probabilidad: 30 }, { id: "llave_cripta", probabilidad: 40 }] },
     acciones: [
       h("Marea de la sentencia", "El agua negra de la catedral sube de golpe.", "fue", 17, { dano: "3d6", tipo_dano: "contundente", mitad_si_exito: true, condicion: "derribado" }),
       h("Campana del juicio", "Una campana hundida retumba y anuncia la condena.", "con", 17, { dano: "4d6", tipo_dano: "trueno", mitad_si_exito: true, condicion: "ensordecido" }),
@@ -34,6 +38,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "Ysolde, la Reina Pálida": {
     lugar: "el castillo de Vel Morhal, en la Marca Hueca",
+    tesoro: { texto: "Plata, cirios negros y papeles lacrados de una corte: lo que un castillo de siglos guarda en sus salas.", piezas: [{ id: "cirio_corte", probabilidad: 70 }, { id: "invitacion_castillo", probabilidad: 50 }, { id: "copa_peltre", probabilidad: 60 }, { id: "anillo_sello", probabilidad: 50 }, { id: "broche_plata", probabilidad: 40 }] },
     acciones: [
       h("Corte de sombras", "Las sombras de las paredes se alzan en figuras de cortesanos.", "sab", 18, { condicion: "asustado (corte de sombras)" }),
       h("Sed de la Reina", "El castillo bebe de los vivos.", "con", 18, { dano: "4d8", tipo_dano: "necrótico", mitad_si_exito: true }),
@@ -43,6 +48,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "La Madre de los Hambrientos": {
     lugar: "una fosa común sin fondo en las Ciénagas de Hollín",
+    tesoro: { texto: "Lo que la fosa se tragó en un siglo: anillos, monedas viejas, huesos atados con hilo rojo y algún cuaderno de devotos.", piezas: [{ id: "ofrenda_huesos", probabilidad: 70 }, { id: "moneda_antigua", probabilidad: 60 }, { id: "anillo_difunto", probabilidad: 70 }, { id: "cuaderno_devoto", probabilidad: 40 }, { id: "hueso_de_dios", probabilidad: 20 }] },
     acciones: [
       h("Fosa que traga", "El suelo se hunde en una boca de carne.", "fue", 17, { dano: "2d10", tipo_dano: "contundente", condicion: "retenido (fosa)" }),
       h("Exhalación de Podre", "Un aliento de carne vieja llena el aire.", "con", 16, { dano: "3d6", tipo_dano: "veneno", mitad_si_exito: true, condicion: "envenenado (Podre)" }),
@@ -52,6 +58,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "El Que Golpea Bajo la Piedra": {
     lugar: "lo más hondo de Karak-Dûm",
+    tesoro: { texto: "Mena, gemas y herramientas de mina de los enanos de Karak-Dûm, abandonadas en lo hondo.", piezas: [{ id: "placa_mina", probabilidad: 70 }, { id: "pico_karak", probabilidad: 60 }, { id: "gema_bruta", probabilidad: 70 }, { id: "hierro_frio", probabilidad: 50 }, { id: "mena_hierro", probabilidad: 70 }] },
     acciones: [
       h("Temblor", "La roca entera se estremece bajo los pies.", "des", 18, { dano: "3d6", tipo_dano: "contundente", mitad_si_exito: true, condicion: "derribado" }),
       h("Derrumbe", "El techo cede sobre la sala.", "des", 17, { dano: "4d10", tipo_dano: "contundente", mitad_si_exito: true }),
@@ -61,6 +68,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "Ilvara, la Tejedora de Mañanas": {
     lugar: "el monasterio más alto de las Agujas de Vahl",
+    tesoro: { texto: "Hojas de oración, flagelos y rosarios de un monasterio; los monjes ya no están para reclamarlos.", piezas: [{ id: "hoja_oracion", probabilidad: 70 }, { id: "flagelo_monje", probabilidad: 50 }, { id: "cuenta_rosario", probabilidad: 60 }, { id: "miel_oscura", probabilidad: 40 }, { id: "bestiario_anotado", probabilidad: 30 }] },
     acciones: [
       h("Hilo de futuros", "Un hilo de cabello tiende un instante de futuro sobre ti.", "sab", 19, { condicion: "aturdido (1 asalto)" }),
       h("Telar de cabellos", "Cabellos tejidos caen del techo y se enroscan.", "des", 17, { condicion: "retenido (cabellos)" }),
@@ -70,6 +78,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "Vaerth, el Sin Rostro": {
     lugar: "los barrios bajos de Aldenmar",
+    tesoro: { texto: "Papeles de otros: salvoconductos, órdenes y libros de cuentas de gente que ya no está, y espejos que devuelven otra cara.", piezas: [{ id: "salvoconducto_falso", probabilidad: 60 }, { id: "orden_inquisicion", probabilidad: 40 }, { id: "libro_cuentas", probabilidad: 40 }, { id: "anillo_sello", probabilidad: 30 }, { id: "espejo_ennegrecido", probabilidad: 60 }] },
     acciones: [
       h("Multitud de caras", "Cada rostro de la calle se vuelve hacia ti con la misma sonrisa.", "sab", 17, { condicion: "asustado (multitud)" }),
       h("Voz de un ser querido", "Oyes a quien más quieres pedirte que bajes el arma.", "sab", 18, { condicion: "hechizado (voz prestada)" }),
@@ -79,6 +88,7 @@ export const GUARIDAS: Record<string, DefGuarida> = {
   },
   "Kharoth, Dragón Antiguo del Sol Herido": {
     lugar: "las Agujas de Vahl, sobre el corazón del dios Solar",
+    tesoro: { texto: "Un tesoro de un siglo: monedas antiguas, gemas y escamas, sobre las grietas de luz dorada.", piezas: [{ id: "tesoro_dragon", probabilidad: 100 }, { id: "rubi_ojo", probabilidad: 60 }, { id: "escama_dragon", probabilidad: 60 }, { id: "gema_bruta", probabilidad: 60 }, { id: "hueso_de_dios", probabilidad: 40 }] },
     acciones: [
       h("Calor del sol muerto", "El aire arde como un horno blanco.", "con", 22, { dano: "3d10", tipo_dano: "fuego", mitad_si_exito: true }),
       h("Grieta de luz", "Una grieta del suelo vomita luz dorada.", "des", 21, { dano: "4d8", tipo_dano: "radiante", mitad_si_exito: true }),
@@ -87,6 +97,9 @@ export const GUARIDAS: Record<string, DefGuarida> = {
     regional: ["El día se queda gris en 10 km.", "La nieve de las Agujas se derrite.", "El aire pesa y cuesta respirar."],
   },
 };
+
+/** Las piezas de tesoro de la guarida de un jefe (undefined si no tiene guarida). */
+export const tesoroGuarida = (nombre: string): DefGuarida["tesoro"] | undefined => { const g = hallar(nombre); return g?.[1].tesoro; };
 
 const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const hallar = (nombre: string): [string, DefGuarida] | undefined => Object.entries(GUARIDAS).find(([k]) => norm(k) === norm(nombre) || norm(k).includes(norm(nombre)));
@@ -108,7 +121,7 @@ export function guarida(partida: Partida, d: DatosGuarida): { texto: string; pub
   if (!par) throw new Error(`«${d.criatura}» no tiene guarida: solo la tienen ${Object.keys(GUARIDAS).join("; ")}.`);
   const [nombre, g] = par;
   if (d.accion === "ver")
-    return { texto: `${nombre} — ${g.lugar}\nAcciones de guarida (una por asalto, en la iniciativa 20, sin repetir la misma dos asaltos seguidos):\n${g.acciones.map((a) => `- ${a.nombre}: ${a.descripcion} (${a.salvacion?.toUpperCase()} CD ${a.cd}${a.dano ? `, ${a.dano} ${a.tipo_dano}` : ""}${a.condicion ? `, ${a.condicion}` : ""})`).join("\n")}\nEfectos regionales:\n${g.regional.map((r) => `- ${r}`).join("\n")}`, publico: null };
+    return { texto: `${nombre} — ${g.lugar}\nTesoro de la guarida (generar_botin {origen: hallazgo, criatura}): ${g.tesoro.texto}\nAcciones de guarida (una por asalto, en la iniciativa 20, sin repetir la misma dos asaltos seguidos):\n${g.acciones.map((a) => `- ${a.nombre}: ${a.descripcion} (${a.salvacion?.toUpperCase()} CD ${a.cd}${a.dano ? `, ${a.dano} ${a.tipo_dano}` : ""}${a.condicion ? `, ${a.condicion}` : ""})`).join("\n")}\nEfectos regionales:\n${g.regional.map((r) => `- ${r}`).join("\n")}`, publico: null };
   const c = partida.combate;
   if (!c) throw new Error("Las acciones de guarida son de combate: empieza con iniciativa.");
   if (d.accion === "declarar") {

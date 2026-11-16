@@ -4,8 +4,10 @@
 import { tirar } from "./dados.js";
 import { buscarCriatura } from "./bestiario.js";
 import { bonusDe, enMar, familiaDe } from "./encuentros.js";
+import { tesoroGuarida } from "./guarida.js";
+import { buscarTema, TEMAS } from "./saber.js";
 import type { Partida } from "./estado.js";
-import { crearObjeto, extrasBotin, generarBotin, generarUno, tirarCalidad, type CalidadObjeto, type Origen, type PeticionBotin } from "./equipo.js";
+import { crearObjeto, elegir, extrasBotin, generarBotin, generarUno, tirarCalidad, type CalidadObjeto, type Origen, type PeticionBotin } from "./equipo.js";
 import { CATEGORIAS_TESORO, oroSugerido, tesoroDe, tesoroPorId, TESORO, type CategoriaTesoro, type EntradaTesoro } from "./tesoro.js";
 
 export interface PeticionBotinTesoro extends PeticionBotin {
@@ -53,7 +55,7 @@ export const esBotinNuevo = (b: PeticionBotinTesoro) => b.peligro !== undefined 
 
 /** Registra una entrada del catálogo: devuelve la línea para el DM y la de los jugadores. */
 function entrada(partida: Partida, x: EntradaTesoro, compra: boolean): { dm: string; jug: string } {
-  const n = x.cant ? tirar(`1d${x.cant[1] - x.cant[0] + 1}`).total + x.cant[0] - 1 : 1;
+  const n = !x.cant ? 1 : x.cant[0] === x.cant[1] ? x.cant[0] : tirar(`1d${x.cant[1] - x.cant[0] + 1}`).total + x.cant[0] - 1;
   const nombre = x.cant ? `${x.nombre} (${n})` : x.nombre;
   const valor = x.valor_po * n;
   if (x.unico) {
@@ -61,6 +63,17 @@ function entrada(partida: Partida, x: EntradaTesoro, compra: boolean): { dm: str
     return { dm: `- ${o.nombre} — ${valor} po: ${x.uso ?? x.sabor ?? ""}`, jug: `- ${o.nombre}${compra ? ` — ${valor} po` : ""}${x.sabor ? `: ${x.sabor}` : ""}` };
   }
   return { dm: `- ${nombre} — ${valor} po${x.material && x.uso ? `: ${x.uso}` : ""}`, jug: `- ${nombre}${compra ? ` — ${valor} po` : ""}${x.sabor ? `: ${x.sabor}` : ""}` };
+}
+
+/** Temas del saber por región (sin Æsir: es secreto del DM). */
+const TEMAS_REGION: Record<string, string[]> = { aldenmar: ["juez", "inquisicion", "cuervo"], cienagas: ["madre", "podre"], "marca hueca": ["ysolde", "podre"], "velo rojo": ["lobo", "caidos"], agujas: ["dioses", "caidos"], karak: ["dioses"] };
+function rumorHallado(criatura: string | undefined, lugar: string): { nombre: string; texto: string } | undefined {
+  const propio = criatura ? buscarTema(criatura) : undefined;
+  const clave = Object.keys(TEMAS_REGION).find((k) => lugar.includes(k));
+  const pool = propio ? [propio] : TEMAS.filter((x) => x.id !== "aesir" && (!clave || TEMAS_REGION[clave].includes(x.id)));
+  const x = pool.length ? elegir(pool) : undefined;
+  const texto = x?.rumor ?? x?.publico;
+  return x && texto && x.id !== "aesir" ? { nombre: x.nombre, texto } : undefined;
 }
 
 /** Botín con peligro, región, criatura y categorías (retrocompatible: sin ellos, el antiguo). */
@@ -76,9 +89,11 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
   const compra = b.origen === "compra";
   const vistos = new Set<string>();
 
-  // (1) Lo que lleva la criatura: su botín estructurado (L3) o, si no lo tiene, lo que el catálogo le asigna; cada pieza con su probabilidad
+  // (1) Lo que lleva la criatura: su botín estructurado (L3) o, si no lo tiene, lo que el catálogo le asigna; cada pieza con su probabilidad.
+  // En un hallazgo en la guarida de un jefe, lo que guarda su guarida (guarida.ts) en lugar de lo que lleva encima.
   if (b.criatura) {
-    const items = c?.botinItems ?? tesoroDe(c?.nombre ?? b.criatura).filter((x) => !x.unico).map((x) => ({ id: x.id, probabilidad: 40 }));
+    const guar = b.origen === "hallazgo" && c ? tesoroGuarida(c.nombre) : undefined;
+    const items = guar?.piezas ?? c?.botinItems ?? tesoroDe(c?.nombre ?? b.criatura).filter((x) => !x.unico).map((x) => ({ id: x.id, probabilidad: 40 }));
     for (const it of items) {
       const x = tesoroPorId(it.id);
       if (!x || vistos.has(x.id) || (x.unico && yaHay(partida, x.nombre)) || tirar("1d100").total > it.probabilidad) continue;
@@ -98,7 +113,7 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
         const cat = k as Cat;
         let peso = w as number * (FAMILIA[familia]?.[cat] ?? 1);
         if (cat === "trofeo" && !c) peso = 0; // sin criatura no hay trofeos que sacar
-        if (cat === "nautico" && !mar) peso = 0;
+        if (cat === "nautico") peso = mar ? peso * 3 : 0; // en el mar, buena parte del botín es de nave
         if (permitidas && !permitidas.has(cat)) peso = 0;
         if (forzarEquipo) peso = cat === "equipo" ? 1 : 0;
         return { x: cat, w: peso };
@@ -129,6 +144,12 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
       dm.push(l.dm); jug.push(l.jug);
       hecho = true;
     }
+  }
+
+  // (2 bis) Un hallazgo a veces trae una pista escrita: un rumor del saber del mundo (solo la capa de rumor o la pública; nunca lo erudito, lo restringido ni lo secreto)
+  if (b.origen === "hallazgo" && tirar("1d100").total <= 20) {
+    const r = rumorHallado(c?.nombre, lugar);
+    if (r) { dm.push(`- Pista escrita (rumor sobre «${r.nombre}», puede estar deformado; cuéntalo tú): ${r.texto}`); jug.push("- Un papel con un rumor anotado"); }
   }
 
   // (3) Oro sugerido (nunca se aplica solo) y (4) extras de siempre: Behelit, catalizador y viales

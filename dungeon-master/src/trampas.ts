@@ -6,6 +6,7 @@ import { efectos } from "./condiciones.js";
 import type { Partida, Personaje } from "./estado.js";
 import { resolverPrueba, COMPETENCIAS_CLASE } from "./pruebas.js";
 import { competencia, mod, valor } from "./reglas.js";
+import { generarBotinDe } from "./botin.js";
 
 export interface Trampa {
   nombre: string;
@@ -14,6 +15,10 @@ export interface Trampa {
   cd_desarmar: number;
   efecto: Habilidad;
   estado: "oculta" | "descubierta" | "desarmada" | "disparada";
+  /** Es el cofre de un tesoro: al desarmarla (o con `abrir` tras dispararla) sale su botín de hallazgo con ese peligro. */
+  contiene?: { peligro: number; cantidad?: number; categorias?: string[] };
+  /** Ya se abrió el cofre (solo se abre una vez). */
+  abierto?: boolean;
   /** Vuelve a quedar armada tras saltar (un pozo de estacas no; una ballesta con cuerda, sí). */
   reutilizable?: boolean;
 }
@@ -45,13 +50,15 @@ function personajes(partida: Partida, nombres: string[]): Personaje[] {
 }
 
 export interface DatosTrampa {
-  accion: "colocar" | "detectar" | "desarmar" | "disparar" | "ver";
+  accion: "colocar" | "detectar" | "desarmar" | "disparar" | "abrir" | "ver";
   nombre?: string;
   lugar?: string;
   cd_detectar?: number;
   cd_desarmar?: number;
   efecto?: Habilidad;
   reutilizable?: boolean;
+  /** colocar: la trampa guarda un cofre con tesoro (peligro 1-5; por defecto 3 objetos). */
+  contiene?: { peligro: number; cantidad?: number; categorias?: string[] };
   /** detectar (activo) y desarmar: quién lo intenta; disparar: quién la sufre. */
   quienes?: string[];
   /** detectar: busca de verdad (prueba de Percepción); si no, solo cuenta la Percepción pasiva. */
@@ -71,8 +78,8 @@ export function trampa(partida: Partida, d: DatosTrampa): { texto: string; publi
   if (d.accion === "colocar") {
     if (!d.nombre || !d.efecto || !d.cd_detectar) throw new Error("colocar: pasa nombre, cd_detectar (10 fácil, 15 normal, 20 difícil), cd_desarmar y efecto (como la habilidad de una criatura: salvación, cd, daño…).");
     if (Object.values(todas).some((x) => norm(x.nombre) === norm(d.nombre!))) throw new Error(`Ya hay una trampa «${d.nombre}».`);
-    todas[d.nombre] = { nombre: d.nombre, lugar: d.lugar, cd_detectar: d.cd_detectar, cd_desarmar: d.cd_desarmar ?? d.cd_detectar, efecto: d.efecto, estado: "oculta", reutilizable: d.reutilizable };
-    return { texto: `Trampa «${d.nombre}» colocada${d.lugar ? ` en ${d.lugar}` : ""} (secreta): detectar CD ${d.cd_detectar}, desarmar CD ${d.cd_desarmar ?? d.cd_detectar}.`, publico: null };
+    todas[d.nombre] = { nombre: d.nombre, lugar: d.lugar, cd_detectar: d.cd_detectar, cd_desarmar: d.cd_desarmar ?? d.cd_detectar, efecto: d.efecto, estado: "oculta", reutilizable: d.reutilizable, contiene: d.contiene };
+    return { texto: `Trampa «${d.nombre}» colocada${d.lugar ? ` en ${d.lugar}` : ""}${d.contiene ? ` con un cofre (tesoro P${d.contiene.peligro})` : ""} (secreta): detectar CD ${d.cd_detectar}, desarmar CD ${d.cd_desarmar ?? d.cd_detectar}.`, publico: null };
   }
   if (d.accion === "detectar") {
     const candidatas = Object.values(todas).filter((t) => t.estado === "oculta" && (!d.nombre || norm(t.nombre).includes(norm(d.nombre))) && (!d.lugar || norm(t.lugar ?? "").includes(norm(d.lugar))));
@@ -105,15 +112,33 @@ export function trampa(partida: Partida, d: DatosTrampa): { texto: string; publi
     if (!quien) throw new Error("desarmar: di quién lo intenta (quienes).");
     const p = personajes(partida, [quien])[0];
     const r = resolverPrueba(partida, { quien: p.nombre, habilidad: "juego_de_manos", cd: t.cd_desarmar, competente: !!d.herramientas, desventaja: !d.herramientas, motivo: `desarmar ${t.nombre}` });
-    if (r.exito) { t.estado = "desarmada"; return { texto: `${r.texto}\nLa trampa «${t.nombre}» queda desarmada.`, publico: `🛠 ${p.nombre} desarma «${t.nombre}».` }; }
+    if (r.exito) {
+      t.estado = "desarmada";
+      const c = cofre(partida, t);
+      return { texto: `${r.texto}\nLa trampa «${t.nombre}» queda desarmada.${c ? `\nEl cofre se abre sin riesgo:\n${c.dm}` : ""}`, publico: `🛠 ${p.nombre} desarma «${t.nombre}».${c?.jugadores ? `\n💰 El cofre guarda:\n${c.jugadores}` : ""}` };
+    }
     if ((r.margen ?? 0) <= -5) return { texto: `${r.texto}\nFalla por 5 o más: la trampa salta sobre ${p.nombre}.\n${disparar(partida, t, [p])}`, publico: `⚠ La trampa «${t.nombre}» salta sobre ${p.nombre}.` };
     return { texto: `${r.texto}\nNo logra desarmarla, pero tampoco la dispara: puede volver a intentarlo.`, publico: null };
+  }
+  if (d.accion === "abrir") {
+    if (!t.contiene) throw new Error(`«${t.nombre}» no guarda ningún cofre (colócala con contiene).`);
+    if (t.abierto) throw new Error(`El cofre de «${t.nombre}» ya está abierto.`);
+    if (t.estado === "oculta" || t.estado === "descubierta") throw new Error(`«${t.nombre}» sigue armada: desármala (o que salte) antes de abrir el cofre.`);
+    const c = cofre(partida, t)!;
+    return { texto: `El cofre de «${t.nombre}» se abre:\n${c.dm}`, publico: `💰 El cofre guarda:\n${c.jugadores}` };
   }
   // disparar
   if (t.estado === "desarmada") throw new Error(`«${t.nombre}» está desarmada: no salta.`);
   const objetivos = personajes(partida, d.quienes?.length ? d.quienes : []);
   if (!objetivos.length) throw new Error("disparar: di quién la sufre (quienes).");
-  return { texto: disparar(partida, t, objetivos), publico: `⚠ ¡Salta la trampa «${t.nombre}»!` };
+  return { texto: `${disparar(partida, t, objetivos)}${t.contiene && !t.abierto ? "\nGuarda un cofre: ábrelo con trampa {accion: abrir}." : ""}`, publico: `⚠ ¡Salta la trampa «${t.nombre}»!` };
+}
+
+/** El botín del cofre de una trampa (una sola vez): hallazgo del peligro indicado en el lugar de la trampa. */
+function cofre(partida: Partida, t: Trampa): { dm: string; jugadores: string } | null {
+  if (!t.contiene || t.abierto) return null;
+  t.abierto = true;
+  return generarBotinDe(partida, { origen: "hallazgo", cantidad: t.contiene.cantidad ?? 3, peligro: t.contiene.peligro, region: t.lugar, categorias: t.contiene.categorias as never });
 }
 
 function disparar(partida: Partida, t: Trampa, objetivos: Personaje[]): string {
@@ -124,9 +149,9 @@ function disparar(partida: Partida, t: Trampa, objetivos: Personaje[]): string {
 }
 
 export function textoTrampas(partida: Partida): string {
-  const l = Object.values(partida.trampas ?? {}).filter((t) => t.estado !== "disparada");
+  const l = Object.values(partida.trampas ?? {}).filter((t) => t.estado !== "disparada" || (t.contiene && !t.abierto));
   if (!l.length) return "";
-  return `## Trampas (secretas del DM)\n${l.map((t) => `- ${t.nombre}${t.lugar ? ` (${t.lugar})` : ""}: ${t.estado}; detectar CD ${t.cd_detectar}, desarmar CD ${t.cd_desarmar}`).join("\n")}`;
+  return `## Trampas (secretas del DM)\n${l.map((t) => `- ${t.nombre}${t.lugar ? ` (${t.lugar})` : ""}: ${t.estado}; detectar CD ${t.cd_detectar}, desarmar CD ${t.cd_desarmar}${t.contiene && !t.abierto ? ` · cofre P${t.contiene.peligro}` : ""}`).join("\n")}`;
 }
 
 export const REGLAS_TRAMPAS = `## Trampas y Percepción pasiva

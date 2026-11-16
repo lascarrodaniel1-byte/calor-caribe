@@ -814,13 +814,14 @@ const esquemas = {
     otra: z.string().optional().describe("abordaje: la otra nave"),
   }),
   trampa: z.object({
-    accion: z.enum(["colocar", "detectar", "desarmar", "disparar", "ver"]),
+    accion: z.enum(["colocar", "detectar", "desarmar", "disparar", "abrir", "ver"]),
     nombre: z.string().optional(),
     lugar: z.string().optional(),
     cd_detectar: z.number().int().min(5).max(30).optional(),
     cd_desarmar: z.number().int().min(5).max(30).optional(),
     efecto: habilidad.optional().describe("colocar: lo que hace al saltar (salvación, cd, dano, tipo_dano, condicion, herida…)"),
     reutilizable: z.boolean().optional(),
+    contiene: z.object({ peligro: z.number().int().min(1).max(5), cantidad: z.number().int().min(1).max(10).optional(), categorias: z.array(z.enum(CATEGORIAS_BOTIN as [string, ...string[]])).optional() }).optional().describe("colocar: la trampa guarda un cofre con tesoro de ese peligro (sale al desarmarla o con abrir)"),
     quienes: z.array(z.string()).optional().describe("detectar activo / desarmar: quién lo intenta · disparar: quién la sufre"),
     activa: z.boolean().optional().describe("detectar: registran a propósito (prueba de Percepción) en vez de solo la pasiva"),
     herramientas: z.boolean().optional().describe("desarmar: con herramientas de ladrón; si no, desventaja"),
@@ -919,7 +920,7 @@ const descripciones: Record<Nombre, string> = {
   nave:
     "Botes, balsas y barcos: crear, abordar, desembarcar, navegar (horas y viento), mar, danar el casco, reparar (achicar, remendar, apagar) y abordaje. Navegar 6 h o más exige cita literal de lo que pidieron los jugadores. Se hunde, arde y tira gente por la borda.",
   trampa:
-    "Trampas secretas: colocar (CD de detectar y de desarmar, efecto), detectar (Percepción pasiva del grupo o búsqueda activa), desarmar (Juego de manos) y disparar. Nunca avises de una trampa que nadie ha descubierto.",
+    "Trampas secretas: colocar (CD de detectar y de desarmar, efecto), detectar (Percepción pasiva del grupo o búsqueda activa), desarmar (Juego de manos), disparar y abrir (el cofre con tesoro de una trampa con contiene). Nunca avises de una trampa que nadie ha descubierto.",
   sustento:
     "Comer, beber o ver el sustento del grupo. Gasta raciones y agua del inventario (o libre=true si come en una posada o bebe de un río). El hambre y la sed las cuenta el reloj solas: sin comer 3 + mod. CON días, sin beber 1 día, y luego agotamiento por día.",
   clima:

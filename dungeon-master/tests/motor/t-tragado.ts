@@ -157,7 +157,7 @@ function E0(p: any) { const E = (n: string, d: object): any => ejecutar(n, d, p)
   t(/TRAGADO/.test(ficha) && /4d6 de daño eléctrico/.test(ficha) && /CD 17/.test(ficha) && /Atletismo o Acrobacias CD 20/.test(ficha) && /25 o más/.test(ficha) && /50 o más/.test(ficha) && /derribada? a 3 m|derribado a 3 m/.test(ficha), "la ficha sirve bajo demanda las reglas de escape completas (consultar_reglas criatura)");
   t(def.traga?.dano === "4d6" && def.traga.tipo_dano === "eléctrico" && def.traga.max === 1 && def.traga.umbral_dentro === 25 && def.traga.cd_escape === 20 && def.peligro === 5 && def.vd === "18", "parámetros: 4d6 eléctrico, máx. 1, 25 desde dentro, CD 20; peligro 5 / VD 18 intactos");
   t(BESTIARIO.filter((c) => c.traga || c.solo_mar).map((c) => c.nombre).join() === "Bakunawa", "solo la Bakunawa tiene el estado de tragado y el límite del mar");
-  t(TABLA.filter((x) => x.mar).map((x) => x.id).join() === "bakunawa", "solo la plantilla bakunawa está limitada al mar");
+  t(TABLA.filter((x) => x.mar && x.bestiario).map((x) => x.id).join() === "bakunawa", "solo la plantilla bakunawa (de criatura) está limitada al mar; el pecio es un hallazgo sin criatura");
   // otras criaturas con «Tragar» siguen con su texto de siempre (condición libre, sin estado nuevo)
   const gusano = BESTIARIO.find((c) => c.habilidades.some((h) => h.nombre === "Tragar" && c.nombre !== "Bakunawa"))!;
   const hh = gusano.habilidades.find((h) => h.nombre === "Tragar")!; t(!gusano.traga && !reconocer(hh.condicion ?? "") && tragadoPor([hh.condicion ?? ""]) === null, `${gusano.nombre}: su «tragado: 6d6…» sigue siendo texto libre (no es el estado nuevo)`); }
