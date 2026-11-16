@@ -304,6 +304,18 @@
   .bestiario .cuerpo p { margin: 0; }
   .bestiario .bloqueada { color: #7a6a52; font-style: italic; }
   .bestiario .nota-grupo { border-left: 3px solid #b8873a; padding-left: 9px; }
+  #ver-buscados { margin-top: 8px; width: 100%; }
+  .tablero #buscados-lista { display: flex; flex-direction: column; gap: 12px; }
+  .tablero .cartel { border: 1px solid #8a6a3a; border-radius: 4px; background: #f4e8cc99; padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; min-width: 0; overflow-wrap: anywhere; }
+  .tablero .cartel h3 { margin: 0; font: 400 22px/1.2 var(--f-letrero); color: #5a1d12; }
+  .tablero .cartel h3 small { font: 15px var(--f-narracion); color: #5a4128; }
+  .tablero .cartel p { margin: 0; }
+  .tablero .cartel .delito { font: 700 14px var(--f-narracion); letter-spacing: .05em; text-transform: uppercase; color: #8a2a1e; }
+  .tablero .cartel .recompensa { font-weight: 700; color: #3a2a12; }
+  .tablero .cartel .firma, .tablero .cartel .ubicacion { font-size: 15px; color: #5a4128; }
+  .tablero .cartel .estado { align-self: flex-start; font: 700 13px var(--f-narracion); padding: 2px 9px; border-radius: 10px; background: #5a1d12; color: #f4e8cc; }
+  .tablero .cartel ul { margin: 0; padding-left: 20px; }
+  .tablero .cartel ul li { font-size: 15px; }
   .velo .mapa-grande { width: min(1100px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
   .velo .mapa-grande .lienzo svg { width: auto; max-width: 100%; max-height: 82vh; margin: 0 auto; }
   .velo .mapa-grande .lienzo { text-align: center; background: #1b110a; }
@@ -538,6 +550,7 @@
         <h2 id="titulo-mapa">Mapa de Velmora</h2>
         <div class="donde" id="mapa-donde">Aún no sabemos dónde estáis.<small>El DM os situará al empezar.</small></div>
         <div class="lienzo ampliable" id="mapa" role="button" tabindex="0" title="Ver el mapa en grande"></div>
+        <button class="boton sobrio" id="ver-buscados" type="button" hidden title="Los carteles de busca y captura de la Llama Gris en este lugar (solo lectura)">📜 Tablero de buscados</button>
       </section>
       <details class="diario-seccion" id="seccion-plano" open>
         <summary><h2>Plano de la escena</h2></summary>
@@ -630,6 +643,18 @@
   <div class="mapa-grande">
     <div class="botonera"><button class="boton sobrio" id="cerrar-mapa" type="button">Cerrar el mapa</button></div>
     <div class="lienzo" id="mapa-grande"></div>
+  </div>
+</div>
+
+<div class="velo" id="velo-buscados" hidden>
+  <div class="bestiario tablero" role="dialog" aria-modal="true" aria-labelledby="titulo-buscados">
+    <div class="botonera cabecera-bestiario">
+      <h2 id="titulo-buscados">📜 Tablero de buscados</h2>
+      <button class="boton sobrio" id="cerrar-buscados" type="button">Cerrar</button>
+    </div>
+    <p class="nota" id="buscados-rango"></p>
+    <div id="buscados-lista"></div>
+    <p class="nota" id="buscados-vacio"></p>
   </div>
 </div>
 
@@ -1446,6 +1471,7 @@
     pintarMapa(partida);
     pintarBestiarioInsignia();
     if (!$("velo-bestiario").hidden) pintarBestiario();
+    pintarBuscados();
     pintarPlano(partida);
     pintarSecuencia();
     const cont = $("lista-fichas");
@@ -2676,6 +2702,36 @@
     if (!lista.length) cont.innerHTML = '<p class="nota">Ninguna criatura coincide.</p>';
     $("bestiario-ocultos").textContent = ocultos ? `🔒 Quedan ${ocultos} criaturas por descubrir: los jefes aparecen cuando el grupo los conoce.` : "";
   }
+  // Tablero de buscados (solo lectura): los carteles VISIBLES del lugar actual y el rango de la mesa con la Llama. Todo sale de la partida compartida
+  // (V.buscados.vistaTablon): los ocultos, el perfil de combate y las pistas sin revelar no llegan nunca a esta lista. No escribe nada.
+  function pintarBuscados() {
+    let v;
+    try { v = V.buscados.vistaTablon(partida); } catch { v = undefined; }
+    $("ver-buscados").hidden = !v;
+    if (!v) { $("velo-buscados").hidden = true; return; }
+    if ($("velo-buscados").hidden) return;
+    $("buscados-rango").textContent = `Rango de la mesa ante la Llama Gris: ${v.rango} (${v.puntos} ${Math.abs(v.puntos) === 1 ? "punto" : "puntos"}).${v.lugar ? ` Tablón de ${v.lugar}.` : ""}`;
+    const cont = $("buscados-lista");
+    cont.textContent = "";
+    const el = (tag, cls, txt) => { const x = document.createElement(tag); if (cls) x.className = cls; if (txt !== undefined) x.textContent = txt; return x; };
+    for (const c of v.carteles) {
+      const a = document.createElement("article"); a.className = "cartel"; a.dataset.id = c.id;
+      const h = el("h3", "", c.nombre); if (c.alias) h.append(" ", el("small", "", `«${c.alias}»`));
+      a.append(h, el("p", "delito", `${c.delito} · peligro ${"☠".repeat(c.peligro)}`), el("p", "", c.descripcion));
+      a.append(el("p", "ubicacion", `📍 Última ubicación conocida: ${c.lugar} (${c.region})`));
+      a.append(el("p", "recompensa", `💰 Vivo ${c.viva} po · ${c.muerta === null ? "solo vivo" : `muerto ${c.muerta} po`}`));
+      if (c.estado !== "activo") a.append(el("span", "estado", c.contrato ? `${c.estado} · ${c.contrato.quien}${c.contrato.vence !== null ? ` · plazo hasta el día ${c.contrato.vence}` : ""}` : c.estado));
+      else if (c.plazo) a.append(el("p", "ubicacion", `⏳ Plazo: ${c.plazo} días desde que se acepta el contrato`));
+      if (c.pistas.length) { const ul = el("ul"); for (const t of c.pistas) ul.append(el("li", "", t)); a.append(el("p", "ubicacion", "🔎 Pistas reveladas:"), ul); }
+      a.append(el("p", "firma", `Firma: ${c.firma} · sello de la Llama Gris`));
+      cont.append(a);
+    }
+    $("buscados-vacio").textContent = !v.hay ? "Aquí no hay un tablón de la Llama (los hay en la Casa de Registros, los puertos, las plazas y las posadas)." : v.carteles.length ? "" : "No hay carteles a la vista en este tablón.";
+  }
+  $("ver-buscados").onclick = () => { $("velo-buscados").hidden = false; pintarBuscados(); $("cerrar-buscados").focus(); };
+  $("cerrar-buscados").onclick = () => { $("velo-buscados").hidden = true; $("ver-buscados").focus(); };
+  $("velo-buscados").onclick = (ev) => { if (ev.target === $("velo-buscados")) $("velo-buscados").hidden = true; };
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !$("velo-buscados").hidden) $("velo-buscados").hidden = true; });
   $("ver-bestiario").onclick = () => { pintarBestiario(); $("velo-bestiario").hidden = false; $("bestiario-buscar").focus(); };
   $("cerrar-bestiario").onclick = () => { $("velo-bestiario").hidden = true; };
   $("velo-bestiario").onclick = (ev) => { if (ev.target === $("velo-bestiario")) $("velo-bestiario").hidden = true; };

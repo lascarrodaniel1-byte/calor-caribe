@@ -117,4 +117,4 @@ El cartel de la partida actual no está en el código (la partida vive en la bas
 - `consultar_reglas {tema: "buscados"}`: las reglas completas.
 - El estado del DM lleva **una línea** solo si hay contratos en curso: nombre, quién y plazo, y el rango.
 - Encuentro de hallazgo «Tablón de buscados» en Aldenmar y las Ciénagas (casa de registros, muelle, plaza).
-- La página: botón «Tablero de buscados», solo lectura (fase 2).
+- La página: botón **«📜 Tablero de buscados»** bajo el mapa (no en la barra inferior; solo aparece cuando el DM ya ha usado el tablero) que abre un diálogo de **solo lectura** con los carteles **visibles** del lugar actual: nombre y alias, delito, descripción pública, última ubicación, recompensa viva y muerta, firma, estado del contrato (quién y plazo), las pistas ya reveladas y el rango de la mesa con la Llama. Los carteles con `visible: false`, el perfil de combate y las pistas sin revelar no llegan a la página (`V.buscados.vistaTablon`, de `src/navegador.ts`); no hay nada editable ni llamadas al modelo; se actualiza en directo con la partida compartida. En un lugar sin tablón dice que no lo hay. Prueba: `tests/ui/buscados.mjs`.
