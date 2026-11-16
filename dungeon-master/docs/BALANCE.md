@@ -460,3 +460,47 @@ Datos y prosa a la vez; la prueba de coherencia de `t-resistencias` ahora tambi�
 
 **Dudosas, listadas sin cambiar.** (1) Sirena y Hombre pez («hierro cálido y sal en abundancia, le quema la piel») y la sal en abundancia del Elemental de fuego, Madre y Lich: no hay tipo claro (¿fuego? ¿ácido?) ni material «sal» definido. (2) «Armas pesadas contundentes» del Elemental de tierra y el «golpe contundente lo hiere mejor» del Gorgon: el catálogo no distingue armas pesadas; su blindaje ya lo refleja. (3) Vaerth (necrótico sin inmunidad): ya en §14. (4) Condiciones como dato (miedo, hechizo, agotamiento): sigue abierto.
 
+## 15. Subir un punto el peligro de las criaturas que rinden por encima de su banda (confirmado por el dueño)
+
+Frente al grupo sin armas mágicas del simulador, Hombre oso, Elemental de fuego, Elemental de aire, Banshee del Velo y Ulfhedinn rendían muy por encima de un peligro 3 (§13). Pasan a **peligro 4**. Lich e Ysolde ya son P5 (máximo): se quedan.
+
+**Regla de VD.** Las pruebas no tenían una tabla peligro↔VD: solo fijaban cada criatura por separado. La única regla que cumplían las 46 fichas, y que ahora fija una prueba nueva en `t-bestiario`, es que **el VD no baja al subir el peligro** (máximo VD de un peligro ≤ mínimo del siguiente). Con el Gorgon (P3, VD 7) como techo del peligro 3, un peligro 4 necesita **VD ≥ 7**: es el mínimo, y es el que se les pone a las cinco (antes 5, 5, 5, 5 y 6). Rangos hoy (VD): P1 0,5-1 · P2 2-3 · P3 5-7 · P4 7-12 · P5 14-24. Alternativa descartada: el rango actual del P4 antes del cambio (9-12) exigiría VD 9, que no sale de ninguna regla comprobada.
+
+| Criatura | Antes | Después |
+|---|---|---|
+| Hombre oso | P3 · VD 6 | P4 · VD 7 |
+| Elemental de fuego | P3 · VD 5 | P4 · VD 7 |
+| Elemental de aire | P3 · VD 5 | P4 · VD 7 |
+| Banshee del Velo | P3 · VD 5 | P4 · VD 7 |
+| Ulfhedinn | P3 · VD 5 | P4 · VD 7 |
+| Lich, Ysolde | P5 · VD 16 | sin cambio (P5, dentro del rango 14-24) |
+
+**Plantillas de encuentro** (`src/encuentros.ts`): `banshee`, `ulfhedinn` y `hombre_oso` pasan a peligro 4; el Ulfhedinn baja de 1-3 a **1-2** (tres de VD 7 son demasiado para el nivel 5); familia, momento, regiones y peso, igual. Los elementales no tienen plantilla propia. El peligro 3 conserva 7 plantillas con criatura propia (Troll, Wyverno, Grifo, Sirena, Basilisco, Mantícora, Gorgon) y la Corte Pálida; el 4 pasa de 3 a 6 (Wendigo, Hidra, Leshen y las tres). Efecto de juego: con el tope por nivel (3 en los niveles 3-4), las tres ya **no salen hasta el nivel 5** (prueba con barrido de dados fijos). Otros efectos de tener peligro 4, por diseño: más PX por derrotarlas (`PX_PELIGRO`), cuentan como «terribles» para el miedo del combate y como «grandes» para el Flagelante, y se ordenan con los peligro >3 en la iniciativa.
+
+**Simulador** (`--n 40 --rapido`, semilla 1; victorias · asaltos · PJ caídos · PV restantes). Solo cambian las filas «1 criatura, peligro 3» y «peligro 4» (las criaturas movidas cambian de fila; ninguna cifra de ficha cambia):
+
+| Fila | N1 | N5 | N9 | N13 |
+|---|---|---|---|---|
+| peligro 3, antes | 23% · 7,4 · 84% · 15% | 100% · 3,1 · 6% | 100% · 2,4 | 100% · 2,3 |
+| peligro 3, después | 35% · 6,2 · 76% · 22% | 100% · 2,9 · 7% | 100% · 2,3 | 100% · 2,1 |
+| peligro 4, antes | 8% · 3,9 · 96% | 63% · 5,5 · 61% · 33% | 98% · 4,0 | 100% · 3,5 |
+| peligro 4, después | 8% · 5,1 · 96% | 78% · 4,7 · 39% · 53% | 100% · 3,6 | 100% · 3,1 |
+
+Detalle por criatura (victorias N1/N5/N9/N13, `--detalle --n-detalle 200 --niveles 1,5,9,13`, semilla 1, misma ficha antes y después; la diferencia en una celda es ruido, ±7 puntos):
+
+| Criatura | Antes (P3) | Después (P4) |
+|---|---|---|
+| Hombre oso | 0/100/100/100 | 0/100/100/100 |
+| Elemental de fuego | 14/100/100/100 | 12/100/100/100 |
+| Elemental de aire | 1/100/100/100 | 0/100/100/100 |
+| Banshee del Velo | 51/100/100/100 | 51/100/100/100 |
+| Ulfhedinn | 48/100/100/100 | 35/100/100/100 |
+| Lich (P5, VD 16) | 0/93/100/100 | igual |
+| Ysolde (P5, VD 16) | 0/100/100/100 | igual |
+
+**Cómo quedan frente a su banda nueva.** A nivel 1 (donde el peligro 4 no debe salir: tope 2) ya no es un problema: 0-35% es lo esperable de un P4 (la fila de P4 da 8%). El nivel 5 es donde se enfrentan por primera vez, y **las cinco siguen por encima de su banda**: ganan el 100% frente al 33-78% de sus nuevos pares (Elemental de tierra 48%, Golem de piedra 33%, Gigante de hueso 78% a nivel 5). Es decir, la subida corrige el nivel 1 pero a nivel 5 siguen siendo más blandas que un P4 medio (el simulador no usa habilidades: Oleada de fuego, Lamento, Ceniza de la furia, Torbellino, Abrazo de oso).
+
+**Propuestas a confirmar (NO aplicadas).** (1) Subirles la dureza real (PV, CA o un segundo ataque) en vez de más peligro, o aceptar que sean P4 «suaves». (2) Lich (P5, VD 16: 93% a nivel 5) e Ysolde (P5, VD 16: 100%): el VD **no se cambia**: cumple la regla (P5 ≥ 14) y subir el Lich a 17-18 chocaría con la prueba de la Bakunawa (su VD 18 debe superar al de todo monstruo); bajarlo no está justificado. Lo que les falta es dureza (hechizos y habilidades que el simulador no mide), no etiqueta. (3) Hombre oso sigue en 0% a nivel 1 pero es 100% a nivel 5: salto brusco que ni el peligro 3 ni el 4 explican; mirar su PV/CA.
+
+Prompt fijo: 67.093 (sin cambio).
+

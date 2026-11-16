@@ -3,7 +3,7 @@ import { ejecutar } from "../../src/herramientas.ts";
 import { BESTIARIO, buscarCriatura, textoBestiario } from "../../src/bestiario.ts";
 import { ataquesDeCriatura, legendariasDe } from "../../src/combate.ts";
 import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
-import { TABLA } from "../../src/encuentros.ts";
+import { TABLA, sortearEncuentro } from "../../src/encuentros.ts";
 import { TEMPLES } from "../../src/combate.ts";
 import { NOMBRES_PIEZAS, proteccion } from "../../src/armadura.ts";
 import { reconocer } from "../../src/condiciones.ts";
@@ -59,7 +59,7 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
   t(!/Furia sin fin|En trance/.test(h.rasgos.join("|")) && h.rasgos.some((r) => /^Furia de cubil/.test(r)) && h.rasgos.some((r) => /^Rabia ciega/.test(r)), "Hombre oso: «Furia de cubil» y «Rabia ciega» en lugar de los rasgos del Ulfhedinn");
   t(h.habilidades.every((x) => !u.habilidades.some((y) => y.descripcion === x.descripcion)), "Hombre oso: ninguna habilidad con la descripción del Ulfhedinn");
   t(h.region !== u.region && h.botin !== u.botin, "Hombre oso: región y botín propios");
-  t(h.peligro === 3 && h.vd === "6" && h.pv === "13d10+39" && h.ca === 15 && h.temple === "no-muerto" && h.ataques.length === 3 && h.habilidades.length === 3 && h.habilidades.map((x) => x.nombre).join() === "Abrazo de oso,Rugido de furia,Ceniza de la furia", "Hombre oso conserva peligro 3, VD 6, 13d10+39, CA 15, no-muerto, ataques y habilidades");
+  t(h.peligro === 4 && h.vd === "7" && h.pv === "13d10+39" && h.ca === 15 && h.temple === "no-muerto" && h.ataques.length === 3 && h.habilidades.length === 3 && h.habilidades.map((x) => x.nombre).join() === "Abrazo de oso,Rugido de furia,Ceniza de la furia", "Hombre oso conserva 13d10+39 (peligro 4 y VD 7 desde BALANCE §15), CA 15, no-muerto, ataques y habilidades");
   const cond = (c: typeof h, k: "resistencias" | "inmunidades" | "vulnerabilidades") => JSON.stringify(c[k]);
   t(cond(h, "resistencias") === cond(u, "resistencias") && cond(h, "inmunidades") === cond(u, "inmunidades") && cond(h, "vulnerabilidades") === cond(u, "vulnerabilidades"), "Hombre oso: sus resistencias, inmunidad y vulnerabilidad (datos) no cambian");
   t(h.rasgos.some((r) => /resistencia al daño de corte, punta y contundente no mágico/.test(r)) && h.rasgos.some((r) => /inmune al veneno/.test(r)) && h.rasgos.some((r) => /Llama Gris[^;]*vulnerable/.test(r)), "Hombre oso: la prosa sigue diciendo lo que dicen los datos");
@@ -142,4 +142,26 @@ const g = bestiarioGrupo(nuevaPartida() as any); t(nuevos.every((n) => g.entrada
   const g1 = bestiarioGrupo(r3).entradas.find((x) => x.nombre === "Bakunawa")!; const js = JSON.stringify(g1);
   t(g1.derrotadas === 1 && g1.secciones.every((s) => !s.bloqueada || s.titulo !== "Cómo ataca") && /Aliento de marea|Coletazo/.test(js) && !/Origen \(secreto/.test(js) && !/escupió medio muerta/.test(js), "al derrotarla, el grupo ve cómo ataca y sus rasgos, sin la nota secreta del DM");
   t(textoBestiario().includes("- Bakunawa (peligro 5, VD 18"), "textoBestiario (consultar_reglas bestiario) lista a la Bakunawa"); }
+// Subir un punto el peligro de las criaturas que rinden por encima de su banda (BALANCE §15): peligro 4 y VD 7 (el mínimo que respeta que el VD no baje al subir el peligro)
+{ const nuevos: [string, number, string, string | undefined][] = [["Hombre oso", 4, "7", "hombre_oso"], ["Elemental de fuego", 4, "7", undefined], ["Elemental de aire", 4, "7", undefined], ["Banshee del Velo", 4, "7", "banshee"], ["Ulfhedinn", 4, "7", "ulfhedinn"]];
+  for (const [n, pel, vd, id] of nuevos) { const c = BESTIARIO.find((x) => x.nombre === n)!; t(c.peligro === pel && c.vd === vd, `${n}: peligro ${pel}, VD ${vd}`, `${c.peligro}/${c.vd}`); if (id) { const e = TABLA.find((x) => x.id === id)!; t(e.peligro === pel && e.bestiario === n && e.cuantos[0] === 1, `encuentro «${id}»: peligro ${pel} (el de su criatura)`); } }
+  t(JSON.stringify(TABLA.find((x) => x.id === "ulfhedinn")!.cuantos) === "[1,2]" && TABLA.find((x) => x.id === "ulfhedinn")!.momento === "noche" && TABLA.find((x) => x.id === "banshee")!.familia === "no-muertos" && TABLA.find((x) => x.id === "hombre_oso")!.familia === "monstruos", "Ulfhedinn: de 1-3 a 1-2 (peligro 4); familia y momento sin cambios");
+  // las criaturas que NO se tocan, igual: Elemental de agua P3/VD 6, Lich y Ysolde P5/VD 16
+  t(BESTIARIO.find((x) => x.nombre === "Elemental de agua")!.peligro === 3 && BESTIARIO.find((x) => x.nombre === "Elemental de agua")!.vd === "6" && ["Lich", "Ysolde, la Reina Pálida"].every((n) => { const c = BESTIARIO.find((x) => x.nombre === n)!; return c.peligro === 5 && c.vd === "16"; }), "Elemental de agua (P3, VD 6), Lich e Ysolde (P5, VD 16): sin cambio");
+  // regla de coherencia peligro ↔ VD: el VD nunca baja al subir el peligro (máximo VD de un peligro ≤ mínimo VD del siguiente)
+  const num = (v: string) => (v.includes("/") ? Number(v.split("/")[0]) / Number(v.split("/")[1]) : Number(v)); const malos: string[] = [];
+  for (let k = 1; k < 5; k++) { const a = BESTIARIO.filter((c) => c.peligro === k).map((c) => num(c.vd!)), b = BESTIARIO.filter((c) => c.peligro === k + 1).map((c) => num(c.vd!)); if (a.length && b.length && Math.max(...a) > Math.min(...b)) malos.push(`P${k} máx ${Math.max(...a)} > P${k + 1} mín ${Math.min(...b)}`); }
+  t(malos.length === 0, "coherencia peligro ↔ VD: el VD no baja al subir el peligro (máx. de cada peligro ≤ mín. del siguiente)", malos.join(" | "));
+  const rango = (k: number) => { const v = BESTIARIO.filter((c) => c.peligro === k).map((c) => num(c.vd!)); return `${Math.min(...v)}-${Math.max(...v)}`; };
+  t([1, 2, 3, 4, 5].map(rango).join(" ") === "0.5-1 2-3 5-7 7-12 14-24", "rangos de VD por peligro hoy: 0,5-1 · 2-3 · 5-7 · 7-12 · 14-24", [1, 2, 3, 4, 5].map(rango).join(" "));
+  // tablas por peligro: ninguna vacía ni de una sola criatura; el peligro 3 sigue con varias plantillas con criatura propia
+  const porP = (k: number) => TABLA.filter((x) => x.peligro === k);
+  t([1, 2, 3, 4, 5].every((k) => porP(k).length >= 1) && porP(3).filter((x) => x.bestiario).length >= 6 && porP(4).filter((x) => x.bestiario).length === 6, "plantillas por peligro: ninguna tabla vacía; el peligro 3 conserva 7 con criatura propia y el 4 pasa de 3 a 6", [1, 2, 3, 4, 5].map((k) => `${k}:${porP(k).length}`).join(" "));
+  // toda plantilla con criatura en su banda: peligro de la plantilla = peligro de la criatura
+  const fuera = TABLA.filter((x) => x.bestiario && buscarCriatura(x.bestiario)!.peligro !== x.peligro).map((x) => `${x.id} ${x.peligro}≠${buscarCriatura(x.bestiario!)!.peligro}`);
+  t(fuera.length === 0, "toda plantilla de encuentro con criatura tiene el peligro de su criatura", fuera.join(" | "));
+  // el sorteo (dados fijos): con el tope por nivel, los tres ya no salen en los niveles 3-4 y siguen saliendo desde el 5
+  const salen = (nivel: number): Set<string> => { const r = new Set<string>(); for (let v = 1; v <= 1000; v += 7) { const q = nuevaPartida(); normalizarPartida(q); for (let i = 0; i < 2; i++) ejecutar("guardar_personaje", { don_arcano: false, nombre: `P${i}`, jugador: `P${i}`, raza: "Humano del Faro", clase: "Mercenario del Cuervo", nivel, pv_max: 40, ca: 14, atributos: { fue: 12, des: 12, con: 12, int: 10, sab: 10, car: 10 }, inventario: ["Daga"], dote: "Terco" }, q); q.encuentros = []; iniciarRegistroDados([{ caras: 1000, valor: v }, { caras: 100, valor: 50 }]); const o = sortearEncuentro(q, { sin_jefe: true, region: "Velo Rojo" }); liberarDados(); for (const id of ["banshee", "ulfhedinn", "hombre_oso"]) { const nombre = TABLA.find((x) => x.id === id)!.nombre; if (o.includes(`Qué es: ${nombre}`)) r.add(id); } } return r; };
+  t(salen(3).size === 0 && salen(4).size === 0, "niveles 3-4: Banshee, Ulfhedinn y Hombre oso ya no salen en el sorteo (tope 3)", [...salen(3), ...salen(4)].join());
+  t(salen(5).size === 3, "desde el nivel 5 (tope 4): salen los tres", [...salen(5)].join()); }
 console.log(`${ok} ok, ${mal} fallas`);

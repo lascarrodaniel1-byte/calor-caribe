@@ -369,7 +369,7 @@ export const BESTIARIO: Criatura[] = [
     inmunidades: tipos("necrótico", "veneno"),
     temple: "espectro",
     categoria: "monstruo",
-    peligro: 3,
+    peligro: 4,
     region: "Bosque de Velo Rojo",
     descripcion: "El espíritu de una elfa que murió con el bosque. Llora con la voz de quien más quieres.",
     ca: 12,
@@ -516,7 +516,7 @@ export const BESTIARIO: Criatura[] = [
     personalidad: ["temerario"],
     blindaje: ["pellejo"],
     categoria: "monstruo",
-    peligro: 3,
+    peligro: 4,
     region: "Las Agujas de Vahl, el Bosque de Velo Rojo y los campos donde cayeron bandas de berserkers",
     descripcion:
       "Un hombre lobo: cuerpo de guerrero cubierto de pelo gris ceniza que ya no se distingue de la piel, hocico con colmillos, ojos de brasa y la boca llena de espuma. Aúlla antes de golpear, no siente el frío ni las heridas y se lanza a cuatro patas contra lo primero que ve. Aparecen de noche, solos o en bandas.",
@@ -550,7 +550,7 @@ export const BESTIARIO: Criatura[] = [
     personalidad: ["temerario"],
     blindaje: ["pellejo"],
     categoria: "monstruo",
-    peligro: 3,
+    peligro: 4,
     region: "Cuevas y claros de las Agujas de Vahl y del Bosque de Velo Rojo, entre árboles arañados a media altura",
     descripcion:
       "Un hombre oso: una mole de hombros enormes con la cabeza de oso hundida entre ellos, como un yelmo que ya no se quita, y unas zarpas negras del tamaño de una pala. Gruñe en lugar de hablar, olfatea el aire, se yergue sobre las patas traseras y no se aparta de su cubil si alguien lo pisa. Huele a ceniza fría y a miel rancia, y delata su paso por la corteza arañada de los árboles.",
@@ -664,7 +664,7 @@ export const BESTIARIO: Criatura[] = [
     vulnerabilidades: deMaterial("agua", "contundente"),
     temple: "elemental",
     categoria: "monstruo",
-    peligro: 3,
+    peligro: 4,
     region: "Hogueras que nunca se apagan, forjas, volcanes y cualquier incendio grande",
     descripcion:
       "Un resto de fuego sin dueño que algún dios dejó al morir: una silueta de llama que reptó de la hoguera. No habla ni odia: arde y consume lo que arde. Los braseros de Aldenmar lo atraen y sus hogueras lo mantienen a raya.",
@@ -742,7 +742,7 @@ export const BESTIARIO: Criatura[] = [
     inmunidades: tipos("veneno"),
     temple: "elemental",
     categoria: "monstruo",
-    peligro: 3,
+    peligro: 4,
     region: "Cumbres y torres altas de las Agujas de Vahl; tormentas y desfiladeros",
     descripcion:
       "Un torbellino con forma vaga de figura que silba al pasar. No tiene cuerpo: se cuela por rendijas, apaga antorchas y arranca lo que no está atado. En las Agujas lo confunden con el aliento de los dioses muertos.",
@@ -1601,8 +1601,8 @@ export const BESTIARIO: Criatura[] = [
 /** VD (valor de desafío) orientativo de cada criatura. Propuesto, a confirmar: es solo informativo (las reglas siguen usando el peligro 1–5). */
 export const VD: Record<string, string> = {
   Hambriento: "1", "Lobo de Ceniza": "1/2", Duende: "1", "Ghul de las fosas": "2", Ogro: "3", "Gárgola": "2", "Arpía": "2", "Hombre pez": "3", "Hombre lagarto": "3",
-  "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", Gorgon: "7", "Banshee del Velo": "5", Ulfhedinn: "5", "Hombre oso": "6",
-  "Golem de carne": "5", "Elemental de fuego": "5", "Elemental de agua": "6", "Elemental de aire": "5", Grifo: "5", Sirena: "5",
+  "Troll de ciénaga": "6", Wyverno: "6", Basilisco: "5", "Mantícora": "5", Gorgon: "7", "Banshee del Velo": "7", Ulfhedinn: "7", "Hombre oso": "7",
+  "Golem de carne": "5", "Elemental de fuego": "7", "Elemental de agua": "6", "Elemental de aire": "7", Grifo: "5", Sirena: "5",
   "Gigante de hueso": "10", "Dragón joven de ceniza": "11", "Apóstol": "12", Wendigo: "9", "Golem de piedra": "10", "Elemental de tierra": "9",
   Djinn: "6", Hidra: "10", Leshen: "9", Moira: "9", Lich: "16", Bakunawa: "18",
   "Hugin, el Pensamiento": "12", "Munin, la Memoria": "11", "Vaskar, el Lobo del Eclipse": "15", "El Juez Sin Ojos": "14", "Ysolde, la Reina Pálida": "16",
