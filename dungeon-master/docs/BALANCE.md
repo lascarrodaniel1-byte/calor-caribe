@@ -632,3 +632,26 @@ Lectura: de cada diez PJ que fallan la salvación de la habilidad, seis o siete 
 
 **Propuestas a confirmar.** El mapa completo (tipo → estado, salvación, duración), el frío modulado (ralentizado / paralizado), el eléctrico siempre paralizante (breve), corroído = CA −1, que el daño de dentro del tragado no dé estado, el asalto de inmunidad al terminar, no sumar estado a quien supera la salvación de la habilidad ni a las habilidades con `condicion` propia, y las CD (de la ficha o 8 + competencia + mod).
 
+
+## 19. Dureza real de las cinco criaturas subidas a peligro 4 (fase 4; valores a confirmar)
+
+Tras la subida de §15 las cinco ganaban el 100 % a nivel 5 frente al 33-81 % de sus nuevos pares P4 (Elemental de tierra 47 %, Golem de piedra 37 %, Gigante de hueso 81 %). Se les sube la dureza **real** (PV, CA y, donde solo tenían un ataque, un segundo ataque por acción, como ya hacen sus pares y los otros elementales); **peligro y VD no cambian** (4 y 7). Medido con `simular.ts --detalle --n-detalle 200 --niveles 1,5,9,13 --criatura …` (semilla 1, ataque completo de la ficha, grupo sin armas mágicas; el ruido de una celda es de unos ±5 puntos), hasta dejarlas en la banda de sus pares (≈ 60-80 % a nivel 5).
+
+| Criatura | Antes (PV · CA · ataque) | Después (PV · CA · ataque) | Victorias N1/N5/N9/N13 antes | después |
+|---|---|---|---|---|
+| Hombre oso | 13d10+39 (~110) · 15 · Garras ×2 +8, 2d6+5 | **18d10+72** (~171) · **17** · Garras ×2 **+9, 2d8+5** | 0/100/100/100 | **0/69/100/100** |
+| Elemental de fuego | 12d8+24 (~78) · 13 · Toque +6, 2d8+3 | **20d8+40** (~130) · **16** · Toque **×2 +8, 2d8+4** | 12/100/100/100 | **0/75/100/100** |
+| Elemental de aire | 10d8+20 (~65) · 15 · Golpe ×2 +8 | **18d8+36** (~117) · **17** · Golpe ×2 **+9** | 0/100/100/100 | **0/62/100/100** |
+| Banshee del Velo | 13d8 (~58) · 12 · Toque +4, 3d6+2 | **26d8+26** (~143) · **16** · Toque **×2 +8, 3d6+3** | 51/100/100/100 | **0/67/100/100** |
+| Ulfhedinn | 10d8+30 (~75) · 14 · Hacha +7, 1d12+4 | **24d8+72** (~180) · **18** · Hacha **×2 +9, 1d12+5** | 35/100/100/100 | **0/72/100/100** |
+| *Pares P4 (sin cambio)* | | | | Elemental de tierra 0/47/100/100 · Golem de piedra 0/37/99/100 · Gigante de hueso 0/81/100/100 |
+
+A nivel 1 ya no ganan nunca (0 %): lo esperable de un P4, que no sale antes del nivel 3-4. La fila «1 criatura, peligro 4» de la tabla principal (`--n 40 --rapido`) cambia así: N1 8 % · 5,1 asaltos → 0 % · 3,9 (96 % de PJ caídos → 100 %), **N5 78 % · 4,7 asaltos · 39 % de PJ caídos → 70 % · 6,8 asaltos · 61 %**, N9 100 % · 3,6 asaltos → 100 % · 4,8, N13 sin cambio de victorias (3,1 → 3,9 asaltos). El resto de la tabla, idéntico. El Hombre oso (0 % a nivel 1 y 100 % a nivel 5) ya no salta de golpe a 100 %: 0/69.
+
+Los PV son altos para un VD 7 porque el simulador aplica además sus resistencias al daño físico no mágico (mitad), y el grupo simulado no tiene armas mágicas; en una mesa con arma mágica, la dureza efectiva es menor. Por la misma razón el aviso de §13 («el equipo mágico lo compensa en la mesa») sigue valiendo. Si pareciera excesivo en la mesa, la palanca más barata es bajar los PV un 15 % (≈ −8 puntos a nivel 5).
+
+**Lich e Ysolde (P5, VD 16): sin cambio.** Ganan el 93 % y el 100 % a nivel 5, pero **el simulador no mide sus habilidades**: solo su Toque gélido (+11, 3d8+4) o su Mordisco, sin el Rayo de muerte (8d6), Palabra de parálisis, Tocar la vida, las acciones legendarias, la Resistencia legendaria, el Relicario, la regeneración de Ysolde ni su Corte. Subir su dureza con una medida que ignora justo lo que las hace P5 sería ajustar a ciegas; queda listado como pendiente hasta que el simulador sepa resolver habilidades.
+
+Cambios de datos: sólo `src/bestiario.ts` (las cinco fichas; la prosa no mencionaba PV ni CA). Pruebas: `t-bestiario` (la prueba del Hombre oso con sus nuevos PV y CA, y una nueva que fija peligro 4, VD 7, PV medios ≥ 100, CA ≥ 16 y ataque doble en las cinco). Prompt fijo: 67.236 → 67.236.
+
+**Propuestas a confirmar.** Los números de cada ficha (PV, CA, ataque doble y +1 a +2 de bonificador) y que el Hombre oso, la Banshee, el Ulfhedinn y los elementales ataquen dos veces por acción.
