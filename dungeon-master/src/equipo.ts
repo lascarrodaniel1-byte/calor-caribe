@@ -5,6 +5,7 @@ import type { Partida } from "./estado.js";
 import { APARIENCIA } from "./behelit.js";
 import { CATALIZADORES } from "./magia.js";
 import { VIALES, type NombreVial } from "./viales.js";
+import { precioEquipo } from "./tesoro.js";
 
 export const CALIDADES_OBJETO = ["defectuoso", "normal", "de calidad", "encantado", "maldito", "reliquia", "legendario"] as const;
 export type CalidadObjeto = (typeof CALIDADES_OBJETO)[number];
@@ -55,7 +56,7 @@ export const BASES: Base[] = [
   { nombre: "Arco largo", clase: "arma", detalle: "1d8 perforante, 45/180 m", precio: 50 },
   { nombre: "Armadura de cuero", clase: "armadura", detalle: "CA 11 + DES", precio: 10 },
   { nombre: "Cuero tachonado", clase: "armadura", detalle: "CA 12 + DES", precio: 45 },
-  { nombre: "Cota de escamas", clase: "armadura", detalle: "CA 14 + DES (máx. 2), desventaja en Sigilo", precio: 50 },
+  { nombre: "Armadura de escamas", clase: "armadura", detalle: "CA 14 + DES (máx. 2), desventaja en Sigilo", precio: 50 },
   { nombre: "Cota de mallas", clase: "armadura", detalle: "CA 16, FUE 13, desventaja en Sigilo", precio: 75 },
   { nombre: "Coraza", clase: "armadura", detalle: "CA 14 + DES (máx. 2)", precio: 400 },
   { nombre: "Armadura de placas", clase: "armadura", detalle: "CA 18, FUE 15, desventaja en Sigilo", precio: 1500 },
@@ -211,7 +212,7 @@ function generarUno(partida: Partida, origen: Origen, clase?: Clase, calidadFija
       const [n, e] = elegir(ENCANTAMIENTOS[base.clase]);
       nombre += ` ${n}`;
       apariencia = verdad = `${base.detalle}; encantado: ${e}`;
-      precio = precio * 10 + 200;
+      precio = precioEquipo(base.precio, "encantado");
       break;
     }
     case "maldito": {
@@ -220,7 +221,7 @@ function generarUno(partida: Partida, origen: Origen, clase?: Clase, calidadFija
       nombre += ` ${n}`;
       apariencia = `${base.detalle}; encantado: ${e}`;
       verdad = `${apariencia}. MALDITO (oculto hasta que se descubra): ${m}`;
-      precio = precio * 10 + 200;
+      precio = precioEquipo(base.precio, "maldito");
       break;
     }
     case "reliquia": {
@@ -228,7 +229,7 @@ function generarUno(partida: Partida, origen: Origen, clase?: Clase, calidadFija
       const poder = elegir(PODERES_RELIQUIA);
       nombre = `${base.nombre} ${n1}, reliquia de un dios muerto`;
       apariencia = verdad = `${base.detalle}; encantado: ${e1}; ${poder}. Usar su poder hace que el portador oiga al dios muerto en sueños.`;
-      precio = 5000;
+      precio = precioEquipo(base.precio, "reliquia");
       break;
     }
   }
@@ -272,7 +273,7 @@ export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; 
     const posibles = CATALIZADORES.filter((c) => (b.origen === "compra" || b.origen === "saqueo" ? c.precio !== null : true));
     const c = elegir(posibles);
     const raro = c.precio === null && tirar("1d100").total > 25;
-    const elegido = raro ? posibles.filter((x) => x.precio !== null)[0] : c;
+    const elegido = raro ? elegir(posibles.filter((x) => x.precio !== null)) : c; // el raro se cambia por uno con precio, al azar
     const linea = `- Catalizador: ${elegido.nombre}${b.origen === "compra" && elegido.precio ? ` — ${elegido.precio} po` : ""} (${elegido.descripcion})`;
     dm.push(linea);
     jug.push(linea);

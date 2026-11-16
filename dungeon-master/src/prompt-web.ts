@@ -6,6 +6,7 @@ import { buscarCriatura, fichaCriatura, textoBestiario } from "./bestiario.js";
 import { REGLAS_BEHELIT } from "./behelit.js";
 import { REGLAS_COMBATE } from "./combate.js";
 import { REGLAS_EQUIPO } from "./equipo.js";
+import { textoTesoro } from "./tesoro.js";
 import { REGLAS_HERIDAS } from "./heridas.js";
 import { herramientas } from "./herramientas.js";
 import { REGLAS_HECHICERO, REGLAS_MAGIA } from "./magia.js";
@@ -201,6 +202,8 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return REGLAS_VIALES;
     case "equipo":
       return REGLAS_EQUIPO;
+    case "tesoro":
+      return textoTesoro(nombre);
     case "behelits":
       return REGLAS_BEHELIT;
     case "bestiario":
@@ -231,6 +234,6 @@ export function consultarReglas(tema: string, nombre?: string): string {
       return h ? `${h.name}: ${h.description}\nEsquema: ${JSON.stringify(h.input_schema)}` : `No existe la acción "${nombre}". Acciones: ${herramientas.map((x) => x.name).join(", ")}.`;
     }
     default:
-      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, behelits, bestiario, mapa, magia, artes, arcos, saber, clima, criatura, accion, compania.`);
+      throw new Error(`Tema desconocido "${tema}". Temas: ambientacion, razas_clases, clase, combate, heridas, viales, equipo, tesoro, behelits, bestiario, mapa, magia, artes, arcos, saber, clima, criatura, accion, compania.`);
   }
 }

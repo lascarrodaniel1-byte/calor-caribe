@@ -186,7 +186,7 @@ export const CLASES: Clase[] = [
       "Rastro de la magia (rastro_magico): detecta hechizos y maldiciones y «amarra» un hechizo de magia negra a quien lo lanzó para rastrearlo con solo tener a la víctima o al objeto; cuanto más nivel, más sabe",
       "Carácter del oficio: meticulosos y algo supersticiosos, escriben cada noche en su cuaderno de runas (heredado de su maestro, al que añaden las suyas) y no cazan sin conocer a su presa. Son mercenarios con un código: «primero se rastrea, luego se juzga»; no queman a nadie sin pruebas, distinguen la magia de su abuso y desconfían igual de los magos libres que de la Inquisición que los tolera. Hablan poco, con humor seco, y cobran por contrato (aldeas, gremios, nobles)",
     ],
-    equipo: "Cuero tachonado, látigo de metal, dos shotels, 5 frascos de sal, estacas (para clavar los papeles), 10 hojas de runas, 6 po (los más veteranos del oficio lucen un urumi)",
+    equipo: "Cuero tachonado, látigo de metal, dos shotels, Frascos de sal (5), estacas (para clavar los papeles), 10 hojas de runas, 6 po (los más veteranos del oficio lucen un urumi)",
   },
   {
     nombre: "Degollador",
