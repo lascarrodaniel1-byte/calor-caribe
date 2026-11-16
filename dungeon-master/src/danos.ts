@@ -130,7 +130,13 @@ export interface ReglaDano {
 /** La regla tal como se escribe en la ficha de una criatura (sin motivo: lo genera `perfilDeCriatura` en bestiario.ts). */
 export type ReglaFicha = Omit<ReglaDano, "motivo">;
 /** Lo que un objetivo resiste, no sufre o sufre doble. Lo construyen `perfilDePersonaje` (rasgos.ts) y, para criaturas, su ficha. */
-export interface PerfilDano { resiste?: readonly ReglaDano[]; inmune?: readonly ReglaDano[]; vulnerable?: readonly ReglaDano[] }
+export interface PerfilDano {
+  resiste?: readonly ReglaDano[]; inmune?: readonly ReglaDano[]; vulnerable?: readonly ReglaDano[];
+  /** Protección LEVE del equipo (materiales rudimentarios): puntos fijos que resta cada golpe del tipo, solo si NO hay resistencia completa al tipo. */
+  reduce?: readonly (ReglaDano & { puntos: number })[];
+  /** Tipos cuyo estado se resiste con ventaja en la salvación aunque no haya resistencia completa (protección leve del equipo). */
+  ventajaEstado?: readonly ReglaDano[];
+}
 export interface ResultadoDano {
   final: number;
   /** Una línea por cada paso que cambió el daño por su tipo (inmunidad, resistencia, vulnerabilidad), con «antes → después»; vacío si no cambió nada. La mitad por salvación no sale aquí. */
@@ -151,6 +157,12 @@ function aplica(r: ReglaDano, tipo: TipoDano | undefined, fuente: FuenteDano | u
   if (r.salvoMaterial && mismoMaterial(fuente?.material, r.salvoMaterial)) return false;
   if (r.soloMaterial && !mismoMaterial(fuente?.material, r.soloMaterial)) return false;
   return true;
+}
+
+/** El motivo por el que el objetivo tira con ventaja la salvación del estado de este tipo: resistir el tipo (completa) o la protección leve del equipo; undefined si ninguno. */
+export function ventajaDeEstado(objetivo: PerfilDano, tipo: TipoDano, fuente?: FuenteDano): string | undefined {
+  if (resiste(objetivo, tipo, fuente)) return "resiste el tipo";
+  return (objetivo.ventajaEstado ?? []).find((r) => aplica(r, tipo, fuente, false))?.motivo;
 }
 
 /** ¿El objetivo resiste este tipo de daño de esta fuente? (para dar ventaja en la salvación de un estado). */
@@ -175,7 +187,10 @@ export function aplicarDano(a: { objetivo: PerfilDano; cantidad: number; tipo?: 
   const res = f(a.objetivo.resiste), vul = f(a.objetivo.vulnerable);
   if (res && vul) return { final: c, detalle: [`${res.motivo} y ${vul.motivo} se anulan: ${c}`] };
   if (res) { const n = Math.floor(c / 2); return { final: n, detalle: [`${res.motivo}: ${c} → ${n}`] }; }
-  if (vul) return { final: c * 2, detalle: [`${vul.motivo}: ${c} → ${c * 2}`] };
+  // Protección leve (material): solo sin resistencia completa; resta puntos fijos antes de la vulnerabilidad, sin bajar de 0
+  const leve = (a.objetivo.reduce ?? []).find((r) => aplica(r, a.tipo, a.fuente, !!a.sinTipoEsFisico));
+  if (leve) { const n = Math.max(0, c - leve.puntos); detalle.push(`${leve.motivo}: ${c} → ${n}`); c = n; if (c === 0) return { final: 0, detalle }; }
+  if (vul) return { final: c * 2, detalle: [...detalle, `${vul.motivo}: ${c} → ${c * 2}`] };
   return { final: c, detalle };
 }
 

@@ -4,6 +4,7 @@
 // pero casi nada hace rico. Los nombres de los objetos de consumo (raciones, odres, frascos de sal, hierbas, ganzúas, cadenas…) son EXACTOS: los reconocen
 // los regex del motor (sustento, sal, enfermedades, barbero, degollador, flagelante); `tests/motor/t-tesoro.ts` vigila que ningún otro nombre los dispare.
 import { tirar } from "./dados.js";
+import { MATERIALES_RESISTENTES, PUNTOS_LEVE } from "./resistencia_objeto.js";
 
 export const CATEGORIAS_TESORO = [
   "moneda", "gema_arte", "material", "ingrediente", "comida_bebida", "herramienta",
@@ -76,6 +77,8 @@ export const TESORO: EntradaTesoro[] = [
   e("hilo_encerado", "Ovillo de hilo encerado", "material", 2, 1, { cant: [1, 2], sabor: "Hilo de zapatero, resistente" }),
   e("seda_rollo", "Rollo de seda", "material", 25, 2, { regiones: ["Aldenmar"], sabor: "Seda teñida con ceniza, buena para un abrigo" }),
   e("pluma_grifo", "Plumas de grifo", "material", 20, 3, { criaturas: ["Grifo"], regiones: ["Agujas", "Karak"], cant: [2, 5], uso: "Apreciadas para flechas y adornos", sabor: "Largas, doradas y rígidas" }),
+  // Prendas y materiales de armadura con protección leve (datos en resistencia_objeto.ts): −N por golpe del tipo y ventaja en la salvación de su estado
+  ...MATERIALES_RESISTENTES.map((m) => e(m.id, m.nombre, "material", m.precio, m.peligroMin, { ...(m.regiones ? { regiones: m.regiones } : {}), ...(m.criaturas ? { criaturas: m.criaturas } : {}), uso: `Prenda rudimentaria: leve contra ${m.tipo} (−${PUNTOS_LEVE} por golpe y ventaja en su estado)`, sabor: m.sabor })),
   e("cuero_curtido", "Cuero curtido", "material", 6, 1, { sabor: "Una piel gruesa, sin marcar" }),
   e("hueso_gigante", "Hueso de gigante", "material", 30, 4, { criaturas: ["Gigante de hueso"], regiones: ["Marca Hueca"], uso: "Un tallador lo compra; sirve para mangos y estacas grandes", sabor: "Un fémur del largo de una pierna" }),
   e("piedra_runica", "Piedra con escritura antigua", "material", 40, 3, { criaturas: ["Golem de piedra"], regiones: ["Karak"], uso: "Un erudito la compra", sabor: "Letras enanas que nadie ha leído en treinta años" }),
@@ -309,6 +312,7 @@ const lineaTesoro = (x: EntradaTesoro) => `${x.nombre}${x.cant ? ` (${x.cant[0]}
 export const REGLAS_TESORO = `## Tesoro y botín (generar_botin, catálogo)
 - generar_botin {origen, cantidad, peligro?, region?, criatura?, categorias?}: con peligro (1-5), región o criatura reparte además de equipo materiales, comida, herramientas, documentos, gemas, trofeos de la criatura y objetos únicos, y sugiere oro (oro_cambio, NO se aplica solo: súmalo con modificar_personaje). Una llamada por saqueo; cantidad = nº de objetos. Sin peligro se trata como P2 (o el de la criatura): el saqueo, el hallazgo y el jefe SIEMPRE dan oro.
 - Oro por peligro: P1 1d6, P2 3d6, P3 2d8×3, P4 4d10×4, P5 6d10×10 po; ×0,5 saqueo, ×1 hallazgo, ×2 jefe (la compra no da oro). Un cofre (cofre: true; las trampas con cofre, el pecio y el tesoro de guarida lo llevan solo) multiplica por ×2 la tabla de su origen. Equipo mágico en saqueos comunes: ~0% P1-2, 5% P3, 12% P4, 25% P5; hallazgos y jefes dan más.
+- Prendas de protección LEVE (pieles de bárbaro…): −${PUNTOS_LEVE} por golpe de su tipo y ventaja en su estado (consultar_reglas equipo).
 - Precios de equipo: encantado/maldito = base×10+200; reliquia = encantado+5.000 (techo 19.000); legendaria 20.000.
 - Los objetos únicos con historia se registran con su [O#]. Materiales: «plata» y «hierro frío» se pasan como material en atacar. Consulta el catálogo con consultar_reglas {tema: "tesoro", nombre: categoría o criatura}.
 - Categorías: ${CATEGORIAS_TESORO.join(", ")}.`;

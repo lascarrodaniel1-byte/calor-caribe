@@ -105,4 +105,10 @@ t(BASES.every((b) => precioEquipo(b.precio, "maldito") === precioEquipo(b.precio
   t(!dentro.length, "ningún id ni nombre del catálogo está en sistemaWeb()", dentro.join());
   t(s.length <= 67600, "prompt fijo ≤ 67.600", String(s.length));
 }
+// Materiales rudimentarios con protección leve (resistencia_objeto.ts): en el catálogo, sin disparar ningún regex de consumo (lo vigila el bloque de arriba) y con su regla bajo demanda
+{
+  const mats = ["pieles_barbaro", "piel_wendigo", "lana_encerada", "cuero_dragon", "cuero_engrasado", "cuero_lejia", "mandil_curtidor", "velo_luto"];
+  t(mats.every((id) => TESORO.some((x) => x.id === id && x.categoria === "material" && x.valor_po >= 5 && x.valor_po <= 20 && /leve/.test(x.uso ?? ""))), "los 8 materiales de protección leve están en el catálogo (material, 5-20 po) y su uso lo dice");
+  t(/protección LEVE/i.test(REGLAS_TESORO), "REGLAS_TESORO remite a la protección leve");
+}
 console.log(`${ok} ok, ${mal} fallas`);

@@ -660,3 +660,32 @@ Cambios de datos: sólo `src/bestiario.ts` (las cinco fichas; la prosa no mencio
 
 La plantilla `ulfhedinn` tenía `cuantos [1, 2]`: con unos 360 PV equivalentes cada uno (§19), dos a nivel 5 no estaban medidos. Nuevo campo `Plantilla.soloUnoHastaNivel`: por debajo del nivel medio indicado sale **uno** (`cuantos` efectivo [1, 1]); desde el nivel 7, 1-2 como antes. **No se baja ningún PV** (el dueño pidió subir la dureza). El resto de plantillas, sin cambio. El simulador no cambia (no usa la tabla de encuentros).
 
+## 20. Resistencia elemental en el equipo (dos niveles; propuesta a confirmar)
+
+**Qué se ha medido** (`npx tsx tests/balance/estados.ts --n 300 --equipo ninguno|leve|fuerte`, motor real: una habilidad elemental contra un grupo de 4, 300 repeticiones por celda; estado = % de PJ que acaban con el estado; daño = PV medios perdidos por PJ):
+
+| Criatura · habilidad | Nivel | Sin equipo: estado / daño | Prenda leve: estado / daño | Encantamiento: estado / daño |
+|---|---|---|---|---|
+| Elemental de fuego · Oleada de fuego | 1 | 30 % / 11.2 | 17 % / 8.4 | 17 % / 4.9 |
+| Elemental de fuego · Oleada de fuego | 5 | 32 % / 11.0 | 15 % / 8.6 | 15 % / 5.1 |
+| Elemental de fuego · Oleada de fuego | 9 | 31 % / 11.4 | 17 % / 8.9 | 17 % / 5.2 |
+| Elemental de fuego · Oleada de fuego | 13 | 31 % / 10.6 | 17 % / 8.7 | 17 % / 5.1 |
+| Dragón joven de ceniza · Aliento de ceniza | 1 | 49 % / 47.5 | 33 % / 45.6 | 33 % / 23.5 |
+| Dragón joven de ceniza · Aliento de ceniza | 5 | 49 % / 47.1 | 32 % / 45.6 | 32 % / 23.5 |
+| Dragón joven de ceniza · Aliento de ceniza | 9 | 48 % / 47.3 | 32 % / 45.0 | 32 % / 23.2 |
+| Dragón joven de ceniza · Aliento de ceniza | 13 | 49 % / 47.3 | 31 % / 44.3 | 31 % / 22.9 |
+| Lich · Rayo de muerte | 1 | 40 % / 22.6 | 42 % / 23.1 | 28 % / 11.1 |
+| Lich · Rayo de muerte | 5 | 35 % / 22.2 | 36 % / 22.2 | 19 % / 11.0 |
+| Lich · Rayo de muerte | 9 | 32 % / 21.3 | 29 % / 21.9 | 15 % / 10.5 |
+| Lich · Rayo de muerte | 13 | 24 % / 21.2 | 24 % / 21.1 | 13 % / 10.2 |
+| Ulfhedinn · Ceniza de la furia | 1 | 24 % / 3.0 | 13 % / 2.2 | 13 % / 1.4 |
+| Ulfhedinn · Ceniza de la furia | 5 | 22 % / 2.7 | 11 % / 1.8 | 9 % / 1.2 |
+| Ulfhedinn · Ceniza de la furia | 9 | 17 % / 2.5 | 11 % / 1.8 | 11 % / 1.2 |
+| Ulfhedinn · Ceniza de la furia | 13 | 17 % / 2.0 | 7 % / 1.5 | 9 % / 1.0 |
+
+**Lectura.** (1) El **encantamiento** (resistencia completa) corta el daño elemental a casi la mitad (Dragón: 47 → 23; Lich: 22 → 11) y el estado a la mitad aproximadamente (50 → 33 % con el Dragón; 36 → 19 % con el Lich a nivel 5), por la ventaja en la salvación. (2) La **prenda leve** apenas recorta el daño de los golpes grandes (−2 por golpe: 47 → 45 con el aliento del Dragón) pero **iguala al encantamiento en el estado** (ventaja en la salvación: 49 → 32 %): su valor está en no acabar quemado, no en los PV. Frente a golpes pequeños (Elemental de fuego, Ulfhedinn: 1d4-2d6) −2 pesa más (11 → 8,6). (3) La **Banshee del Velo** (psíquico) no cambia: su Lamento es una salvación de CON a muerte, no daño, y no pasa por resistencias; el Lich y la Banshee no tienen material «leve» (necrótico y psíquico no tienen prenda rudimentaria: solo encantamiento). (4) Ningún cambio de peligro ni de VD; el simulador de combate no usa estos efectos y sale idéntico.
+
+**Reparto de saqueos antes/después** (`tests/balance/botin.ts`): la proporción de equipo mágico (encantado + maldito) por peligro y origen, el oro y las categorías no cambian más allá del ruido (los ocho materiales nuevos se reparten dentro de la categoría `material`, 8-13 % de un saqueo común; la diversidad sube de 75 a 79 objetos distintos en P1 y de 108 a 113 en P3). Dentro del equipo encantado de armadura, la resistencia elemental pasa de 2 de 7 encantamientos posibles a 9 de 14.
+
+**Propuestas a confirmar:** los 2 puntos de la protección leve, que la leve dé ventaja en el estado, los siete encantamientos de armadura y tres de accesorio nuevos, los ocho materiales con sus precios y regiones, y que las reliquias de resistencia den dos tipos.
+

@@ -6,6 +6,7 @@ import { APARIENCIA } from "./behelit.js";
 import { CATALIZADORES } from "./magia.js";
 import { VIALES, type NombreVial } from "./viales.js";
 import { precioEquipo } from "./tesoro.js";
+import { ENCANTAMIENTOS_RESISTENTES, MATERIALES_RESISTENTES, PUNTOS_LEVE } from "./resistencia_objeto.js";
 
 export const CALIDADES_OBJETO = ["defectuoso", "normal", "de calidad", "encantado", "maldito", "reliquia", "legendario"] as const;
 export type CalidadObjeto = (typeof CALIDADES_OBJETO)[number];
@@ -83,8 +84,7 @@ const ENCANTAMIENTOS: Record<Clase, [string, string][]> = {
   armadura: [
     ["+1", "+1 a la CA"],
     ["+2", "+2 a la CA"],
-    ["ignífuga", "resistencia al fuego"],
-    ["de los vivos", "resistencia al daño necrótico"],
+    ...ENCANTAMIENTOS_RESISTENTES.filter((x) => x.clase === "armadura").map((x): [string, string] => [x.nombre, `${x.texto} (la mitad del daño de ese tipo; no se suma a otra resistencia al mismo tipo)`]),
     ["silenciosa", "sin desventaja en Sigilo"],
     ["del vigía", "no puedes ser sorprendido"],
     ["de sutura", "al sufrir una herida, se tira la gravedad dos veces y te quedas con la menor"],
@@ -97,6 +97,7 @@ const ENCANTAMIENTOS: Record<Clase, [string, string][]> = {
     ["del herrero", "+1 FUE (máx. 20)"],
     ["de sal", "+2 contra infección; las heridas por no-muertos no transmiten la Podre con un 50%"],
     ["del ojo muerto", "ves en oscuridad mágica a 18 m"],
+    ...ENCANTAMIENTOS_RESISTENTES.filter((x) => x.clase === "accesorio").map((x): [string, string] => [x.nombre, `${x.texto} (la mitad del daño de ese tipo; no se suma a otra resistencia al mismo tipo)`]),
   ],
 };
 
@@ -245,7 +246,10 @@ export function generarUno(partida: Partida, origen: Origen, clase?: Clase, cali
       break;
     }
     case "reliquia": {
-      const [n1, e1] = elegir(ENCANTAMIENTOS[base.clase]);
+      let [n1, e1] = elegir(ENCANTAMIENTOS[base.clase]);
+      const r1 = ENCANTAMIENTOS_RESISTENTES.find((x) => x.clase === base.clase && x.nombre === n1);
+      const otros = r1 ? ENCANTAMIENTOS_RESISTENTES.filter((x) => x.clase === base.clase && x.tipo !== r1.tipo) : [];
+      if (otros.length) { const r2 = elegir(otros); n1 = `${n1} y ${r2.nombre}`; e1 = `${e1}; además ${r2.texto} (las reliquias de resistencia dan dos tipos)`; } // la reliquia es «mayor»: dos tipos
       const poder = elegir(PODERES_RELIQUIA);
       nombre = `${base.nombre} ${n1}, reliquia de un dios muerto`;
       apariencia = verdad = `${base.detalle}; encantado: ${e1}; ${poder}. Usar su poder hace que el portador oiga al dios muerto en sueños.`;
@@ -344,7 +348,8 @@ export const REGLAS_EQUIPO = `## Equipamiento y botín (usa generar_botin, crear
 - generar_botin tira con tablas según el origen: compra (tiendas: casi todo normal, algún vial a la venta), saqueo (cadáveres comunes: mucha chatarra), hallazgo (ruinas, tumbas, cámaras ocultas: aquí aparece lo encantado y lo maldito) y jefe (lo mejor, y lo más peligroso).
 - Lo maldito parece encantado: muestra a los jugadores solo la apariencia. Revela la maldición en la ficción cuando se manifieste por primera vez o cuando la descubran (Arcanos CD 15, un rito, un experto) y entonces llama a examinar_objeto con revelar=true.
 - No dependas solo de las tablas: crea con crear_objeto armas con nombre e historia, objetos únicos de la aventura, armas de jefes caídos, recompensas de misiones. Las tiendas de Aldenmar tienen casi de todo lo normal; lo encantado se encuentra, se gana o se compra en el mercado negro a precios abusivos.
-- Respeta los efectos de los objetos en tus arbitrajes (bonificadores, resistencias, maldiciones).`;
+- Respeta los efectos de los objetos en tus arbitrajes (bonificadores, resistencias, maldiciones).
+- RESISTENCIA ELEMENTAL DEL EQUIPO, en dos niveles (la aplica el programa por el inventario; en modificar_personaje y habilidades pasa tipo_dano): (1) ENCANTAMIENTO (armadura, escudo o accesorio con su [O#]: ${ENCANTAMIENTOS_RESISTENTES.map((x) => `${x.nombre} → ${x.tipo}`).join(", ")}): mitad del daño de ese tipo, como una racial; las reliquias de armadura con resistencia dan dos tipos. (2) MATERIAL rudimentario (prendas baratas, categoría material del tesoro: ${MATERIALES_RESISTENTES.map((x) => `${x.nombre} → ${x.tipo}`).join(", ")}): resta ${PUNTOS_LEVE} puntos por golpe de ese tipo (tras la mitad por salvación, sin bajar de 0) y da ventaja en la salvación de su estado. Varias fuentes del MISMO tipo no se acumulan (racial, Furia, Voto de Luz, sumergido, encantamiento: una sola mitad) y la leve no suma a la completa. Un objeto vendido o perdido deja de dar la resistencia. La ficha del DM muestra «Resiste por equipo». La armadura por regiones no cambia.`;
 
 /** ¿El arma que usa el personaje es mágica? Sí si es un objeto del inventario (con su [O#]) de calidad encantado, maldito, reliquia o legendario cuyo nombre coincide
  *  con el del arma. Sin objeto registrado se supone NO mágica: si el DM sabe otra cosa, pasa `magico: true` en atacar. */

@@ -3,6 +3,7 @@
 import type { Personaje } from "./estado.js";
 import { aplicarDano, type FuenteDano, type PerfilDano, type ReglaDano, type ResultadoDano, type TipoDano } from "./danos.js";
 import { juramentoActivo } from "./juramento_base.js";
+import { PUNTOS_LEVE, resistenciasDeEquipo } from "./resistencia_objeto.js";
 import { nvl, NIVEL_ATAQUE_ADICIONAL, NIVEL_PRESA_MARCADA, NIVEL_VETERANO } from "./niveles.js";
 
 /** Clases con Ataque adicional (nivel real 4, sin desplazar: ver NIVEL_ATAQUE_ADICIONAL). El Degollador y el Hechicero no lo tienen. */
@@ -31,7 +32,13 @@ export function perfilDePersonaje(p: Personaje): PerfilDano {
   if (p.furia?.activa) for (const tipo of ["cortante", "perforante", "contundente"] as const) resiste.push({ tipo, motivo: "Furia: resiste el daño físico" });
   if (juramentoActivo(p) && p.nivel >= nvl(3) && p.juramento!.votos.includes("luz")) resiste.push({ tipo: "necrótico", motivo: "Voto de Luz: resiste el daño necrótico" });
   if (p.condiciones?.some((x) => /^sumergido/i.test(x))) resiste.push({ tipo: "fuego", motivo: "Sumergido: el agua amortigua el fuego" });
-  return { resiste };
+  // Equipo: encantamiento (completa; no suma a una racial, Furia, Luz o sumergido del mismo tipo: aplicarDano toma una sola mitad) y material rudimentario (leve)
+  const reduce: (ReglaDano & { puntos: number })[] = [], ventajaEstado: ReglaDano[] = [];
+  for (const x of resistenciasDeEquipo(p.inventario)) {
+    if (x.nivel === "completa") resiste.push({ tipo: x.tipo, motivo: `${x.fuente}: resistencia a ${x.tipo}` });
+    else { reduce.push({ tipo: x.tipo, motivo: `${x.fuente} (leve, −${PUNTOS_LEVE})`, puntos: PUNTOS_LEVE }); ventajaEstado.push({ tipo: x.tipo, motivo: `${x.fuente}` }); }
+  }
+  return { resiste, ...(reduce.length ? { reduce, ventajaEstado } : {}) };
 }
 /** Aplica a un personaje un daño ya completo (tras bonificadores, armadura y ventaja) por su tipo: ver `aplicarDano`. */
 export const aplicarDanoAPersonaje = (p: Personaje, cantidad: number, tipo?: TipoDano, o: { fuente?: FuenteDano; mitadSalvacion?: boolean; sinTipoEsFisico?: boolean } = {}): ResultadoDano =>

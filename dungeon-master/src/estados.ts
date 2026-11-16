@@ -3,7 +3,7 @@
 // Usa el catálogo de condiciones (condiciones.ts): no inventa efectos que el motor no sepa aplicar.
 import { describir, tirar } from "./dados.js";
 import { condicionInmune, mismaCondicion, reconocer } from "./condiciones.js";
-import { esFisico, resiste, type FuenteDano, type PerfilDano, type TipoDano } from "./danos.js";
+import { esFisico, ventajaDeEstado, type FuenteDano, type PerfilDano, type TipoDano } from "./danos.js";
 import { aplicarCondicion, condsDe, localizar, retirarCaido, type Combatiente } from "./combate.js";
 import { danarConTipo, inmunidadesCondicionDe, perfilDeJefe, perfilDePnj, type EstadoJefe, type Habilidad } from "./bestiario.js";
 import { aplicarDanoAPersonaje, perfilDePersonaje } from "./rasgos.js";
@@ -163,7 +163,7 @@ export function estadoPorDano(d: DatosEstadoDano): ResultadoEstado {
   }
   // Salvación contra la CD fija; resistir el tipo da ventaja.
   const cd = d.cd ?? cdDeEstado(d.atacante, d.atributo);
-  const motivo = resiste(perfilDe(partida, ob), tipo, d.fuente) ? "resiste el tipo" : undefined;
+  const motivo = ventajaDeEstado(perfilDe(partida, ob), tipo, d.fuente); // resistir el tipo o la protección leve del equipo: ventaja (una sola vez)
   const s = salvar(ob, def.salva, cd, { motivo, contra: primero.condicion });
   if (s.exito) return { lineas: [`${def.emoji} ${nombre} aguanta el efecto de ${tipo}: ${s.texto}.`], aviso: null };
   const fuerte = !!def.fuerte && !sobre && (s.margen <= -5 || !!d.critico);
@@ -303,6 +303,7 @@ ${Object.entries(ESTADOS_POR_DANO).map(([t, d]) => `- ${t} → ${d!.normal.map((
 - Opt-out: atacar/danar_criatura {sin_estado: true}; en la ficha, estado: false en una habilidad (o sinEstados en la criatura). El daño físico no da estado.
 - No se acumula: quien ya lo sufre solo lo renueva (los de control —paralizado, aturdido, cegado— no se alargan). Al terminar, el objetivo es inmune a ese estado un asalto. Acaban solos al cambiar de asalto (siguiente_asalto), al acabar el combate y al descansar (corroído, hasta el descanso).
 - Quemado: 1d4 de fuego al empezar cada asalto; se apaga con accion_combate {accion: apagarse} (una acción) o con agua (agua sumergir/entrar lo quita; sumergido resiste el fuego). Si lo pones a mano con condicion o agregar_condiciones también arde y caduca igual (3 asaltos). Un PJ a 0 PV que sigue quemado sufre ese fuego como daño en el suelo (un fallo de salvación contra muerte por asalto).
+- Equipo: una resistencia completa al tipo (encantamiento, racial…) o un material rudimentario (pieles de bárbaro: frío…) da ventaja en la salvación del estado (una sola vez) y la tirada dice cuál (consultar_reglas equipo).
 - Esencia Clara (vial, 50 po; nombre propuesto): quita TODOS los estados temporales (quemado, paralizado, ralentizado, envenenado, ensordecido, cegado, aturdido, corroído, debilitado), también los de la Hiel y los puestos a mano, sin dejar asalto de inmunidad. No toca maldiciones, enfermedades, heridas ni agotamiento. Pide receptor; si está incapacitado, otro debe dársela (portador distinto).
 - Duración: en combate, por asaltos. Fuera de combate, por RELOJ («breve» = 1 asalto = 6 s; N asaltos = 6·N s): caducan cuando el reloj avanza (pasar_tiempo, tiempo avanzar); no arden fuera de combate. Al iniciar un combate se purgan los que venían de fuera (menos corroído, hasta el descanso). La Hiel de Víbora Gris deja envenenado 1 h y paralizado 1 min por reloj (sobreviven al combate). Ralentizado: velocidad a la mitad y desventaja en salvaciones de DES. Corroído: CA −1. Debilitado: desventaja en pruebas.
 - Tragado: el daño de dentro (eléctrico, ácido) no da estado.`;

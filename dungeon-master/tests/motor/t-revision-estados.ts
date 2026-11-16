@@ -132,7 +132,7 @@ const reg = (m: ReturnType<typeof mk>) => (m.p.estadosDano ?? []) as any[];
   t(u.pj.condiciones.length === 0, "curar no da estado");
   const g = mk("Cenizo"); R(() => g.E("modificar_personaje", { nombre: "Aldo", pv_cambio: -10, tipo_dano: "fuego", cd_estado: 13 }), d(20, 1, 1)); // resistente: ventaja (1,1 sigue fallando)
   t(g.pj.pv === 85, "el Cenizo recibe la mitad", String(g.pj.pv));
-  t(/modificar_personaje/.test(consultarReglas("estados", mk().p)) && /sin_estado/.test(consultarReglas("estados", mk().p)), "consultar_reglas estados lo documenta");
+  t(/modificar_personaje/.test(consultarReglas("estados")) && /sin_estado/.test(consultarReglas("estados")), "consultar_reglas estados lo documenta");
 }
 
 // ---- A6. El estado cuenta solo el daño del arma, no el del Castigo radiante
@@ -153,7 +153,7 @@ const reg = (m: ReturnType<typeof mk>) => (m.p.estadosDano ?? []) as any[];
   const e = mk("Enano de Karak-Dûm"); const r3 = R(() => e.E("modificar_personaje", { nombre: "Aldo", pv_cambio: -10, tipo_dano: "veneno", cd_estado: 30 }), d(20, 1, 2));
   t(/ventaja/.test(txt(r3)), "veneno: el Enano tira con ventaja");
   const o = mk("Humano del Faro"); const r4 = R(() => o.E("modificar_personaje", { nombre: "Aldo", pv_cambio: -10, tipo_dano: "fuego", cd_estado: 30 }), d(20, 1, 2));
-  t(!/ventaja/.test(txt(r4)), "fuego: sin ventaja racial");
+  t(!/\(ventaja/.test(txt(r4)), "fuego: sin ventaja racial");
 }
 
 // ---- A8. Quemado a 0 PV: daño en el suelo

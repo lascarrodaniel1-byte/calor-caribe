@@ -18,6 +18,7 @@ import { textoRecursos } from "./recursos.js";
 import { textoProgresion } from "./progresion.js";
 import { textoMuerte } from "./muerte.js";
 import { efectos, textoEfectos } from "./condiciones.js";
+import { textoResistenciasEquipo } from "./resistencia_objeto.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoRegentes } from "./regentes.js";
 import type { EstadoJefe } from "./bestiario.js";
@@ -292,6 +293,7 @@ export function fichaTexto(p: Personaje): string {
         })
         .join(" "),
     `  Inventario: ${p.inventario.join(", ") || "—"}`,
+    textoResistenciasEquipo(p.inventario) ? `  Resiste por equipo: ${textoResistenciasEquipo(p.inventario)}` : "",
     (() => {
       const a = armaduraDe(p);
       return `  Armadura: ${a.piezas.length ? textoArmadura(a.piezas) : "ninguna"}${a.deducida && a.piezas.length ? " (deducida del inventario)" : ""}`;

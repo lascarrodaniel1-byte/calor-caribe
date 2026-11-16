@@ -101,7 +101,7 @@ t(ESTADOS_TEMPORALES.length === 9, "los estados temporales son 9");
 // ---- visible a jugadores, documentado y NO en el prompt fijo
 {
   const c = comando(mk().p, "/viales"); t(!!c && new RegExp(V).test(c.texto) && c.publico === false, "/viales (mesa) lo lista", c?.texto.slice(0, 40));
-  t(consultarReglas("viales", mk().p)?.includes(V) && /Esencia Clara/.test(consultarReglas("estados", mk().p)), "consultar_reglas viales y estados lo describen");
+  t(consultarReglas("viales")?.includes(V) && /Esencia Clara/.test(consultarReglas("estados")), "consultar_reglas viales y estados lo describen");
   t(!sistemaWeb().includes(V), "el prompt fijo no lo menciona", String(sistemaWeb().length));
 }
 console.log(`${ok} ok, ${mal} fallas`);

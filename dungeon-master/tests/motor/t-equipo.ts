@@ -1,7 +1,8 @@
 // Equipo y botín (src/equipo.ts): generarBotin sin excepciones en todos los orígenes, legendarias (con 1 libre ya no se tira un 1d1),
 // calidad/clase válidas y distribución básica. Los dados están fijados cuando el resultado depende de ellos.
 import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
-import { generarBotin, LEGENDARIAS, ORIGENES, CALIDADES_OBJETO, BASES } from "../../src/equipo.ts";
+import { generarBotin, generarUno, LEGENDARIAS, ORIGENES, CALIDADES_OBJETO, BASES } from "../../src/equipo.ts";
+import { perfilDePersonaje } from "../../src/rasgos.ts";
 import { iniciarRegistroDados, liberarDados, tirar } from "../../src/dados.ts";
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const nueva = () => { const p = nuevaPartida(); normalizarPartida(p); return p; };
@@ -91,5 +92,11 @@ for (const c of ["defectuoso", "normal", "de calidad", "encantado", "maldito", "
   const p = nueva(); iniciarRegistroDados([{ caras: 100, valor: 50 }, { caras: 100, valor: 1 }]);
   let err = ""; try { generarBotin(p, { origen: "hallazgo", cantidad: 1, calidad: "normal", incluir_viales: false }); } catch (e: any) { err = e.message; } liberarDados();
   t(!err, "botín con dados fijos sin excepción", err);
+}
+// Los encantamientos de resistencia ya son datos: «ignífuga» y «de los vivos» (antes solo texto) dan resistencia por el inventario (el detalle completo, en t-resistencia-equipo)
+{
+  const p = nueva(); const f = (q: string) => { for (let i = 0; i < 600; i++) { const o = generarUno(p, "hallazgo", "armadura", "encantado"); if (new RegExp(q).test(o.nombre)) return o; } return undefined; };
+  const ign = f("ignífuga"), viv = f("de los vivos");
+  t(!!ign && !!viv && perfilDePersonaje({ inventario: [ign.nombre], condiciones: [], raza: "Humano del Faro", clase: "Mercenario del Cuervo", nivel: 5 } as any).resiste!.some((x) => x.tipo === "fuego") && perfilDePersonaje({ inventario: [viv.nombre], condiciones: [], raza: "Humano del Faro", clase: "Mercenario del Cuervo", nivel: 5 } as any).resiste!.some((x) => x.tipo === "necrótico"), "ignífuga → resistencia al fuego y de los vivos → necrótico por el inventario");
 }
 console.log(`${ok} ok, ${mal} fallas`);
