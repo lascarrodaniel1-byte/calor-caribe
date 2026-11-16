@@ -136,7 +136,7 @@ export function textoProgresion(p: Personaje): string {
 
 /** PX de un enemigo con ficha de PNJ que cae en combate, según su veteranía. */
 export const PX_PNJ: Record<string, number> = { recluta: 25, curtido: 50, veterano: 150, leyenda: 450 };
-/** Una misión o arco da a cada personaje este porcentaje de lo que le falta para el nivel siguiente (de un nivel al otro). */
+/** Una misión o arco da a cada personaje este porcentaje FIJO de su tramo de nivel (PX del siguiente nivel − PX del actual), sin importar cuánto lleve ya. */
 export const PX_MISION: Record<string, number> = { menor: 0.15, normal: 0.3, mayor: 0.5, epica: 0.8 };
 
 /** Anota los PX de un enemigo derrotado; se reparten al cerrar el combate. */
@@ -160,7 +160,7 @@ export function repartirBajas(partida: Partida, extra: { nombre: string; px: num
 
 export interface DatosExperiencia {
   accion: "dar" | "por_criatura" | "ver" | "mision";
-  /** mision: cuánto pesa (menor 15 %, normal 30 %, mayor 50 %, épica 80 % de lo que falta para el siguiente nivel, a cada uno). */
+  /** mision: cuánto pesa (menor 15 %, normal 30 %, mayor 50 %, épica 80 % del tramo del nivel actual, a cada uno). */
   importancia?: "menor" | "normal" | "mayor" | "epica";
   px?: number;
   /** por_criatura: peligro de la criatura derrotada (1-5) y cuántas. */
@@ -185,7 +185,7 @@ export function darExperiencia(partida: Partida, d: DatosExperiencia): string {
       p.px = pxActual(p) + parte;
       return `${p.nombre}: +${parte} PX (${p.px}${pxSiguiente(p) !== null ? `/${pxSiguiente(p)}` : ""})${!antes && puedeSubir(p) ? " ⬆ ¡puede subir de nivel!" : ""}`;
     });
-    return `Experiencia por ${d.motivo ?? "la misión"} (${d.importancia ?? "normal"}, ${Math.round(f * 100)} % del camino al siguiente nivel, a cada uno):\n${lineas.join("\n")}`;
+    return `Experiencia por ${d.motivo ?? "la misión"} (${d.importancia ?? "normal"}, ${Math.round(f * 100)} % del tramo de su nivel, a cada uno):\n${lineas.join("\n")}`;
   }
   let total = d.px ?? 0;
   if (d.accion === "por_criatura") {
@@ -344,6 +344,6 @@ export function subirNivel(partida: Partida, d: DatosSubirNivel): string {
 
 export const REGLAS_PROGRESION = `## Experiencia y niveles
 - La experiencia es AUTOMÁTICA: cada criatura que muere suma sus PX según su peligro (1: 50, 2: 450, 3: 1800, 4: 5000, 5: 15000; los jefes, un 50 % más: cuanto más poderoso, mucho más) y cada enemigo con ficha de PNJ que cae, según su veteranía (recluta 25, curtido 50, veterano 150, leyenda 450); al cerrar el combate (terminar_combate) se reparten a partes iguales entre los personajes vivos. NO la repartas tú a mano por esos combates. Las criaturas que huyen o se perdonan no dan PX.
-- Cerrar un arco (trama cerrar_arco) da experiencia solo: a cada personaje, el 30 % de lo que le falta para el siguiente nivel (importancia: menor 15 %, normal 30 %, mayor 50 %, épica 80 %). Una misión menor o un encargo que no es un arco se premia con experiencia {accion: mision, importancia, motivo}. Para un desafío suelto, un buen plan o una escena memorable, usa experiencia {accion: dar, px}. En la ficha verás los PX y «⬆ PUEDE SUBIR DE NIVEL».
+- Cerrar un arco (trama cerrar_arco) da experiencia solo: a cada personaje, el 30 % de su tramo de nivel (PX del siguiente nivel menos los del actual; importancia: menor 15 %, normal 30 %, mayor 50 %, épica 80 %). Una misión menor o un encargo que no es un arco se premia con experiencia {accion: mision, importancia, motivo}. Para un desafío suelto, un buen plan o una escena memorable, usa experiencia {accion: dar, px}. En la ficha verás los PX y «⬆ PUEDE SUBIR DE NIVEL».
 - Los NIVELES SUBEN SOLOS: en cuanto un personaje tiene los PX del siguiente nivel, el programa lo sube (PV por el promedio, competencia y rasgos de clase) y te lo cuenta; cuéntaselo al jugador con ceremonia. En los niveles 4, 8, 12, 16 y 19 el jugador elige un aumento de característica (+2 a una o +1 a dos) O una dote: la ficha muestra la elección pendiente; pregúntale y guárdala con eleccion_nivel {quien, aumento | dote, opcion} (si su jugador está ausente, queda pendiente hasta que vuelva). subir_nivel solo hace falta para subir por hito (por_hito) o con tirada de PV (pv: tirar). No cambies el nivel a mano con modificar_personaje salvo para corregir un error.
 - Los niveles dan poder lentamente: no regales niveles por hito más de uno cada varias sesiones.`;

@@ -689,3 +689,20 @@ La plantilla `ulfhedinn` tenía `cuantos [1, 2]`: con unos 360 PV equivalentes c
 
 **Propuestas a confirmar:** los 2 puntos de la protección leve, que la leve dé ventaja en el estado, los siete encantamientos de armadura y tres de accesorio nuevos, los ocho materiales con sus precios y regiones, y que las reliquias de resistencia den dos tipos.
 
+
+## 21. Experiencia de los arcos: ya es un porcentaje fijo del tramo (aclaración)
+
+`trama {cerrar_arco, importancia}` y `experiencia {accion: mision}` dan a cada personaje vivo un porcentaje **fijo del tramo de su nivel** (PX del siguiente nivel − PX del actual): menor 15 %, normal 30 %, mayor 50 %, épica 80 %. **La fórmula ya era fija por tramo**: no es asintótica y cada arco da lo mismo sea cual sea el progreso. Lo que estaba mal era la redacción (README, prompt y descripciones de la herramienta decían «de lo que le falta»), corregida ahora; los porcentajes no cambian (decisión mía, a confirmar). Se estudió bajar a 12/25/40/65 %, pero con «nunca menos que el valor actual» el máximo sería siempre el actual, así que no se aplica. Pruebas: `tests/motor/t-xp-arcos.ts`.
+
+| Nivel | Tramo | PX por arco normal (30 %) | Arcos por nivel solo con arcos normales |
+|---|---|---|---|
+| 1 | 300 | 90 | 4 |
+| 2 | 600 | 180 | 4 |
+| 3 | 1800 | 540 | 4 |
+| 4 | 3800 | 1140 | 4 |
+| 5 | 7500 | 2250 | 4 |
+| 6 | 9000 | 2700 | 4 |
+| 7 | 11000 | 3300 | 4 |
+| 8 | 14000 | 4200 | 4 |
+
+Un arco menor da 45 PX a nivel 1 y un arco épico 240; los PX de combate y las misiones menores aceleran la subida. El simulador de combate no usa arcos y no cambia.
