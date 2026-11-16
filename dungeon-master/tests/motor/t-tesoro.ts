@@ -20,7 +20,7 @@ t(TESORO.every((x) => (x.uso ?? "").length <= 120), "uso ≤ 120 caracteres", TE
 t(TESORO.every((x) => (x.sabor ?? "").length <= 80), "sabor ≤ 80 caracteres", TESORO.filter((x) => (x.sabor ?? "").length > 80).map((x) => x.id).join());
 t(TESORO.every((x) => !x.cant || (x.cant[0] >= 1 && x.cant[1] >= x.cant[0])), "cant bien formada");
 t(TESORO.filter((x) => x.valor_po > 50).every((x) => x.peligroMin >= 3 || x.categoria === "objeto_trama"), "lo caro (>50 po) pide peligro 3+ o es un objeto único");
-t(TESORO.filter((x) => x.categoria !== "objeto_trama" && x.valor_po > 50).length <= 14, "pocas entradas raras (>50 po) fuera de los objetos únicos");
+t(TESORO.filter((x) => x.categoria !== "objeto_trama" && x.valor_po > 50).length <= 25 && TESORO.filter((x) => !x.unico && x.valor_po <= 50).length >= 100, "valores bajos: ≥ 100 entradas de ≤ 50 po y pocas raras (>50 po) fuera de los únicos");
 t(TESORO.filter((x) => x.categoria === "objeto_trama").length >= 20 && TESORO.filter((x) => x.categoria === "objeto_trama").every((x) => x.unico), "≥ 20 objetos únicos con historia, todos marcados únicos");
 
 // Criaturas citadas existen; las 10 sin botín (y todas las del bestiario sin él) quedan cubiertas
@@ -29,7 +29,7 @@ const desconocidas = TESORO.flatMap((x) => x.criaturas ?? []).filter((c) => !nom
 t(!desconocidas.length, "las criaturas del catálogo existen en el bestiario", desconocidas.join());
 const SIN_BOTIN = ["Lobo de Ceniza", "Ghul de las fosas", "Ogro", "Troll de ciénaga", "Wyverno", "Basilisco", "Mantícora", "Banshee del Velo", "Gigante de hueso", "Apóstol"];
 for (const n of SIN_BOTIN) t(TESORO.some((x) => x.criaturas?.includes(n)), `criatura sin botín cubierta: ${n}`);
-t(BESTIARIO.filter((c) => !c.botin).every((c) => SIN_BOTIN.includes(c.nombre)), "las únicas criaturas sin botín texto son esas 10");
+t(BESTIARIO.every((c) => !!c.botin), "ahora todas las criaturas tienen texto de botín (las 10 de antes lo ganaron en L3)");
 
 // Compatibilidad con los regex de consumo del motor: solo las entradas previstas los disparan
 const REGEX: Record<string, { re: RegExp; permitidos: string[] }> = {

@@ -76,7 +76,7 @@ const tieneFicha = (b: string, c: typeof ogro) => b.includes(`CA ${c.ca} · PV $
 // ---- consulta explícita completa
 {
   const r = consultarReglas("criatura", "Ogro");
-  t(r === fichaCriatura(ogro) && r.includes(ogro.descripcion), "consultar_reglas criatura: ficha completa con descripción");
+  t(r === fichaCriatura(ogro, true, true) && r.includes(ogro.descripcion), "consultar_reglas criatura: ficha completa con descripción");
   t(BESTIARIO.every((c) => fichaCriatura(c).includes(c.descripcion)), "fichaCriatura devuelve la descripción por defecto en las 46 criaturas");
 }
 

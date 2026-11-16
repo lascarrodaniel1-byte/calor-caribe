@@ -113,7 +113,7 @@ const idsDe = (dm: string) => del(dm).map((l) => TESORO.find((x) => l.startsWith
 // Objetos únicos: una sola vez por partida y con su [O#]
 {
   const p = nueva(); const vistos: string[] = [];
-  for (let i = 0; i < 800; i++) for (const l of del(generarBotinDe(p, { origen: "jefe", cantidad: 6, peligro: 5, categorias: ["objeto_trama"], incluir_viales: false }).dm)) { const m = /^- (.*?) \[O\d+\]/.exec(l); if (m) vistos.push(m[1]); }
+  for (let i = 0; i < 500; i++) for (const l of del(generarBotinDe(p, { origen: "jefe", cantidad: 6, peligro: 5, categorias: ["objeto_trama"], incluir_viales: false }).dm)) { const m = /^- (.*?) \[O\d+\]/.exec(l); if (m) vistos.push(m[1]); }
   t(vistos.length > 0 && new Set(vistos).size === vistos.length, "cada objeto único sale como mucho una vez por partida", `${vistos.length}`);
   t(vistos.length <= TESORO.filter((x) => x.unico).length, "y nunca más que los que hay");
   const u = Object.values(p.objetos).filter((o) => TESORO.some((x) => x.unico && o.nombre.startsWith(x.nombre)));

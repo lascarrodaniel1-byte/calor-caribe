@@ -227,7 +227,7 @@ export function consultarReglas(tema: string, nombre?: string): string {
     }
     case "criatura": {
       const c = nombre ? buscarCriatura(nombre) : undefined;
-      return c ? fichaCriatura(c) : `No está en el bestiario${nombre ? `: "${nombre}"` : ""}. Puedes inventarla con aparecer_criatura y definicion.`;
+      return c ? fichaCriatura(c, true, true) : `No está en el bestiario${nombre ? `: "${nombre}"` : ""}. Puedes inventarla con aparecer_criatura y definicion.`;
     }
     case "accion": {
       const h = herramientas.find((x) => x.name === nombre);

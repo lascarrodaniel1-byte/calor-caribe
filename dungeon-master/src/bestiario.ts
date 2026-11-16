@@ -1,5 +1,6 @@
 // Bestiario: criaturas de referencia y jefes. Es una BASE: el DM puede crear
 // criaturas y habilidades nuevas con la misma estructura en cualquier momento.
+import { tesoroPorId } from "./tesoro.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
 import { agregarCondicion, textoEfectos } from "./condiciones.js";
 import { describir, tirar } from "./dados.js";
@@ -190,6 +191,7 @@ export const BESTIARIO: Criatura[] = [
     ataques: ["Mordisco: +3, 1d6+1 perforante; puede transmitir la Podre (de_no_muerto, cd_podre 11)", "Agarrón: +3, apresado (CD 11)"],
     rasgos: ["No-muerto: inmune al veneno", "Tenacidad de los muertos: al caer a 0 PV, salvación de CON CD 5 + daño o se queda con 1 PV (no con fuego ni críticos)", "Manada: ventaja si hay otro Hambriento adyacente al objetivo"],
     habilidades: [],
+    botinItems: [{ id: "bolsa_cambio", probabilidad: 60 }, { id: "anillo_difunto", probabilidad: 35 }, { id: "carta_sin_enviar", probabilidad: 30 }],
     botin: "Lo que llevaba en vida: monedas, un anillo, una carta sin enviar",
   },
   {
@@ -198,6 +200,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "bestia",
     peligro: 1,
     region: "Bosque de Velo Rojo, caminos de la Marca",
+    botin: "Su piel gris (la compra un curtidor) y sus colmillos",
+    botinItems: [{ id: "piel_lobo_ceniza", probabilidad: 70 }, { id: "colmillos_lobo_ceniza", probabilidad: 50 }],
     descripcion: "Lobo flaco de pelaje gris ceniza y ojos de brasa. Caza en jauría y siempre va a por el más débil.",
     ca: 13,
     pv: "2d8+2",
@@ -214,6 +218,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 2,
     region: "Fosas comunes de Aldenmar, cementerios",
+    botin: "Dientes largos (un boticario los muele), la mortaja sucia con que se cubría y, a veces, una joya de las tumbas",
+    botinItems: [{ id: "dientes_ghul", probabilidad: 70 }, { id: "mortaja_ghul", probabilidad: 40 }, { id: "pendiente_ambar", probabilidad: 15 }],
     descripcion: "Devorador de cadáveres de uñas negras. Su toque paraliza; prefiere comerse a las presas vivas.",
     ca: 12,
     pv: "5d8",
@@ -232,6 +238,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 2,
     region: "Colinas, caminos sin ley, al servicio de señores de la guerra",
+    botin: "Sus colmillos, un cinturón de ogro con trofeos y la calderilla que cobraba de peaje",
+    botinItems: [{ id: "colmillo_ogro", probabilidad: 60 }, { id: "cinturon_ogro", probabilidad: 45 }, { id: "bolsa_cambio", probabilidad: 50 }],
     descripcion: "Tres metros de hambre y mala leche. Lleva un tronco por garrote y cráneos por collar.",
     ca: 11,
     pv: "7d10+21",
@@ -251,6 +259,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 3,
     region: "Ciénagas de Hollín",
+    botin: "Su hígado (lo compran los boticarios) y hiel de bestia",
+    botinItems: [{ id: "higado_troll", probabilidad: 60 }, { id: "hiel_bestia", probabilidad: 40 }],
     descripcion: "Larguirucho, verdoso, cubierto de musgo y sanguijuelas. Si le cortas un brazo, el brazo sigue peleando.",
     ca: 15,
     pv: "8d10+40",
@@ -269,6 +279,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 3,
     region: "Riscos de las Agujas de Vahl, cielos de la Marca",
+    botin: "Su aguijón venenoso (valioso para boticarios y la Inquisición) y un colmillo",
+    botinItems: [{ id: "aguijon_wyverno", probabilidad: 55 }, { id: "colmillo_wyverno", probabilidad: 60 }],
     descripcion: "Primo bestial del dragón: alas membranosas, mandíbulas enormes y una cola con un aguijón del tamaño de una espada.",
     ca: 13,
     pv: "13d10+39",
@@ -288,6 +300,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 3,
     region: "Cuevas bajo Karak-Dûm, ruinas antiguas",
+    botin: "Su ojo (un erudito lo compra), el oro de los viajeros que petrificó y alguna gema bruta",
+    botinItems: [{ id: "ojo_basilisco", probabilidad: 60 }, { id: "bolsa_cambio", probabilidad: 45 }, { id: "gema_bruta", probabilidad: 25 }],
     descripcion: "Reptil de ocho patas lleno de estatuas a su alrededor: sus anteriores visitantes.",
     ca: 15,
     pv: "8d8+16",
@@ -307,6 +321,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 3,
     region: "Páramos de la Marca Hueca",
+    botin: "Púas de su cola (puntas de dardo de calidad) y las pertenencias de sus víctimas",
+    botinItems: [{ id: "puas_manticora", probabilidad: 70 }, { id: "bolsa_cambio", probabilidad: 35 }],
     descripcion: "Cuerpo de león, alas de murciélago y un rostro casi humano que se burla de sus presas mientras las mata.",
     ca: 14,
     pv: "8d10+24",
@@ -362,6 +378,7 @@ export const BESTIARIO: Criatura[] = [
         recarga: 5,
       },
     ],
+    botinItems: [{ id: "escamas_mena", probabilidad: 100 }, { id: "hiel_gorgon", probabilidad: 50 }],
     botin:
       "Escamas de mena (valen buen dinero a un herrero) y, si se abre la glándula bajo la lengua en la hora siguiente a su muerte, 1d3 viales de hiel de gorgon: vertida sobre una víctima petrificada por su aliento en las 24 h siguientes, la piedra vuelve a ser carne en una hora (el DM quita «petrificado» con condicion) y la víctima queda con agotamiento 1; la hiel se corta y se vuelve piedra a las 24 h de sacada",
   },
@@ -373,6 +390,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 4,
     region: "Bosque de Velo Rojo",
+    botin: "Un mechón de su cabello, que suena con el viento, y una joya de cuando vivía",
+    botinItems: [{ id: "mechon_banshee", probabilidad: 65 }, { id: "pendiente_ambar", probabilidad: 25 }],
     descripcion: "El espíritu de una elfa que murió con el bosque. Llora con la voz de quien más quieres.",
     ca: 12,
     pv: "13d8",
@@ -393,6 +412,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 4,
     region: "Campos de batalla de la Marca Hueca",
+    botin: "Huesos enormes que un tallador compra y la calderilla de los soldados de la batalla que lo alzó",
+    botinItems: [{ id: "hueso_gigante", probabilidad: 90 }, { id: "bolsa_cambio", probabilidad: 30 }],
     descripcion: "Cientos de esqueletos fundidos en un coloso de seis metros. Los cráneos de su pecho aún gritan.",
     ca: 16,
     pv: "15d12+60",
@@ -422,7 +443,8 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Aliento de ceniza", descripcion: "Cono de 9 m.", salvacion: "des", cd: 17, dano: "16d6", tipo_dano: "fuego", mitad_si_exito: true, ceniza: 1, recarga: 5 },
     ],
-    botin: "Tesoro de dragón: monedas antiguas, reliquias, armas de los que intentaron matarlo",
+    botinItems: [{ id: "tesoro_dragon", probabilidad: 100 }, { id: "escama_dragon", probabilidad: 60 }, { id: "rubi_ojo", probabilidad: 25 }],
+    botin: "Tesoro de dragón: monedas antiguas, gemas, reliquias, armas de los que intentaron matarlo y alguna de sus escamas (las paga un armero)",
   },
   {
     nombre: "Apóstol",
@@ -431,6 +453,8 @@ export const BESTIARIO: Criatura[] = [
     categoria: "monstruo",
     peligro: 4,
     region: "Cualquiera: vive entre los humanos con su antigua forma",
+    botin: "Un fragmento negro de ceniza y hueso (la Inquisición lo paga con discreción) y una astilla de hueso de dios",
+    botinItems: [{ id: "fragmento_apostol", probabilidad: 70 }, { id: "hueso_de_dios", probabilidad: 25 }],
     descripcion:
       "Alguien que despertó un behelit y sacrificó lo que amaba. De día parece un noble, un monje o un mercader; de noche, su forma verdadera es una pesadilla de carne del tamaño de una casa. Plantilla: adáptala a quien era.",
     ca: 16,
@@ -475,6 +499,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Alzar a los muertos", descripcion: "Levanta 1d4+1 Hambrientos de los cadáveres cercanos en la ronda siguiente (aparecer_criatura con la plantilla Hambriento); una vez por combate." },
       { nombre: "Tocar la vida", descripcion: "Toca a un objetivo y le arrebata el calor del cuerpo.", salvacion: "con", cd: 17, dano: "6d8", tipo_dano: "necrótico", mitad_si_exito: true, ceniza: 1 },
     ],
+    botinItems: [{ id: "relicario_lich", probabilidad: 100 }, { id: "grimorio_menor", probabilidad: 80 }, { id: "corona_lich", probabilidad: 100 }, { id: "baston_hueso", probabilidad: 100 }, { id: "lingote_plata", probabilidad: 60 }],
     botin: "Su relicario (un hueso de dios engarzado: valioso y peligroso), grimorios de magia negra, su corona y su bastón de hueso, y las riquezas que acumuló en siglos",
   },
   {
@@ -506,6 +531,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Hambre que se contagia", descripcion: "Tras un mordisco, el objetivo siente un hambre que nada sacia.", salvacion: "con", cd: 15, condicion: "agotamiento 1" },
       { nombre: "Aullido de hambruna", descripcion: "Un aullido que hiela hasta el hueso; todos a 18 m que lo oigan.", salvacion: "sab", cd: 15, condicion: "asustado 1 minuto", recarga: 6 },
     ],
+    botinItems: [{ id: "astas_hueso", probabilidad: 100 }, { id: "collar_dientes", probabilidad: 60 }, { id: "bolsa_cambio", probabilidad: 50 }],
     botin: "Astas de hueso (reliquia: el que las lleva no pasa frío, pero el hambre le crece), un collar de dientes humanos y, en su guarida, los restos y las pertenencias de sus víctimas",
   },
   {
@@ -541,6 +567,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Carga a cuatro patas", descripcion: "Embiste a un objetivo al menos 6 m en línea recta: derriba si falla.", salvacion: "fue", cd: 14, dano: "2d8+4", tipo_dano: "contundente", condicion: "derribado", recarga: 5 },
       { nombre: "Ceniza de la furia", descripcion: "El fuego viejo de su pelo prende a quien lo toca.", salvacion: "con", cd: 14, dano: "2d6", tipo_dano: "fuego", ceniza: 1, recarga: 5 },
     ],
+    botinItems: [{ id: "colmillos_ulfhedinn", probabilidad: 90 }, { id: "garras_ulfhedinn", probabilidad: 90 }, { id: "piel_lobo_gris", probabilidad: 80 }],
     botin: "Colmillos y garras (trofeos que la Inquisición paga por los de varg), una piel de lobo gris (se puede desollar: abriga contra el frío y puede pasar por disfraz de varg), hacha de guerra y, a veces, la señal de Ceniza que llevaba al morir",
   },
   {
@@ -575,6 +602,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Rugido de furia", descripcion: "Un rugido que se oye a un kilómetro; todos a 9 m.", salvacion: "sab", cd: 14, condicion: "asustado 1 minuto", recarga: 6 },
       { nombre: "Ceniza de la furia", descripcion: "Al sacudirse, las brasas dormidas de su pelaje se avivan y prenden a quien lo tiene agarrado o encima.", salvacion: "con", cd: 15, dano: "2d6", tipo_dano: "fuego", ceniza: 1, recarga: 5 },
     ],
+    botinItems: [{ id: "garras_hombre_oso", probabilidad: 90 }, { id: "colmillos_hombre_oso", probabilidad: 90 }, { id: "piel_oso_gris", probabilidad: 80 }],
     botin: "Garras y colmillos (trofeos), una piel de oso gris (se puede desollar: abriga muchísimo) y, a veces, la señal de Ceniza que llevaba al morir",
   },
   {
@@ -603,6 +631,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Caída del cielo", descripcion: "Se deja caer sobre un objetivo desde lo alto.", salvacion: "des", cd: 13, dano: "3d6+3", tipo_dano: "contundente", mitad_si_exito: true, recarga: 5 },
     ],
+    botinItems: [{ id: "talla_sagrada", probabilidad: 75 }],
     botin: "Nada, salvo el fragmento de una talla sagrada (una reliquia menor de un dios muerto: vale unas monedas) y, a veces, lo que escondía la piedra",
   },
   {
@@ -630,6 +659,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Golpe aplastante", descripcion: "Un puñetazo con todo su peso contra un objetivo.", salvacion: "con", cd: 17, dano: "4d10+6", tipo_dano: "contundente", herida: "golpe_masivo", mitad_si_exito: true, recarga: 5 },
     ],
+    botinItems: [{ id: "piedra_runica", probabilidad: 90 }, { id: "palabra_golem", probabilidad: 30 }],
     botin: "Piedra tallada con restos de escritura antigua (un erudito la compra) y, si se rompe la frente, la palabra que lo movía",
   },
   {
@@ -657,6 +687,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Agarrar y aplastar", descripcion: "Agarra a un objetivo con ambos brazos.", salvacion: "fue", cd: 14, dano: "2d10+4", tipo_dano: "contundente", condicion: "agarrado", recarga: 5 },
     ],
+    botinItems: [{ id: "sutura_calidad", probabilidad: 100 }, { id: "huesos_aprovechables", probabilidad: 100 }, { id: "organos_aprovechables", probabilidad: 100 }, { id: "piedra_animadora", probabilidad: 50 }],
     botin: "Sutura de calidad, huesos y órganos aprovechables (la Barbería los paga), y, en su pecho, la piedra o el amuleto que lo animaba",
   },
   {
@@ -683,6 +714,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Oleada de fuego", descripcion: "Una ola de llamas en cono de 4,5 m.", salvacion: "des", cd: 14, dano: "4d6", tipo_dano: "fuego", mitad_si_exito: true, recarga: 5 },
     ],
+    botinItems: [{ id: "ceniza_forjable", probabilidad: 100 }, { id: "ascua_eterna", probabilidad: 25 }],
     botin: "Cenizas calientes (valiosas para forjar) y, a veces, un trozo de ascua que no se apaga",
   },
   {
@@ -708,6 +740,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Ahogar", descripcion: "Envuelve a un objetivo; está sumergido y sin aire mientras lo agarra.", salvacion: "fue", cd: 15, dano: "2d8+4", tipo_dano: "contundente", condicion: "agarrado", recarga: 5 },
     ],
+    botinItems: [{ id: "agua_pura", probabilidad: 100 }, { id: "bolsa_cambio", probabilidad: 40 }],
     botin: "Agua pura (sirve para ritos), y lo que ahogó (monedas, huesos, equipo)",
   },
   {
@@ -736,6 +769,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Derrumbe", descripcion: "Hace temblar el suelo y cae roca en un radio de 4,5 m.", salvacion: "des", cd: 16, dano: "4d8", tipo_dano: "contundente", condicion: "derribado", mitad_si_exito: true, recarga: 5 },
     ],
+    botinItems: [{ id: "gema_bruta", probabilidad: 90 }, { id: "vetas_metal", probabilidad: 100 }],
     botin: "Gemas en bruto y vetas de metal en su cuerpo",
   },
   {
@@ -762,6 +796,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Torbellino", descripcion: "Se hace un remolino que arrastra a quien tenga a 3 m.", salvacion: "fue", cd: 14, dano: "3d6", tipo_dano: "contundente", condicion: "derribado", mitad_si_exito: true, recarga: 5 },
     ],
+    botinItems: [{ id: "pluma_viento", probabilidad: 30 }, { id: "cristal_vibrante", probabilidad: 25 }],
     botin: "Nada material; a veces, una pluma o un cristal que vibra con el viento",
   },
   {
@@ -790,6 +825,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Deseo torcido", descripcion: "Interpreta un deseo del objetivo al pie de la letra y lo vuelve en su contra.", salvacion: "sab", cd: 16, condicion: "hechizado 1 minuto", recarga: 5 },
       { nombre: "Tormenta de arena", descripcion: "Convoca un torbellino de ceniza en un radio de 6 m.", salvacion: "con", cd: 16, dano: "5d8", tipo_dano: "contundente", condicion: "cegado", mitad_si_exito: true, recarga: 6 },
     ],
+    botinItems: [{ id: "vaso_djinn", probabilidad: 100 }, { id: "joyas_pactos", probabilidad: 80 }],
     botin: "Su vaso, lámpara o anillo (valioso: quien lo posea tiene un siervo peligroso) y joyas de los pactos que cumplió",
   },
   {
@@ -817,6 +853,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Ilusión", descripcion: "Crea una ilusión pequeña (un camino falso, una voz) que dura unos minutos.", salvacion: "sab", cd: 12, condicion: "hechizado 1 minuto", recarga: 5 },
       { nombre: "Nudo", descripcion: "Ata los cordones y los nudos del objetivo: tropieza.", salvacion: "des", cd: 12, condicion: "derribado", recarga: 6 },
     ],
+    botinItems: [{ id: "boton_duende", probabilidad: 100 }, { id: "bolsa_cambio", probabilidad: 40 }],
     botin: "Un botón, una moneda y alguna de las cucharas que ha robado",
   },
   {
@@ -841,6 +878,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Presa en picado", descripcion: "Agarra a un objetivo pequeño o mediano y se lo lleva volando.", salvacion: "fue", cd: 15, dano: "3d8+4", tipo_dano: "cortante", condicion: "agarrado", recarga: 5 },
     ],
+    botinItems: [{ id: "pluma_grifo", probabilidad: 100 }, { id: "huevo_grifo", probabilidad: 40 }],
     botin: "Plumas (apreciadas para flechas), huevos (valiosos) y, si se domestica, una montura",
   },
   {
@@ -866,6 +904,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Mordiscos coordinados", descripcion: "Cada cabeza muerde a un objetivo distinto o a uno solo.", salvacion: "con", cd: 16, dano: "4d10", tipo_dano: "perforante", condicion: "envenenado", mitad_si_exito: true, recarga: 5 },
     ],
+    botinItems: [{ id: "colmillo_hidra", probabilidad: 100 }, { id: "moneda_antigua", probabilidad: 40 }],
     botin: "Colmillos (veneno que valoran los boticarios) y una vena de tesoros en el pantano donde anidó",
   },
   {
@@ -893,6 +932,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Canto de sirena", descripcion: "Un canto que oyen todos a 36 m; quien lo oiga camina hacia el agua.", salvacion: "sab", cd: 14, condicion: "hechizado 1 minuto", recarga: 5 },
       { nombre: "Arrastrar", descripcion: "Agarra a un objetivo en la orilla y lo arrastra bajo el agua.", salvacion: "fue", cd: 13, dano: "2d6+2", tipo_dano: "contundente", condicion: "agarrado", recarga: 6 },
     ],
+    botinItems: [{ id: "perla_negra", probabilidad: 80 }, { id: "joyas_ahogados", probabilidad: 70 }, { id: "escamas_sirena", probabilidad: 35 }],
     botin: "Perlas, joyas de los ahogados y, a veces, una escama que sirve de amuleto contra el agua",
   },
   {
@@ -921,7 +961,8 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Arrastrar", descripcion: "Agarra a un objetivo en la orilla y tira de él hacia el agua.", salvacion: "fue", cd: 12, dano: "1d6+2", tipo_dano: "contundente", condicion: "agarrado", recarga: 6 },
     ],
-    botin: "Escamas (amuleto contra el agua), arpones de hueso y las joyas de los ahogados en su guarida",
+    botinItems: [{ id: "escamas_hombre_pez", probabilidad: 100 }, { id: "arpon_hueso", probabilidad: 60 }, { id: "joyas_ahogados", probabilidad: 40 }],
+    botin: "Escamas de hombre pez (amuleto contra el agua), arpones de hueso y las joyas de los ahogados en su guarida",
   },
   {
     nombre: "Hombre lagarto",
@@ -950,7 +991,8 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Red de caza", descripcion: "Lanza una red a 6 m que lo ata al barro.", salvacion: "fue", cd: 12, condicion: "apresado", recarga: 6 },
     ],
-    botin: "Escamas (valen un poco a los curtidores), lanzas de hueso, redes de caza y, en el túmulo, lo que arrastraron los ahogados: hierro, sal y baratijas",
+    botinItems: [{ id: "escamas_hombre_lagarto", probabilidad: 100 }, { id: "lanza_hueso", probabilidad: 60 }, { id: "red_caza", probabilidad: 40 }, { id: "hierro_frio", probabilidad: 20 }, { id: "frasco_sal", probabilidad: 25 }, { id: "bolsa_cambio", probabilidad: 30 }],
+    botin: "Escamas de hombre lagarto (valen un poco a los curtidores), lanzas de hueso, redes de caza y, en el túmulo, lo que arrastraron los ahogados: hierro, sal y baratijas",
   },
   {
     nombre: "Arpía",
@@ -973,6 +1015,7 @@ export const BESTIARIO: Criatura[] = [
     habilidades: [
       { nombre: "Canto atrayente", descripcion: "Un canto triste que oyen todos a 18 m.", salvacion: "sab", cd: 11, condicion: "hechizado 1 minuto", recarga: 5 },
     ],
+    botinItems: [{ id: "plumas_arpia", probabilidad: 100 }, { id: "nido_arpia", probabilidad: 40 }, { id: "huesos_roidos", probabilidad: 60 }],
     botin: "Plumas sucias, un nido con objetos robados y los huesos de lo que cenó",
   },
   {
@@ -1001,6 +1044,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Raíces que atrapan", descripcion: "Raíces surgen del suelo en un radio de 6 m.", salvacion: "fue", cd: 15, condicion: "retenido", recarga: 5 },
       { nombre: "Enjambre de cuervos", descripcion: "Una nube de cuervos envuelve a un objetivo.", salvacion: "des", cd: 15, dano: "3d8", tipo_dano: "cortante", condicion: "cegado", mitad_si_exito: true, recarga: 6 },
     ],
+    botinItems: [{ id: "corona_astas", probabilidad: 100 }, { id: "semillas_viejas", probabilidad: 100 }, { id: "ofrendas_bosque", probabilidad: 70 }],
     botin: "Su corona de astas (reliquia del bosque: protege contra la Podre de los árboles), semillas viejas y las ofrendas que no consumió",
   },
   {
@@ -1028,6 +1072,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Cortar el hilo", descripcion: "Mide y corta el hilo de un objetivo a 18 m.", salvacion: "sab", cd: 16, dano: "6d8", tipo_dano: "psíquico", mitad_si_exito: true, recarga: 5 },
       { nombre: "Profecía", descripcion: "Anuncia un hecho futuro sobre el objetivo; durante la escena, sus tiradas contrarias son con desventaja.", salvacion: "sab", cd: 16, condicion: "asustado 1 minuto", recarga: 6 },
     ],
+    botinItems: [{ id: "ovillo_aviso", probabilidad: 100 }, { id: "tijeras_hueso", probabilidad: 100 }, { id: "telar_moira", probabilidad: 15 }],
     botin: "Un ovillo de hilo (aviso de peligro: cambia de color), tijeras de hueso y un telar que vale un reino a quien sepa leerlo",
   },
   {
@@ -1095,6 +1140,7 @@ export const BESTIARIO: Criatura[] = [
         recarga: 5,
       },
     ],
+    botinItems: [{ id: "escamas_mar_profundo", probabilidad: 100 }, { id: "perla_luna", probabilidad: 100 }, { id: "luna_recuperada", probabilidad: 100 }],
     botin:
       "Escamas de mar profundo (valen un tesoro a un armero), perlas de luna (1d4, PROPUESTA a confirmar: esferas de plata pálida que dan luz tenue como la luna llena durante una noche y se apagan al alba) y, si se la mata, la luna recuperada: un fragmento helado que alumbra sin calor y brilla más cuanta más oscuridad haya",
   },
@@ -1159,7 +1205,8 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Desgarrar la garganta", descripcion: "Contra un objetivo derribado o apresado.", salvacion: "con", cd: 18, dano: "6d10", tipo_dano: "perforante", muerte_si_falla_por: 0, herida: "critico" },
       { nombre: "Aullido del Eclipse", descripcion: "Todos a 36 m. Un Varg que falle por 5 o más se transforma y lucha a su lado durante 1 minuto.", salvacion: "sab", cd: 17, condicion: "asustado 1 minuto", recarga: 5 },
     ],
-    botin: "Colmillo del Eclipse (reliquia); el fin de la maldición, quizá",
+    botinItems: [{ id: "piel_lobo_gris", probabilidad: 100 }],
+    botin: "Colmillo del Eclipse (reliquia); su piel de lobo gris; el fin de la maldición, quizá",
   },
   {
     nombre: "El Juez Sin Ojos",
@@ -1213,6 +1260,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Veredicto", descripcion: "Señala a un culpable.", salvacion: "sab", cd: 18, dano: "8d10", tipo_dano: "fuego", mitad_si_exito: true, muerte_si_falla_por: 5, recarga: 5 },
       { nombre: "Confesión", descripcion: "Todos a 18 m confiesan su peor pecado en voz alta o arden.", salvacion: "car", cd: 17, dano: "4d10", tipo_dano: "psíquico", condicion: "aturdido 1 asalto" },
     ],
+    botinItems: [{ id: "archivos_inquisicion", probabilidad: 100 }],
     botin: "Espadón de llama gris (encantado); los archivos secretos de la Inquisición; Rayo de luz solar primigenia (reliquia, guardado en la catedral: un rayo del sol de Ka'i; +2 a ataque y daño contra no-muertos y criaturas malditas; ilumina la oscuridad más grande, incluso la mágica, en un radio de 36 m; y acaba con los vampiros que alcanza: quien falla una salvación de CON CD 20 muere, y quien la supera queda a 0 PV y arde. Por eso la regeneración de Ysolde falla «salvo luz solar». Uno por campaña) y los recuerdos de Ka'i que la catedral conserva",
   },
   {
@@ -1268,6 +1316,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Mirada de la Reina", descripcion: "Un objetivo que la vea.", salvacion: "sab", cd: 19, condicion: "hechizado: la ve como su más querida aliada 1 hora" },
       { nombre: "Vaciar", descripcion: "Bebe hasta el fondo de un objetivo apresado. Quien muere así se levanta al día siguiente como su siervo.", salvacion: "con", cd: 18, dano: "6d10", tipo_dano: "necrótico", sangre: 15, muerte_si_falla_por: 10 },
     ],
+    botinItems: [{ id: "escrituras_marca", probabilidad: 100 }],
     botin: "La corona pálida (maldita); las escrituras de media Marca",
   },
   {
@@ -1321,6 +1370,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Abrazo de la fosa", descripcion: "Contra un objetivo apresado al inicio de su turno: lo hunde en la masa. Quien muere así es absorbido: su cuerpo pasa a formar parte de la Madre.", salvacion: "fue", cd: 17, dano: "4d10", tipo_dano: "contundente", muerte_si_falla_por: 5 },
       { nombre: "Vómito de Podre", descripcion: "Cono de 9 m de carne licuada.", salvacion: "con", cd: 16, dano: "8d8", tipo_dano: "necrótico", mitad_si_exito: true, herida: "menor", recarga: 5 },
     ],
+    botinItems: [{ id: "costuras_madre", probabilidad: 100 }, { id: "cera_sepulcro", probabilidad: 100 }, { id: "moneda_antigua", probabilidad: 100 }],
     botin:
       "Corazón de la Fosa (reliquia maldita): órgano negro que late al ritmo de los muertos; una vez al día, quien lo porte ordena a un grupo de Hambrientos que no ataque durante 1 minuto (CON CD 15 o contrae la Podre, cada vez). | Costuras de la Madre: tendón vivo que cierra una herida grave (+4 a tratar_herida), pero deja una marca de Podre en la piel. | Cera de sepulcro (3 frascos): cubierto con ella, un no-muerto no te huele durante 1 hora. | Al morir, los Hambrientos de la zona se desploman en cuestión de horas, y la fosa deja ver lo que se tragó: armas, oro y reliquias de un siglo.",
   },
@@ -1341,6 +1391,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Tragar", descripcion: "Tras un mordisco.", salvacion: "des", cd: 19, condicion: "tragado: 6d6 ácido por turno; sale si causa 30 de daño desde dentro en un turno; si muere dentro, no queda cadáver", muerte_si_falla_por: 10 },
       { nombre: "Derrumbe", descripcion: "Golpea el techo de la caverna.", salvacion: "des", cd: 17, dano: "8d10", tipo_dano: "contundente", mitad_si_exito: true, herida: "golpe_masivo", condicion: "enterrado (asfixia en CON asaltos)", recarga: 6 },
     ],
+    botinItems: [{ id: "cristal_hondos", probabilidad: 100 }, { id: "mena_viva", probabilidad: 100 }, { id: "planos_fortaleza", probabilidad: 100 }],
     botin:
       "Diente de la Piedra (arma, encantada +2): un colmillo de roca negra largo como un brazo, que se empuña como pica o maza; 2d8 contundente y ignora la mitad del blindaje de piedra y de metal enano. | Cristal de los hondos: resuena con las cavidades; avisa de derrumbes y túneles a 30 m, y una vez al día provoca un derrumbe controlado en un techo cercano. | Mena viva (1d4 lingotes): metal que nadie sabe nombrar y que sigue enfriándose; un herrero enano puede forjar con un lingote una pieza de armadura de placas con +1 de protección contundente y que no se oxida. | Los planos de la Fortaleza Silente: grabados en su cubil por los enanos que huyeron, con las puertas, los sellos y lo que quedó dentro.",
   },
@@ -1403,6 +1454,7 @@ export const BESTIARIO: Criatura[] = [
       },
     ],
     presagios: 3,
+    botinItems: [],
     botin: "El telar de los mañanas (reliquia): una vez por semana, tira un presagio",
   },
   {
@@ -1452,6 +1504,7 @@ export const BESTIARIO: Criatura[] = [
         condicion: "hechizado: cree que Vaerth es un aliado hasta recibir daño",
       },
     ],
+    botinItems: [],
     botin: "Máscara de mil caras (maldita): permite cambiar de rostro, pero cada uso roba un recuerdo propio",
   },
   {
@@ -1473,6 +1526,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Aliento del sol muerto", descripcion: "Cono de 27 m de luz gris y fuego.", salvacion: "des", cd: 24, dano: "26d6", tipo_dano: "fuego", mitad_si_exito: true, muerte_si_falla_por: 10, ceniza: 2, recarga: 5 },
       { nombre: "Palabra del dios devorado", descripcion: "Pronuncia una palabra que no debería existir. Todos a 18 m.", salvacion: "sab", cd: 21, dano: "10d10", tipo_dano: "psíquico", mitad_si_exito: true, muerte_si_falla_por: 5, recarga: 6 },
     ],
+    botinItems: [{ id: "tesoro_dragon", probabilidad: 100 }],
     botin: "Corazón del dios Solar (reliquia definitiva); un tesoro de un siglo",
   },
   {
@@ -1513,6 +1567,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Humo de ceniza", descripcion: "Rompe una bolsa de ceniza y resina: una nube de 6 m de radio en la que solo él ve. Se retira o se reposiciona dentro.", salvacion: "con", cd: 18, condicion: "cegado hasta el final de su siguiente turno", recarga: 6 },
       { nombre: "Estocada de leyenda", descripcion: "Un único golpe contra un objetivo que haya estudiado y que esté solo, derribado, apresado o sorprendido.", salvacion: "con", cd: 20, dano: "6d10+7", tipo_dano: "perforante", muerte_si_falla_por: 10, herida: "critico" },
     ],
+    botinItems: [{ id: "diario_kuru", probabilidad: 100 }],
     botin: "Colmillo de wyverno engarzado en su lanza (arma encantada, +2); el diario donde apunta cómo mató a cada leyenda y a quién busca ahora",
   },
   {
@@ -1555,6 +1610,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Orden de retirada", descripcion: "Grita una orden: hasta 6 aliados se desenganchan y se mueven sin provocar ataques de oportunidad." },
       { nombre: "Golpe calculado", descripcion: "Un único golpe contra un rival que haya estudiado un asalto entero.", salvacion: "con", cd: 17, dano: "4d10+5", tipo_dano: "cortante", mitad_si_exito: true },
     ],
+    botinItems: [{ id: "sello_mariscal", probabilidad: 100 }, { id: "cuaderno_hugin", probabilidad: 100 }],
     botin: "El sello de mariscal de la Compañía (abre cualquier cuartel); el cuaderno donde apunta cada contrato y su plan de reserva",
   },
   {
@@ -1596,6 +1652,7 @@ export const BESTIARIO: Criatura[] = [
       { nombre: "Cuentas pendientes", descripcion: "Marca a un rival que haya herido a un aliado de la Compañía: sus ataques contra él tienen ventaja hasta que caiga o ella lo haga.", condicion: "marcado por la memoria de Munin" },
       { nombre: "Golpe de balance", descripcion: "Un único golpe que cobra todo lo que le deben.", salvacion: "fue", cd: 17, dano: "4d10+6", tipo_dano: "cortante", mitad_si_exito: true },
     ],
+    botinItems: [{ id: "libro_cuentas_compania", probabilidad: 100 }],
     botin: "El libro de cuentas de la Compañía (cada nombre, cada deuda: vale mucho para quien lo quiera, y para quien lo quiera destruir); el hacha de batalla",
   },
 ];
@@ -1624,7 +1681,10 @@ export function describirEnEscena(partida: Partida, j: EstadoJefe): boolean {
 }
 
 /** Ficha completa; `conDescripcion: false` omite solo la prosa literaria (el estado del DM en combate). */
-export function fichaCriatura(c: Criatura, conDescripcion = true): string {
+/** Las piezas del botín estructurado con su probabilidad: «Piel de lobo de ceniza 70 %, Colmillos de lobo de ceniza 50 %». */
+export const lineaPiezas = (c: Pick<Criatura, "botinItems">): string => (c.botinItems ?? []).map((i) => `${tesoroPorId(i.id)?.nombre ?? i.id} ${i.probabilidad} %`).join(", ");
+
+export function fichaCriatura(c: Criatura, conDescripcion = true, conPiezas = false): string {
   return [
     `${c.nombre} — ${c.categoria}, peligro ${c.peligro}/5${c.vd ? `, VD ${c.vd}` : ""} (${c.region})`,
     conDescripcion ? c.descripcion : "",
@@ -1645,6 +1705,7 @@ export function fichaCriatura(c: Criatura, conDescripcion = true): string {
       : "",
     c.presagios ? `Ve el futuro: ${c.presagios} presagios (usa presagio_criatura para verlos, usarlos y renovarlos)` : "",
     c.botin ? `Botín: ${c.botin}` : "",
+    conPiezas && c.botinItems?.length ? `Piezas al saquearla (generar_botin {criatura} las tira): ${lineaPiezas(c)}.` : "",
   ]
     .filter(Boolean)
     .join("\n");
