@@ -337,6 +337,7 @@
   .menu-panel { position: absolute; right: 12px; top: calc(100% + 6px); z-index: 25; display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 230px; max-width: min(92vw, 320px); padding: 12px; background: linear-gradient(180deg, #5a3a24, #3b2616); border: 2px solid var(--nogal); border-radius: 6px; box-shadow: 0 10px 28px #000c; }
   .menu-panel[hidden] { display: none; }
   .menu-panel .control { justify-content: space-between; font-size: 16px; }
+  .menu-panel .nota-nivel { margin-top: -4px; font-size: 13px; color: var(--apagado); }
   .menu-panel .boton { text-align: left; }
   .menu-panel.arriba { top: auto; bottom: calc(100% + 6px); right: auto; left: 0; min-width: 200px; }
   .atajos { position: relative; }
@@ -490,6 +491,7 @@
           <option value="complex">Profundo (gasta más)</option>
         </select>
       </label>
+      <small class="nota-nivel" id="nota-nivel" hidden></small>
       <label class="control" for="repaso" title="Tras cada turno, el DM repasa si registró lo que narró y lo que el programa detecta que falta, y completa lo que falte. Gasta un poco más.">Repaso <input type="checkbox" id="repaso" checked></label>
       <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
       <button class="boton sobrio" id="exportar-partida" type="button" hidden title="Guarda esta partida en un archivo para poder retomarla más tarde">📤 Exportar partida</button>
@@ -804,6 +806,9 @@
   let pendientes = [];      // acciones en cola
   let turnoVivo = null;     // lo que se está narrando ahora (de quien sea)
   let narrandoYo = false;
+  let nivelMesa = null;     // nivel del DM fijado por el dueño para toda la mesa (documento «mesa/config»); null = sin fijar: vale el selector local
+  let puedeFijarNivel = false; // puede cambiar el nivel de la mesa (el mismo permiso que Reiniciar e Importar)
+  let ultimoNivel = null;   // {nivel, origen} de la última llamada al DM (para el consumo y la bitácora de errores)
   let soloLectura = false;  // este visitante puede mirar pero no escribir en la partida compartida
   let versionEstado = 0;    // «actualizado» del estado que leímos al empezar a narrar: si cambia, alguien más guardó
   let leasePerdido = false; // se perdió el turno de narrador mientras narrábamos
@@ -997,6 +1002,24 @@
   const programadaMia = () => programadas[miId] || null;
   // El mismo id para la misma programada, la entregue quien la entregue: una entrega repetida no la duplica (y si ya se narró, se descarta).
   const idProgramada = (jid, ts) => "prog_" + jid + "_" + ts;
+  // ---- nivel del DM compartido por mesa (documento «mesa/config»: { nivel, por, ts }; lo escribe solo quien puede editar la partida)
+  const nivelLocal = () => leer("velmora-nivel") || "quick";
+  function pintarNivel() {
+    const sel = $("nivel"), nota = $("nota-nivel");
+    if (!sel || !nota) return;
+    const ef = V.nivelEfectivo(nivelMesa, nivelLocal());
+    const fijar = puedeFijarNivel && !soloLectura && !!db;
+    sel.value = ef.origen === "mesa" ? ef.nivel : nivelLocal();
+    sel.disabled = ef.origen === "mesa" && !fijar;
+    const txt = ef.origen === "mesa" ? (fijar ? "Vale para toda la mesa" : "Lo fija el dueño de la mesa") : (fijar ? "Fíjalo aquí para toda la mesa" : "");
+    nota.textContent = txt; nota.hidden = !txt;
+  }
+  /** Nivel con el que se va a narrar, leído de la base justo antes de llamar al modelo (la caché de esta pestaña puede ir por detrás). Nunca falla. */
+  async function nivelAhora() {
+    if (db) { try { const s = await db.doc("mesa/config").get(); nivelMesa = s.exists ? s.data() : null; } catch { /* sin red: vale la caché */ } }
+    pintarNivel();
+    return (ultimoNivel = V.nivelEfectivo(nivelMesa, nivelLocal()));
+  }
   const leerProgramadas = (docs) => { programadas = {}; docs.forEach((d) => { programadas[d.id] = d.data(); }); };
 
   // Un jugador se sienta a la mesa y sigue latiendo mientras tenga la página abierta.
@@ -1758,7 +1781,7 @@
     try {
       if (!db || soloLectura || !nombre) return;
       const t = Date.now();
-      db.doc("consumo/c" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts: t, jugador: String(d.jugador || nombre), entrada: d.entrada | 0, salida: d.salida | 0, herramientas: d.herramientas | 0, repaso: !!d.repaso, sinNarracion: !!d.sinNarracion, nivel: String(d.nivel || "") }).catch(() => {});
+      db.doc("consumo/c" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts: t, jugador: String(d.jugador || nombre), entrada: d.entrada | 0, salida: d.salida | 0, herramientas: d.herramientas | 0, repaso: !!d.repaso, sinNarracion: !!d.sinNarracion, nivel: String(d.nivel || ""), origen: String(d.origen || "") }).catch(() => {});
       // Poda: cada 20 anotaciones se conservan como mucho ~200 documentos.
       if (++consumoEscrito % 20 === 0) {
         db.collection("consumo").orderBy("ts", "desc").limit(260).get()
@@ -1779,7 +1802,7 @@
       erroresEnviados++;
       db.doc("errores/e" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set({
         ts: t, jugador: nombre, tipo, mensaje: String(mensaje).slice(0, 500), codigo: String(extra?.code || ""), pila: String(extra?.stack || "").slice(0, 700),
-        contexto: { turnos: turnos.length, pendientes: pendientes.length, modo: orden?.modo, turnoDe: orden?.turno, yoId: miId, narrandoYo, turnoVivo: !!turnoVivo, versionEstado, jugadores: jugadores.length, agotado: agotado(), pestana },
+        contexto: { turnos: turnos.length, pendientes: pendientes.length, modo: orden?.modo, turnoDe: orden?.turno, yoId: miId, narrandoYo, turnoVivo: !!turnoVivo, versionEstado, jugadores: jugadores.length, agotado: agotado(), pestana, nivelDM: ultimoNivel ? ultimoNivel.nivel + "/" + ultimoNivel.origen : "" },
       }).catch(() => {});
     } catch {}
   }
@@ -1899,7 +1922,7 @@
   // para no trabajar con una versión anterior al último turno de otro jugador ni pisar lo que guardó.
   // Con `reparar` (solo quien tiene el turno de narrador), además completa lo que un turno anterior dejó a medias.
   async function sincronizar(reparar = true) {
-    const [e, t, js, o, mem, aventurasDoc, prog] = await reintentar(() => Promise.all([
+    const [e, t, js, o, mem, aventurasDoc, prog, cfg] = await reintentar(() => Promise.all([
       db.doc("mesa/estado").get(),
       db.collection("turnos").orderBy("ts", "desc").limit(60).get(),
       db.collection("jugadores").get(),
@@ -1907,8 +1930,10 @@
       db.doc("mesa/memoria").get(),
       db.doc("mesa/aventuras").get(),
       db.collection("programadas").get(),
+      db.doc("mesa/config").get().catch(() => null),
     ]));
     leerProgramadas(prog.docs);
+    nivelMesa = cfg?.exists ? cfg.data() : null; pintarNivel();
     aplicarEstado(e.exists ? e.data() : null);
     if (aventurasDoc?.exists) aventurasPrevias = V.aventuras.leerArchivo(aventurasDoc.data());
     if (mem.exists) aplicarMemoria(mem.data());
@@ -2212,9 +2237,10 @@
       const entradaDM = construirEntrada(acciones, infoTurno, correccion);
       if (copia.combate) delete copia.combate.avisoAsalto; // el aviso del asalto anterior ya le llegó al DM en esta entrada
       consumo.entrada = tamanoEntrada(entradaDM);
+      const nivelT = await nivelAhora();
       const res = await conCorte(sample(entradaDM, {
         tools: [motor],
-        modelTier: $("nivel").value,
+        modelTier: nivelT.nivel,
         signal: ctl.signal,
         // La marca de secuencia del final no se enseña a los jugadores, ni siquiera mientras se escribe.
         onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.limpiarNarracion(V.secuencia.ocultarMarcaParcial(text), true); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* un fallo al pintar no debe romper la respuesta del DM */ } },
@@ -2228,7 +2254,8 @@
         consumo.sinNarracion = true;
         try {
           const resultados = avisos.map((a) => a.texto).join("\n") || llamadasTurno.join(", ");
-          const r2 = await conCorte(sample(V.promptNarrar({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), resultados, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { modelTier: $("nivel").value, signal: ctl.signal, onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.limpiarNarracion(V.secuencia.ocultarMarcaParcial(text), true); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* pintar no debe romper la respuesta */ } } }), ctl.signal);
+          const nivelR = await nivelAhora();
+          const r2 = await conCorte(sample(V.promptNarrar({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), resultados, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { modelTier: nivelR.nivel, signal: ctl.signal, onText: ({ text }) => { ultimaActividad = Date.now(); if (!turnoVivo) return; try { texto = V.limpiarNarracion(V.secuencia.ocultarMarcaParcial(text), true); turnoVivo.texto = texto; publicarVivo(); pintar(); } catch { /* pintar no debe romper la respuesta */ } } }), ctl.signal);
           marca = V.secuencia.extraerMarca(r2.text);
           marca.limpio = texto = V.limpiarNarracion(marca.limpio);
           consumo.salida += (r2.text || "").length;
@@ -2271,7 +2298,7 @@
       }
       if (ctl.signal.aborted) throw { code: "cancelled" }; // «Detener al DM» durante el repaso: el turno no se guarda
       const deshacerOk = await guardarCopia;
-      registrarConsumo({ jugador: infoTurno?.actuante || [...new Set(acciones.map((a) => a.nombre))].join(", "), entrada: consumo.entrada, salida: consumo.salida, herramientas: llamadasTurno.length, repaso: consumo.repaso, sinNarracion: consumo.sinNarracion, nivel: res.modelTierApplied || $("nivel").value });
+      registrarConsumo({ jugador: infoTurno?.actuante || [...new Set(acciones.map((a) => a.nombre))].join(", "), entrada: consumo.entrada, salida: consumo.salida, herramientas: llamadasTurno.length, repaso: consumo.repaso, sinNarracion: consumo.sinNarracion, nivel: res.modelTierApplied || nivelT.nivel, origen: nivelT.origen });
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
@@ -2454,7 +2481,7 @@
     "Pide a quien la creó que te invite desde el menú Compartir por tu correo como Editor y que desactive el enlace público " +
     "(si sois de la misma organización, basta con darte permiso de Colaborador).";
   function avisarSoloLectura() {
-    soloLectura = true;
+    soloLectura = true; pintarNivel();
     if (!privados.includes(AVISO_SOLO_LECTURA)) privados.push(AVISO_SOLO_LECTURA);
     actualizarEntrada();
     pintar();
@@ -2666,8 +2693,19 @@
   $("mapa").onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ampliarMapa(); } };
   $("cerrar-mapa").onclick = () => { $("velo-mapa").hidden = true; };
   $("velo-mapa").onclick = (ev) => { if (ev.target === $("velo-mapa")) $("velo-mapa").hidden = true; };
-  $("nivel").value = leer("velmora-nivel") || "quick";
-  $("nivel").onchange = () => anotar("velmora-nivel", $("nivel").value);
+  $("nivel").value = nivelLocal();
+  $("nivel").onchange = () => {
+    const fijo = puedeFijarNivel && !soloLectura && !!db;
+    if (!fijo && nivelMesa) { pintarNivel(); return; } // lo fija el dueño: el selector de los demás no cambia nada
+    anotar("velmora-nivel", $("nivel").value);
+    if (fijo) {
+      // El dueño cambia el nivel de TODA la mesa: se guarda en la base y cualquier pestaña lo lee antes de su siguiente turno.
+      nivelMesa = { nivel: $("nivel").value, por: nombre || "", ts: Date.now() };
+      pintarNivel();
+      reintentar(() => db.doc("mesa/config").set(nivelMesa)).catch(() => {});
+    }
+  };
+  pintarNivel();
   $("repaso").checked = leer("velmora-repaso") !== "0";
   $("repaso").onchange = () => anotar("velmora-repaso", $("repaso").checked ? "1" : "0");
 
@@ -3120,6 +3158,7 @@
     // Solo quien puede editar la página (dueño o editores) ve el botón de reiniciar.
     const puedeReiniciar = !!((await userNs?.isOwner?.().catch?.(() => false)) || (await userNs?.canEdit?.().catch?.(() => false)));
     $("reiniciar").hidden = !(dbNs && puedeReiniciar);
+    puedeFijarNivel = !!(dbNs && puedeReiniciar); pintarNivel();
     $("importar-partida").hidden = !(dbNs && descargas && puedeReiniciar);
     if (!db) {
       $("estado-texto").textContent = "Abre esta página en claude.ai para jugar: aquí no se puede guardar la partida.";
@@ -3164,6 +3203,7 @@
     miId = (uid || miId || "j" + Math.random().toString(36).slice(2, 12)).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 60);
     anotar("velmora-id", miId);
     suscribir((ok, err) => db.collection("jugadores").onSnapshot(ok, err), (snap) => { jugadores = leerJugadores(snap.docs); pintarMesa(); });
+    suscribir((ok, err) => db.doc("mesa/config").onSnapshot(ok, err), (snap) => { nivelMesa = snap.exists ? snap.data() : null; pintarNivel(); });
     suscribir((ok, err) => db.doc("mesa/control").onSnapshot(ok, err), (snap) => { controles = (snap.exists && snap.data().c) || {}; marcarFichasAusentes(); pintarMesa(); });
     suscribir((ok, err) => db.doc("mesa/orden").onSnapshot(ok, err), (snap) => { orden = leerOrden(snap.exists ? snap : null); pintarMesa(); comprobarEntregaTardia(); });
     suscribir((ok, err) => db.collection("programadas").onSnapshot(ok, err), (snap) => { leerProgramadas(snap.docs); pintarMesa(); comprobarEntregaTardia(); });

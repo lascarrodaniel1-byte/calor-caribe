@@ -23,6 +23,7 @@
   window.claude = { use: async (n) => (n === "db" ? db : n === "user" ? { id: async () => "u1", isOwner: async () => true, canEdit: async () => true, can: async () => true } : n === "sample" ? sample : n === "downloads" ? { save: async (r) => { (window.__descargas = window.__descargas || []).push({ filename: r.filename, data: r.data }); return { status: "saved" }; } } : null) };
   const sample = async (entrada, opts) => {
     window.__llamadas.push(opts.repaso ? "repaso" : "turno");
+    (window.__tiers = window.__tiers || []).push({ tier: opts.modelTier, repaso: !!opts.repaso, narrar: !opts.tools && !opts.repaso });
     if (!opts.repaso) { (window.__entradas = window.__entradas || []).push(typeof entrada === "string" ? entrada : JSON.stringify(entrada)); }
     if (opts.repaso) { window.__repasos.push(entrada); if (window.__colgarRepaso) return new Promise(() => {}); return { text: "ok", truncated: false }; }
     if (window.__colgarDM) return new Promise(() => {});

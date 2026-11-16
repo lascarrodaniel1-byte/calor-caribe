@@ -32,6 +32,7 @@ import { mitigacion, textoRunas } from "./cazador.js";
 import { estadoDelAsalto } from "./combate.js";
 import { catalogoCompacto, consultarReglas, sistemaWeb, SISTEMA_WEB } from "./prompt-web.js";
 import { artesDe } from "./estilos_base.js";
+import { nivelEfectivo } from "./nivel.js";
 
 import { lineaClimaFicha, textoEstacion } from "./clima.js";
 import * as clima from "./clima.js";
@@ -189,7 +190,7 @@ export function estadoParaDM(p: Partida, foco?: string, sinFicha?: string[]): st
 
 export { clima };
 export const activarCalendario = clima.activarCalendario;
-export { limpiarNarracion, bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
+export { nivelEfectivo, limpiarNarracion, bestiarioGrupo, pistasDeRepaso, promptRepaso, promptNarrar, sustentoVisible as sustentoDe, tiempoDeTurno, ayudaFicha, aventuras, dados, espacio, regentes, formulario, narrativa, secuencia, turnos };
 /** ¿Hay artes marciales en juego? Algún personaje con estilo (o Flagelante) o una criatura en escena que los domina. */
 export function hayArtes(p: Partida): boolean {
   return Object.values(p.personajes ?? {}).some((x) => artesDe(x).length > 0) ||
