@@ -1,7 +1,7 @@
 // Catálogo de tesoro (src/tesoro.ts): ids únicos, categorías cerradas, valores y longitudes, criaturas del bestiario, cobertura de las 10 criaturas
 // sin botín, nombres compatibles con los regex de consumo del motor, materiales coherentes con danos.ts, fórmulas de precio y moneda,
 // tema «tesoro» de consultar_reglas y que ningún id del catálogo está en el prompt fijo.
-import { TESORO, CATEGORIAS_TESORO, tesoroDe, textoTesoro, precioEquipo, oroSugerido, MONEDA_PELIGRO, MULT_ORIGEN, REGLAS_TESORO } from "../../src/tesoro.ts";
+import { TESORO, CATEGORIAS_TESORO, tesoroDe, textoTesoro, precioEquipo, oroSugerido, MULT_COFRE, MONEDA_PELIGRO, MULT_ORIGEN, REGLAS_TESORO } from "../../src/tesoro.ts";
 import { BESTIARIO } from "../../src/bestiario.ts";
 import { BASES } from "../../src/equipo.ts";
 import { sistemaWeb, consultarReglas } from "../../src/prompt-web.ts";
@@ -77,7 +77,11 @@ t(BASES.every((b) => precioEquipo(b.precio, "maldito") === precioEquipo(b.precio
   t(v === 160, "P4 hallazgo con 4d10 todo 10 = 160 po (4d10×4)", String(v));
   let medias = [1, 2, 3, 4, 5].map((p) => { let s = 0; for (let i = 0; i < 2000; i++) s += oroSugerido(p, "hallazgo"); return s / 2000; });
   t(medias.every((m, i) => i === 0 || m > medias[i - 1]), "la moneda crece con el peligro", medias.map((m) => m.toFixed(1)).join(" "));
-  t(oroSugerido(3, "compra") === 0, "la compra no da oro");
+  t(oroSugerido(3, "compra") === 0 && oroSugerido(3, "compra", true) === 0, "la compra no da oro (ni como cofre)");
+  iniciarRegistroDados([{ caras: 10, valor: 10 }, { caras: 10, valor: 10 }, { caras: 10, valor: 10 }, { caras: 10, valor: 10 }]);
+  const vc = oroSugerido(4, "hallazgo", true); liberarDados();
+  t(MULT_COFRE === 2 && vc === 320, "cofre: P4 hallazgo con 4d10 todo 10 = 320 po (×2 sobre la tabla)", String(vc));
+  t(["saqueo", "hallazgo", "jefe"].every((o) => [1, 2, 3, 4, 5].every((p) => oroSugerido(p, o as "saqueo") >= 1 && oroSugerido(p, o as "saqueo", true) >= 1)), "saqueo, hallazgo y jefe dan siempre ≥ 1 po");
 }
 
 // Consulta bajo demanda

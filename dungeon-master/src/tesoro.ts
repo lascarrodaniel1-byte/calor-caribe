@@ -284,9 +284,12 @@ export const MONEDA_PELIGRO: Record<1 | 2 | 3 | 4 | 5, { dados: string; mult: nu
 /** Multiplicador por origen (la compra no da moneda: la gasta). */
 export const MULT_ORIGEN: Record<"compra" | "saqueo" | "hallazgo" | "jefe", number> = { compra: 0, saqueo: 0.5, hallazgo: 1, jefe: 2 };
 
-/** Moneda sugerida para un botín: tira los dados del peligro, multiplica y aplica el origen (mínimo 1 po si el origen da algo). */
-export function oroSugerido(peligro: number, origen: keyof typeof MULT_ORIGEN): number {
-  const m = MULT_ORIGEN[origen];
+/** Un cofre (trampa con `contiene`, `abrir`, pecio, tesoro de guarida) multiplica la tabla de su origen (propuesta a confirmar: ×2). */
+export const MULT_COFRE = 2;
+
+/** Moneda sugerida para un botín: tira los dados del peligro, multiplica y aplica el origen (mínimo 1 po si el origen da algo); un cofre, ×MULT_COFRE. */
+export function oroSugerido(peligro: number, origen: keyof typeof MULT_ORIGEN, cofre = false): number {
+  const m = MULT_ORIGEN[origen] * (cofre ? MULT_COFRE : 1);
   if (!m) return 0;
   const p = MONEDA_PELIGRO[Math.min(5, Math.max(1, Math.round(peligro))) as 1 | 2 | 3 | 4 | 5];
   return Math.max(1, Math.round(tirar(p.dados).total * p.mult * m));
@@ -303,8 +306,8 @@ export function precioEquipo(base: number, calidad: "encantado" | "maldito" | "r
 const lineaTesoro = (x: EntradaTesoro) => `${x.nombre}${x.cant ? ` (${x.cant[0]}-${x.cant[1]})` : ""} ${x.valor_po} po · P${x.peligroMin}+${x.regiones?.length ? ` · ${x.regiones.join("/")}` : ""}${x.criaturas ? ` · ${x.criaturas.join("/")}` : ""}${x.material ? ` · material ${x.material}` : ""}${x.uso ? ` — ${x.uso}` : ""}`;
 
 export const REGLAS_TESORO = `## Tesoro y botín (generar_botin, catálogo)
-- generar_botin {origen, cantidad, peligro?, region?, criatura?, categorias?}: con peligro (1-5), región o criatura reparte además de equipo materiales, comida, herramientas, documentos, gemas, trofeos de la criatura y objetos únicos, y sugiere oro (oro_cambio, NO se aplica solo: súmalo con modificar_personaje). Una llamada por saqueo; cantidad = nº de objetos. Sin esos datos, el botín antiguo (equipo y viales).
-- Oro por peligro: P1 1d6, P2 3d6, P3 2d8×3, P4 4d10×4, P5 6d10×10 po; ×0,5 saqueo, ×1 hallazgo, ×2 jefe (la compra no da oro). Equipo mágico en saqueos comunes: ~0% P1-2, 5% P3, 12% P4, 25% P5; hallazgos y jefes dan más.
+- generar_botin {origen, cantidad, peligro?, region?, criatura?, categorias?}: con peligro (1-5), región o criatura reparte además de equipo materiales, comida, herramientas, documentos, gemas, trofeos de la criatura y objetos únicos, y sugiere oro (oro_cambio, NO se aplica solo: súmalo con modificar_personaje). Una llamada por saqueo; cantidad = nº de objetos. Sin peligro se trata como P2 (o el de la criatura): el saqueo, el hallazgo y el jefe SIEMPRE dan oro.
+- Oro por peligro: P1 1d6, P2 3d6, P3 2d8×3, P4 4d10×4, P5 6d10×10 po; ×0,5 saqueo, ×1 hallazgo, ×2 jefe (la compra no da oro). Un cofre (cofre: true; las trampas con cofre, el pecio y el tesoro de guarida lo llevan solo) multiplica por ×2 la tabla de su origen. Equipo mágico en saqueos comunes: ~0% P1-2, 5% P3, 12% P4, 25% P5; hallazgos y jefes dan más.
 - Precios de equipo: encantado/maldito = base×10+200; reliquia = encantado+5.000 (techo 19.000); legendaria 20.000.
 - Los objetos únicos con historia se registran con su [O#]. Materiales: «plata» y «hierro frío» se pasan como material en atacar. Consulta el catálogo con consultar_reglas {tema: "tesoro", nombre: categoría o criatura}.
 - Categorías: ${CATEGORIAS_TESORO.join(", ")}.`;

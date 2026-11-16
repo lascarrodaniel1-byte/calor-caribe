@@ -253,6 +253,7 @@ const esquemas = {
     region: z.string().optional().describe("Región o lugar (Ciénagas, Karak, mar…)"),
     criatura: z.string().optional().describe("Criatura saqueada: sus trofeos y su peligro"),
     categorias: z.array(z.enum(CATEGORIAS_BOTIN as [string, ...string[]])).optional().describe("Limita el reparto a estas categorías"),
+    cofre: z.boolean().optional().describe("Es un cofre: el oro sugerido se multiplica (×2). Las trampas con cofre y los tesoros de guarida ya lo son"),
   }),
   crear_objeto: z.object({
     nombre: z.string(),

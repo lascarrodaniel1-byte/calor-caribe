@@ -554,3 +554,23 @@ Las 46 criaturas llevan `botinItems: {id, probabilidad}[]` (ids del catálogo y 
 - **Rumor hallado**: un hallazgo trae una pista escrita el 20 % de las veces: el texto del rumor (o, si el tema no tiene, el público) de un tema de `saber.ts` relacionado con la criatura o la región; nunca lo erudito, restringido ni secreto, y nunca Æsir. Solo lo ve el DM (los jugadores ven «un papel con un rumor anotado»).
 - **Mar y aguas**: nuevo encuentro `pecio` (hallazgo en el mar, peligro 1); Bakunawa (P5), Sirena (P3), Hombre pez (P2) y el pecio llevan su línea «Botín al acabar: generar_botin {…}» en el resultado del encuentro (los demás encuentros no cambian ni engordan). Peligros intactos.
 - **Propuestas a confirmar**: el 20 % de pistas, el peso ×3 náutico en el mar, el tesoro de cada guarida y el nuevo encuentro «Pecio a la deriva».
+
+### 16 quater. El saqueo siempre da oro; los cofres, el doble (propuesta a confirmar)
+
+**Qué cambia.** (a) `generar_botin` sin `peligro`, `region`, `criatura` ni `categorias` conserva el equipo y los viales de siempre (mismo encabezado) pero **añade oro de peligro 2** (3d6 × origen); con `criatura` el peligro sale de la criatura. Saqueo, hallazgo y jefe dan oro **siempre**; la compra, nunca (tampoco como cofre). (b) Nuevo parámetro `cofre` (`MULT_COFRE = 2` en `tesoro.ts`): el oro de un cofre es **×2 sobre la tabla de su origen** (hallazgo ×2, jefe ×4, saqueo ×1). Lo activan solos las trampas con cofre (`desarmar` con éxito y `abrir`), el hallazgo en la guarida de un jefe, el hallazgo en un lugar «cofre/pecio/naufragio» y el encuentro «Pecio a la deriva» (`cofre: true` en su línea de botín); el DM puede pasar `cofre: true`. El texto del DM marca «Oro: N po (cofre)». (c) El oro sigue siendo sugerencia (`oro_cambio`): ninguna ficha cambia sola.
+
+**Por qué ×2.** Dentro de la banda pedida (×1,5-×2): el cofre de P3 da de media 54 po, el de P4 174 y el de P5 639 (un saqueo común: 14 / 45 / 168); en P1-P2 es modesto (7 y 21 po) porque el peligro bajo no cuenta con grandes tesoros.
+
+**Simulación** (`npx tsx tests/balance/botin.ts`, semilla 1, 200 llamadas por celda, cantidad 3; oro medio en po).
+
+| Origen | P1 | P2 | P3 | P4 | P5 |
+|---|---|---|---|---|---|
+| Saqueo (antes y después) | 2,1 | 5,6 | 13,7 | 44,8 | 168 |
+| Hallazgo (antes y después) | 3,4 | 10,3 | 26,9 | 89,6 | 331 |
+| **Hallazgo cofre (nuevo)** | 7,3 | 21,1 | 54,2 | 173,9 | 639 |
+| Jefe (antes y después) | 7,3 | 21,5 | 54,2 | 176,6 | 638 |
+| Sin peligro (antes 0; ahora P2): saqueo / hallazgo / jefe | | 5,5 / 10,8 / 21,1 | | | |
+
+**Campaña de niveles 1-8** (300 campañas: 6 saqueos + 2 hallazgos por nivel + 4 jefes). Sin cofres (la de §16): **3.062 → 3.079 po** de moneda (ruido: con peligro dado nada cambia). Con cofres (uno de los dos hallazgos de cada nivel es un cofre de trampa, pecio o guarida): **3.414 po** (p10-p90: 3.061-3.806); moneda + valor del catálogo, 6.230 (5.666-6.794). Dentro de la banda de moneda 3.000-6.000; no hizo falta tocar los dados de §16. Si todos los hallazgos fueran cofre, ≈3.800: sigue en banda.
+
+Pruebas: `t-botin` (sin peligro → oro con techo 3d6 × origen; compra sin oro; cofre siempre con oro, ≈ ×2, techo dados × 2; guarida y pecio), `t-botin-lugares` (cofres de trampa por desarmar y por abrir, también con categorías limitadas) y `t-tesoro` (`oroSugerido` con cofre: 4d10 todo 10 → 320 po).

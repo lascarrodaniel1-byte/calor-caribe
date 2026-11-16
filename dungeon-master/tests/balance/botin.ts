@@ -52,12 +52,12 @@ function leer(p: ReturnType<typeof nueva>, antes: number, dm: string): Lectura {
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(0)}%` : "0%");
 const CATS = ["arma", "armadura", "accesorio", "material", "ingrediente", "comida_bebida", "herramienta", "documento", "gema_arte", "curiosidad", "trofeo", "llave_sello", "objeto_trama", "moneda", "nautico", "vial", "catalizador"];
 
-function simular(origen: Origen, peligro: number | undefined, nuevoGenerador: boolean, region?: string) {
+function simular(origen: Origen, peligro: number | undefined, nuevoGenerador: boolean, region?: string, cofre?: boolean) {
   const tot: Lectura = { cats: {}, tipos: [], oro: 0, equipo: 0, magico: 0, valorCatalogo: 0, objetos: 0 };
   for (let i = 0; i < N; i++) {
     const p = nueva();
     const antes = Object.keys(p.objetos).length;
-    const b = nuevoGenerador ? generarBotinDe(p, { origen, cantidad: CANT, peligro, region }) : generarBotin(p, { origen, cantidad: CANT });
+    const b = nuevoGenerador ? generarBotinDe(p, { origen, cantidad: CANT, peligro, region, cofre }) : generarBotin(p, { origen, cantidad: CANT });
     const l = leer(p, antes, b.dm);
     for (const [k, v] of Object.entries(l.cats)) tot.cats[k] = (tot.cats[k] ?? 0) + v;
     tot.tipos.push(...l.tipos); tot.oro += l.oro; tot.equipo += l.equipo; tot.magico += l.magico; tot.valorCatalogo += l.valorCatalogo; tot.objetos += l.objetos;
@@ -77,33 +77,43 @@ for (const origen of ["saqueo", "hallazgo", "jefe"] as const)
   for (const peligro of [1, 2, 3, 4, 5]) console.log(`| después | ${origen} | P${peligro} | ${fila(simular(origen, peligro, true))} |`);
 console.log(`| después | saqueo | P3 mar | ${fila(simular("saqueo", 3, true, "mar"))} |`);
 console.log(`| después | compra | P2 | ${fila(simular("compra", 2, true))} |`);
+for (const origen of ["saqueo", "hallazgo", "jefe"] as const) console.log(`| después | ${origen} | sin peligro (P2) | ${fila(simular(origen, undefined, true))} |`);
+for (const peligro of [1, 2, 3, 4, 5]) console.log(`| después | hallazgo cofre | P${peligro} | ${fila(simular("hallazgo", peligro, true, undefined, true))} |`);
 
 // ---- Campaña de niveles 1-8 (solo moneda y valor del catálogo; el equipo, que se queda o se vende aparte, no cuenta)
-interface Evento { origen: Origen; peligro: number }
-function campana(): Evento[] {
+interface Evento { origen: Origen; peligro: number; cofre?: boolean }
+/** `cofres`: uno de los 2 hallazgos de cada nivel es un cofre (trampa con cofre, pecio, guarida). */
+function campana(cofres: boolean): Evento[] {
   const ev: Evento[] = [];
   for (let nivel = 1; nivel <= 8; nivel++) {
     const tope = nivel <= 2 ? 2 : nivel <= 4 ? 3 : nivel <= 8 ? 4 : 5;
     const saqueos = 6;
     for (let i = 0; i < saqueos; i++) ev.push({ origen: "saqueo", peligro: Math.max(1, tope - (azar() < 0.45 ? 1 : 0) - (azar() < 0.2 ? 1 : 0)) });
-    for (let i = 0; i < 2; i++) ev.push({ origen: "hallazgo", peligro: Math.max(1, tope - (azar() < 0.4 ? 1 : 0)) });
+    for (let i = 0; i < 2; i++) ev.push({ origen: "hallazgo", peligro: Math.max(1, tope - (azar() < 0.4 ? 1 : 0)), cofre: cofres && i === 0 });
   }
   ev.push({ origen: "jefe", peligro: 4 }, { origen: "jefe", peligro: 4 }, { origen: "jefe", peligro: 5 }, { origen: "jefe", peligro: 5 });
   return ev;
 }
-const totales: number[] = [], conCatalogo: number[] = [];
-for (let c = 0; c < CAMPANAS; c++) {
-  const p = nueva(); let oro = 0, cat = 0;
-  for (const e of campana()) {
-    const antes = Object.keys(p.objetos).length;
-    const l = leer(p, antes, generarBotinDe(p, { origen: e.origen, cantidad: e.origen === "saqueo" ? 3 : 4, peligro: e.peligro }).dm);
-    oro += l.oro; cat += l.valorCatalogo;
+function correr(cofres: boolean) {
+  const totales: number[] = [], conCatalogo: number[] = [];
+  for (let c = 0; c < CAMPANAS; c++) {
+    const p = nueva(); let oro = 0, cat = 0;
+    for (const e of campana(cofres)) {
+      const antes = Object.keys(p.objetos).length;
+      const l = leer(p, antes, generarBotinDe(p, { origen: e.origen, cantidad: e.origen === "saqueo" ? 3 : 4, peligro: e.peligro, cofre: e.cofre }).dm);
+      oro += l.oro; cat += l.valorCatalogo;
+    }
+    totales.push(oro); conCatalogo.push(oro + cat);
   }
-  totales.push(oro); conCatalogo.push(oro + cat);
+  return { totales, conCatalogo };
 }
 const q = (a: number[], f: number) => [...a].sort((x, y) => x - y)[Math.floor(f * (a.length - 1))];
 const media = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length;
 console.log(`\n### Campaña niveles 1-8 (${CAMPANAS} campañas: 6 saqueos y 2 hallazgos por nivel, 4 jefes)\n`);
-console.log("| Qué suma | Media | p10 | p90 |\n|---|---|---|---|");
-console.log(`| Solo moneda sugerida (oro_cambio) | ${media(totales).toFixed(0)} | ${q(totales, 0.1)} | ${q(totales, 0.9)} |`);
-console.log(`| Moneda + valor de los objetos del catálogo | ${media(conCatalogo).toFixed(0)} | ${q(conCatalogo, 0.1)} | ${q(conCatalogo, 0.9)} |`);
+console.log("| Campaña | Qué suma | Media | p10 | p90 |\n|---|---|---|---|---|");
+for (const cofres of [false, true]) {
+  const { totales, conCatalogo } = correr(cofres);
+  const n = cofres ? "1 hallazgo de 2 es cofre" : "sin cofres";
+  console.log(`| ${n} | Solo moneda sugerida (oro_cambio) | ${media(totales).toFixed(0)} | ${q(totales, 0.1)} | ${q(totales, 0.9)} |`);
+  console.log(`| ${n} | Moneda + valor de los objetos del catálogo | ${media(conCatalogo).toFixed(0)} | ${q(conCatalogo, 0.1)} | ${q(conCatalogo, 0.9)} |`);
+}

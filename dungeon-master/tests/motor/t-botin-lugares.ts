@@ -46,6 +46,7 @@ const E = (p: any, n: string, d: object): any => ejecutar(n, d, p);
   iniciarRegistroDados([{ caras: 20, valor: 20 }]);
   const d = E(p, "trampa", { accion: "desarmar", nombre: "Cofre del sótano", quienes: ["Ana"], herramientas: true }); liberarDados();
   t(!d.error && d.contenido.includes("El cofre se abre sin riesgo") && /— \d+ po|Oro: \d+ po/.test(d.contenido) && /💰 El cofre guarda/.test(d.aviso ?? ""), "desarmar con éxito abre el cofre: botín para el DM y a la vista", d.contenido.slice(-160));
+  t(/Oro: \d+ po \(cofre\)/.test(d.contenido) && /💰 El cofre guarda:[\s\S]*- \d+ po/.test(d.aviso ?? ""), "el cofre de una trampa desarmada siempre da oro (×2 de cofre)");
   t(E(p, "trampa", { accion: "abrir", nombre: "Cofre del sótano" }).error === true, "el cofre se abre una sola vez");
   t(!textoTrampas(p).includes("cofre P3"), "abierto, ya no se anota");
   // disparada: el cofre queda pendiente hasta abrir
@@ -54,6 +55,7 @@ const E = (p: any, n: string, d: object): any => ejecutar(n, d, p);
   t(s.contenido.includes("trampa {accion: abrir}") && textoTrampas(p).includes("Cofre roto"), "disparar avisa del cofre pendiente y sigue anotado");
   const a = E(p, "trampa", { accion: "abrir", nombre: "Cofre roto" });
   t(!a.error && a.contenido.includes("se abre") && /Oro: \d+ po/.test(a.contenido), "abrir tras disparar entrega el botín", a.contenido.slice(0, 100));
+  t(/Oro: \d+ po \(cofre\)/.test(a.contenido) && /- \d+ po/.test(a.aviso ?? ""), "abrir con categorías limitadas también da oro de cofre");
   t(E(p, "trampa", { accion: "abrir", nombre: "Hoz" }).error === true, "abrir una trampa inexistente: error");
   E(p, "trampa", { accion: "colocar", nombre: "Sin cofre", cd_detectar: 10, efecto });
   t(E(p, "trampa", { accion: "abrir", nombre: "Sin cofre" }).error === true, "abrir una trampa sin cofre: error");
@@ -109,7 +111,7 @@ const E = (p: any, n: string, d: object): any => ejecutar(n, d, p);
   const p = nueva(); let pec = 0, hint = 0, bak = 0;
   for (let i = 0; i < 400; i++) {
     const q = nueva(); const r = sortearEncuentro(q, { region: "el mar abierto" });
-    if (/Pecio a la deriva/.test(r)) { pec++; if (/Botín al acabar: generar_botin \{origen: "hallazgo", peligro: 1, region: "mar"\}/.test(r)) hint++; }
+    if (/Pecio a la deriva/.test(r)) { pec++; if (/Botín al acabar: generar_botin \{origen: "hallazgo", peligro: 1, region: "mar", cofre: true\}/.test(r)) hint++; }
     if (/Bakunawa/.test(r)) bak++;
   }
   t(pec > 0 && hint === pec, "el pecio sale en el mar y lleva su línea de botín", `${pec}/${hint}`);

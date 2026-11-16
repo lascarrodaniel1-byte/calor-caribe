@@ -138,7 +138,7 @@ export function trampa(partida: Partida, d: DatosTrampa): { texto: string; publi
 function cofre(partida: Partida, t: Trampa): { dm: string; jugadores: string } | null {
   if (!t.contiene || t.abierto) return null;
   t.abierto = true;
-  return generarBotinDe(partida, { origen: "hallazgo", cantidad: t.contiene.cantidad ?? 3, peligro: t.contiene.peligro, region: t.lugar, categorias: t.contiene.categorias as never });
+  return generarBotinDe(partida, { origen: "hallazgo", cantidad: t.contiene.cantidad ?? 3, peligro: t.contiene.peligro, region: t.lugar, categorias: t.contiene.categorias as never, cofre: true });
 }
 
 function disparar(partida: Partida, t: Trampa, objetivos: Personaje[]): string {

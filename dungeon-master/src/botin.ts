@@ -19,6 +19,8 @@ export interface PeticionBotinTesoro extends PeticionBotin {
   criatura?: string;
   /** Limita el reparto a estas categorías del catálogo (y «equipo» para armas y armaduras). */
   categorias?: (CategoriaTesoro | "equipo")[];
+  /** Es un cofre (trampa con cofre, pecio, tesoro de guarida): el oro se multiplica (MULT_COFRE). Se deduce solo en hallazgos de guarida o de un lugar «cofre/pecio/naufragio». */
+  cofre?: boolean;
 }
 
 type Cat = CategoriaTesoro | "equipo";
@@ -51,7 +53,16 @@ const elegirPeso = <T>(l: { x: T; w: number }[]): T | undefined => {
 const yaHay = (partida: Partida, nombre: string) => Object.values(partida.objetos).some((o) => o.nombre.startsWith(nombre));
 
 /** ¿Es una petición con datos nuevos? Si no, vale el generador antiguo. */
-export const esBotinNuevo = (b: PeticionBotinTesoro) => b.peligro !== undefined || !!b.region || !!b.criatura || !!b.categorias?.length;
+export const esBotinNuevo = (b: PeticionBotinTesoro) => b.peligro !== undefined || !!b.region || !!b.criatura || !!b.categorias?.length || !!b.cofre;
+
+/** Peligro por defecto de una petición sin peligro ni criatura: 2. */
+export const PELIGRO_POR_DEFECTO = 2;
+
+/** Línea de oro (sugerencia; nunca se aplica solo). Siempre da en saqueo, hallazgo y jefe; la compra no. */
+function lineaOro(b: PeticionBotinTesoro, peligro: number, cofre: boolean, dm: string[], jug: string[]): void {
+  const oro = b.origen === "compra" ? 0 : oroSugerido(peligro, b.origen, cofre);
+  if (oro) { dm.push(`- Oro: ${oro} po${cofre ? " (cofre)" : ""} (sugerido: súmalo con modificar_personaje {oro_cambio: ${oro}} a quien lo recoja)`); jug.push(`- ${oro} po`); }
+}
 
 /** Registra una entrada del catálogo: devuelve la línea para el DM y la de los jugadores. */
 function entrada(partida: Partida, x: EntradaTesoro, compra: boolean): { dm: string; jug: string } {
@@ -78,7 +89,13 @@ function rumorHallado(criatura: string | undefined, lugar: string): { nombre: st
 
 /** Botín con peligro, región, criatura y categorías (retrocompatible: sin ellos, el antiguo). */
 export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: string; jugadores: string } {
-  if (!esBotinNuevo(b)) return generarBotin(partida, b);
+  if (!esBotinNuevo(b)) {
+    // Petición antigua: el mismo equipo y viales de siempre, pero con oro (peligro 2)
+    const r = generarBotin(partida, b);
+    const dm = [r.dm], jug = r.jugadores ? [r.jugadores] : [];
+    lineaOro(b, PELIGRO_POR_DEFECTO, false, dm, jug);
+    return { dm: dm.join("\n"), jugadores: jug.join("\n") };
+  }
   const c = b.criatura ? buscarCriatura(b.criatura) : undefined;
   const peligro = Math.min(5, Math.max(1, Math.round(b.peligro ?? c?.peligro ?? 2)));
   const region = b.region ?? c?.region ?? "";
@@ -87,6 +104,7 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
   const mar = enMar(partida, region || undefined);
   const dm: string[] = [], jug: string[] = [];
   const compra = b.origen === "compra";
+  const cofre = !compra && (b.cofre ?? (b.origen === "hallazgo" && ((!!c && !!tesoroGuarida(c.nombre)) || /cofre|pecio|naufrag/.test(lugar))));
   const vistos = new Set<string>();
 
   // (1) Lo que lleva la criatura: su botín estructurado (L3) o, si no lo tiene, lo que el catálogo le asigna; cada pieza con su probabilidad.
@@ -153,11 +171,10 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
   }
 
   // (3) Oro sugerido (nunca se aplica solo) y (4) extras de siempre: Behelit, catalizador y viales
-  const oro = compra ? 0 : oroSugerido(peligro, b.origen);
-  if (oro) { dm.push(`- Oro: ${oro} po (sugerido: súmalo con modificar_personaje {oro_cambio: ${oro}} a quien lo recoja)`); jug.push(`- ${oro} po`); }
+  lineaOro(b, peligro, cofre, dm, jug);
   extrasBotin(partida, b, dm, jug);
   return {
-    dm: `Botín (${b.origen}, P${peligro}${b.criatura ? `, ${b.criatura}` : ""}${region && !b.criatura ? `, ${region}` : ""}). Añade con modificar_personaje lo que se queden (nombre exacto, con su [O#]); el oro, con oro_cambio.\n${dm.join("\n")}`,
+    dm: `Botín (${b.origen}${cofre ? " cofre" : ""}, P${peligro}${b.criatura ? `, ${b.criatura}` : ""}${region && !b.criatura ? `, ${region}` : ""}). Añade con modificar_personaje lo que se queden (nombre exacto, con su [O#]); el oro, con oro_cambio.\n${dm.join("\n")}`,
     jugadores: jug.join("\n"),
   };
 }

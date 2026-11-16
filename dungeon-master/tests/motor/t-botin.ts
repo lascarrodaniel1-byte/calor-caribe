@@ -3,6 +3,7 @@
 import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { generarBotinDe, esBotinNuevo } from "../../src/botin.ts";
 import { extrasBotin, tirarCalidad, generarBotin, ORIGENES } from "../../src/equipo.ts";
+import { tesoroGuarida } from "../../src/guarida.ts";
 import { TESORO, MONEDA_PELIGRO } from "../../src/tesoro.ts";
 import { ejecutar } from "../../src/herramientas.ts";
 import { sistemaWeb } from "../../src/prompt-web.ts";
@@ -13,15 +14,23 @@ const lineas = (dm: string) => dm.split("\n").slice(1);
 const del = (dm: string) => lineas(dm).filter((l) => !/^- (Oro|Vial|Catalizador|Huevo|Pista escrita)/.test(l));
 const idsDe = (dm: string) => del(dm).map((l) => TESORO.find((x) => l.startsWith(`- ${x.nombre}`))).filter(Boolean) as typeof TESORO;
 
-// Retrocompatibilidad: sin peligro, región, criatura ni categorías es el generador antiguo (sin oro, mismo encabezado)
+// Sin peligro, región, criatura ni categorías: el equipo y los viales de siempre (mismo encabezado), pero con oro de peligro 2 (la compra, sin oro)
 {
   t(!esBotinNuevo({ origen: "saqueo", cantidad: 3 }) && esBotinNuevo({ origen: "saqueo", cantidad: 3, peligro: 1 }) && esBotinNuevo({ origen: "saqueo", cantidad: 1, criatura: "Ogro" }), "esBotinNuevo distingue la petición antigua de la nueva");
   let anomalias = 0;
   for (const origen of ORIGENES) for (let i = 0; i < 60; i++) {
     const r = generarBotinDe(nueva(), { origen, cantidad: 1 + (i % 6) });
-    if (!r.dm.startsWith(`Botín (${origen}). Añade al inventario`) || /Oro:/.test(r.dm) || typeof r.jugadores !== "string") anomalias++;
+    const oros = r.dm.match(/- Oro: (\d+) po/g)?.length ?? 0;
+    const m = /- Oro: (\d+) po/.exec(r.dm);
+    const techo = Math.round(18 * (origen === "jefe" ? 2 : origen === "saqueo" ? 0.5 : 1));
+    if (!r.dm.startsWith(`Botín (${origen}). Añade al inventario`) || typeof r.jugadores !== "string") anomalias++;
+    if (origen === "compra" ? oros !== 0 : (oros !== 1 || !m || Number(m[1]) < 1 || Number(m[1]) > techo || !r.jugadores.includes(`- ${m[1]} po`) || !r.dm.includes(`oro_cambio: ${m[1]}`))) anomalias++;
   }
-  t(anomalias === 0, "sin datos nuevos: encabezado y contenido del generador antiguo, sin oro", String(anomalias));
+  t(anomalias === 0, "sin datos nuevos: encabezado antiguo y SIEMPRE oro de P2 (3d6 × origen) en saqueo, hallazgo y jefe; la compra, sin oro", String(anomalias));
+  const pa = nueva(); const sinP = ejecutar("generar_botin", { origen: "saqueo", cantidad: 2 }, pa) as any;
+  t(/Oro: \d+ po/.test(sinP.contenido), "generar_botin sin peligro por la herramienta da oro");
+  const conC = generarBotinDe(nueva(), { origen: "saqueo", cantidad: 1, criatura: "Ogro" });
+  t(/Oro: \d+ po/.test(conC.dm), "con criatura, el peligro sale de la criatura y también da oro");
 }
 
 // Oro sugerido: sale en el texto, no cambia ninguna ficha, la compra no lo da y respeta el techo de cada peligro
@@ -133,7 +142,7 @@ const idsDe = (dm: string) => del(dm).map((l) => TESORO.find((x) => l.startsWith
     const r = ejecutar("generar_botin", { origen: "saqueo", cantidad: 3, peligro: 4, region: "Marca Hueca", criatura: "Hambriento" }, p) as any;
     if (r.error || !/Oro: \d+ po/.test(r.contenido)) err = "sin oro: " + r.contenido.slice(0, 80);
     const r2 = ejecutar("generar_botin", { origen: "saqueo", cantidad: 3 }, p) as any;
-    if (r2.error || /Oro:/.test(r2.contenido)) err = "oro en petición antigua";
+    if (r2.error || !/Oro:/.test(r2.contenido)) err = "sin oro en petición antigua";
     const r3 = ejecutar("generar_botin", { origen: "hallazgo", cantidad: 2, categorias: ["documento"] }, p) as any;
     if (r3.error) err = r3.contenido;
   } catch (e: any) { err = e.message; }
@@ -159,4 +168,23 @@ const idsDe = (dm: string) => del(dm).map((l) => TESORO.find((x) => l.startsWith
   t(!/CATEGORIAS_TESORO|objeto_trama|gema_arte|comida_bebida/.test(s), "el catálogo no entra en el prompt fijo");
 }
 void generarBotin;
+// Cofres: siempre dan oro, más que el hallazgo común (×2 sobre la tabla de su origen) y nunca se aplica solo
+{
+  let sin = 0, techoMal = 0, mediaCofre = 0, mediaComun = 0; const N = 300;
+  for (const peligro of [1, 2, 3, 4, 5]) for (let i = 0; i < N / 5; i++) {
+    const c = generarBotinDe(nueva(), { origen: "hallazgo", cantidad: 2, peligro, cofre: true });
+    const m = /- Oro: (\d+) po \(cofre\)/.exec(c.dm);
+    if (!m) { sin++; continue; }
+    const mp = MONEDA_PELIGRO[peligro as 1]; const [n, cs] = mp.dados.split("d").map(Number);
+    if (Number(m[1]) > n * cs * mp.mult * 2 || !c.dm.startsWith("Botín (hallazgo cofre")) techoMal++;
+    mediaCofre += Number(m[1]);
+    mediaComun += Number(/- Oro: (\d+) po/.exec(generarBotinDe(nueva(), { origen: "hallazgo", cantidad: 2, peligro }).dm)![1]);
+  }
+  t(sin === 0 && techoMal === 0, "cofre: oro en todas las llamadas y nunca por encima de dados × ×2", `${sin} ${techoMal}`);
+  t(mediaCofre > mediaComun * 1.6 && mediaCofre < mediaComun * 2.5, "el cofre da ≈ el doble que un hallazgo común", `${mediaCofre} vs ${mediaComun}`);
+  t(!/Oro:/.test(generarBotinDe(nueva(), { origen: "compra", cantidad: 3, peligro: 3, cofre: true }).dm), "un cofre de compra no da oro (la compra sigue sin dar)");
+  t(tesoroGuarida("Ysolde") && /\(cofre\)/.test(generarBotinDe(nueva(), { origen: "hallazgo", cantidad: 2, criatura: "Ysolde" }).dm) && !/\(cofre\)/.test(generarBotinDe(nueva(), { origen: "saqueo", cantidad: 2, criatura: "Ysolde" }).dm), "el hallazgo en la guarida de un jefe es cofre; su saqueo no");
+  t(/\(cofre\)/.test(generarBotinDe(nueva(), { origen: "hallazgo", cantidad: 2, peligro: 1, region: "mar", cofre: true }).dm), "pecio: cofre");
+}
+
 console.log(`${ok} ok, ${mal} fallas`);
