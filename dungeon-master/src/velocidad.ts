@@ -44,6 +44,7 @@ export function velocidadDe(partida: Partida, c: Combatiente): { metros: number;
   const ag = nivelAgotamiento(conds);
   if (ag >= 5) return { metros: 0, motivos: ["agotamiento 5: no puede moverse"] };
   if (ag >= 2) { v = v / 2; motivos.push("mitad por el agotamiento"); }
+  if (ef.velocidadMitad) { v = v / 2; motivos.push("mitad por estar ralentizado"); }
   const t = partida.combate ? turnoDe(partida, c.nombre) : {};
   if (partida.combate && t.corrioRonda === partida.combate.ronda) { v *= 2; motivos.push("corre: el doble"); }
   return { metros: v, motivos };

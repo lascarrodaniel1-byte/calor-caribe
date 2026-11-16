@@ -170,6 +170,8 @@ export interface Partida {
   trampas?: Record<string, import("./trampas.js").Trampa>;
   /** Círculo de sal en pie (ver sal.ts). */
   sal?: import("./sal.js").CirculoSal;
+  /** Estados dejados por el daño elemental en curso (estados.ts): para que acaben a su hora. */
+  estadosDano?: import("./estados_base.js").EstadoDano[];
   /** Botes, balsas y barcos (ver naves.ts). */
   naves?: Record<string, import("./naves.js").Nave>;
   /** Libro de sucesos: lo que el DM ha ido registrando, con la hora (ver repaso.ts). */

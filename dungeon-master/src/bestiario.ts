@@ -24,6 +24,8 @@ export interface Habilidad {
   muerte_si_falla_por?: number;
   /** Condición que sufre quien falla (sin morir). */
   condicion?: string;
+  /** Estado por tipo de daño (estados.ts): false = esta habilidad no deja estado aunque su daño sea elemental; un texto = deja ESE estado (condición del catálogo). Por defecto, el del tipo de daño (y ninguno si ya trae `condicion`). */
+  estado?: false | string;
   /** Herida que causa al fallar (usa la tabla de esa causa). */
   herida?: Causa;
   /** Puntos de sangre perdida al fallar (riesgo de anemia). */
@@ -133,6 +135,8 @@ export interface Criatura {
   inmunidadesCondicion?: CondicionInmune[];
   /** Defensas que solo valen mientras tenga una condición (p. ej. la Bakunawa «varada» es vulnerable al fuego). `cuando` es una condición del catálogo. */
   condicionadas?: { cuando: string; resistencias?: ReglaFicha[]; inmunidades?: ReglaFicha[]; vulnerabilidades?: ReglaFicha[] }[];
+  /** true: sus golpes elementales no dejan estados (estados.ts); lo que ya trae `condicion` sigue funcionando. */
+  sinEstados?: boolean;
   /** Adaptación (Kuru): hasta tantos tipos de daño nuevos por combate, de los que gana resistencia a partir de su siguiente turno. */
   adaptacion?: number;
   /** Armadura o piel (ver PIEZAS en armadura.ts): escamas_naturales, pellejo, hueso, placas_completas… */
@@ -1870,7 +1874,7 @@ export function danar(e: EstadoJefe, cantidad: number): string {
   return `${e.nombre}: ${cantidad >= 0 ? `−${cantidad}` : `+${-cantidad}`} PV → ${e.pv}/${e.pv_max} (${estadoTexto(e)}).`;
 }
 
-export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0, esquivan: string[] = [], alFallar?: (p: Personaje, log: string[]) => void): string {
+export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos: Personaje[], cdMenos = 0, esquivan: string[] = [], alFallar?: (p: Personaje, log: string[]) => void, alDanar?: (p: Personaje, info: { tipo: TipoDano; final: number; falla: boolean }, log: string[]) => void): string {
   const log: string[] = [];
   const quien = e?.nombre ?? "La criatura";
   const sello = e?.sellos?.find((s) => h.nombre.toLowerCase().includes(s.habilidad.toLowerCase()) || s.habilidad.toLowerCase().includes(h.nombre.toLowerCase()));
@@ -1917,6 +1921,7 @@ export function usarHabilidad(e: EstadoJefe | undefined, h: Habilidad, objetivos
         if (estabaEnSuelo && d > 0) { const t = danoEnSuelo(p, d, false); if (t) log.push("  " + t); }
         else { const mi = muerteInstantanea(p, pvAntes, d); if (mi) log.push("  " + mi); }
         log.push(`  Recibe ${d} de daño (PV ${p.pv}).${p.pv === 0 ? " ¡Cae a 0 PV!" : ""}`);
+        if (alDanar && h.tipo_dano && d > 0 && p.pv > 0) alDanar(p, { tipo: h.tipo_dano, final: d, falla }, log); // estado por tipo de daño (estados.ts)
       }
     }
     if (falla) {

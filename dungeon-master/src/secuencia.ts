@@ -228,7 +228,7 @@ OtroPersonaje: dónde está y qué hace ahora → a dónde se dirige
 // ---------------------------------------------------------------------------
 
 /** Emojis con los que el motor encabeza sus avisos (tiradas, hora, viaje, heridas, clima, sustento…). */
-const EMOJIS_AVISO = "🎲|💥|💨|🕒|🧭|🗺|🩸|🩹|⏳|📜|✨|🌧|⏱|🪨|🛡|🌊|💃|🗡|👉|⚔|☠|🍖|💧|🏰|🧪|🩺|💀|🔥|🧂|🌤|🥵|🥶|🤒|⚠|🐎|⛵|🌩";
+const EMOJIS_AVISO = "🎲|💥|💨|🕒|🧭|🗺|🩸|🩹|⏳|📜|✨|🌧|⏱|🪨|🛡|🌊|💃|🗡|👉|⚔|☠|🍖|💧|🏰|🧪|🩺|💀|🔥|🧂|🌤|🥵|🥶|🤒|⚠|🐎|⛵|🌩|⚡|☀|🔔|💫|🧠";
 const EMPIEZA_AVISO = new RegExp(`^[\\s*_>-]*(?:${EMOJIS_AVISO})\\uFE0F?`);
 /** Marcador que el programa pone delante de los resultados del motor y que el modelo a veces imita. */
 const MARCADOR = /\[\s*(?:resultados\s+del\s+motor|informaci[oó]n\s+del\s+programa|tirada\s+p[uú]blica)/i;

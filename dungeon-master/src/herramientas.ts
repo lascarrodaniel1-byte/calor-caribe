@@ -78,11 +78,12 @@ import { NOMBRES_HABILIDADES, pareceUnaPrueba, resolverPrueba } from "./pruebas.
 import { NOMBRES_CLASES, NOMBRES_RAZAS } from "./mundo.js";
 import { NOMBRES_PIEZAS } from "./armadura.js";
 import { actualizarTrama, registrarPnj } from "./narrativa.js";
-import { limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS, exigirHabilidadDisponible, gastarHabilidad } from "./combate.js";
+import { localizar as localizarCombatiente, limpiarTrasCombate, agregarAlCombate, aplicarCondicion, retirarCaido, type DatosAtaque, ALERTAS, atacar, NOMBRES_PERSONALIDADES, NOMBRES_TEMPLES, PLANES, siguienteAsalto, tirarIniciativa, VETERANIAS, exigirHabilidadDisponible, gastarHabilidad } from "./combate.js";
 import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { aplicarDanoAPersonaje } from "./rasgos.js";
+import { estadoPorDano, ganchoEstados, pasarAsaltoEstados } from "./estados.js";
 import { notaDano, tipoDanoSchema } from "./danos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
@@ -555,7 +556,10 @@ const esquemas = {
     tipo_dano: tipoDanoSchema.optional().describe("Tipo del daño (conjuro, trampa…): activa las resistencias de la ficha"),
     magico: z.boolean().optional().describe("true si el daño es mágico (conjuro, arma encantada)"),
     material: z.string().optional().describe("plata, llama gris… (para «salvo plata» y vulnerabilidades a un material)"),
-    por: z.string().optional().describe("Quién le causa el daño (un conjuro de un tragado cuenta como daño desde dentro)"),
+    por: z.string().optional().describe("Quién le causa el daño (un conjuro de un tragado cuenta como daño desde dentro; su CD da la del estado)"),
+    sin_estado: z.boolean().optional().describe("true: no deja estado (fuego → quemado, frío → ralentizado…) aunque el tipo lo permita"),
+    cd_estado: z.number().int().min(5).max(30).optional().describe("CD de la salvación del estado (por defecto, la de quien lo causa en «por» o 13)"),
+    atributo: z.enum(["int", "sab", "car", "fue", "des"]).optional().describe("Atributo de lanzamiento de quien lo causa (para la CD del estado)"),
   }),
   habilidad_criatura: z.object({
     criatura: z.string().describe("Nombre de la criatura en escena"),
@@ -687,6 +691,7 @@ const esquemas = {
     reaccion: z.boolean().optional().describe("Ataque de oportunidad ya anunciado con reaccion (sin dano): resuelve aquí su único ataque cuerpo a cuerpo, sin exigir que siga al alcance"),
     mano_secundaria: z.boolean().optional().describe("Pelea con dos armas: ataca con el arma ligera de la mano secundaria usando la acción adicional (tras atacar con una arma ligera en la principal). No suma su modificador al daño"),
     castigo: z.boolean().optional().describe("Castigo divino del Caballero Juramentado (nivel 4+): gasta 5 PV de su reserva y suma dados de daño radiante"),
+    sin_estado: z.boolean().optional().describe("true: este golpe elemental NO deja estado (fuego → quemado, eléctrico → paralizado…; consultar_reglas estados)"),
     bono: z.number().int().optional().describe("Criaturas y PNJ: sustituye su bonificador base"),
     ventaja: z.boolean().optional(),
     desventaja: z.boolean().optional(),
@@ -1590,11 +1595,19 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const dt = danarConTipo(j, cantidad, e.tipo_dano, { magico: e.magico, material: e.material }, partida.combate?.ronda ?? 0);
         if (e.tipo_dano && cantidad > 0) cantidad = dt.final;
         let texto = dt.texto;
+        // Estado por tipo de daño (conjuro, trampa…): salvación del objetivo contra la CD de quien lo causa
+        let avisoEst = "";
+        if (e.tipo_dano && dt.final > 0 && j.pv > 0 && !e.sin_estado && !j.definicion.sinEstados) {
+          let por: ReturnType<typeof localizarCombatiente> | undefined; if (e.por) { try { por = localizarCombatiente(partida, e.por); } catch { por = undefined; } }
+          const est = estadoPorDano({ partida, objetivo: localizarCombatiente(partida, j.nombre), atacante: por, tipo: e.tipo_dano, final: dt.final, fuente: { magico: e.magico, material: e.material }, cd: e.cd_estado, atributo: e.atributo });
+          if (est.lineas.length) texto += `\n${est.lineas.join("\n")}`;
+          if (est.aviso) avisoEst = est.aviso;
+        }
         // Sin tipo, el daño va «tal cual»: si la criatura tiene defensas por tipo, el DM debe pasar tipo_dano (y magico/material) para que cuenten
         if (!e.tipo_dano && e.cantidad > 0 && lineaResistencias(j.definicion)) texto += `\n(Sin tipo_dano: lo aplico como daño FINAL. ${j.nombre} tiene defensas por tipo (${lineaResistencias(j.definicion)}): si es de un conjuro, arma o trampa, pasa tipo_dano y magico/material y las aplica el programa.)`;
         const presion = presionDeDano(partida, j, cantidad, e.por); // si lleva a alguien tragado: ¿lo escupe?
         if (presion.length) texto += `\n${presion.join("\n")}`;
-        let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}${presion.length ? `\n${presion.join("\n")}` : ""}`;
+        let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}${presion.length ? `\n${presion.join("\n")}` : ""}${avisoEst ? `\n${avisoEst}` : ""}`;
         if (j.pv <= 0) {
           const devueltos = retirarCaido(partida, j);
           if (devueltos.length) {
@@ -1621,7 +1634,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const gasto = j ? exigirHabilidadDisponible(partida, j, h, !!e.legendaria) : null; // antes de tirar nada: si se excede, se rechaza sin efecto
         const mit = j ? mitigacion(partida, j) : null;
         const esquivan = Object.entries(partida.combate?.turnos ?? {}).filter(([, t]) => t.esquiva).map(([k]) => k.toLowerCase());
-        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0, esquivan, tragando ? (p, log) => tragarA(partida, j!, p, log) : undefined) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
+        const texto = usarHabilidad(j, h, objetivos, mit?.cdMenos ?? 0, esquivan, tragando ? (p, log) => tragarA(partida, j!, p, log) : undefined, ganchoEstados(partida, j, h)) + (mit ? `\n📜 Runas: ${mit.texto}.` : "");
         if (j && gasto && !texto.includes("Elige otra acción.")) gastarHabilidad(partida, j, gasto); // si no se recargó o está sellada, no se gasta
         if (j) registrarMagia(partida, { hechizo: h.nombre, lanzador: j.nombre, victima: objetivos[0]?.nombre, negra: esMagiaNegra(undefined, `${h.nombre} ${h.descripcion} ${h.condicion ?? ""}`) && /no-muerto|vampiro|espectro|hechic|brujo|bruja|mago|culti/i.test(`${j.definicion.temple ?? ""} ${j.definicion.nombre}`), lugar: partida.mapa.posicion ? partida.mapa.lugares[partida.mapa.posicion]?.nombre : undefined });
         return { contenido: texto, aviso: `💀 ${texto}` };
@@ -1972,7 +1985,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "siguiente_asalto": {
         avanzarSiHay(partida, 6);
-        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...danoDeTragados(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida), ...avisoGuaridas(partida)].join("\n");
+        const texto = [siguienteAsalto(partida), ...pasarAsaltoFuria(partida), ...danoDeTragados(partida), ...pasarAsaltoEstados(partida), ...curarConRunas(partida), ...pasarAsaltoAgua(partida), ...pasarAsaltoNave(partida), ...avisoGuaridas(partida)].join("\n");
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "montura": {

@@ -153,6 +153,11 @@ function aplica(r: ReglaDano, tipo: TipoDano | undefined, fuente: FuenteDano | u
   return true;
 }
 
+/** ¿El objetivo resiste este tipo de daño de esta fuente? (para dar ventaja en la salvación de un estado). */
+export function resiste(objetivo: PerfilDano, tipo: TipoDano, fuente?: FuenteDano): boolean {
+  return (objetivo.resiste ?? []).some((r) => aplica(r, tipo, fuente, false));
+}
+
 /** UNA sola función para aplicar el daño por su tipo, con el orden de 5e:
  *  1. los bonificadores y la armadura ya vienen incluidos en `cantidad`; `mitadSalvacion` aplica la mitad (redondeada abajo) de la salvación;
  *  2. inmunidad: 0;

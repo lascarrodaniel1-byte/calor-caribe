@@ -109,7 +109,7 @@ t(condicionInmune(["agotado"], "agotamiento 2") === "agotado" && condicionInmune
 {
   const k = mk("Kuru, el Cazador de Leyendas");
   k.j.definicion = { ...k.j.definicion, blindaje: [], artes: [], ca: 1 }; // sin armadura ni Contracorriente: solo la adaptación
-  const gol = (tipo: string, extra: object = {}) => { if (k.p.combate) k.p.combate.turnos = {}; iniciarRegistroDados([...dados(20, 15), ...dados(6, 5, 5, 5, 5)]); const a = k.perdida(); k.E("atacar", { atacante: "Aldo", objetivo: k.j.nombre, dano: "2d6", bono: 80, tipo_dano: tipo, apuntar: "torso", temerario: false, ...extra }); liberarDados(); return k.perdida() - a; };
+  const gol = (tipo: string, extra: object = {}) => { if (k.p.combate) k.p.combate.turnos = {}; iniciarRegistroDados([...dados(20, 15), ...dados(6, 5, 5, 5, 5)]); const a = k.perdida(); k.E("atacar", { atacante: "Aldo", objetivo: k.j.nombre, dano: "2d6", bono: 80, tipo_dano: tipo, apuntar: "torso", temerario: false, sin_estado: true, ...extra }); liberarDados(); return k.perdida() - a; };
   k.p.combate = { ronda: 1, orden: [], pnj: {}, sorprendidos: [] } as any;
   const d1 = gol("fuego"); t(d1 === 10, "Kuru: el primer fuego pasa entero (aprende)", String(d1));
   const mismoAsalto = gol("fuego"); t(mismoAsalto === 10, "…pero la resistencia no vale hasta su siguiente turno (mismo asalto: entero)", String(mismoAsalto));

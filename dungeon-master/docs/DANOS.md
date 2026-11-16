@@ -65,3 +65,26 @@ Se reconocen sin distinguir mayúsculas, tildes ni espacios sobrantes, y con pre
 - **Hecho en la fase 2 (BALANCE §17):** inmunidades a condiciones como dato (`inmunidadesCondicion`, las rechaza `condicion`), materiales «sal» (ácido) y «hierro caliente» (fuego), defensas condicionadas por estado («varada» de la Bakunawa), adaptación de Kuru (solo tipos no físicos, desde el siguiente asalto) y PNJ con `criatura`. Caída, Hiel y Senda de la Ceniza sobre criaturas pasan por `aplicarDano`.
 - Pendiente: resistencias de objetos (hoy prosa) y el dolor del Flagelante (sin tipo).
 - Daño de conjuros a criaturas: `lanzar_hechizo` no daña enemigos; el DM aplica `danar_criatura {tipo_dano, magico: true}` y, si olvida `tipo_dano` ante una criatura con defensas por tipo, el resultado se lo recuerda.
+
+## Estados por tipo de daño (fase 3; todo el mapa es PROPUESTA A CONFIRMAR)
+
+El dueño pidió: «Que los daños de los ataques puedan dar estados. Por ejemplo, el de fuego quemado, rayo y hielo paralizado y así.» Código en `src/estados.ts` (lógica) y `src/estados_base.ts` (registro, sin dependencias); reglas bajo demanda en `consultar_reglas {tema: "estados"}`. Cifras y simulación en `docs/BALANCE.md` §18.
+
+| Tipo | Salvación | Fallo normal | Fallo por 5 o más, o crítico | Duración |
+|---|---|---|---|---|
+| fuego | DES | **quemado**: 1d4 de fuego al empezar cada asalto | igual | 3 asaltos, o hasta apagarlo (`accion_combate {apagarse}`, una acción, o agua) |
+| eléctrico | CON | **paralizado** | igual | breve: hasta el final de SU siguiente turno |
+| frío | CON | **ralentizado** (velocidad a la mitad, desventaja en salvaciones de DES) | **paralizado** | 3 asaltos / breve |
+| ácido | DES | **corroído**: CA −1 | igual | hasta el descanso |
+| veneno | CON | **envenenado** | igual | 3 asaltos |
+| necrótico | CON | **debilitado** (desventaja en pruebas) | igual | 3 asaltos |
+| radiante | CON | **cegado** | igual | breve |
+| trueno | CON | **ensordecido** | ensordecido + **derribado** | 3 asaltos / 1 asalto |
+| psíquico | SAB | **asustado** | **aturdido** | 2 asaltos / breve |
+| fuerza | FUE | **derribado** | igual | 1 asalto |
+
+«Rayo y hielo paralizado» se respeta como base: el eléctrico paraliza siempre que falla (breve) y el frío, que es el más habitual en Velmora (Tritones, Frío del invierno), **modula**: fallo normal = ralentizado, fallo por 5 o más o crítico del atacante = paralizado. Las condiciones nuevas (`quemado`, `ralentizado`, `corroído`, `debilitado`; `varada` es de la fase 2) están en el catálogo con sus efectos en `efectos(...)` (mitad de velocidad en `velocidad.ts`, −1 a la CA en `atacar`, 1d4 por asalto en `siguiente_asalto`). El «corroído» es −1 a la CA porque no hay mecanismo de desgaste de piezas de armadura. «quemado por la sal» (del círculo de sal) sigue siendo otra cosa.
+
+**Reglas de aplicación.** (1) Solo si el golpe causa daño **final > 0** de ese tipo tras `aplicarDano` y el objetivo sigue en pie (un inmune, o quien cae a 0 PV, no sufre el estado; el inmune a la condición de su ficha tampoco, con aviso). (2) **Salvación** del objetivo contra una **CD fija**: criatura, la mediana de las CD de sus habilidades o 8 + competencia (por peligro) + su mejor mod; PJ, 8 + competencia + mod de FUE/DES (o del atributo de lanzamiento si ataca con INT/SAB/CAR); trampa, su CD; `danar_criatura`, `cd_estado` o la de quien lo causa (`por`) o 13. Resistir el tipo da **ventaja** en esa salvación. En habilidades de criatura y trampas con salvación propia, quien supera la de la habilidad no sufre además el estado. (3) **Opt-out** por golpe (`atacar` y `danar_criatura {sin_estado: true}`), por habilidad (`estado: false`, o un texto para dar otra condición) y por criatura (`sinEstados`); una habilidad que ya trae `condicion` no suma estado. (4) **No se acumula**: quien ya lo sufre solo lo renueva (alarga su plazo), salvo los de control (paralizado, aturdido, cegado), que no se alargan. (5) **Límite de control encadenado**: al acabar cualquier estado, el objetivo es **inmune a él un asalto**; la parálisis nunca encadena dos turnos. (6) Acaban solos al abrirse el asalto (`siguiente_asalto`), al acabar el combate y al descansar (corroído, solo el descanso); fuera de combate duran hasta el descanso o hasta quitarlos. (7) **Tragado: decisión (a confirmar):** el daño de dentro (eléctrico o ácido de la Bakunawa) NO da estado: el tragado ya está cegado y retenido. (8) El daño físico no cambia: ninguna arma da estado por sí sola. No cubierto (el DM usa `condicion`): daño de `modificar_personaje` con `tipo_dano` (peligros ambientales) y el radiante del Castigo del Caballero.
+
+**Aviso.** El de pantalla lleva una línea compacta («🔥 Ogro: quemado (3 asaltos)», «⚡ Aldo: paralizado (1 turno)»); el texto al DM detalla la salvación y recuerda que ya está aplicado. Los emojis nuevos (⚡ ☀ 🔔 💫 🧠) están en `EMOJIS_AVISO` de `secuencia.ts` para que `limpiarNarracion` siga quitando los avisos copiados.

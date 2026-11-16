@@ -27,6 +27,8 @@ import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
 import { agregarCondicion, condicionInmune, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento, tragadoPor } from "./condiciones.js";
 import { liberarTragados } from "./tragado.js";
+import { estadoPorDano } from "./estados.js";
+import { limpiarEstados, olvidarEstado } from "./estados_base.js";
 
 import { nvl } from "./niveles.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
@@ -473,6 +475,7 @@ export function limpiarTrasCombate(partida: Partida): void {
   const pasajeras = new Set(["agarrado", "derribado", "retenido", "tragado", "aturdido", "incapacitado", "asustado", "cegado", "ensordecido", "invisible", "hechizado"]);
   for (const p of Object.values(partida.personajes)) p.condiciones = p.condiciones.filter((x) => !pasajeras.has(reconocer(x)?.id ?? ""));
   for (const j of Object.values(partida.jefes)) j.condiciones = [];
+  limpiarEstados(partida, {}); // los estados por tipo de daño acaban con el combate (salvo corroído, hasta el descanso)
   // Tope: las criaturas que sobreviven (huyeron, se perdonaron…) se quedaban para siempre en `jefes` y en el estado del DM.
   // Se conservan las MAX_CRIATURAS_FUERA más recientes; de las más antiguas, caen primero las de peligro 3 o menos.
   const claves = Object.keys(partida.jefes);
@@ -622,6 +625,7 @@ export function aplicarCondicion(
     const antes = lista.length;
     const resto = lista.filter((x) => !mismaCondicion(x, d.condicion!) && !x.toLowerCase().includes(d.condicion!.toLowerCase()));
     lista.splice(0, lista.length, ...resto);
+    const cq = reconocer(d.condicion); if (cq) olvidarEstado(partida, c.nombre, cq.id);
     return lista.length === antes ? `${c.nombre} no tenía «${d.condicion}».` : `${c.nombre} ya no está ${d.condicion}.`;
   }
   const inmune = c.tipo === "criatura" ? condicionInmune(inmunidadesCondicionDe(c.j), d.condicion) : c.tipo === "pnj" ? condicionInmune(inmunidadesCondicionDe(c.n), d.condicion) : undefined;
@@ -729,6 +733,8 @@ export interface DatosAtaque {
   temerario?: boolean;
   /** Esgrimista (dote): es un duelo uno contra uno: ventaja en su primer ataque del combate. */
   duelo?: boolean;
+  /** true: este golpe elemental no deja estado (fuego → quemado, eléctrico → paralizado…; ver estados.ts). */
+  sin_estado?: boolean;
 }
 
 
@@ -930,7 +936,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   const cobBono = d.cobertura === "media" ? 2 : d.cobertura === "tres_cuartos" ? 5 : 0;
   // Piedra de Karak, Postura de muro: +1 a la CA contra cuerpo a cuerpo si no ha corrido ni se ha retirado este asalto.
   const posturaMuro = !distancia && ob.tipo === "pj" && arteDeCombatiente(ob, "piedra") && !(partida.combate && (turnoDe(partida, ob.nombre).corrio || turnoDe(partida, ob.nombre).retirada)) ? 1 : 0;
-  const ca = cobBono + posturaMuro + (d.ca ?? (ob.tipo === "pj" ? caEfectiva(ob.p) : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca));
+  const ca = cobBono + posturaMuro - efectos(condsDe(ob)).caMenos + (d.ca ?? (ob.tipo === "pj" ? caEfectiva(ob.p) : ob.tipo === "criatura" ? ob.j.definicion.ca : ob.n.ca)); // corroído: −1
 
   // Filo del Cuervo: +1 al ataque por cada aliado adyacente al objetivo (máx. +2) y, desde Practicante (Cuña), ventaja si hay uno.
   let aliadosCuervo = 0;
@@ -1139,6 +1145,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   let dano = 0;
   let muerto: string | undefined;
   let danoVisible = 0; // lo que enseña la tirada de daño antes de armadura y resistencias (para marcar «→ N» si cambia)
+  let avisoEstado = ""; // el estado que deja un golpe elemental (🔥 quemado…)
   let danoTirado = ""; // la tirada de daño tal como la ve la mesa en el aviso («1d8[6]+3 = 9 perforante»)
   if (d.dano && (resultado === "impacto" || resultado === "critico" || resultado === "roce")) {
     // En furia, +2 al daño cuerpo a cuerpo (y otros +2 con la Furia de la luna del Varg).
@@ -1325,6 +1332,12 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
         lineas.push(`${ob.nombre}: −${dano} PV → ${ob.n.pv}/${ob.n.pv_max ?? "?"}${ob.n.pv === 0 ? " — CAE." : ""}`);
       } else lineas.push(`${ob.nombre} recibe ${dano} de daño (lleva tú sus PV).`);
     }
+    // Estado por tipo de daño (fuego → quemado, eléctrico → paralizado…): solo si el golpe causó daño final > 0 de ese tipo y el objetivo sigue en pie.
+    if (dano > 0 && tipoCanon && !d.sin_estado && !(at.tipo === "criatura" && at.j.definicion.sinEstados)) {
+      const e = estadoPorDano({ partida, objetivo: ob, atacante: at, tipo: tipoCanon, final: dano, fuente, atributo: d.atributo, critico: resultado === "critico" });
+      lineas.push(...e.lineas);
+      if (e.aviso) avisoEstado = e.aviso;
+    }
   } else if (resultado === "critico" && ob.tipo === "pj") {
     lineas.push(`Si el golpe hace daño, usa infligir_herida con causa "critico" para ${ob.nombre}.`);
   }
@@ -1369,6 +1382,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     aviso += `\n🔥 ${at.nombre} se quema (${f}).`;
   }
   if (notaElusivo) aviso += `\n${notaElusivo}`;
+  if (avisoEstado) aviso += `\n${avisoEstado}`;
   return { texto: lineas.join("\n"), aviso, muerto, resultado, dano };
 }
 

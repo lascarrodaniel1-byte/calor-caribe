@@ -21,6 +21,10 @@ export interface Condicion {
   salvDesDesv?: boolean;
   /** Un impacto cuerpo a cuerpo a quemarropa es crítico. */
   critCuerpo?: boolean;
+  /** Su velocidad se reduce a la mitad. */
+  velocidadMitad?: boolean;
+  /** Puntos que pierde su CA. */
+  caMenos?: number;
 }
 
 export const CATALOGO: Condicion[] = [
@@ -42,6 +46,10 @@ export const CATALOGO: Condicion[] = [
   { id: "pierna", nombre: "pierna entumecida", patron: /pierna entumecida/i, regla: "no puede moverse (velocidad 0) y tiene desventaja en las salvaciones de DES (nervio de la pierna golpeado)", velocidad0: true, salvDesDesv: true },
   { id: "enagua", nombre: "en el agua", patron: /^en el agua/i, regla: "nadando o vadeando, sin pie firme: si no es del agua, ataca cuerpo a cuerpo con desventaja, con −2 al daño y a la mitad de velocidad (los Tritones, sirenas, hombres pez, ahogados y quien nada de verdad no lo sufren)" },
   { id: "sumergido", nombre: "sumergido", patron: /^sumergido/i, regla: "bajo el agua: contiene la respiración (se ahoga si se le acaba); cuerpo a cuerpo con desventaja salvo daga, jabalina, espada corta, lanza o tridente (o si nada de verdad); a distancia, solo ballestas, redes y armas arrojadizas; resiste el fuego" },
+  { id: "quemado", nombre: "quemado", patron: /^quemad[oa](?! por la sal)/i, regla: "arde: sufre 1d4 de fuego al empezar cada asalto hasta que se apague (accion_combate apagarse, una acción, o agua)" },
+  { id: "ralentizado", nombre: "ralentizado", patron: /^ralentizad[oa]/i, regla: "el frío lo entumece: velocidad a la mitad y desventaja en las salvaciones de DES", velocidadMitad: true, salvDesDesv: true },
+  { id: "corroido", nombre: "corroído", patron: /^corro[ií]d[oa]/i, regla: "el ácido le come el equipo: −1 a la CA hasta el próximo descanso", caMenos: 1 },
+  { id: "debilitado", nombre: "debilitado", patron: /^debilitad[oa]/i, regla: "la energía necrótica lo vacía: desventaja en pruebas de característica", pruebas: "desventaja" },
   { id: "varada", nombre: "varada", patron: /^varad[oa]/i, regla: "fuera del agua (varada o encallada a la fuerza): la Bakunawa pierde la defensa del mar y es vulnerable al fuego (doble daño)" },
   { id: "enf1", nombre: "enfermedad leve", patron: /^enfermedad leve:/i, regla: "sufre los síntomas de una enfermedad: desventaja en pruebas de característica", pruebas: "desventaja" },
   { id: "enf2", nombre: "enfermedad grave", patron: /^enfermedad grave:/i, regla: "enfermedad grave: desventaja en ataques y en pruebas de característica", ataca: "desventaja", pruebas: "desventaja" },
@@ -112,6 +120,8 @@ export interface Efectos {
   contraCuerpo: "ventaja" | "desventaja" | null;
   contraDistancia: "ventaja" | "desventaja" | null;
   critCuerpo: boolean;
+  velocidadMitad: boolean;
+  caMenos: number;
   /** Por fuente, sin anular: una ventaja y una desventaja de cualquier origen se cancelan entre sí al tirar (regla del libro). */
   atacaV: boolean; atacaD: boolean; cuerpoV: boolean; cuerpoD: boolean; distV: boolean; distD: boolean;
   agotamiento: number;
@@ -149,6 +159,8 @@ export function efectos(conds: string[]): Efectos {
     contraCuerpo: juntar(lista.map((c) => c.contraCuerpo)),
     contraDistancia: juntar(lista.map((c) => c.contraDistancia)),
     critCuerpo: lista.some((c) => c.critCuerpo),
+    velocidadMitad: lista.some((c) => c.velocidadMitad),
+    caMenos: lista.reduce((n, c) => n + (c.caMenos ?? 0), 0),
     atacaV: lista.some((c) => c.ataca === "ventaja"),
     atacaD: lista.some((c) => c.ataca === "desventaja") || ag >= 3,
     cuerpoV: lista.some((c) => c.contraCuerpo === "ventaja"), cuerpoD: lista.some((c) => c.contraCuerpo === "desventaja"),
@@ -207,4 +219,4 @@ export function mismaCondicion(a: string, b: string): boolean {
 export const REGLAS_CONDICIONES = `## Condiciones (el programa aplica sus efectos)
 - Aplica y quita condiciones con la herramienta condicion (sirve para personajes, criaturas y PNJ en combate). Las del catálogo —cegado, hechizado, ensordecido, asustado, agarrado, incapacitado, invisible, paralizado, petrificado, envenenado, derribado, retenido, aturdido, inconsciente y agotamiento 1-6— tienen efectos reales: el programa da ventaja o desventaja en ataques, falla automáticamente salvaciones de FUE/DES, vuelve críticos los impactos a quemarropa sobre paralizados e inconscientes, e impide atacar a quien está incapacitado. No los apliques tú «de palabra»: usa la herramienta, con la duración si la hay.
 - Quien está incapacitado (o aturdido, paralizado, petrificado, inconsciente) no actúa ni reacciona: no le des turno. Derribado: levantarse cuesta la mitad del movimiento. Agarrado: velocidad 0. Un efecto ya terminado se quita con condicion {accion: quitar}.
-- Las condiciones de la lista que aplican las criaturas con sus habilidades (condicion en habilidad_criatura) se registran solas.`;
+- Las condiciones de la lista que aplican las criaturas con sus habilidades (condicion en habilidad_criatura) se registran solas. Los golpes elementales dejan estados solos (consultar_reglas {tema: "estados"}; sin_estado: true lo evita).`;

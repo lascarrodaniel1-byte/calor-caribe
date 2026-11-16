@@ -592,3 +592,43 @@ Todo sale de lo que la ficha **ya decía**; no cambia ningún peligro, VD, PV, C
 **Simulador** (`--n 40 --rapido` y `--detalle --n-detalle 60 --niveles 1,5,9,13`, semilla 1): salida **idéntica** antes y después (el grupo simulado no usa estos efectos; con la adaptación contando daño físico habría bajado Kuru, ver arriba). Prompt fijo: 67.128 → 67.128. Todo texto nuevo va en la ficha y en el resultado de las herramientas.
 
 **Propuestas a confirmar.** Sal = ácido y hierro caliente = fuego; la adaptación de Kuru solo con tipos no físicos y desde el siguiente asalto; la condición «varada» como interruptor manual del DM (la Bakunawa no se «varía» sola); `criatura` en los PNJ como único enlace con el bestiario.
+
+## 18. Estados por tipo de daño (fase 3; mapa y valores a confirmar)
+
+Diseño y reglas en `docs/DANOS.md` («Estados por tipo de daño»). Aquí, el efecto medido. Pruebas: `tests/motor/t-estados-dano.ts` (88 comprobaciones: cada tipo con fallo normal, grave y éxito, físicos sin estado, inmunidad al tipo y a la condición, resistencia con ventaja, opt-out por golpe, habilidad y criatura, no acumulación y renovación, duración, fin y asalto de inmunidad, quemado, crítico, CD, habilidades, trampa, tragado, PNJ, CA corroída, velocidad y avisos).
+
+**Simulador de combate** (`simular.ts --n 40 --rapido`, semilla 1): salida **idéntica** antes y después. Era previsible: el simulador usa su propio resolutor (no pasa por `atacar` ni `habilidad_criatura`), de modo que no ve estados, y el grupo simulado no usa elementales. Por eso no vale como medida de este cambio y se añadió una simulación específica con el motor real.
+
+**Simulación específica** (`npx tsx tests/balance/estados.ts`, 300 repeticiones por celda: una habilidad elemental de la criatura contra un grupo de 4 PJ de mercenario). «Fallan» = fallan la salvación de la habilidad; el estado solo lo sufren los que fallan y además fallan la salvación del estado (CD de la ficha).
+
+| Criatura · habilidad | Nivel | % PJ que fallan la salvación de la habilidad | % PJ que acaban con estado | Estados más frecuentes |
+|---|---|---|---|---|
+| Elemental de fuego · Oleada de fuego | 1 | 55 % | 31 % | quemado 31% |
+| Elemental de fuego · Oleada de fuego | 5 | 56 % | 31 % | quemado 31% |
+| Elemental de fuego · Oleada de fuego | 9 | 56 % | 31 % | quemado 31% |
+| Elemental de fuego · Oleada de fuego | 13 | 54 % | 29 % | quemado 29% |
+| Dragón joven de ceniza · Aliento de ceniza | 1 | 73 % | 52 % | quemado 52% |
+| Dragón joven de ceniza · Aliento de ceniza | 5 | 71 % | 50 % | quemado 50% |
+| Dragón joven de ceniza · Aliento de ceniza | 9 | 70 % | 47 % | quemado 47% |
+| Dragón joven de ceniza · Aliento de ceniza | 13 | 70 % | 50 % | quemado 50% |
+| Lich · Rayo de muerte | 1 | 67 % | 44 % | debilitado 44% |
+| Lich · Rayo de muerte | 5 | 59 % | 37 % | debilitado 37% |
+| Lich · Rayo de muerte | 9 | 56 % | 30 % | debilitado 30% |
+| Lich · Rayo de muerte | 13 | 49 % | 25 % | debilitado 25% |
+| Banshee del Velo · Lamento | 1 | 38 % | 11 % | aturdido 7%, asustado 4% |
+| Banshee del Velo · Lamento | 5 | 33 % | 11 % | aturdido 6%, asustado 5% |
+| Banshee del Velo · Lamento | 9 | 33 % | 13 % | aturdido 8%, asustado 5% |
+| Banshee del Velo · Lamento | 13 | 24 % | 11 % | aturdido 7%, asustado 4% |
+| Ulfhedinn · Ceniza de la furia | 1 | 46 % | 27 % | quemado 27% |
+| Ulfhedinn · Ceniza de la furia | 5 | 40 % | 21 % | quemado 21% |
+| Ulfhedinn · Ceniza de la furia | 9 | 34 % | 18 % | quemado 18% |
+| Ulfhedinn · Ceniza de la furia | 13 | 31 % | 19 % | quemado 19% |
+
+Lectura: de cada diez PJ que fallan la salvación de la habilidad, seis o siete acaban con el estado (el Dragón joven deja a la mitad del grupo quemada, 1d4 por asalto durante tres asaltos); el Lich debilita (solo desventaja en pruebas); la Banshee, que resiste el psíquico (salvación con ventaja), deja estado a ~1 de cada 9 (aturdido o asustado). La Oleada del Elemental de fuego es un daño pequeño (4d6) y el quemado añade hasta 1d4 × 3 si nadie se apaga: el efecto sobre la letalidad de los elementales de fuego no está medido en combate completo (el simulador no pasa por el motor); no se ha tocado ningún peligro ni VD.
+
+**Controles injustos.** Paralizado dura como mucho un turno y deja un asalto de inmunidad: no hay parálisis de dos turnos seguidos por el mismo estado. Quedan combinables entre tipos distintos (un PJ puede estar a la vez quemado y ralentizado y, tras un fallo grave de frío, paralizado); un PJ paralizado recibe críticos a quemarropa durante ese turno (regla ya existente de la condición). Si pareciera mucho: subir la CD (hoy la de la ficha) o pasar el eléctrico a «aturdido breve solo con fallo grave».
+
+**Prompt fijo:** 67.128 → 67.236 (≤ 67.600): una frase en `REGLAS_CONDICIONES` remite a `consultar_reglas {tema: "estados"}`; todo lo demás va bajo demanda.
+
+**Propuestas a confirmar.** El mapa completo (tipo → estado, salvación, duración), el frío modulado (ralentizado / paralizado), el eléctrico siempre paralizante (breve), corroído = CA −1, que el daño de dentro del tragado no dé estado, el asalto de inmunidad al terminar, no sumar estado a quien supera la salvación de la habilidad ni a las habilidades con `condicion` propia, y las CD (de la ficha o 8 + competencia + mod).
+

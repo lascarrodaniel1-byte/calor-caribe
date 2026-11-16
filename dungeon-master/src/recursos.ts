@@ -10,6 +10,7 @@ import { efectos } from "./condiciones.js";
 import { recuperarAgotamiento } from "./sustento.js";
 import { selloDe } from "./segador_base.js";
 import { agregarCondicion } from "./condiciones.js";
+import { limpiarEstados } from "./estados_base.js";
 
 export interface DefRecurso {
   nombre: string;
@@ -139,6 +140,7 @@ export function usarRecurso(partida: Partida, d: { quien: string; recurso: strin
 export function descanso(partida: Partida, d: { tipo: "corto" | "largo"; quienes?: string[] }): string {
   const pjs = d.quienes?.length ? d.quienes.map((q) => personaje(partida, q)) : Object.values(partida.personajes).filter((p) => !p.condiciones.includes("muerto"));
   if (!pjs.length) throw new Error("No hay personajes que descansen.");
+  limpiarEstados(partida, { descanso: pjs.map((p) => p.nombre) }); // los estados por tipo de daño (también corroído) acaban al descansar
   const horas = d.tipo === "corto" ? 1 : 8;
   if (partida.reloj) partida.reloj.segundos += horas * 3600;
   const lineas: string[] = [];

@@ -5,9 +5,11 @@ import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { tiene } from "./dotes_base.js";
 import type { Partida } from "./estado.js";
 import { esDegollador } from "./degollador_base.js";
-import { igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
+import { condsDe, igual, localizar, puedeActuar, turnoDe, type Combatiente, type DatosAtaque } from "./combate.js";
+import { reconocer } from "./condiciones.js";
+import { olvidarEstado } from "./estados_base.js";
 
-export const ACCIONES = ["esquivar", "correr", "retirarse", "ayudar", "preparar", "esconderse", "usar_objeto", "otra"] as const;
+export const ACCIONES = ["esquivar", "correr", "retirarse", "ayudar", "preparar", "esconderse", "usar_objeto", "apagarse", "otra"] as const;
 export type AccionCombate = (typeof ACCIONES)[number];
 
 const ALCANCE = 2; // metros: el cuerpo a cuerpo normal llega a 1,5 m
@@ -71,6 +73,14 @@ export function accionCombate(partida: Partida, d: DatosAccionCombate): string {
     }
     case "esconderse":
       return `${c.nombre} intenta esconderse: llama a prueba (Sigilo) contra la Percepción pasiva o la prueba de quien busca. No se esconde de quien lo está viendo, y atacar desde el escondite lo revela.`;
+    case "apagarse": {
+      const lista = condsDe(c);
+      const arde = lista.filter((x) => reconocer(x)?.id === "quemado" && !/por la sal/i.test(x));
+      if (!arde.length) return `${c.nombre} no está quemado: no hay nada que apagar.`;
+      lista.splice(0, lista.length, ...lista.filter((x) => !arde.includes(x)));
+      olvidarEstado(partida, c.nombre, "quemado");
+      return `${c.nombre} se apaga (se tira al suelo, se cubre o se echa agua; es su acción): ya no sufre el fuego al empezar cada asalto.`;
+    }
     case "usar_objeto":
       return `${c.nombre} usa un objeto como su acción${d.detalle ? `: ${d.detalle}` : ""}. Resuélvelo con la herramienta que corresponda (usar_vial, modificar_personaje…).`;
     default:

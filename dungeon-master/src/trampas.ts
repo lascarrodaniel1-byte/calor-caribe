@@ -7,6 +7,7 @@ import type { Partida, Personaje } from "./estado.js";
 import { resolverPrueba, COMPETENCIAS_CLASE } from "./pruebas.js";
 import { competencia, mod, valor } from "./reglas.js";
 import { generarBotinDe } from "./botin.js";
+import { ganchoEstados } from "./estados.js";
 
 export interface Trampa {
   nombre: string;
@@ -143,7 +144,7 @@ function cofre(partida: Partida, t: Trampa): { dm: string; jugadores: string } |
 
 function disparar(partida: Partida, t: Trampa, objetivos: Personaje[]): string {
   const antes = t.estado;
-  const texto = usarHabilidad(undefined, { ...t.efecto, recarga: undefined }, objetivos);
+  const texto = usarHabilidad(undefined, { ...t.efecto, recarga: undefined }, objetivos, 0, [], undefined, ganchoEstados(partida, undefined, t.efecto));
   t.estado = t.reutilizable ? (antes === "descubierta" ? "descubierta" : "oculta") : "disparada";
   return `Salta «${t.nombre}»${antes === "descubierta" ? " (ya conocida)" : ""}.\n${texto}`;
 }
