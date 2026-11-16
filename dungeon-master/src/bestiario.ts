@@ -116,6 +116,8 @@ export interface Criatura {
   rasgos: string[];
   habilidades: Habilidad[];
   botin?: string;
+  /** Botín estructurado: ids del catálogo de tesoro (src/tesoro.ts) con su probabilidad (%) de caer al saquear a la criatura. Coherente con el texto de `botin`. */
+  botinItems?: { id: string; probabilidad: number }[];
   /** Ve el futuro: número de presagios (d20 tirados de antemano) con que empieza el combate. */
   presagios?: number;
   /** Carácter en combate (ver TEMPLES en combate.ts): no-muerto torpe, no-muerto, vampiro, espectro, bestia… */

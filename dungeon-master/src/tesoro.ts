@@ -243,12 +243,12 @@ export function tesoroDe(clave: string): EntradaTesoro[] {
 
 // ---------------------------------------------------------------------------------------------- moneda y valor mágico (propuesta)
 
-/** Moneda sugerida por peligro (po). Dados y multiplicador: P1 1d6, P2 3d6, P3 2d8×2, P4 4d10×3, P5 6d10×10. */
+/** Moneda sugerida por peligro (po). Dados y multiplicador (calibrado con tests/balance/botin.ts, BALANCE §16): P1 1d6, P2 3d6, P3 2d8×3, P4 4d10×4, P5 6d10×10. */
 export const MONEDA_PELIGRO: Record<1 | 2 | 3 | 4 | 5, { dados: string; mult: number }> = {
   1: { dados: "1d6", mult: 1 },
   2: { dados: "3d6", mult: 1 },
-  3: { dados: "2d8", mult: 2 },
-  4: { dados: "4d10", mult: 3 },
+  3: { dados: "2d8", mult: 3 },
+  4: { dados: "4d10", mult: 4 },
   5: { dados: "6d10", mult: 10 },
 };
 /** Multiplicador por origen (la compra no da moneda: la gasta). */
@@ -274,7 +274,7 @@ const lineaTesoro = (x: EntradaTesoro) => `${x.nombre}${x.cant ? ` (${x.cant[0]}
 
 export const REGLAS_TESORO = `## Tesoro y botín (generar_botin, catálogo)
 - generar_botin {origen, cantidad, peligro?, region?, criatura?, categorias?}: con peligro (1-5), región o criatura reparte además de equipo materiales, comida, herramientas, documentos, gemas, trofeos de la criatura y objetos únicos, y sugiere oro (oro_cambio, NO se aplica solo: súmalo con modificar_personaje). Una llamada por saqueo; cantidad = nº de objetos. Sin esos datos, el botín antiguo (equipo y viales).
-- Oro por peligro: P1 1d6, P2 3d6, P3 2d8×2, P4 4d10×3, P5 6d10×10 po; ×0,5 saqueo, ×1 hallazgo, ×2 jefe (la compra no da oro). Equipo mágico en saqueos comunes: ~0% P1-2, 5% P3, 12% P4, 25% P5; hallazgos y jefes dan más.
+- Oro por peligro: P1 1d6, P2 3d6, P3 2d8×3, P4 4d10×4, P5 6d10×10 po; ×0,5 saqueo, ×1 hallazgo, ×2 jefe (la compra no da oro). Equipo mágico en saqueos comunes: ~0% P1-2, 5% P3, 12% P4, 25% P5; hallazgos y jefes dan más.
 - Precios de equipo: encantado/maldito = base×10+200; reliquia = encantado+5.000 (techo 19.000); legendaria 20.000.
 - Los objetos únicos con historia se registran con su [O#]. Materiales: «plata» y «hierro frío» se pasan como material en atacar. Consulta el catálogo con consultar_reglas {tema: "tesoro", nombre: categoría o criatura}.
 - Categorías: ${CATEGORIAS_TESORO.join(", ")}.`;

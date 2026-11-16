@@ -504,3 +504,40 @@ Detalle por criatura (victorias N1/N5/N9/N13, `--detalle --n-detalle 200 --nivel
 
 Prompt fijo: 67.093 (sin cambio).
 
+
+## 16. Botín: catálogo de tesoro y generador por peligro (propuesta lanzada por el dueño; valores a confirmar)
+
+**Qué cambia.** Antes, un saqueo era siempre arma (~57 %), armadura (~19 %), accesorio y viales; no dependía del peligro, la región ni la criatura. Ahora `generar_botin {origen, cantidad, peligro?, region?, criatura?, categorias?}` reparte sobre el catálogo de `src/tesoro.ts` (162 entradas en 12 categorías: materiales, ingredientes, comida, herramientas, documentos, gemas, curiosidades, trofeos, llaves, náutico y 26 objetos únicos con historia) además del equipo, y **sugiere oro** (`oro_cambio` en el texto; nunca se aplica solo). Sin `peligro`, `region`, `criatura` ni `categorias` el comportamiento es el antiguo (ni oro ni catálogo). Reparto: `PESOS` por origen × `FAMILIA` de la criatura (`familiaDe`) × región (`bonusDe`) × peligro mínimo de cada entrada; lo náutico solo con mar (`enMar`); los trofeos solo de la criatura saqueada; los únicos, una vez por partida.
+
+**Fórmulas (propuesta a confirmar).**
+- Oro por peligro: P1 1d6, P2 3d6, P3 2d8×**3**, P4 4d10×**4**, P5 6d10×10 po. El dueño daba como orientación P3 ×2 y P4 ×3; con ellos una campaña daba 2.650 po de moneda, por debajo de la banda, y se subieron un escalón. Origen: ×0,5 saqueo, ×1 hallazgo, ×2 jefe; la compra no da oro. Precios de mundo.ts intactos (5 po/día de enfermería: un saqueo P1 da ~2 po y uno P3 ~14; 50 po de cirugía: un hallazgo P3-P4; equipo encantado 220-15.200: un jefe P4-P5).
+- Equipo mágico de un saqueo común (encantado + maldito): 0 % en P1-2, 5 % en P3, 12 % en P4, 25 % en P5 (`tirarCalidad`). **Hallazgo y jefe conservan su tabla**: el hallazgo (ruinas, tumbas) es donde aparece lo encantado, y el jefe es la recompensa gorda; solo se recorta lo absurdo: sin reliquias en un hallazgo o jefe de P≤2 y sin legendarias por debajo de P5 (bajan un escalón). Como ahora el equipo es ~22 % del botín en vez de ~80 %, el hallazgo pasa de 28 % de objetos mágicos a ~9 % y el jefe de 55 % a ~26 %.
+- Precio de equipo: encantado y maldito = base×10+200 (como antes); **reliquia = encantado + 5.000, techo 19.000** (antes 5.000 fijos: una armadura de placas encantada valía 15.200 y una reliquia, 5.000); legendaria, 20.000. Ahora una reliquia vale siempre ≥ su base encantada y < una legendaria.
+- El catalizador raro (sin precio) ya no se cambia siempre por la Piedra de brasa: se elige **al azar** entre los que tienen precio.
+
+**Simulación** (`npx tsx tests/balance/botin.ts`, semilla 1, 200 llamadas por celda, cantidad 3). «Tipos distintos» = ids de catálogo, bases de equipo, viales y catalizadores diferentes en las 200 llamadas.
+
+| Generador | Origen | Peligro | Tipos distintos | % mágico del equipo | % mágico del botín | Oro medio | Valor catálogo medio |
+|---|---|---|---|---|---|---|---|
+| antes | saqueo | (ignora) | 37 | 12 % | 10 % | 0 | 0 |
+| antes | hallazgo | (ignora) | 37 | 35 % | 28 % | 0 | 0 |
+| antes | jefe | (ignora) | 40 | 89 % | 55 % | 0 | 0 |
+| después | saqueo | P1 | 73 | 0 % | 0 % | 2,1 | 16 |
+| después | saqueo | P2 | 94 | 0 % | 0 % | 5,6 | 26 |
+| después | saqueo | P3 | 106 | 4 % | 1 % | 13,7 | 36 |
+| después | saqueo | P4 | 111 | 19 %* | 5 % | 44,8 | 38 |
+| después | saqueo | P5 | 111 | 32 %* | 7 % | 168 | 43 |
+| después | hallazgo | P1 / P3 / P5 | 76 / 122 / 123 | 36 / 30 / 31 % | 9 / 7 / 8 % | 3,5 / 26,6 / 330 | 17 / 48 / 58 |
+| después | jefe | P1 / P3 / P5 | 55 / 96 / 100 | 89 / 93 / 92 % | 27 / 25 / 26 % | 7 / 52 / 654 | 15 / 55 / 69 |
+| después | saqueo mar | P3 | 112 | 4 % | 1 % | 14 | 40 |
+| después | compra | P2 | 85 | 12 % | 3 % | 0 | 21 |
+
+\* Con 200 llamadas hay ~130 piezas de equipo por celda (±3 puntos de ruido). Con 1.500 llamadas: **0 / 0 / 4 / 10 / 25 %** en P1-P5, igual a la tabla.
+
+Categorías (% de los objetos, 200 saqueos): **antes** arma 62, armadura 18, accesorio 3, vial 14, catalizador 3 (nada más). **Después, P3:** arma 16, armadura 4, material 14, ingrediente 9, comida 11, herramienta 8, documento 5, gema/arte 6, curiosidad 9, llave/sello 1, moneda (lingotes, dientes de dios) 3, vial 12, catalizador 1. P1 y P5 son parecidos (P5 añade algo de accesorio). En el mar, un 7 % es náutico. El hallazgo P3 trae además un 4 % de objetos únicos, 9 % de documentos y 10 % de gemas y arte; el jefe, 8 % de únicos.
+
+**Campaña de niveles 1-8** (300 campañas: 6 saqueos y 2 hallazgos por nivel con el peligro a su tope de nivel o uno menos, y 4 jefes: 2 de P4 y 2 de P5): moneda sugerida **3.075 po** (p10-p90: 2.765-3.394); moneda + valor de los objetos del catálogo, **5.884 po** (5.392-6.400); el equipo (que se usa o se vende aparte) no cuenta. Dentro de la banda 3.000-6.000 (el techo es justo; si pareciera mucho, bajar los jefes a ×1,5).
+
+**Qué es propuesta a confirmar.** Los dados y multiplicadores de moneda (sobre todo P3 ×3 y P4 ×4, un escalón por encima de la orientación); los porcentajes mágicos de los saqueos; dejar intactas las tablas de hallazgo y jefe; la fórmula de la reliquia; y que `generar_botin` sin datos nuevos siga sin dar oro (alternativa: tratar la falta de peligro como P2).
+
+**Prompt fijo:** 67.093 → 67.128 (≤ 67.600): una línea sustituye a la de generar_botin; el catálogo se sirve bajo demanda (`consultar_reglas {tema: "tesoro"}` y el resultado de `generar_botin`). Pruebas: `t-tesoro` y `t-botin`.

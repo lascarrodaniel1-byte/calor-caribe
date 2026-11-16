@@ -99,7 +99,7 @@ const COMBATE = `## Combate
 - La armadura cuenta: cada golpe cae en una región y su protección (según pieza y tipo de arma) se resta al daño y rebaja la herida. Pon la armadura de cada PJ (armadura en guardar_personaje; la malla con gambeson) y de tus PNJ (pnj.armadura); nombra el arma en atacar o pasa tipo_dano. atacar inflige solo las heridas de los PJ (no repitas infligir_herida). Detalle (nervios, raza, huecos): consultar_reglas {tema: "combate"}.`;
 
 const RESTO = `## Más sistemas (consulta el detalle solo cuando lo necesites)
-- Viales (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra) con usar_vial: tema "viales". Botín y objetos (encantados, malditos, reliquias, legendarios) con generar_botin, crear_objeto y examinar_objeto: tema "equipo".
+- Viales (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra) con usar_vial: tema "viales". Botín con generar_botin {origen, cantidad, peligro, region, criatura} (objetos, trofeos y oro sugerido), crear_objeto y examinar_objeto: temas "equipo" y "tesoro".
 - Criaturas y jefes (aparecer_criatura, danar_criatura, habilidad_criatura, presagio_criatura): tema "bestiario" o {tema: "criatura", nombre}; son una base, inventa las tuyas.
 - Qué sabe cada PNJ: antes de que hable de un jefe, raza, facción o secreto, mira saber {accion: consultar, tema, quien} (el vulgo solo repite rumores; eruditos y altos cargos saben más; lo secreto no lo sabe nadie): tema "saber". El BESTIARIO del grupo se actualiza solo al derrotar una criatura; si averiguan algo de ella, saber {accion: descubrir, tema: criatura, texto o capa}.
 - Behelits y el Eclipse (behelit): tema "behelits", léelo siempre antes de usarlos.

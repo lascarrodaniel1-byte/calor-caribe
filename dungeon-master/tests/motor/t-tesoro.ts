@@ -74,7 +74,7 @@ t(BASES.every((b) => precioEquipo(b.precio, "maldito") === precioEquipo(b.precio
   t(Object.keys(MONEDA_PELIGRO).length === 5 && MULT_ORIGEN.compra === 0 && MULT_ORIGEN.saqueo === 0.5 && MULT_ORIGEN.hallazgo === 1 && MULT_ORIGEN.jefe === 2, "moneda: 5 peligros y multiplicadores ×0 / ×0,5 / ×1 / ×2");
   iniciarRegistroDados([{ caras: 10, valor: 10 }, { caras: 10, valor: 10 }, { caras: 10, valor: 10 }, { caras: 10, valor: 10 }]);
   const v = oroSugerido(4, "hallazgo"); liberarDados();
-  t(v === 120, "P4 hallazgo con 4d10 todo 10 = 120 po (4d10×3)", String(v));
+  t(v === 160, "P4 hallazgo con 4d10 todo 10 = 160 po (4d10×4)", String(v));
   let medias = [1, 2, 3, 4, 5].map((p) => { let s = 0; for (let i = 0; i < 2000; i++) s += oroSugerido(p, "hallazgo"); return s / 2000; });
   t(medias.every((m, i) => i === 0 || m > medias[i - 1]), "la moneda crece con el peligro", medias.map((m) => m.toFixed(1)).join(" "));
   t(oroSugerido(3, "compra") === 0, "la compra no da oro");

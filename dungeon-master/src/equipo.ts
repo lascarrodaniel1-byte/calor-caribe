@@ -157,6 +157,26 @@ const TABLAS: Record<Origen, [number, CalidadObjeto][]> = {
   jefe: [[10, "de calidad"], [60, "encantado"], [80, "maldito"], [98, "reliquia"], [100, "legendario"]],
 };
 
+/** Calidad del equipo de un SAQUEO común según el peligro (propuesta): lo mágico (encantado + maldito) es ≈0 % en P1-2, 5 % en P3, 12 % en P4 y 25 % en P5. */
+const SAQUEO_PELIGRO: Record<1 | 2 | 3 | 4 | 5, [number, CalidadObjeto][]> = {
+  1: [[35, "defectuoso"], [90, "normal"], [100, "de calidad"]],
+  2: [[30, "defectuoso"], [85, "normal"], [100, "de calidad"]],
+  3: [[25, "defectuoso"], [75, "normal"], [95, "de calidad"], [98, "encantado"], [100, "maldito"]],
+  4: [[20, "defectuoso"], [62, "normal"], [88, "de calidad"], [96, "encantado"], [100, "maldito"]],
+  5: [[10, "defectuoso"], [40, "normal"], [75, "de calidad"], [92, "encantado"], [100, "maldito"]],
+};
+
+/** Calidad de un objeto de equipo. Con peligro, el saqueo usa su tabla por peligro; hallazgo y jefe conservan su tabla pero sin reliquias por debajo de P3 ni legendarias por debajo de P5 (bajan un escalón). */
+export function tirarCalidad(origen: Origen, peligro?: number): CalidadObjeto {
+  const d = tirar("1d100").total;
+  const p = peligro === undefined ? undefined : (Math.min(5, Math.max(1, Math.round(peligro))) as 1 | 2 | 3 | 4 | 5);
+  if (p && origen === "saqueo") return deTabla(SAQUEO_PELIGRO[p], d);
+  let c = deTabla(TABLAS[origen], d);
+  if (p && c === "legendario" && p < 5) c = p === 4 ? "reliquia" : "encantado";
+  if (p && c === "reliquia" && p < 3) c = "encantado";
+  return c;
+}
+
 /** Probabilidad (%) de que el botín incluya un vial, y qué vial (d100). */
 const VIALES_ORIGEN: Record<Origen, { prob: number; tabla: [number, NombreVial][] }> = {
   compra: { prob: 60, tabla: [[50, "Sangre de Santo"], [80, "Leche de Amapola Negra"], [100, "Hiel de Víbora Gris"]] },
@@ -176,7 +196,7 @@ function nuevoId(partida: Partida) {
   return `O${Object.keys(partida.objetos).length + 1}`;
 }
 
-function generarUno(partida: Partida, origen: Origen, clase?: Clase, calidadFija?: CalidadObjeto): Objeto {
+export function generarUno(partida: Partida, origen: Origen, clase?: Clase, calidadFija?: CalidadObjeto): Objeto {
   let calidad = calidadFija ?? deTabla(TABLAS[origen], tirar("1d100").total);
   if (calidad === "legendario") {
     const libres = LEGENDARIAS.filter((l) => !Object.values(partida.objetos).some((o) => o.nombre.startsWith(l.nombre)));
@@ -246,14 +266,8 @@ export interface PeticionBotin {
   incluir_viales?: boolean;
 }
 
-export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; jugadores: string } {
-  const dm: string[] = [];
-  const jug: string[] = [];
-  for (let i = 0; i < b.cantidad; i++) {
-    const o = generarUno(partida, b.origen, b.clase, b.calidad);
-    dm.push(`- ${o.nombre} (${o.calidad}, ${o.precio} po): ${o.verdad}`);
-    jug.push(`- ${o.nombre}${b.origen === "compra" ? ` — ${o.precio} po` : ""}: ${o.apariencia}`);
-  }
+/** Lo que se añade a cualquier botín: Behelit (rarísimo), catalizador de magia y viales. */
+export function extrasBotin(partida: Partida, b: { origen: Origen; cantidad: number; incluir_viales?: boolean }, dm: string[], jug: string[]): void {
   // Behelit: probabilidad por cada mil, por objeto. Nunca en tiendas.
   const BEHELIT: Record<Origen, number> = { compra: 0, saqueo: 1, hallazgo: 3, jefe: 20 };
   for (let i = 0; i < b.cantidad; i++) {
@@ -290,6 +304,17 @@ export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; 
       jug.push(linea);
     }
   }
+}
+
+export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; jugadores: string } {
+  const dm: string[] = [];
+  const jug: string[] = [];
+  for (let i = 0; i < b.cantidad; i++) {
+    const o = generarUno(partida, b.origen, b.clase, b.calidad);
+    dm.push(`- ${o.nombre} (${o.calidad}, ${o.precio} po): ${o.verdad}`);
+    jug.push(`- ${o.nombre}${b.origen === "compra" ? ` — ${o.precio} po` : ""}: ${o.apariencia}`);
+  }
+  extrasBotin(partida, b, dm, jug);
   return {
     dm: `Botín (${b.origen}). Añade al inventario con modificar_personaje solo lo que se queden, usando el nombre exacto con su [id].\n${dm.join("\n")}`,
     jugadores: jug.join("\n"),

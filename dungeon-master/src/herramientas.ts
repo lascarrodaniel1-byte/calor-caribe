@@ -25,7 +25,8 @@ import {
   type EstadoJefe,
 } from "./bestiario.js";
 import { aceptar, CIRCUNSTANCIAS, crearCarmesi, despertar, RAZONES, rechazar, type Circunstancia } from "./behelit.js";
-import { CALIDADES_OBJETO, crearObjeto, generarBotin, ORIGENES } from "./equipo.js";
+import { CALIDADES_OBJETO, crearObjeto, ORIGENES } from "./equipo.js";
+import { CATEGORIAS_BOTIN, generarBotinDe } from "./botin.js";
 import { fichaTexto, normalizar, type Partida, type Personaje } from "./estado.js";
 import {
   CALIDADES,
@@ -248,6 +249,10 @@ const esquemas = {
     clase: z.enum(["arma", "armadura", "accesorio"]).optional(),
     calidad: z.enum(CALIDADES_OBJETO).optional().describe("Fuerza una calidad (p. ej. el arma encantada de una misión)"),
     incluir_viales: z.boolean().optional(),
+    peligro: z.number().int().min(1).max(5).optional().describe("Peligro del lugar o la criatura: reparte materiales, comida, documentos… y oro sugerido"),
+    region: z.string().optional().describe("Región o lugar (Ciénagas, Karak, mar…)"),
+    criatura: z.string().optional().describe("Criatura saqueada: sus trofeos y su peligro"),
+    categorias: z.array(z.enum(CATEGORIAS_BOTIN as [string, ...string[]])).optional().describe("Limita el reparto a estas categorías"),
   }),
   crear_objeto: z.object({
     nombre: z.string(),
@@ -953,7 +958,7 @@ const descripciones: Record<Nombre, string> = {
   usar_vial:
     "Usa un vial (Sangre de Santo, Ceniza Viva, Hiel de Víbora Gris, Leche de Amapola Negra). El programa aplica efectos y riesgos y lo descuenta del inventario del portador.",
   generar_botin:
-    "Genera equipo y viales al azar según el origen (compra, saqueo, hallazgo, jefe), con calidades normales, encantadas, malditas o reliquias.",
+    "Genera botín al azar según el origen (compra, saqueo, hallazgo, jefe); con peligro, región o criatura reparte además materiales, comida, documentos, trofeos y oro sugerido (consultar_reglas tesoro).",
   crear_objeto: "Registra un objeto único inventado por ti (con su verdad oculta si está maldito).",
   examinar_objeto: "Consulta la verdad de un objeto registrado; con revelar=true, los jugadores la descubren.",
   aparecer_criatura:
@@ -1541,7 +1546,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "generar_botin": {
         const e = validado.data as z.infer<typeof esquemas.generar_botin>;
-        const b = generarBotin(partida, e);
+        const b = generarBotinDe(partida, e as Parameters<typeof generarBotinDe>[1]);
         return { contenido: b.dm, aviso: b.jugadores ? `💰 ${e.origen === "compra" ? "A la venta" : "Botín"}:\n${b.jugadores}` : null };
       }
       case "crear_objeto": {
