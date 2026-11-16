@@ -143,7 +143,7 @@ export function catalogoCompacto(): string {
   return `## Acciones del motor (herramienta "motor")
 ${lineas.join("\n")}
 - actualizar_cronica(texto) — reescribe tu crónica completa (tu memoria).
-- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | behelits | bestiario | mapa | magia | artes | arcos | saber | clima | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
+- consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | tesoro | estados | behelits | bestiario | mapa | magia | artes | arcos | saber | clima | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
 }
 

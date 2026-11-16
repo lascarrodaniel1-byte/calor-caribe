@@ -69,7 +69,8 @@ import { avisosDeCalendario, clima as ejecutarClima } from "./clima.js";
 import { darExperiencia, eleccionNivel, PX_PNJ, repartirBajas, subirAutomatico, subirNivel } from "./progresion.js";
 import { estabilizar, revisarCaidas, salvacionMuerte } from "./muerte.js";
 import { accionCombate, ACCIONES, instantanea, provocados, reaccion } from "./acciones.js";
-import { agregarCondicion, mismaCondicion } from "./condiciones.js";
+import { agregarCondicion, mismaCondicion, reconocer } from "./condiciones.js";
+import { registrarEstado } from "./estados_base.js";
 import { actualizarRegentes, TIPOS_JUGADA } from "./regentes.js";
 import { enMar, registrarEnemigo, repetida, sortearEncuentro } from "./encuentros.js";
 import { danoDeTragados, presionDeDano, tragarA, validarTragar } from "./tragado.js";
@@ -83,7 +84,7 @@ import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { aplicarDanoAPersonaje } from "./rasgos.js";
-import { estadoPorDano, ganchoEstados, pasarAsaltoEstados } from "./estados.js";
+import { caducarEstadosFuera, estadoPorDano, ganchoEstados, pasarAsaltoEstados, purgarEstadosHeredados } from "./estados.js";
 import { notaDano, tipoDanoSchema } from "./danos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
@@ -174,6 +175,9 @@ const esquemas = {
     nombre: z.string(),
     pv_cambio: z.number().int().optional().describe("Negativo para daño, positivo para curación"),
     tipo_dano: tipoDanoSchema.optional().describe("Con pv_cambio negativo: el tipo del daño (fuego, veneno…). Enano/veneno, Cenizo/fuego, Tritón/frío y Furia/físico: el programa aplica la mitad"),
+    sin_estado: z.boolean().optional().describe("Con tipo_dano: true = el daño NO deja estado (fuego → quemado…; consultar_reglas estados)"),
+    cd_estado: z.number().int().min(5).max(30).optional().describe("CD de la salvación del estado (por defecto 13)"),
+    atributo: z.enum(["int", "sab", "car", "fue", "des"]).optional().describe("Atributo de lanzamiento de quien lo causa (para la CD del estado)"),
     oro_cambio: z.number().int().optional(),
     agregar_objetos: z.array(z.string()).optional(),
     quitar_objetos: z.array(z.string()).optional(),
@@ -1274,7 +1278,9 @@ export function cerrarAsalto(partida: Partida, desde?: number): { texto: string;
   const r = ejecutar("siguiente_asalto", {}, partida);
   if (r.error) return null;
   c.avisoAsalto = r.contenido;
-  return { texto: r.contenido, avisos: [`⚔ Asalto ${c.ronda}`] };
+  // Los jugadores ven por qué bajan los PV: quemaduras y estados que caducan
+  const estados = r.contenido.split("\n").filter((l) => /^(🔥 .* arde:|⏱ .* ya no está)/.test(l.trim())).map((l) => l.trim());
+  return { texto: r.contenido, avisos: [`⚔ Asalto ${c.ronda}`, ...estados] };
 }
 
 export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Resultado {
@@ -1286,6 +1292,13 @@ export function ejecutar(nombre: string, entrada: unknown, partida: Partida): Re
   if (!r.error && segAntes !== undefined && partida.reloj && partida.reloj.segundos !== segAntes) { // cambio de estación o de anomalía al avanzar el reloj
     const cal = avisosDeCalendario(partida, segAntes);
     if (cal.length) { r.contenido += `\n${cal.join("\n")}`; r.aviso = [r.aviso, ...cal].filter(Boolean).join("\n"); }
+  }
+  if (!r.error) { // los estados por daño caducan por RELOJ (fuera de combate y los de larga duración): aviso de los que vencen
+    const entradaT = entrada as { dias?: number; asaltos?: number } | null;
+    const delta = partida.reloj && segAntes !== undefined ? partida.reloj.segundos - segAntes
+      : nombre === "pasar_tiempo" ? (entradaT?.dias ?? 0) * 86400 : nombre === "avanzar_asaltos" ? (entradaT?.asaltos ?? 0) * 6 : nombre === "siguiente_asalto" ? 6 : 0;
+    const venc = delta > 0 ? caducarEstadosFuera(partida, delta) : [];
+    if (venc.length) { r.contenido += `\n${venc.join("\n")}`; r.aviso = [r.aviso, ...venc].filter(Boolean).join("\n"); }
   }
   if (!r.error) actualizarCodice(partida, enEscena); // el bestiario del grupo aprende de lo que ve y derrota
   if (!r.error) for (const [n, a] of Object.entries(antes)) { const p = partida.personajes[n]; if (p && !a.muerto && p.condiciones.includes("muerto")) anotarSuceso(partida, `☠ ${n} muere`); }
@@ -1419,6 +1432,8 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         const e = validado.data as z.infer<typeof esquemas.modificar_personaje>;
         const p = buscar(partida, e.nombre);
         const cambios: string[] = [];
+        let avisoEstadoMod = "";
+        const lineasEstadoMod: string[] = [];
         if (e.pv_max !== undefined) p.pv_max = e.pv_max;
         if (e.nivel !== undefined) {
           p.nivel = e.nivel;
@@ -1439,12 +1454,20 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           if (cambio < 0) { const r = aplicarDanoAPersonaje(p, -cambio, e.tipo_dano); cambio = -r.final; nota = notaDano(r.detalle); }
           p.pv = Math.max(0, Math.min(p.pv_max, p.pv + cambio));
           cambios.push(`${cambio > 0 ? "+" : ""}${cambio} PV (${p.pv}/${p.pv_max})${nota}`);
+          // El daño elemental narrado por el DM da estado igual que sobre una criatura (salvación; sin_estado: true lo evita)
+          if (cambio < 0 && e.tipo_dano && !e.sin_estado) {
+            const est = estadoPorDano({ partida, objetivo: localizarCombatiente(partida, p.nombre), tipo: e.tipo_dano, final: -cambio, cd: e.cd_estado, atributo: e.atributo });
+            lineasEstadoMod.push(...est.lineas);
+            if (est.aviso) avisoEstadoMod = est.aviso;
+          }
         }
         if (e.oro_cambio) {
           p.oro = Math.max(0, p.oro + e.oro_cambio);
           cambios.push(`${e.oro_cambio > 0 ? "+" : ""}${e.oro_cambio} oro`);
+          if (e.oro_cambio > 0 && partida.botinPendiente) partida.botinPendiente.oro = Math.max(0, partida.botinPendiente.oro - e.oro_cambio); // lo sugerido ya está aplicado: sin doble conteo
         }
         for (const o of e.agregar_objetos ?? []) {
+          if (partida.botinPendiente) partida.botinPendiente.objetos = partida.botinPendiente.objetos.filter((x) => x.toLowerCase() !== o.toLowerCase());
           p.inventario.push(o);
           cambios.push(`+ ${o}`);
         }
@@ -1455,7 +1478,9 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
             cambios.push(`- ${o}`);
           }
         }
-        for (const c of e.agregar_condiciones ?? []) agregarCondicion(p.condiciones, c);
+        for (const c of e.agregar_condiciones ?? []) {
+          if (agregarCondicion(p.condiciones, c) && reconocer(c)?.id === "quemado") registrarEstado(partida, { nombre: p.nombre, id: "quemado", texto: c, tipo: "fuego", asaltos: 3 }); // el quemado puesto a mano también arde y caduca
+        }
         if (e.quitar_condiciones) p.condiciones = p.condiciones.filter((c) => !e.quitar_condiciones!.some((q) => c === q || mismaCondicion(c, q) || c.toLowerCase().startsWith(q.toLowerCase())));
         for (const x of e.agregar_secuelas ?? []) p.secuelas.push(x);
         if (e.quitar_secuelas) p.secuelas = p.secuelas.filter((x) => !e.quitar_secuelas!.includes(x));
@@ -1475,10 +1500,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
           cambios.push(`aprende ${x}`);
         }
         if (e.notas !== undefined) p.notas = e.notas;
+        if (partida.botinPendiente && !partida.botinPendiente.oro && !partida.botinPendiente.objetos.length) delete partida.botinPendiente;
         if (p.pv === 0) cambios.push("¡a 0 PV! (inconsciente)");
         return {
-          contenido: `Ficha actualizada:\n${fichaTexto(p)}`,
-          aviso: cambios.length ? `✏️  ${p.nombre}: ${cambios.join(" · ")}` : null,
+          contenido: `Ficha actualizada:\n${fichaTexto(p)}${lineasEstadoMod.length ? `\n${lineasEstadoMod.join("\n")}` : ""}`,
+          aviso: [cambios.length ? `✏️  ${p.nombre}: ${cambios.join(" · ")}` : "", avisoEstadoMod].filter(Boolean).join("\n") || null,
         };
       }
       case "infligir_herida": {
@@ -1548,7 +1574,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         if (port && i < 0) throw new Error(`${port.nombre} no lleva ${e.vial} en el inventario.`);
         const receptor = e.receptor ? buscar(partida, e.receptor) : undefined;
         const supervisor = e.supervisa ? buscar(partida, e.supervisa) : undefined;
-        const texto = usarVial({ ...e, receptor, supervisor });
+        const texto = usarVial({ ...e, receptor, supervisor, partida });
         if (port) port.inventario.splice(i, 1);
         return { contenido: texto + (receptor ? `\n\nFicha:\n${fichaTexto(receptor)}` : ""), aviso: `🧪 ${texto}` };
       }
@@ -1951,9 +1977,11 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       }
       case "iniciativa": {
         const e = validado.data as z.infer<typeof esquemas.iniciativa>;
-        const texto = e.sumar && partida.combate
-          ? agregarAlCombate(partida, e.participantes, e.pnj ?? [])
-          : tirarIniciativa(partida, e.participantes, e.pnj ?? [], e.tactica as Parameters<typeof tirarIniciativa>[3]);
+        const nuevo = !(e.sumar && partida.combate);
+        const heredados = nuevo ? purgarEstadosHeredados(partida) : []; // los estados de fuera de combate no pasan al combate nuevo
+        const texto = (nuevo
+          ? tirarIniciativa(partida, e.participantes, e.pnj ?? [], e.tactica as Parameters<typeof tirarIniciativa>[3])
+          : agregarAlCombate(partida, e.participantes, e.pnj ?? [])) + (heredados.length ? `\n${heredados.join("\n")}` : "");
         return { contenido: texto, aviso: `⏳ ${texto}` };
       }
       case "atacar": {

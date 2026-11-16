@@ -59,9 +59,16 @@ export function pistasDeRepaso(partida: Partida, d: { texto: string; llamadas: s
   const pistas: string[] = [];
   if (partida.reloj && d.relojAntes !== undefined && partida.reloj.segundos - d.relojAntes <= 600 && /\b(amanece|anochece|atardece|al día siguiente|a la mañana siguiente|horas después|pasan (varias |unas |dos |tres )?(horas|días)|toda la noche|una hora (después|más tarde)|dormís|duermen|descansan hasta)\b/i.test(t))
     pistas.push("La narración hace pasar tiempo (horas, noche o días) pero el reloj apenas se movió: usa tiempo {avanzar} o descanso.");
-  if (/\b\d+\s*(po|piezas? de oro|monedas?|platas?|cobres?|pc)\b/i.test(t) && !usa("modificar_personaje", "generar_botin"))
+  const pend = partida.botinPendiente;
+  const hayPend = !!pend && (pend.oro > 0 || pend.objetos.length > 0);
+  // generar_botin NO registra nada: el oro es siempre una sugerencia y los objetos solo quedan creados ([O#]); hay que pasarlos con modificar_personaje
+  if (hayPend && !usa("modificar_personaje") && pend!.avisos < 2) {
+    pend!.avisos++;
+    pistas.push(`El botín generado sigue sin aplicar${pend!.oro ? `: ${pend!.oro} po sugeridas (modificar_personaje {oro_cambio})` : ""}${pend!.objetos.length ? `${pend!.oro ? " y " : ": "}objetos ${pend!.objetos.join(", ")} (modificar_personaje {agregar_objetos}, nombre exacto con su [O#])` : ""}. Regístralo a quien lo recogió; si nadie lo recogió, ignóralo. Sin doble conteo: lo ya registrado no se repite.`);
+  }
+  if (!hayPend && /\b\d+\s*(po|piezas? de oro|monedas?|platas?|cobres?|pc)\b/i.test(t) && !usa("modificar_personaje"))
     pistas.push("Se habla de dinero (cobros, pagos, botín) y no registraste cambios de oro: modificar_personaje {oro_cambio}.");
-  if (/\b(recoge|recogen|coge|toma|se lleva|le entrega|te entrega|le da|te da|regala|compra|compran|vende|encuentra entre|saquea|se guarda)\b/i.test(t) && !usa("modificar_personaje", "generar_botin", "crear_objeto"))
+  if (!hayPend && /\b(recoge|recogen|coge|toma|se lleva|le entrega|te entrega|le da|te da|regala|compra|compran|vende|encuentra entre|saquea|se guarda)\b/i.test(t) && !usa("modificar_personaje", "crear_objeto"))
     pistas.push("Alguien gana, da, compra o pierde objetos y no registraste cambios de inventario: modificar_personaje {agregar_objetos|quitar_objetos}.");
   const conocidos = new Set([...Object.values(partida.personajes).flatMap((p) => [p.nombre, p.jugador ?? ""]), ...Object.keys(partida.pnjs ?? {}), ...Object.keys(partida.jefes ?? {})].filter(Boolean).map(norm));
   const nuevos = new Set<string>();

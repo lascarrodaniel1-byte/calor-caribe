@@ -7,11 +7,12 @@ import { esFisico, resiste, type FuenteDano, type PerfilDano, type TipoDano } fr
 import { aplicarCondicion, condsDe, localizar, retirarCaido, type Combatiente } from "./combate.js";
 import { danarConTipo, inmunidadesCondicionDe, perfilDeJefe, perfilDePnj, type EstadoJefe, type Habilidad } from "./bestiario.js";
 import { aplicarDanoAPersonaje, perfilDePersonaje } from "./rasgos.js";
+import { ventajaRacial } from "./rasgos.js";
 import { competencia, mod, salvacion, signo, valor, type Atributo } from "./reglas.js";
 import { danoEnSuelo } from "./muerte.js";
 import { aplicarDano } from "./danos.js";
 import type { Partida, Personaje } from "./estado.js";
-import { type EstadoDano } from "./estados_base.js";
+import { segDeAsaltos, type EstadoDano } from "./estados_base.js";
 
 /** Cuánto dura un estado: N asaltos, «breve» (hasta el final de su siguiente turno) o «descanso» (hasta el próximo descanso). */
 type Duracion = number | "breve" | "descanso";
@@ -72,13 +73,21 @@ export function cdDeEstado(atacante: Combatiente | undefined, atributo?: string)
 const perfilDe = (partida: Partida, c: Combatiente): PerfilDano => (c.tipo === "pj" ? perfilDePersonaje(c.p) : c.tipo === "criatura" ? perfilDeJefe(c.j, ronda(partida)) : perfilDePnj(c.n));
 const vivo = (c: Combatiente): boolean => (c.tipo === "pj" ? c.p.pv > 0 && !c.p.condiciones.includes("muerto") : c.tipo === "criatura" ? c.j.pv > 0 : c.n.pv === undefined || c.n.pv > 0);
 
-function salvar(c: Combatiente, atr: Atributo, cd: number, ventaja: boolean): { exito: boolean; margen: number; texto: string } {
-  if (c.tipo === "pj") { const s = salvacion(c.p, atr, cd, { ventaja }); return { exito: s.exito, margen: s.margen, texto: s.texto }; }
+/** Salvación del estado. `motivo`: por qué hay ventaja (resiste el tipo…); `contra`: contra qué es (miedo, veneno, hechizo…) para las ventajas raciales. El texto dice siempre de dónde viene la ventaja. */
+function salvar(c: Combatiente, atr: Atributo, cd: number, o: { motivo?: string; contra?: string } = {}): { exito: boolean; margen: number; texto: string } {
+  if (c.tipo === "pj") {
+    const racial = ventajaRacial(c.p, o.contra);
+    const s = salvacion(c.p, atr, cd, { ventaja: !!o.motivo, contra: o.contra });
+    const razon = o.motivo ?? racial;
+    const texto = razon ? s.texto.replace(/\(ventaja(?:: [^)]*)?\)/, `(ventaja: ${razon})`) : s.texto;
+    return { exito: s.exito, margen: s.margen, texto };
+  }
+  const ventaja = !!o.motivo;
   const m = c.tipo === "criatura" ? modTexto(c.j.definicion.atributos, atr) : atr === "des" && c.n.des ? mod(c.n.des) : atr === "sab" && c.n.sab ? mod(c.n.sab) : 0;
   const t = tirar(`1d20${signo(m)}`, ventaja ? "ventaja" : "normal");
   const natural = t.dados[0];
   const exito = natural === 20 || (natural !== 1 && t.total >= cd);
-  return { exito, margen: t.total - cd, texto: `salvación de ${atr.toUpperCase()} ${describir(t)}${ventaja ? " (ventaja: resiste el tipo)" : ""} vs CD ${cd} → ${exito ? "éxito" : "fallo"}` };
+  return { exito, margen: t.total - cd, texto: `salvación de ${atr.toUpperCase()} ${describir(t)}${ventaja ? ` (ventaja: ${o.motivo})` : ""} vs CD ${cd} → ${exito ? "éxito" : "fallo"}` };
 }
 
 /** Hasta qué asalto vale. «breve» = hasta el final de SU siguiente turno: este asalto si aún no ha actuado (el atacante va antes), el siguiente si ya actuó. */
@@ -92,6 +101,12 @@ function hastaDe(partida: Partida, d: Duracion, atacante: Combatiente | undefine
     return ia >= 0 && ib >= 0 && ia < ib ? r : r + 1;
   }
   return r + d - 1;
+}
+
+/** Segundos de reloj de una duración fuera de combate: «breve» = 1 asalto (6 s), N asaltos = 6·N s; «descanso» no caduca por reloj. */
+function segDe(partida: Partida, d: Duracion): number | undefined {
+  if (partida.combate || d === "descanso") return undefined;
+  return segDeAsaltos(d === "breve" ? 1 : d);
 }
 
 const textoDuracion = (d: Duracion): string => (d === "breve" ? "hasta el final de su siguiente turno" : d === "descanso" ? "hasta el descanso" : d === 1 ? "1 asalto" : `${d} asaltos`);
@@ -140,14 +155,16 @@ export function estadoPorDano(d: DatosEstadoDano): ResultadoEstado {
     if (previo && !CONTROL.has(idPrimero) && primero.duracion !== "descanso") { // renueva: solo alarga el que ya se tenía por este medio
       const nuevo = hastaDe(partida, primero.duracion, d.atacante, ob);
       if (nuevo !== undefined && (previo.hasta ?? 0) < nuevo) previo.hasta = nuevo;
+      const ns = segDe(partida, primero.duracion);
+      if (ns !== undefined && previo.seg !== undefined && previo.seg < ns) previo.seg = ns;
       return { lineas: [`${def.emoji} ${nombre} ya está ${primero.condicion}: se renueva (no se acumula).`], aviso: null };
     }
     return { lineas: [`${def.emoji} ${nombre} ya está ${primero.condicion}: no se acumula.`], aviso: null };
   }
   // Salvación contra la CD fija; resistir el tipo da ventaja.
   const cd = d.cd ?? cdDeEstado(d.atacante, d.atributo);
-  const ventaja = resiste(perfilDe(partida, ob), tipo, d.fuente);
-  const s = salvar(ob, def.salva, cd, ventaja);
+  const motivo = resiste(perfilDe(partida, ob), tipo, d.fuente) ? "resiste el tipo" : undefined;
+  const s = salvar(ob, def.salva, cd, { motivo, contra: primero.condicion });
   if (s.exito) return { lineas: [`${def.emoji} ${nombre} aguanta el efecto de ${tipo}: ${s.texto}.`], aviso: null };
   const fuerte = !!def.fuerte && !sobre && (s.margen <= -5 || !!d.critico);
   const aplicar = fuerte ? def.fuerte! : pasos;
@@ -159,12 +176,13 @@ export function estadoPorDano(d: DatosEstadoDano): ResultadoEstado {
     const prev = reg.find((x) => x.nombre === nombre && x.id === id);
     if (yaEsta || (prev?.inmuneHasta !== undefined && prev.inmuneHasta >= ronda(partida)) || condicionInmune(inmunes, paso.condicion)) continue;
     const hasta = hastaDe(partida, paso.duracion, d.atacante, ob);
+    const seg = segDe(partida, paso.duracion);
     const texto = `${paso.condicion} (${tipo}: ${textoDuracion(paso.duracion)})`;
     const r = aplicarCondicion(partida, { objetivo: nombre, accion: "aplicar", condicion: texto });
     if (/es inmune a la condición/.test(r)) continue;
     const i = reg.findIndex((x) => x.nombre === nombre && x.id === id);
     if (i >= 0) reg.splice(i, 1);
-    reg.push({ nombre, id, texto, tipo, ...(hasta !== undefined ? { hasta } : {}) });
+    reg.push({ nombre, id, texto, tipo, ...(hasta !== undefined ? { hasta } : {}), ...(seg !== undefined ? { seg } : {}) });
     puestos.push(paso);
     lineas.push(`  ${r.split("\n").join("\n  ")}`);
   }
@@ -213,6 +231,48 @@ function danarArde(partida: Partida, c: Combatiente): string | null {
   return `🔥 ${c.nombre} arde: ${describir(t)} de fuego → ${c.n.pv}/${c.n.pv_max ?? "?"} PV${c.n.pv === 0 ? " — CAE." : ""}`;
 }
 
+/** Un personaje a 0 PV que aún no ha muerto: el fuego que lo sigue quemando le cuenta como daño en el suelo (fallo de salvación contra muerte). */
+const enElSuelo = (c: Combatiente): boolean => c.tipo === "pj" && c.p.pv <= 0 && !c.p.condiciones.includes("muerto");
+
+/** Quita la condición de quien la sufre (personaje, criatura en escena o PNJ del combate); sin él, no hace nada. */
+function quitarCondicion(partida: Partida, e: EstadoDano): void {
+  let l: string[] | undefined;
+  try { l = condsDe(localizar(partida, e.nombre)); } catch { l = undefined; }
+  if (l) { const resto = l.filter((x) => x !== e.texto); l.splice(0, l.length, ...resto); }
+}
+
+/** Fuera de combate los estados caducan por RELOJ: resta `segundos` a los que tienen `seg` y quita los vencidos (con aviso). Lo llama `ejecutar` cuando el reloj avanza (pasar_tiempo, tiempo, asaltos…). */
+export function caducarEstadosFuera(partida: Partida, segundos: number): string[] {
+  const reg = partida.estadosDano;
+  if (!reg?.length || !(segundos > 0)) return [];
+  const out: string[] = [];
+  for (const e of [...reg]) {
+    if (e.seg === undefined) continue;
+    e.seg -= segundos;
+    if (e.seg > 0) continue;
+    reg.splice(reg.indexOf(e), 1);
+    quitarCondicion(partida, e);
+    out.push(`⏱ ${e.nombre} ya no está ${e.id}${e.tipo ? ` (el estado de ${e.tipo} termina)` : ""}.`);
+  }
+  if (!reg.length) delete partida.estadosDano;
+  return out;
+}
+
+/** Al empezar un combate se purgan los estados que venían de fuera y no tienen plazo en asaltos (los de reloj y los sin plazo), salvo «corroído» (hasta el descanso) y los que persisten (Hiel…). */
+export function purgarEstadosHeredados(partida: Partida): string[] {
+  const reg = partida.estadosDano;
+  if (!reg?.length) return [];
+  const out: string[] = [];
+  partida.estadosDano = reg.filter((e) => {
+    if (e.hasta !== undefined || e.inmuneHasta !== undefined || e.id === "corroido" || e.persiste) return true;
+    quitarCondicion(partida, e);
+    out.push(`⏱ ${e.nombre} ya no está ${e.id}: el estado de ${e.tipo} venía de antes del combate y se da por pasado.`);
+    return false;
+  });
+  if (!partida.estadosDano.length) delete partida.estadosDano;
+  return out;
+}
+
 /** Al abrirse cada asalto (tras `siguienteAsalto`): arde quien está quemado y acaban los estados cuyo plazo venció; quien se recupera es inmune a él un asalto. */
 export function pasarAsaltoEstados(partida: Partida): string[] {
   const r = ronda(partida);
@@ -231,16 +291,17 @@ export function pasarAsaltoEstados(partida: Partida): string[] {
       out.push(`⏱ ${e.nombre} ya no está ${e.id} (el estado de ${e.tipo} termina): este asalto es inmune a él.`);
       continue;
     }
-    if (e.id === "quemado" && vivo(c)) { const x = danarArde(partida, c); if (x) out.push(x); }
+    if (e.id === "quemado" && (vivo(c) || enElSuelo(c))) { const x = danarArde(partida, c); if (x) out.push(x); }
   }
   return out;
 }
 
 /** Texto de la regla para consultar_reglas (bajo demanda): el mapa y sus reglas. */
 export const REGLAS_ESTADOS = `## Estados por tipo de daño (propuesta a confirmar)
-Un golpe elemental (no físico) que causa daño FINAL > 0 puede dejar un estado, con una salvación del objetivo contra una CD fija del atacante (criatura: la de sus habilidades o 8 + competencia + mod; PJ: 8 + competencia + FUE/DES, o su atributo de lanzamiento; trampa: su CD). Resistir el tipo da ventaja en la salvación; el inmune no sufre nada. Lo aplica el programa en atacar, habilidad_criatura, trampa y danar_criatura {tipo_dano}: no lo apliques tú «de palabra».
+Un golpe elemental (no físico) que causa daño FINAL > 0 puede dejar un estado, con una salvación del objetivo contra una CD fija del atacante (criatura: la de sus habilidades o 8 + competencia + mod; PJ: 8 + competencia + FUE/DES, o su atributo de lanzamiento; trampa: su CD). Resistir el tipo da ventaja en la salvación; el inmune no sufre nada. Lo aplica el programa en atacar, habilidad_criatura, trampa, danar_criatura {tipo_dano} y modificar_personaje {pv_cambio negativo, tipo_dano} (daño elemental que narras sobre un PJ: mismos parámetros cd_estado, atributo y sin_estado, igual que sobre una criatura): no lo apliques tú «de palabra». La salvación cuenta las ventajas raciales contra miedo, veneno y hechizo (asustado, envenenado…) y la tirada dice de dónde viene la ventaja.
 ${Object.entries(ESTADOS_POR_DANO).map(([t, d]) => `- ${t} → ${d!.normal.map((p) => `${p.condicion} (${textoDuracion(p.duracion)})`).join(" + ")} (salvación de ${d!.salva.toUpperCase()})${d!.fuerte ? `; fallo por 5 o más o crítico: ${d!.fuerte.map((p) => `${p.condicion} (${textoDuracion(p.duracion)})`).join(" + ")}` : ""}`).join("\n")}
 - Opt-out: atacar/danar_criatura {sin_estado: true}; en la ficha, estado: false en una habilidad (o sinEstados en la criatura). El daño físico no da estado.
 - No se acumula: quien ya lo sufre solo lo renueva (los de control —paralizado, aturdido, cegado— no se alargan). Al terminar, el objetivo es inmune a ese estado un asalto. Acaban solos al cambiar de asalto (siguiente_asalto), al acabar el combate y al descansar (corroído, hasta el descanso).
-- Quemado: 1d4 de fuego al empezar cada asalto; se apaga con accion_combate {accion: apagarse} (una acción) o con agua. Ralentizado: velocidad a la mitad y desventaja en salvaciones de DES. Corroído: CA −1. Debilitado: desventaja en pruebas.
+- Quemado: 1d4 de fuego al empezar cada asalto; se apaga con accion_combate {accion: apagarse} (una acción) o con agua (agua sumergir/entrar lo quita; sumergido resiste el fuego). Si lo pones a mano con condicion o agregar_condiciones también arde y caduca igual (3 asaltos). Un PJ a 0 PV que sigue quemado sufre ese fuego como daño en el suelo (un fallo de salvación contra muerte por asalto).
+- Duración: en combate, por asaltos. Fuera de combate, por RELOJ («breve» = 1 asalto = 6 s; N asaltos = 6·N s): caducan cuando el reloj avanza (pasar_tiempo, tiempo avanzar); no arden fuera de combate. Al iniciar un combate se purgan los que venían de fuera (menos corroído, hasta el descanso). La Hiel de Víbora Gris deja envenenado 1 h y paralizado 1 min por reloj (sobreviven al combate). Ralentizado: velocidad a la mitad y desventaja en salvaciones de DES. Corroído: CA −1. Debilitado: desventaja en pruebas.
 - Tragado: el daño de dentro (eléctrico, ácido) no da estado.`;

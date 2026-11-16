@@ -22,7 +22,8 @@ ejecutar("agua", { accion: "nadar", quienes: [], minutos: 30 }, P);
 t(P.personajes.Nerea.pv > 0 && !P.personajes.Nerea.condiciones.includes("muerto"), "tras 30 min bajo el agua el Tritón sigue vivo", String(P.personajes.Nerea.pv));
 t(P.personajes.Hugo.pv <= 1 || P.personajes.Hugo.condiciones.includes("muerto"), "y el humano se ahoga", JSON.stringify([P.personajes.Hugo.pv, P.personajes.Hugo.condiciones]));
 const v = txt(ejecutar("agua", { accion: "ver" }, P)); t(/Nerea: respira bajo el agua/.test(v), "el estado lo muestra", v.slice(0, 80));
-t(danoConResistencia(P.personajes.Nerea, 10, "frío").dano === 5 && danoConResistencia(P.personajes.Nerea, 10, "fuego").dano === 10, "resiste el frío y no el fuego");
+t(danoConResistencia(P.personajes.Nerea, 10, "frío").dano === 5 && danoConResistencia(P.personajes.Nerea, 10, "fuego").dano === 5, "resiste el frío (racial) y, sumergida, el fuego (el agua amortigua: dato desde la revisión)");
+{ const sec = { ...P.personajes.Nerea, condiciones: [] as string[] }; t(danoConResistencia(sec as any, 10, "fuego").dano === 10, "fuera del agua el Tritón no resiste el fuego"); }
 t(rasgosAutomaticos(P.personajes.Nerea).some((x) => /Anfibio/.test(x)), "el DM sabe que es automático");
 const h = buscarCriatura("Hombre pez"); t(!!h && buscarCriatura("Hombres pez") === h && /sirena/i.test(h!.descripcion), "Hombre pez en el bestiario (alias)");
 t(BESTIARIO.every((c) => !!c.vd), "todas las criaturas tienen VD", BESTIARIO.filter((c) => !c.vd).map((c) => c.nombre).join());

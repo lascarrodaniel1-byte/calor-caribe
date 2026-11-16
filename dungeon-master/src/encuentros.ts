@@ -20,6 +20,8 @@ export interface Plantilla {
   /** 1 (peligro común) a 5. */
   peligro: 1 | 2 | 3 | 4 | 5;
   cuantos: [number, number];
+  /** Por debajo de este nivel medio del grupo sale solo UNO (cuantos [1,1]): criaturas cuya dureza no está medida de dos en dos a niveles bajos. */
+  soloUnoHastaNivel?: number;
   momento?: "noche" | "dia";
   /** Solo en el mar: la plantilla solo entra en el sorteo si el grupo está en el mar, en una costa o puerto, o a bordo de una nave (ver enMar). */
   mar?: boolean;
@@ -72,7 +74,7 @@ export const TABLA: Plantilla[] = [
   { id: "leshen", nombre: "Leshen del bosque viejo", familia: "monstruos", tipo: "combate", regiones: ["Velo Rojo"], peligro: 4, cuantos: [1, 1], peso: 1, bestiario: "Leshen", quienes: "El guardián del bosque que sale cuando se tala, se quema o se caza sin permiso.", quieren: "Que se vayan los que dañan el bosque.", salida: "Dejar una ofrenda, replantar o salir del bosque; el fuego lo enfurece." },
   { id: "duende", nombre: "Duende travieso", familia: "monstruos", tipo: "peligro", regiones: ["Velo Rojo", "Hollín"], peligro: 1, cuantos: [1, 3], estaciones: ["Primavera", "Verano"], peso: 2, bestiario: "Duende", quienes: "Un ser diminuto que desata cordones, mueve piedras de sitio y pierde viajeros por capricho.", quieren: "Divertirse y que lo traten con respeto.", salida: "Un regalo, su nombre dicho en voz alta o hierro frío." },
   { id: "gargola", nombre: "Gárgola de una torre", familia: "monstruos", tipo: "combate", regiones: ["Aldenmar", "Karak"], peligro: 2, cuantos: [1, 2], peso: 1, bestiario: "Gárgola", quienes: "Una talla que se mueve cuando alguien entra en la torre o el puente que guarda.", quieren: "Que nadie pase.", salida: "Pasar sin tocar lo que guarda, o romperla con un maza." },
-  { id: "ulfhedinn", nombre: "Ulfhedinn (hombre lobo) en la noche", familia: "monstruos", tipo: "combate", regiones: ["Agujas", "Velo Rojo", "Marca Hueca"], peligro: 4, cuantos: [1, 2], momento: "noche", peso: 1, bestiario: "Ulfhedinn", quienes: "Hombres lobo grises y de ojos de brasa, mitad guerrero y mitad bestia, que aúllan antes de cargar contra lo primero que ven.", quieren: "Nada: siguen en la furia en que murieron.", salida: "Huir (no cansan, pero tampoco persiguen más allá de su campo), el rito de sal y fuego sobre el que caiga, o fuego grande." },
+  { id: "ulfhedinn", nombre: "Ulfhedinn (hombre lobo) en la noche", familia: "monstruos", tipo: "combate", regiones: ["Agujas", "Velo Rojo", "Marca Hueca"], peligro: 4, cuantos: [1, 2], soloUnoHastaNivel: 7, momento: "noche", peso: 1, bestiario: "Ulfhedinn", quienes: "Un hombre lobo gris y de ojos de brasa (en pareja, a niveles altos), mitad guerrero y mitad bestia, que aúlla antes de cargar contra lo primero que ve.", quieren: "Nada: siguen en la furia en que murieron.", salida: "Huir (no cansan, pero tampoco persiguen más allá de su campo), el rito de sal y fuego sobre el que caiga, o fuego grande." },
   { id: "hombre_oso", nombre: "Hombre oso en el claro", familia: "monstruos", tipo: "combate", regiones: ["Agujas", "Velo Rojo"], peligro: 4, cuantos: [1, 1], peso: 1, bestiario: "Hombre oso", quienes: "Un hombre oso encorvado y de ojos de brasa, mitad berserker y mitad bestia, que gruñe y defiende a zarpazos el trozo de bosque que tomó por cubil.", quieren: "Nada: sigue en la furia en que murió y no tolera a nadie en su cubil.", salida: "Dejarlo atrás (no persigue lejos), fuego grande o el rito de sal y fuego sobre su cuerpo caído." },
   { id: "basilisco", nombre: "Basilisco en las ruinas", familia: "monstruos", tipo: "peligro", regiones: ["Karak", "Marca Hueca"], peligro: 3, cuantos: [1, 1], peso: 2, bestiario: "Basilisco", quienes: "Estatuas de viajeros en un patio: algo de ojos fríos las hizo.", quieren: "Que nadie turbe su nido.", salida: "Espejos, mirar de reojo, rodear por arriba." },
   { id: "manticora", nombre: "Mantícora en los páramos", familia: "monstruos", tipo: "combate", regiones: ["Marca Hueca"], peligro: 3, cuantos: [1, 1], peso: 2, bestiario: "Mantícora", quienes: "Una bestia de rostro casi humano que juega con la comida.", quieren: "Presa y conversación cruel.", salida: "Le gustan los acertijos: hablar puede ganar tiempo." },
@@ -327,7 +329,7 @@ export function sortearEncuentro(partida: Partida, d: DatosEncuentro = {}): stri
     acum += (x.w / total) * 1000;
     if (tirada <= acum) { elegido = x.t; break; }
   }
-  const [min, max] = elegido.cuantos;
+  const [min, max] = elegido.soloUnoHastaNivel && nivel < elegido.soloUnoHastaNivel ? [1, 1] : elegido.cuantos; // dureza medida solo de uno en uno a niveles bajos
   const mult = { facil: 0.6, media: 1, dificil: 1.5, mortal: 2 }[dif];
   const n = Math.max(1, Math.round((min + ((max - min) * (tirar("1d100").total - 1)) / 99) * (max > 1 ? mult : 1)));
   partida.encuentros ??= [];

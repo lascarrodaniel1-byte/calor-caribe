@@ -17,7 +17,7 @@ import { textoJuramento } from "./juramento_base.js";
 import { textoRecursos } from "./recursos.js";
 import { textoProgresion } from "./progresion.js";
 import { textoMuerte } from "./muerte.js";
-import { textoEfectos } from "./condiciones.js";
+import { efectos, textoEfectos } from "./condiciones.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { EstadoRegentes } from "./regentes.js";
 import type { EstadoJefe } from "./bestiario.js";
@@ -170,6 +170,8 @@ export interface Partida {
   trampas?: Record<string, import("./trampas.js").Trampa>;
   /** Círculo de sal en pie (ver sal.ts). */
   sal?: import("./sal.js").CirculoSal;
+  /** Botín SUGERIDO por generar_botin y aún sin aplicar (oro y objetos): el repaso avisa hasta que modificar_personaje lo registre (oro_cambio, agregar_objetos). `avisos`: veces que ya se avisó. */
+  botinPendiente?: { oro: number; objetos: string[]; avisos: number };
   /** Estados dejados por el daño elemental en curso (estados.ts): para que acaben a su hora. */
   estadosDano?: import("./estados_base.js").EstadoDano[];
   /** Botes, balsas y barcos (ver naves.ts). */
@@ -252,12 +254,15 @@ export function normalizarPartida(partida: Partida): Partida {
   return partida;
 }
 
+/** La CA de la ficha; con «corroído» (el ácido come el equipo), la efectiva y por qué: «CA 11 (12, −1 corroído)». */
+const caTexto = (p: Personaje): string => { const m = efectos(p.condiciones).caMenos; return m > 0 ? `${Math.max(0, p.ca - m)} (${p.ca}, −${m} corroído)` : String(p.ca); };
+
 /** Ficha abreviada: lo que el DM necesita de un jugador que no actúa en este turno (la completa, con consultar_reglas ficha). */
 export function fichaCorta(p: Personaje): string {
   const maxEf = pvMaxEfectivo(p);
   const heridas = p.heridas.map((h) => `${h.id} ${h.gravedad} ${h.ubicacion}${h.sangrando ? " sangrando" : ""}${h.podre ? " con Podre" : ""}`).join("; ");
   return (
-    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel} · PV ${p.pv}/${maxEf} · CA ${p.ca}` +
+    `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""} — ${p.raza} ${p.clase} nv. ${p.nivel} · PV ${p.pv}/${maxEf} · CA ${caTexto(p)}` +
     (p.condiciones.length ? ` · ${p.condiciones.join(", ")}` : "") +
     (p.anemia ? ` · anemia −${p.anemia}` : "") +
     (heridas ? ` · Heridas: ${heridas}` : "") +
@@ -273,7 +278,7 @@ export function fichaTexto(p: Personaje): string {
   const maxEf = pvMaxEfectivo(p);
   return [
     `${p.nombre}${p.jugador ? ` (${p.jugador})` : ""}${p.genero ? ` [${p.genero}]` : " [género sin definir]"} — ${p.raza} ${p.clase} nv. ${p.nivel}, ${veteraniaDe(p)}${p.veterania ? "" : " (por nivel)"}${p.personalidad?.length ? `, ${p.personalidad.join(" y ")}` : ""}`,
-    `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${p.ca} · Oro ${p.oro}`,
+    `  PV ${p.pv}/${maxEf}${maxEf < p.pv_max ? ` (máx. ${p.pv_max} sin heridas)` : ""} · CA ${caTexto(p)} · Oro ${p.oro}`,
     p.enfermedades?.some((e) => e.etapa !== "incubando") ? `  Enfermo: ${p.enfermedades.filter((e) => e.etapa !== "incubando").map((e) => `${e.id.replace(/_/g, " ")} (${e.etapa})`).join(", ")}` : "",
     p.idiomas?.length ? `  Idiomas: ${p.idiomas.map((i) => IDIOMAS_NOMBRES[i] ?? i).join(", ")}` : "",
     p.dotes?.length ? `  Dotes: ${p.dotes.map(rotuloDote).join(", ")}` : "",

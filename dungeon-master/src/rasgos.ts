@@ -30,6 +30,7 @@ export function perfilDePersonaje(p: Personaje): PerfilDano {
   if (p.raza === "Cenizo") resiste.push({ tipo: "fuego", motivo: "Resistencia al fuego del Cenizo" });
   if (p.furia?.activa) for (const tipo of ["cortante", "perforante", "contundente"] as const) resiste.push({ tipo, motivo: "Furia: resiste el daño físico" });
   if (juramentoActivo(p) && p.nivel >= nvl(3) && p.juramento!.votos.includes("luz")) resiste.push({ tipo: "necrótico", motivo: "Voto de Luz: resiste el daño necrótico" });
+  if (p.condiciones?.some((x) => /^sumergido/i.test(x))) resiste.push({ tipo: "fuego", motivo: "Sumergido: el agua amortigua el fuego" });
   return { resiste };
 }
 /** Aplica a un personaje un daño ya completo (tras bonificadores, armadura y ventaja) por su tipo: ver `aplicarDano`. */

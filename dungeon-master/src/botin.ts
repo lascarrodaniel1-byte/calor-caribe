@@ -58,9 +58,20 @@ export const esBotinNuevo = (b: PeticionBotinTesoro) => b.peligro !== undefined 
 /** Peligro por defecto de una petición sin peligro ni criatura: 2. */
 export const PELIGRO_POR_DEFECTO = 2;
 
+/** El botín sugerido sin aplicar de esta partida (para que el repaso avise hasta que se registre). */
+const pendiente = (partida: Partida) => (partida.botinPendiente ??= { oro: 0, objetos: [], avisos: 0 });
+/** Apunta como pendientes los objetos registrados ([O#]) de un botín que no es de tienda. */
+function objetosPendientes(partida: Partida, b: PeticionBotinTesoro, dm: string[]): void {
+  if (b.origen === "compra") return;
+  const p = pendiente(partida);
+  for (const l of dm) { const m = /^- (.+? \[O\d+\])/.exec(l); if (m && !p.objetos.includes(m[1])) p.objetos.push(m[1]); }
+  p.avisos = 0;
+}
+
 /** Línea de oro (sugerencia; nunca se aplica solo). Siempre da en saqueo, hallazgo y jefe; la compra no. */
-function lineaOro(b: PeticionBotinTesoro, peligro: number, cofre: boolean, dm: string[], jug: string[]): void {
+function lineaOro(partida: Partida, b: PeticionBotinTesoro, peligro: number, cofre: boolean, dm: string[], jug: string[]): void {
   const oro = b.origen === "compra" ? 0 : oroSugerido(peligro, b.origen, cofre);
+  if (oro) pendiente(partida).oro += oro;
   if (oro) { dm.push(`- Oro: ${oro} po${cofre ? " (cofre)" : ""} (sugerido: súmalo con modificar_personaje {oro_cambio: ${oro}} a quien lo recoja)`); jug.push(`- ${oro} po`); }
 }
 
@@ -93,7 +104,9 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
     // Petición antigua: el mismo equipo y viales de siempre, pero con oro (peligro 2)
     const r = generarBotin(partida, b);
     const dm = [r.dm], jug = r.jugadores ? [r.jugadores] : [];
-    lineaOro(b, PELIGRO_POR_DEFECTO, false, dm, jug);
+    lineaOro(partida, b, PELIGRO_POR_DEFECTO, false, dm, jug);
+    objetosPendientes(partida, b, dm);
+    if (!partida.botinPendiente?.oro && !partida.botinPendiente?.objetos.length) delete partida.botinPendiente;
     return { dm: dm.join("\n"), jugadores: jug.join("\n") };
   }
   const c = b.criatura ? buscarCriatura(b.criatura) : undefined;
@@ -171,7 +184,9 @@ export function generarBotinDe(partida: Partida, b: PeticionBotinTesoro): { dm: 
   }
 
   // (3) Oro sugerido (nunca se aplica solo) y (4) extras de siempre: Behelit, catalizador y viales
-  lineaOro(b, peligro, cofre, dm, jug);
+  lineaOro(partida, b, peligro, cofre, dm, jug);
+  objetosPendientes(partida, b, dm);
+  if (!partida.botinPendiente?.oro && !partida.botinPendiente?.objetos.length) delete partida.botinPendiente;
   extrasBotin(partida, b, dm, jug);
   return {
     dm: `Botín (${b.origen}${cofre ? " cofre" : ""}, P${peligro}${b.criatura ? `, ${b.criatura}` : ""}${region && !b.criatura ? `, ${region}` : ""}). Añade con modificar_personaje lo que se queden (nombre exacto, con su [O#]); el oro, con oro_cambio.\n${dm.join("\n")}`,

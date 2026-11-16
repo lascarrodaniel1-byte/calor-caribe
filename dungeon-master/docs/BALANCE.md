@@ -655,3 +655,8 @@ Los PV son altos para un VD 7 porque el simulador aplica además sus resistencia
 Cambios de datos: sólo `src/bestiario.ts` (las cinco fichas; la prosa no mencionaba PV ni CA). Pruebas: `t-bestiario` (la prueba del Hombre oso con sus nuevos PV y CA, y una nueva que fija peligro 4, VD 7, PV medios ≥ 100, CA ≥ 16 y ataque doble en las cinco). Prompt fijo: 67.236 → 67.236.
 
 **Propuestas a confirmar.** Los números de cada ficha (PV, CA, ataque doble y +1 a +2 de bonificador) y que el Hombre oso, la Banshee, el Ulfhedinn y los elementales ataquen dos veces por acción.
+
+## 19 bis. Ulfhedinn de uno en uno por debajo del nivel 7 (revisión ciega; propuesta a confirmar)
+
+La plantilla `ulfhedinn` tenía `cuantos [1, 2]`: con unos 360 PV equivalentes cada uno (§19), dos a nivel 5 no estaban medidos. Nuevo campo `Plantilla.soloUnoHastaNivel`: por debajo del nivel medio indicado sale **uno** (`cuantos` efectivo [1, 1]); desde el nivel 7, 1-2 como antes. **No se baja ningún PV** (el dueño pidió subir la dureza). El resto de plantillas, sin cambio. El simulador no cambia (no usa la tabla de encuentros).
+

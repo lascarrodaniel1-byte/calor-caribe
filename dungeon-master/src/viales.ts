@@ -1,6 +1,8 @@
 // Viales: curación, resurrección, veneno y sueño, cada uno con su riesgo.
 import { describir, tirar } from "./dados.js";
-import type { Personaje } from "./estado.js";
+import type { Partida, Personaje } from "./estado.js";
+import { mismaCondicion, reconocer } from "./condiciones.js";
+import { registrarEstado } from "./estados_base.js";
 import { bajarZona, infligirSecuela, pvMaxEfectivo, REGLAS, resumenHerida, type Herida } from "./heridas.js";
 import { raza } from "./mundo.js";
 import { esFlagelante } from "./flagelante_base.js";
@@ -148,7 +150,18 @@ export interface ObjetivoVeneno {
   bono_con?: number;
 }
 
-function hiel(p: Personaje | undefined, objetivo: ObjetivoVeneno, via: "bebido" | "arma", log: string[]) {
+/** Pone un estado de la Hiel con su plazo en el registro (reloj; persiste tras el combate). Si ya lo sufre, solo renueva su plazo (sin duplicar); sin partida, lo pone como condición simple. */
+function ponerEstadoHiel(partida: Partida | undefined, p: Personaje, texto: string, seg: number): void {
+  const id = reconocer(texto)?.id ?? texto;
+  const tiene = p.condiciones.some((x) => mismaCondicion(x, texto));
+  const previo = partida?.estadosDano?.find((e) => e.nombre === p.nombre && e.id === id);
+  if (tiene && !previo) return; // ya lo tenía por otra vía (a mano): no se duplica
+  if (tiene && previo) { if ((previo.seg ?? Infinity) < seg) previo.seg = seg; return; }
+  p.condiciones.push(texto);
+  if (partida) registrarEstado(partida, { nombre: p.nombre, id, texto, tipo: "veneno", seg, persiste: true });
+}
+
+function hiel(partida: Partida | undefined, p: Personaje | undefined, objetivo: ObjetivoVeneno, via: "bebido" | "arma", log: string[]) {
   const cd = via === "bebido" ? 15 : 13;
   const enano = p?.raza === "Enano de Karak-Dûm";
   let exito: boolean;
@@ -171,8 +184,8 @@ function hiel(p: Personaje | undefined, objetivo: ObjetivoVeneno, via: "bebido" 
   if (!exito && margen <= -5) efectos.push("paralizado 1 minuto (repite la salvación al final de cada turno)");
   if (p) {
     p.pv = Math.max(0, p.pv - final);
-    if (!exito && !p.condiciones.includes("envenenado")) p.condiciones.push("envenenado");
-    if (!exito && margen <= -5 && !p.condiciones.includes("paralizado")) p.condiciones.push("paralizado");
+    if (!exito) ponerEstadoHiel(partida, p, "envenenado (Hiel: 1 hora)", 3600);
+    if (!exito && margen <= -5) ponerEstadoHiel(partida, p, "paralizado (Hiel: 1 minuto)", 60);
     efectos.push(`PV ${p.pv}`);
   }
   log.push(`Hiel de Víbora Gris (${via}): ${efectos.join("; ")}.`);
@@ -234,6 +247,8 @@ export interface UsoVial {
   via?: "bebido" | "arma";
   dosis?: number;
   herida?: string;
+  /** La partida: con ella, los estados de la Hiel quedan en el registro (caducan por reloj en vez de quedarse para siempre). */
+  partida?: Partida;
   /** Un Barbero-Cirujano supervisa la dosis: el riesgo de coágulo baja 10 puntos. */
   supervisor?: Personaje;
 }
@@ -251,7 +266,7 @@ export function usarVial(u: UsoVial): string {
       break;
     case "Hiel de Víbora Gris":
       if (!u.receptor && !u.objetivo_pnj) throw new Error("Indica el personaje o el PNJ envenenado");
-      hiel(u.objetivo_pnj ? undefined : u.receptor, u.objetivo_pnj ?? { nombre: u.receptor!.nombre }, u.via ?? "bebido", log);
+      hiel(u.partida, u.objetivo_pnj ? undefined : u.receptor, u.objetivo_pnj ?? { nombre: u.receptor!.nombre }, u.via ?? "bebido", log);
       break;
     case "Leche de Amapola Negra":
       if (!u.receptor) throw new Error("Leche de Amapola necesita un personaje receptor");

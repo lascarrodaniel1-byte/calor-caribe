@@ -28,7 +28,7 @@ import { bloqueoDeSal } from "./sal.js";
 import { agregarCondicion, condicionInmune, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento, tragadoPor } from "./condiciones.js";
 import { liberarTragados } from "./tragado.js";
 import { estadoPorDano } from "./estados.js";
-import { limpiarEstados, olvidarEstado } from "./estados_base.js";
+import { limpiarEstados, olvidarEstado, registrarEstado } from "./estados_base.js";
 
 import { nvl } from "./niveles.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
@@ -647,6 +647,8 @@ export function aplicarCondicion(
   }
   if (d.nota) texto += ` (${d.nota})`;
   lista.push(texto);
+  // «Quemado» puesto a mano también arde y caduca como el de un golpe de fuego (3 asaltos; fuera de combate, por reloj): queda registrado.
+  if (cat?.id === "quemado") registrarEstado(partida, { nombre: c.nombre, id: "quemado", texto, tipo: "fuego", asaltos: 3 });
   // Quien queda incapacitado suelta a todos los que tenía agarrados.
   const soltados = cat?.incapacitado ? soltarAgarrados(partida, c.nombre) : [];
   const t = textoEfectos([texto]) + (soltados.length ? `${textoEfectos([texto]) ? "\n" : ""}${c.nombre} suelta a ${soltados.join(", ")}.` : "");
@@ -1276,6 +1278,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       const rr = aplicarDano({ objetivo: perfilDeJefe(ob.j, combate?.ronda ?? 0), cantidad: radFinal, tipo: "radiante", fuente: { magico: true } });
       if (rr.detalle.length) { lineas.push(`🛡 ${rr.detalle.join("; ")}.`); radFinal = rr.final; }
     }
+    const danoArma = dano; // el daño del tipo del arma, sin el Castigo radiante: solo ese cuenta para el estado
     if (radFinal > 0) { dano += radFinal; lineas.push(`☀ Radiante: ${rad!.texto}${resultado === "roce" ? ` → la mitad, ${radFinal}` : ""}; no es daño físico: ni la armadura ni la Furia lo frenan.`); }
     if (tipo && bruto > 0 && dano === 0) lineas.push(`La armadura aguanta: el golpe no atraviesa.`);
     // Quien duerme despierta al recibir daño.
@@ -1333,8 +1336,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       } else lineas.push(`${ob.nombre} recibe ${dano} de daño (lleva tú sus PV).`);
     }
     // Estado por tipo de daño (fuego → quemado, eléctrico → paralizado…): solo si el golpe causó daño final > 0 de ese tipo y el objetivo sigue en pie.
-    if (dano > 0 && tipoCanon && !d.sin_estado && !(at.tipo === "criatura" && at.j.definicion.sinEstados)) {
-      const e = estadoPorDano({ partida, objetivo: ob, atacante: at, tipo: tipoCanon, final: dano, fuente, atributo: d.atributo, critico: resultado === "critico" });
+    if (danoArma > 0 && tipoCanon && !d.sin_estado && !(at.tipo === "criatura" && at.j.definicion.sinEstados)) {
+      const e = estadoPorDano({ partida, objetivo: ob, atacante: at, tipo: tipoCanon, final: danoArma, fuente, atributo: d.atributo, critico: resultado === "critico" });
       lineas.push(...e.lineas);
       if (e.aviso) avisoEstado = e.aviso;
     }
