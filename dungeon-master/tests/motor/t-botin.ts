@@ -10,7 +10,7 @@ import { iniciarRegistroDados, liberarDados } from "../../src/dados.ts";
 let ok = 0, mal = 0; const t = (c: boolean, m: string, x = "") => { console.log(c ? "ok   " : "FALLA", m, x); c ? ok++ : mal++; };
 const nueva = () => { const p = nuevaPartida(); normalizarPartida(p); return p; };
 const lineas = (dm: string) => dm.split("\n").slice(1);
-const del = (dm: string) => lineas(dm).filter((l) => !/^- (Oro|Vial|Catalizador|Huevo)/.test(l));
+const del = (dm: string) => lineas(dm).filter((l) => !/^- (Oro|Vial|Catalizador|Huevo|Pista escrita)/.test(l));
 const idsDe = (dm: string) => del(dm).map((l) => TESORO.find((x) => l.startsWith(`- ${x.nombre}`))).filter(Boolean) as typeof TESORO;
 
 // Retrocompatibilidad: sin peligro, región, criatura ni categorías es el generador antiguo (sin oro, mismo encabezado)
