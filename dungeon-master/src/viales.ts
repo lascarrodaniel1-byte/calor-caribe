@@ -1,7 +1,7 @@
 // Viales: curación, resurrección, veneno y sueño, cada uno con su riesgo.
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
-import { mismaCondicion, reconocer } from "./condiciones.js";
+import { efectos, ESTADOS_TEMPORALES, mismaCondicion, reconocer } from "./condiciones.js";
 import { registrarEstado } from "./estados_base.js";
 import { bajarZona, infligirSecuela, pvMaxEfectivo, REGLAS, resumenHerida, type Herida } from "./heridas.js";
 import { raza } from "./mundo.js";
@@ -27,6 +27,12 @@ export const VIALES = {
     descripcion:
       "Veneno verdoso. Bebido (CD 15) o untado en un arma, que envenena los 3 siguientes golpes (CD 13). Fallo: 4d6 de veneno y envenenado 1 hora; fallo por 5 o más: además paralizado 1 minuto. Éxito: mitad de daño.",
   },
+  "Esencia Clara": {
+    tipo: "purga de estados",
+    precio: 50,
+    descripcion:
+      "Licor transparente de sal y ceniza lavada (nombre propuesto). Bebido o vertido en la boca de alguien, le quita TODOS los estados temporales de golpe: quemado, paralizado, ralentizado, envenenado, ensordecido, cegado, aturdido, corroído y debilitado (los de daño elemental, los de la Hiel…). No toca maldiciones, enfermedades, heridas, agotamiento ni la muerte, y no da inmunidad: puede volver a sufrirlos. Hace falta un receptor; quien está incapacitado (paralizado, aturdido, inconsciente…) no puede beberlo solo: otro debe dárselo.",
+  },
   "Leche de Amapola Negra": {
     tipo: "sueño",
     precio: 15,
@@ -36,6 +42,7 @@ export const VIALES = {
 } as const;
 
 export type NombreVial = keyof typeof VIALES;
+// (el vial «Esencia Clara» se declara abajo, junto a su regla)
 export const NOMBRES_VIALES = Object.keys(VIALES) as [NombreVial, ...NombreVial[]];
 
 const ORDEN = ["critica", "grave", "moderada", "leve"] as const;
@@ -239,7 +246,25 @@ function amapola(p: Personaje, dosis: number, log: string[]) {
   }
 }
 
+/** Esencia Clara: quita los estados temporales (condición y registro), sin dejar inmunidad; el receptor incapacitado necesita que otro se lo dé. */
+function esenciaClara(partida: Partida | undefined, p: Personaje, portador: Personaje | undefined, log: string[]) {
+  if (p.condiciones.includes("muerto")) throw new Error(`${p.nombre} está muerto: la Esencia Clara solo limpia estados temporales. El vial no se gasta.`);
+  if (efectos(p.condiciones).incapacitado && (!portador || portador === p)) throw new Error(`${p.nombre} está incapacitado y no puede beberse la Esencia Clara: otro personaje debe dársela (portador distinto del receptor). El vial no se gasta.`);
+  if (portador && portador !== p && efectos(portador.condiciones).incapacitado) throw new Error(`${portador.nombre} está incapacitado y no puede dar la Esencia Clara. El vial no se gasta.`);
+  const ids = new Set<string>(ESTADOS_TEMPORALES);
+  const quitados = p.condiciones.filter((c) => ids.has(reconocer(c)?.id ?? ""));
+  if (!quitados.length) throw new Error(`${p.nombre} no sufre ningún estado temporal (quemado, paralizado, ralentizado, envenenado, ensordecido, cegado, aturdido, corroído, debilitado): el vial no se gasta.`);
+  p.condiciones = p.condiciones.filter((c) => !quitados.includes(c));
+  if (partida?.estadosDano) { // el registro (también los sin duración); los marcadores de inmunidad ya vigentes no se tocan
+    partida.estadosDano = partida.estadosDano.filter((e) => !(e.nombre === p.nombre && ids.has(e.id) && e.inmuneHasta === undefined));
+    if (!partida.estadosDano.length) delete partida.estadosDano;
+  }
+  log.push(`${portador && portador !== p ? `${portador.nombre} le da a ${p.nombre}` : `${p.nombre} bebe`} la Esencia Clara: se le van ${quitados.join(", ")}. No toca maldiciones, enfermedades, heridas ni agotamiento, y no deja inmunidad: puede volver a sufrirlos.`);
+}
+
 export interface UsoVial {
+  /** Quien da el vial (el del inventario): para la Esencia Clara, distinto del receptor si este está incapacitado. */
+  portador?: Personaje;
   vial: NombreVial;
   /** Personaje jugador que lo recibe (o el que ataca, si es veneno en el arma contra un PNJ). */
   receptor?: Personaje;
@@ -267,6 +292,10 @@ export function usarVial(u: UsoVial): string {
     case "Hiel de Víbora Gris":
       if (!u.receptor && !u.objetivo_pnj) throw new Error("Indica el personaje o el PNJ envenenado");
       hiel(u.partida, u.objetivo_pnj ? undefined : u.receptor, u.objetivo_pnj ?? { nombre: u.receptor!.nombre }, u.via ?? "bebido", log);
+      break;
+    case "Esencia Clara":
+      if (!u.receptor) throw new Error("Esencia Clara necesita un personaje receptor");
+      esenciaClara(u.partida, u.receptor, u.portador, log);
       break;
     case "Leche de Amapola Negra":
       if (!u.receptor) throw new Error("Leche de Amapola necesita un personaje receptor");

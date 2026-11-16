@@ -26,3 +26,9 @@ Qué influye: el **origen** (compra, saqueo, hallazgo, jefe) fija los pesos por 
 ## Qué es propuesta y está pendiente de confirmar
 
 Los dados de moneda (P3 y P4 un escalón sobre la orientación inicial), los porcentajes mágicos, el precio de la reliquia, los 33 objetos únicos y el tesoro de las 8 guaridas, el valor de las piezas de criatura (p. ej. relicario del lich 400, vaso de djinn 300), la pista escrita (20 %), el peso náutico ×3 y el encuentro «Pecio a la deriva». El ×2 del cofre y el peligro 2 por defecto son propuesta a confirmar. Pendiente: las armas de plata como objeto de tienda no están en la tabla de compra; las reliquias de los jefes siguen creándose a mano con `crear_objeto`.
+
+## Vial «Esencia Clara» (limpiaestados; nombre y cifras PROPUESTA A CONFIRMAR)
+
+Quinto vial (`src/viales.ts`, `usar_vial {vial: "Esencia Clara", receptor, portador}`): quita **todos los estados temporales** (`ESTADOS_TEMPORALES` en `condiciones.ts`: quemado, paralizado, ralentizado, envenenado, ensordecido, cegado, aturdido, corroído y debilitado), tanto la condición como su entrada del registro `estadosDano` (también los sin duración: la Hiel, un «quemado» puesto a mano), con aviso de lo que quitó. **No** toca maldiciones, enfermedades, heridas, agotamiento, derribado, hechizado ni la muerte. **No deja asalto de inmunidad** (la inmunidad solo llega al caducar un estado por sí solo). **Requiere receptor**: si está incapacitado (paralizado, aturdido, inconsciente…) no puede beberlo solo y otro (`portador` distinto) debe dárselo; un portador incapacitado tampoco puede darlo. Sin estados que limpiar o con un muerto, error y el vial no se gasta. Precio 50 po.
+
+Reparto (% de los viales que salen; la probabilidad de que haya vial no cambia): compra 17 %, hallazgo 15 %, saqueo 6 %, jefe 10 %. Se ve en `/viales` de la mesa y en `consultar_reglas {tema: "viales"|"estados"}`; no está en el prompt fijo.

@@ -178,11 +178,11 @@ export function tirarCalidad(origen: Origen, peligro?: number): CalidadObjeto {
 }
 
 /** Probabilidad (%) de que el botín incluya un vial, y qué vial (d100). */
-const VIALES_ORIGEN: Record<Origen, { prob: number; tabla: [number, NombreVial][] }> = {
-  compra: { prob: 60, tabla: [[50, "Sangre de Santo"], [80, "Leche de Amapola Negra"], [100, "Hiel de Víbora Gris"]] },
-  saqueo: { prob: 25, tabla: [[40, "Sangre de Santo"], [70, "Leche de Amapola Negra"], [99, "Hiel de Víbora Gris"], [100, "Ceniza Viva"]] },
-  hallazgo: { prob: 35, tabla: [[45, "Sangre de Santo"], [70, "Leche de Amapola Negra"], [97, "Hiel de Víbora Gris"], [100, "Ceniza Viva"]] },
-  jefe: { prob: 70, tabla: [[50, "Sangre de Santo"], [65, "Leche de Amapola Negra"], [88, "Hiel de Víbora Gris"], [100, "Ceniza Viva"]] },
+export const VIALES_ORIGEN: Record<Origen, { prob: number; tabla: [number, NombreVial][] }> = {
+  compra: { prob: 60, tabla: [[40, "Sangre de Santo"], [65, "Leche de Amapola Negra"], [83, "Hiel de Víbora Gris"], [100, "Esencia Clara"]] },
+  saqueo: { prob: 25, tabla: [[38, "Sangre de Santo"], [66, "Leche de Amapola Negra"], [93, "Hiel de Víbora Gris"], [99, "Esencia Clara"], [100, "Ceniza Viva"]] },
+  hallazgo: { prob: 35, tabla: [[38, "Sangre de Santo"], [60, "Leche de Amapola Negra"], [82, "Hiel de Víbora Gris"], [97, "Esencia Clara"], [100, "Ceniza Viva"]] },
+  jefe: { prob: 70, tabla: [[45, "Sangre de Santo"], [57, "Leche de Amapola Negra"], [77, "Hiel de Víbora Gris"], [87, "Esencia Clara"], [100, "Ceniza Viva"]] },
 };
 
 const deTabla = <T>(t: [number, T][], d: number) => t.find(([max]) => d <= max)![1];

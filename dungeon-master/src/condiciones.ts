@@ -65,6 +65,9 @@ export const CATALOGO: Condicion[] = [
 
 const AGOTAMIENTO = /agotamiento\s*(\d)/i;
 
+/** Los estados TEMPORALES (ids del catálogo): los que deja el daño elemental y los de duración corta. Los quita el vial «Esencia Clara»; no entran maldiciones, enfermedades, heridas, agotamiento ni derribado. */
+export const ESTADOS_TEMPORALES = ["quemado", "paralizado", "ralentizado", "envenenado", "ensordecido", "cegado", "aturdido", "corroido", "debilitado"] as const;
+
 /** Condiciones a las que una criatura puede ser inmune como dato de su ficha (`inmunidadesCondicion`). «agotado» cubre agotamiento 1-6 y «dormido», el sueño. */
 export const CONDICIONES_INMUNIDAD = ["asustado", "hechizado", "agotado", "envenenado", "dormido", "paralizado", "cegado", "petrificado", "derribado", "agarrado", "retenido"] as const;
 export type CondicionInmune = (typeof CONDICIONES_INMUNIDAD)[number];

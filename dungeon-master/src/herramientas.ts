@@ -1574,7 +1574,7 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
         if (port && i < 0) throw new Error(`${port.nombre} no lleva ${e.vial} en el inventario.`);
         const receptor = e.receptor ? buscar(partida, e.receptor) : undefined;
         const supervisor = e.supervisa ? buscar(partida, e.supervisa) : undefined;
-        const texto = usarVial({ ...e, receptor, supervisor, partida });
+        const texto = usarVial({ ...e, receptor, supervisor, partida, portador: port });
         if (port) port.inventario.splice(i, 1);
         return { contenido: texto + (receptor ? `\n\nFicha:\n${fichaTexto(receptor)}` : ""), aviso: `🧪 ${texto}` };
       }
