@@ -42,6 +42,7 @@ export const CATALOGO: Condicion[] = [
   { id: "pierna", nombre: "pierna entumecida", patron: /pierna entumecida/i, regla: "no puede moverse (velocidad 0) y tiene desventaja en las salvaciones de DES (nervio de la pierna golpeado)", velocidad0: true, salvDesDesv: true },
   { id: "enagua", nombre: "en el agua", patron: /^en el agua/i, regla: "nadando o vadeando, sin pie firme: si no es del agua, ataca cuerpo a cuerpo con desventaja, con −2 al daño y a la mitad de velocidad (los Tritones, sirenas, hombres pez, ahogados y quien nada de verdad no lo sufren)" },
   { id: "sumergido", nombre: "sumergido", patron: /^sumergido/i, regla: "bajo el agua: contiene la respiración (se ahoga si se le acaba); cuerpo a cuerpo con desventaja salvo daga, jabalina, espada corta, lanza o tridente (o si nada de verdad); a distancia, solo ballestas, redes y armas arrojadizas; resiste el fuego" },
+  { id: "varada", nombre: "varada", patron: /^varad[oa]/i, regla: "fuera del agua (varada o encallada a la fuerza): la Bakunawa pierde la defensa del mar y es vulnerable al fuego (doble daño)" },
   { id: "enf1", nombre: "enfermedad leve", patron: /^enfermedad leve:/i, regla: "sufre los síntomas de una enfermedad: desventaja en pruebas de característica", pruebas: "desventaja" },
   { id: "enf2", nombre: "enfermedad grave", patron: /^enfermedad grave:/i, regla: "enfermedad grave: desventaja en ataques y en pruebas de característica", ataca: "desventaja", pruebas: "desventaja" },
   { id: "enf3", nombre: "enfermedad crítica", patron: /^enfermedad cr[ií]tica:/i, regla: "enfermedad crítica: desventaja en ataques y pruebas, y apenas se tiene en pie", ataca: "desventaja", pruebas: "desventaja" },
@@ -55,6 +56,18 @@ export const CATALOGO: Condicion[] = [
 ];
 
 const AGOTAMIENTO = /agotamiento\s*(\d)/i;
+
+/** Condiciones a las que una criatura puede ser inmune como dato de su ficha (`inmunidadesCondicion`). «agotado» cubre agotamiento 1-6 y «dormido», el sueño. */
+export const CONDICIONES_INMUNIDAD = ["asustado", "hechizado", "agotado", "envenenado", "dormido", "paralizado", "cegado", "petrificado", "derribado", "agarrado", "retenido"] as const;
+export type CondicionInmune = (typeof CONDICIONES_INMUNIDAD)[number];
+const PATRON_INMUNIDAD: Record<CondicionInmune, RegExp> = {
+  asustado: /asustad|aterrad|despavorid/i, hechizado: /hechizad|encantad/i, agotado: /agotamiento/i, envenenado: /envenenad/i, dormido: /dormid|sue[ñn]o/i,
+  paralizado: /paralizad|paral[ií]tico/i, cegado: /cegad|ciego/i, petrificado: /petrificad/i, derribado: /derribad|tumbad/i, agarrado: /agarrad|apresad/i, retenido: /retenid|inmovilizad|enredad/i,
+};
+/** ¿Esta condición (texto libre, «paralizado 1 minuto») está entre las que la criatura no sufre? Devuelve la condición de la lista. */
+export function condicionInmune(inmunes: readonly CondicionInmune[] | undefined, texto: string): CondicionInmune | undefined {
+  return (inmunes ?? []).find((c) => PATRON_INMUNIDAD[c].test(texto));
+}
 
 /** Niveles de agotamiento (1-6) de una lista de condiciones. */
 export function nivelAgotamiento(conds: string[]): number {

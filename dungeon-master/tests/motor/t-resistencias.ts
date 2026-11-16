@@ -34,7 +34,7 @@ t(tiene("Bakunawa", "resistencias", "frío") && tiene("Bakunawa", "resistencias"
   // Excepciones conocidas: «inmune al fuego» de Kharoth/Dragón joven/Elemental ya están; la Bakunawa solo resiste (no es inmune al veneno: su ficha dice «envenenado»).
   t(falta.length === 0, "todo «inmune a …» (tipo de daño) de la prosa está en los datos", [...new Set(falta)].join(" | "));
 }
-t(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length === 26, "26 criaturas con datos de resistencias (20 de la fase C + Hambriento, Ghul de las fosas, Ysolde, Duende, Ilvara y el Juez)", String(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length));
+t(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length === 28, "28 criaturas con datos de resistencias (20 de la fase C + Hambriento, Ghul de las fosas, Ysolde, Duende, Ilvara, el Juez, Sirena y Hombre pez)", String(BESTIARIO.filter((c) => c.resistencias || c.inmunidades || c.vulnerabilidades).length));
 t(/Daño por tipo.*inmune a fuego, veneno/.test(fichaCriatura(C("Elemental de fuego"))) && !/Daño por tipo/.test(fichaCriatura(C("Ogro"))), "la ficha dice qué aplica el programa (y nada en las criaturas sin datos)");
 t(lineaResistencias(C("Lich")).includes("vulnerable a fuego (llama gris)"), "línea de la ficha del Lich", lineaResistencias(C("Lich")));
 { const pf = perfilDeCriatura(C("Wendigo")); t(aplicarDano({ objetivo: pf, cantidad: 10, tipo: "fuego" }).final === 20 && aplicarDano({ objetivo: pf, cantidad: 10, tipo: "frío" }).final === 0 && aplicarDano({ objetivo: pf, cantidad: 10, tipo: "cortante" }).final === 10, "perfilDeCriatura: Wendigo fuego ×2, frío 0, resto igual"); }
@@ -158,7 +158,7 @@ function golpe(m: ReturnType<typeof mk>, tipo: string | undefined, extra: object
 // --- danar_criatura con tipo
 {
   const m = mk("Wendigo");
-  let r = m.E("danar_criatura", { nombre: m.j.nombre, cantidad: 10 }); t(m.perdida() === 10 && !/vulnerable/.test(txt(r)), "danar_criatura sin tipo: el daño es final (como siempre)");
+  let r = m.E("danar_criatura", { nombre: m.j.nombre, cantidad: 10 }); t(m.perdida() === 10 && !/→ \d+\)/.test(txt(r)) && /Sin tipo_dano: lo aplico como daño FINAL/.test(txt(r)), "danar_criatura sin tipo: el daño es final (como siempre) y avisa de que la ficha tiene defensas por tipo");
   m.j.pv = 5000; r = m.E("danar_criatura", { nombre: m.j.nombre, cantidad: 10, tipo_dano: "fuego" }); t(m.perdida() === 20 && /vulnerable a fuego: 10 → 20/.test(txt(r)), "danar_criatura con tipo fuego: ×2 y lo dice", txt(r).slice(0, 120));
   m.j.pv = 5000; m.E("danar_criatura", { nombre: m.j.nombre, cantidad: 10, tipo_dano: "hielo" }); t(m.perdida() === 0, "danar_criatura «hielo» (alias): inmune al frío");
   m.j.pv = 4000; r = m.E("danar_criatura", { nombre: m.j.nombre, cantidad: -30, tipo_dano: "fuego" }); t(m.j.pv === 4030, "curar (cantidad negativa) no pasa por resistencias");

@@ -55,8 +55,8 @@ t(TESORO.every((x) => !/^\d+\s/.test(x.nombre)), "ningún nombre empieza por un 
 t(!BASES.some((b) => /cota de escamas/i.test(b.nombre)) && BASES.some((b) => b.nombre === "Armadura de escamas"), "«Armadura de escamas» es el nombre canónico (sin «Cota de escamas»)");
 
 // Materiales coherentes con danos.ts (FuenteDano.material) y con las vulnerabilidades del bestiario
-const MATERIALES = new Set(["plata", "hierro frío"]);
-t(TESORO.filter((x) => x.material).every((x) => MATERIALES.has(x.material!)), "materiales de arma: solo plata y hierro frío");
+const MATERIALES = new Set(["plata", "hierro frío", "hierro caliente", "sal"]);
+t(TESORO.filter((x) => x.material).every((x) => MATERIALES.has(x.material!)), "materiales de arma: plata, hierro frío, hierro caliente y sal (BALANCE §17)");
 t(TESORO.some((x) => x.material === "plata" && x.categoria === "herramienta") && TESORO.some((x) => x.material === "hierro frío" && x.categoria === "herramienta"), "hay armas de plata y de hierro frío");
 t(TESORO.some((x) => x.id === "bano_plata" && x.material === "plata" && x.categoria === "material"), "«baño de plata» es un material consumible");
 t(BESTIARIO.some((c) => (c.vulnerabilidades ?? []).some((v) => (v as any).soloMaterial === "hierro frío")), "el hierro frío es un material usado por el bestiario (duende)");

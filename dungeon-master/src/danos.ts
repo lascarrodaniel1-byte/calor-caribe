@@ -49,7 +49,7 @@ export interface FuenteDano {
   /** true si el daño es mágico (por conjuro, arma mágica o criatura mágica); omitido = no se sabe. */
   magico?: boolean;
   /** Material del arma que cuenta para vulnerabilidades o inmunidades («no mágico salvo plata»). */
-  material?: "plata" | "adamantina" | "hierro frío" | "madera" | (string & {});
+  material?: "plata" | "adamantina" | "hierro frío" | "hierro caliente" | "sal" | "agua" | "madera" | (string & {});
 }
 
 /** Minúsculas, sin tildes, espacios colapsados y sin «daño de/por» delante. */
@@ -137,7 +137,14 @@ export interface ResultadoDano {
   detalle: string[];
 }
 
-const mismoMaterial = (a: string | undefined, b: string | undefined) => !!a && !!b && limpiar(a) === limpiar(b);
+/** Materiales con alias («hierro cálido/candente/al rojo» = «hierro caliente»; «sal gorda/en abundancia» = «sal»). Mismo criterio que los tipos: sin tildes ni mayúsculas. */
+export function normalizarMaterial(s: string): string {
+  const m = limpiar(s);
+  if (/^hierro (calido|caliente|candente|al rojo|rusiente|calentado)$/.test(m)) return "hierro caliente";
+  if (/^sal( gorda| gruesa| en abundancia| marina)?$/.test(m)) return "sal";
+  return m;
+}
+const mismoMaterial = (a: string | undefined, b: string | undefined) => !!a && !!b && normalizarMaterial(a) === normalizarMaterial(b);
 function aplica(r: ReglaDano, tipo: TipoDano | undefined, fuente: FuenteDano | undefined, sinTipoEsFisico: boolean): boolean {
   if (tipo ? r.tipo !== tipo : !(sinTipoEsFisico && esFisico(r.tipo))) return false;
   if (r.soloNoMagico && fuente?.magico === true) return false;

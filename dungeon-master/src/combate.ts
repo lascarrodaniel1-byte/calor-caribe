@@ -7,7 +7,7 @@
 // dan ventaja, pero a un veterano cuesta más sorprenderlo, y la personalidad
 // (arrogancia, prudencia, impulsividad…) cambia lo fácil que es engañar a alguien.
 import { tiene } from "./dotes_base.js";
-import { danar, devolverRobos, estadoTexto, perfilDeCriatura, type Criatura, type EstadoJefe } from "./bestiario.js";
+import { adaptarse, danar, danarConTipo, devolverRobos, estadoTexto, inmunidadesCondicionDe, perfilDeJefe, perfilDePnj, type Criatura, type EstadoJefe } from "./bestiario.js";
 import { describir, tirar, type Modo } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { armaduraDe, proteccion, reconocerArma, regionDe, REGLAS_ARMADURA, type TipoDanoArmadura } from "./armadura.js";
@@ -25,7 +25,7 @@ import { ajusteAgua, danoEnAgua, esArmaDePunta, esAcuatico, estaEnAgua, estaSume
 import { ventajaMontada } from "./montura.js";
 import { ajusteMar, ventajaNaval } from "./naves.js";
 import { bloqueoDeSal } from "./sal.js";
-import { agregarCondicion, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento, tragadoPor } from "./condiciones.js";
+import { agregarCondicion, condicionInmune, efectos, mismaCondicion, reconocer, textoEfectos, nivelAgotamiento, tragadoPor } from "./condiciones.js";
 import { liberarTragados } from "./tragado.js";
 
 import { nvl } from "./niveles.js";
@@ -193,6 +193,8 @@ export interface PnjCombate {
   condiciones?: string[];
   /** Marcas de Ceniza permanentes (las que deja la furia de un Berserker). */
   ceniza?: number;
+  /** Ficha de criatura del bestiario cuyas resistencias, inmunidades, vulnerabilidades e inmunidades a condiciones tiene este PNJ (un hambriento, un gólem…). */
+  criatura?: string;
 }
 
 /** Lo que cada combatiente ha hecho este asalto (acciones de combate y reacción). */
@@ -622,6 +624,8 @@ export function aplicarCondicion(
     lista.splice(0, lista.length, ...resto);
     return lista.length === antes ? `${c.nombre} no tenía «${d.condicion}».` : `${c.nombre} ya no está ${d.condicion}.`;
   }
+  const inmune = c.tipo === "criatura" ? condicionInmune(inmunidadesCondicionDe(c.j), d.condicion) : c.tipo === "pnj" ? condicionInmune(inmunidadesCondicionDe(c.n), d.condicion) : undefined;
+  if (inmune) return `${c.nombre} es inmune a la condición ${inmune} (su ficha): no se aplica «${d.condicion}». No lo narres como efecto.`;
   const cat = reconocer(d.condicion);
   const esAgot = /agotamiento/i.test(d.condicion);
   let texto = d.condicion;
@@ -1212,11 +1216,16 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
     if (ob.tipo === "criatura" && dano > 0) { // resistencias, inmunidades y vulnerabilidades de la ficha (tras la armadura, como la Furia)
       // La armadura por regiones y la ficha describen lo mismo (la dureza de la piel): donde el blindaje ya frena el golpe, manda el blindaje y no se suma la
       // resistencia física de la ficha; donde ya lo agrava (reducción negativa), no se suma la vulnerabilidad física. No se duplica nada.
-      const perfil = perfilDeCriatura(ob.j.definicion);
+      const perfil = perfilDeJefe(ob.j, combate?.ronda ?? 0);
       const fisica = (r: { tipo: TipoDano; soloNoMagico?: boolean }) => esFisico(r.tipo);
       if (reduccion > 0) perfil.resiste = perfil.resiste?.filter((r) => !fisica(r));
       if (reduccion < 0) perfil.vulnerable = perfil.vulnerable?.filter((r) => !fisica(r));
       const res = aplicarDano({ objetivo: perfil, cantidad: dano, tipo: tipoCanon, fuente });
+      if (res.detalle.length) { dano = res.final; lineas.push(`🛡 ${res.detalle.join("; ")}.`); }
+      if (tipoCanon) adaptarse(ob.j, tipoCanon, dano, combate?.ronda ?? 0); // Kuru: el tipo nuevo le da resistencia desde su siguiente turno
+    }
+    if (ob.tipo === "pnj" && dano > 0 && ob.n.criatura) { // PNJ con ficha de criatura: mismas defensas por tipo que una criatura
+      const res = aplicarDano({ objetivo: perfilDePnj(ob.n), cantidad: dano, tipo: tipoCanon, fuente });
       if (res.detalle.length) { dano = res.final; lineas.push(`🛡 ${res.detalle.join("; ")}.`); }
     }
     // Desviar proyectiles (Flagelante): reacción automática que reduce el daño de un proyectil que lo alcanza.
@@ -1257,7 +1266,7 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
       else { agregarCondicion(condsDe(ob), "desarmado"); lineas.push(`🗡 Desarmar: ${ob.nombre} suelta el arma (${sal.texto}); recogerla le cuesta una acción y, mientras, ataca sin ella.`); }
     }
     if (radFinal > 0 && ob.tipo === "criatura") { // el radiante del Castigo es mágico y puede topar con la ficha (inmunidad o vulnerabilidad al radiante)
-      const rr = aplicarDano({ objetivo: perfilDeCriatura(ob.j.definicion), cantidad: radFinal, tipo: "radiante", fuente: { magico: true } });
+      const rr = aplicarDano({ objetivo: perfilDeJefe(ob.j, combate?.ronda ?? 0), cantidad: radFinal, tipo: "radiante", fuente: { magico: true } });
       if (rr.detalle.length) { lineas.push(`🛡 ${rr.detalle.join("; ")}.`); radFinal = rr.final; }
     }
     if (radFinal > 0) { dano += radFinal; lineas.push(`☀ Radiante: ${rad!.texto}${resultado === "roce" ? ` → la mitad, ${radFinal}` : ""}; no es daño físico: ni la armadura ni la Furia lo frenan.`); }
@@ -1354,8 +1363,8 @@ export function atacar(partida: Partida, d: DatosAtaque): ResultadoAtaque {
   if (ob.tipo === "pj" && ob.p.furia?.activa && ob.p.nivel >= nvl(3) && !distancia && (resultado === "impacto" || resultado === "critico")) {
     const f = tirar("1d4").total;
     if (at.tipo === "pj") at.p.pv = Math.max(0, at.p.pv - f);
-    else if (at.tipo === "criatura") { danar(at.j, f); if (at.j.pv <= 0 && !muerto) muerto = at.j.nombre; }
-    else if (at.n.pv !== undefined) at.n.pv = Math.max(0, at.n.pv - f);
+    else if (at.tipo === "criatura") { danarConTipo(at.j, f, "fuego", undefined, combate?.ronda ?? 0); if (at.j.pv <= 0 && !muerto) muerto = at.j.nombre; }
+    else if (at.n.pv !== undefined) at.n.pv = Math.max(0, at.n.pv - (at.n.criatura ? aplicarDano({ objetivo: perfilDePnj(at.n), cantidad: f, tipo: "fuego" }).final : f));
     lineas.push(`🔥 Senda de la Ceniza: la ceniza de ${ob.nombre} arde y quema a ${at.nombre} (${f} de fuego).`);
     aviso += `\n🔥 ${at.nombre} se quema (${f}).`;
   }

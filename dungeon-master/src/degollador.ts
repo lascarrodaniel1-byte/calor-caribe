@@ -2,7 +2,8 @@
 // impregnados con viales por la cerbatana (la víctima los resiste con CON, como los viales), y abre puertas, ventanas,
 // cerraduras y ataduras para entrar y escapar de cualquier sitio.
 import type { Partida, Personaje } from "./estado.js";
-import { danar } from "./bestiario.js";
+import { danarConTipo, perfilDePnj } from "./bestiario.js";
+import { aplicarDano } from "./danos.js";
 import { aplicarCondicion, localizar, type DatosAtaque, type ResultadoAtaque } from "./combate.js";
 import { describir, tirar } from "./dados.js";
 import { CD_ACCESO_SEGURO, dardosDe, DARDOS_POR_VIAL, esDegollador, furtivoDados, MAX_DARDOS, SUSTANCIAS, totalDardos } from "./degollador_base.js";
@@ -149,8 +150,8 @@ function efectoSustancia(partida: Partida, objetivo: string, sustancia: string):
     const dano = tirar("4d6").total;
     const final = exito ? Math.floor(dano / 2) : dano;
     const ef = [`${final} de daño de veneno`];
-    if (c.tipo === "criatura") { danar(c.j, final); if (c.j.pv <= 0) muerto = c.j.nombre; }
-    else if (c.n.pv !== undefined) c.n.pv = Math.max(0, c.n.pv - final);
+    if (c.tipo === "criatura") { danarConTipo(c.j, final, "veneno", undefined, partida.combate?.ronda ?? 0); if (c.j.pv <= 0) muerto = c.j.nombre; } // un no-muerto es inmune al veneno
+    else if (c.n.pv !== undefined) c.n.pv = Math.max(0, c.n.pv - (c.n.criatura ? aplicarDano({ objetivo: perfilDePnj(c.n), cantidad: final, tipo: "veneno" }).final : final));
     if (!exito) { aplicarCondicion(partida, { objetivo: c.nombre, accion: "aplicar", condicion: "envenenado (1 hora)" }); ef.push("envenenado 1 hora"); }
     if (!exito && margen <= -5) { aplicarCondicion(partida, { objetivo: c.nombre, accion: "aplicar", condicion: "paralizado (1 minuto)" }); ef.push("paralizado 1 minuto"); }
     lineas.push(`Hiel de Víbora Gris: ${ef.join("; ")}.`);

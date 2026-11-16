@@ -67,7 +67,7 @@ function gastar(p: Personaje, n: number): void {
   for (let i = 0; i < n; i++) if (!gastarUnidad(p, ES_SAL)) throw new Error(`${p.nombre} no tiene ${n === 1 ? "sal" : `${n} frascos de sal`} (frascos de sal en el inventario).`);
 }
 
-type AtacarFn = (d: { atacante: string; objetivo: string; arma: string; dano: string; a_distancia: boolean }) => { texto: string; aviso: string };
+type AtacarFn = (d: { atacante: string; objetivo: string; arma: string; dano: string; a_distancia: boolean; tipo_dano?: "ácido"; material?: string }) => { texto: string; aviso: string };
 
 export function sal(partida: Partida, d: DatosSal, atacar: AtacarFn): { texto: string; publico: string | null } {
   const p = pj(partida, d.quien);
@@ -85,11 +85,12 @@ export function sal(partida: Partida, d: DatosSal, atacar: AtacarFn): { texto: s
   if (d.accion === "lanzar") {
     if (!d.objetivo) throw new Error("lanzar: di el no-muerto (objetivo).");
     const ob = localizar(partida, d.objetivo);
-    if (!esNoMuerto(ob)) throw new Error(`${ob.nombre} no es un no-muerto: la sal solo muerde a los muertos.`);
+    const teme = ob.tipo === "criatura" && !!ob.j.definicion.vulnerabilidades?.some((v) => v.soloMaterial === "sal"); // sirenas, hombres pez, Elemental de fuego
+    if (!esNoMuerto(ob) && !teme) throw new Error(`${ob.nombre} no es un no-muerto ni teme la sal: la sal solo muerde a los muertos y a quien la teme.`);
     gastar(p, 1);
-    const r = atacar({ atacante: p.nombre, objetivo: ob.nombre, arma: "frasco de sal", dano: "1d6", a_distancia: true });
+    const r = atacar({ atacante: p.nombre, objetivo: ob.nombre, arma: "frasco de sal", dano: "1d6", tipo_dano: "ácido", material: "sal", a_distancia: true });
     let extra = "";
-    if (/→ (IMPACTO|¡?CRÍTICO)/.test(r.texto)) {
+    if (esNoMuerto(ob) && /→ (IMPACTO|¡?CRÍTICO)/.test(r.texto)) {
       extra = "\n" + aplicarCondicion(partida, { objetivo: ob.nombre, accion: "aplicar", condicion: "quemado por la sal", nota: "sin regeneración ni curación hasta el final del combate" }).split("\n")[0];
       extra += `\n🧂 La sal arde en su carne muerta: ${ob.nombre} no regenera ni se cura hasta que acabe el combate.`;
     }

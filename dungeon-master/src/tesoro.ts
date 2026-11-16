@@ -30,7 +30,7 @@ export interface EntradaTesoro {
   /** Una pincelada para describirlo (≤ 80 caracteres). */
   sabor?: string;
   /** Material de un arma o proyectil para atacar {material} (coherente con `FuenteDano.material` de danos.ts). */
-  material?: "plata" | "hierro frío";
+  material?: "plata" | "hierro frío" | "hierro caliente" | "sal";
   /** Cuántas unidades salen de una vez ([mín, máx]). */
   cant?: [number, number];
   /** Objeto único con historia: sale una sola vez por partida y se registra con su [O#]. */
@@ -64,7 +64,7 @@ export const TESORO: EntradaTesoro[] = [
   e("hierro_frio", "Barra de hierro frío", "material", 15, 1, { material: "hierro frío", regiones: ["Karak", "Velo Rojo"], uso: "Forjado sin fuego: sirve de material «hierro frío» al atacar (duendes y fatas)", sabor: "Pesa poco y quema la mano de los que no son de aquí" }),
   e("plata_barra", "Barra de plata", "material", 25, 2, { material: "plata", uso: "Un herrero la funde para una hoja de plata (material «plata»)", sabor: "Blanda, con vetas de sulfuro negro" }),
   e("bano_plata", "Baño de plata", "material", 30, 2, { material: "plata", cant: [1, 2], uso: "Un frasco platea un arma durante 1 hora o 10 impactos: atacar con material «plata»", sabor: "Un líquido espeso y brillante que huele a metal" }),
-  e("frasco_sal", "Frascos de sal", "material", 3, 1, { cant: [2, 5], uso: "Sal para rito o defensa (herramienta sal)", sabor: "Sal gris de salina, sellada con cera" }),
+  e("frasco_sal", "Frascos de sal", "material", 3, 1, { material: "sal", cant: [2, 5], uso: "Sal para rito o defensa (herramienta sal); como arma, material «sal»", sabor: "Sal gris de salina, sellada con cera" }),
   e("hueso_de_dios", "Astilla de hueso de dios", "material", 40, 3, { regiones: ["Marca Hueca", "Agujas"], uso: "Foco o catalizador raro; la Inquisición paga por ella y por callarla", sabor: "Fría al tacto, con vetas azuladas" }),
   e("cera_duelo", "Cera de duelo", "material", 2, 1, { cant: [1, 3], sabor: "Velas de funeral a medio quemar" }),
   e("brea", "Brea de calafate", "material", 3, 1, { regiones: ["mar", "Ciénagas"], cant: [1, 2], uso: "Sella un casco o un odre; arde despacio", sabor: "Un bote negro y pegajoso" }),
@@ -121,6 +121,7 @@ export const TESORO: EntradaTesoro[] = [
   e("aparejos_navegante", "Aparejos de navegante", "herramienta", 25, 2, { regiones: MAR, uso: "Brújula, compás y tablas: ayudan a no perderse en el mar", sabor: "Latón verdoso por la sal" }),
   e("daga_plata", "Daga de plata", "herramienta", 100, 3, { material: "plata", uso: "Arma 1d4 perforante, sutil: atacar con material «plata» (no es mágica)", sabor: "Un filo blanco que no pierde el brillo" }),
   e("cuchillo_hierro_frio", "Cuchillo de hierro frío", "herramienta", 40, 2, { material: "hierro frío", regiones: ["Karak", "Velo Rojo"], uso: "Arma 1d4 cortante, sutil: atacar con material «hierro frío»", sabor: "Forjado sin fuego, mate" }),
+  e("hierro_marcar", "Hierro de marcar", "herramienta", 6, 1, { material: "hierro caliente", uso: "Se calienta al rojo en un brasero: como arma, material «hierro caliente» (fuego)", sabor: "Un hierro con la marca de un gremio de Aldenmar" }),
   e("yesca_pedernal", "Yesca y pedernal", "herramienta", 1, 1, { sabor: "Una cajita de latón" }),
 
   // ---- documentos

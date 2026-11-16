@@ -16,9 +16,9 @@ import { aplicarDolor, cadenas, curacionPasiva, devolverDolor, pasoElusivo, sang
 import {
   aparecer,
   buscarCriatura,
-  danar,
   estadoTexto,
-  perfilDeCriatura,
+  danarConTipo,
+  lineaResistencias,
   presagio,
   usarHabilidad,
   type Criatura,
@@ -83,7 +83,7 @@ import { ATRIBUTOS, competencia, signo } from "./reglas.js";
 import { NOMBRES_VIALES, usarVial } from "./viales.js";
 
 import { aplicarDanoAPersonaje } from "./rasgos.js";
-import { aplicarDano, notaDano, tipoDanoSchema } from "./danos.js";
+import { notaDano, tipoDanoSchema } from "./danos.js";
 import { accionSaber } from "./saber.js";
 import { nvl } from "./niveles.js";
 import { actualizarCodice, criaturasEnEscena, descubrirCodice } from "./codice.js";
@@ -646,6 +646,7 @@ const esquemas = {
           sab: z.number().int().optional().describe("Sabiduría (10 por defecto): para notar emboscadas y leer planes"),
           ataques_por_asalto: z.number().int().min(1).max(4).optional().describe("Ataques de su acción de Atacar por asalto (1 por defecto; un capitán veterano, 2)"),
           pv: z.number().int().min(1).optional().describe("Si lo das, el programa lleva sus PV"),
+          criatura: z.string().optional().describe("Ficha del bestiario de la que toma resistencias, inmunidades y vulnerabilidades por tipo de daño y a condiciones (un no-muerto, un gólem…)"),
           armadura: z.array(z.enum(NOMBRES_PIEZAS)).optional(),
           personalidad: z.array(z.enum(NOMBRES_PERSONALIDADES)).max(2).optional(),
         }),
@@ -1585,9 +1586,12 @@ function ejecutarInterno(nombre: string, entrada: unknown, partida: Partida): Re
       case "danar_criatura": {
         const e = validado.data as z.infer<typeof esquemas.danar_criatura>;
         const j = enEscena(partida, e.nombre);
-        let cantidad = e.cantidad, notaTipo = "";
-        if (e.tipo_dano && cantidad > 0) { const r = aplicarDano({ objetivo: perfilDeCriatura(j.definicion), cantidad, tipo: e.tipo_dano, fuente: { magico: e.magico, material: e.material } }); cantidad = r.final; notaTipo = notaDano(r.detalle); }
-        let texto = danar(j, cantidad) + notaTipo;
+        let cantidad = e.cantidad;
+        const dt = danarConTipo(j, cantidad, e.tipo_dano, { magico: e.magico, material: e.material }, partida.combate?.ronda ?? 0);
+        if (e.tipo_dano && cantidad > 0) cantidad = dt.final;
+        let texto = dt.texto;
+        // Sin tipo, el daño va «tal cual»: si la criatura tiene defensas por tipo, el DM debe pasar tipo_dano (y magico/material) para que cuenten
+        if (!e.tipo_dano && e.cantidad > 0 && lineaResistencias(j.definicion)) texto += `\n(Sin tipo_dano: lo aplico como daño FINAL. ${j.nombre} tiene defensas por tipo (${lineaResistencias(j.definicion)}): si es de un conjuro, arma o trampa, pasa tipo_dano y magico/material y las aplica el programa.)`;
         const presion = presionDeDano(partida, j, cantidad, e.por); // si lleva a alguien tragado: ¿lo escupe?
         if (presion.length) texto += `\n${presion.join("\n")}`;
         let aviso = `⚔️  ${j.nombre}: ${estadoTexto(j)}${presion.length ? `\n${presion.join("\n")}` : ""}`;

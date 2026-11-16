@@ -2,7 +2,7 @@
 // criaturas y habilidades nuevas con la misma estructura en cualquier momento.
 import { tesoroPorId } from "./tesoro.js";
 import { danoEnSuelo, muerteInstantanea } from "./muerte.js";
-import { agregarCondicion, textoEfectos } from "./condiciones.js";
+import { agregarCondicion, efectos, textoEfectos, type CondicionInmune } from "./condiciones.js";
 import { describir, tirar } from "./dados.js";
 import type { Partida, Personaje } from "./estado.js";
 import { infligir, perderSangre, type Causa } from "./heridas.js";
@@ -10,7 +10,7 @@ import { clase, raza } from "./mundo.js";
 import { ATRIBUTOS, marcarMuerto, salvacion, valor, type Atributo } from "./reglas.js";
 
 import { aplicarDanoAPersonaje } from "./rasgos.js";
-import { notaDano, tipoHeridaDe, type PerfilDano, type ReglaDano, type ReglaFicha, type TipoDano } from "./danos.js";
+import { aplicarDano, esFisico, notaDano, tipoHeridaDe, type FuenteDano, type PerfilDano, type ReglaDano, type ReglaFicha, type TipoDano } from "./danos.js";
 export interface Habilidad {
   nombre: string;
   descripcion: string;
@@ -129,6 +129,12 @@ export interface Criatura {
   resistencias?: ReglaFicha[];
   inmunidades?: ReglaFicha[];
   vulnerabilidades?: ReglaFicha[];
+  /** Condiciones a las que es inmune (asustado, hechizado, agotado, envenenado, dormido…): `condicion` y las habilidades las rechazan con aviso. Migradas de la prosa de `rasgos` (BALANCE §17). */
+  inmunidadesCondicion?: CondicionInmune[];
+  /** Defensas que solo valen mientras tenga una condición (p. ej. la Bakunawa «varada» es vulnerable al fuego). `cuando` es una condición del catálogo. */
+  condicionadas?: { cuando: string; resistencias?: ReglaFicha[]; inmunidades?: ReglaFicha[]; vulnerabilidades?: ReglaFicha[] }[];
+  /** Adaptación (Kuru): hasta tantos tipos de daño nuevos por combate, de los que gana resistencia a partir de su siguiente turno. */
+  adaptacion?: number;
   /** Armadura o piel (ver PIEZAS en armadura.ts): escamas_naturales, pellejo, hueso, placas_completas… */
   blindaje?: string[];
   /** Puede tragar a un personaje (ver Traga y tragado.ts). */
@@ -165,6 +171,8 @@ export interface EstadoJefe {
   descritaEn?: number;
   /** Tragar: lo que ha recibido este asalto (para decidir si escupe). */
   trago?: { ronda: number; fuera: number; dentro: number; probado: boolean };
+  /** Tipos de daño a los que se ha adaptado (Kuru) y desde qué asalto vale la resistencia. */
+  adaptaciones?: { tipo: TipoDano; desde: number }[];
 }
 
 // Atajos para las resistencias de las fichas. «Resistencia al daño no mágico» (sin tipo) se lee como el daño FÍSICO no mágico, como en 5e.
@@ -405,6 +413,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Gigante de hueso",
+    inmunidadesCondicion: ["asustado"],
     inmunidades: tipos("veneno"),
     vulnerabilidades: tipos("contundente"),
     blindaje: ["hueso"],
@@ -448,6 +457,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Apóstol",
+    inmunidadesCondicion: ["asustado"],
     inmunidades: tipos("veneno"),
     personalidad: ["arrogante"],
     categoria: "monstruo",
@@ -470,6 +480,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Lich",
+    inmunidadesCondicion: ["asustado", "hechizado", "agotado", "dormido"],
     resistencias: FISICO_NO_MAGICO,
     inmunidades: tipos("veneno", "necrótico"),
     vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }, { tipo: "radiante", soloMaterial: "luz solar primigenia" }],
@@ -536,6 +547,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Ulfhedinn",
+    inmunidadesCondicion: ["asustado", "agotado"],
     resistencias: FISICO_NO_MAGICO,
     inmunidades: tipos("veneno"),
     vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }],
@@ -572,6 +584,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Hombre oso",
+    inmunidadesCondicion: ["asustado", "agotado"],
     resistencias: FISICO_NO_MAGICO,
     inmunidades: tipos("veneno"),
     vulnerabilidades: [{ tipo: "fuego", soloMaterial: "llama gris" }],
@@ -607,6 +620,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Gárgola",
+    inmunidadesCondicion: ["agotado"],
     resistencias: noMagico("cortante", "perforante"),
     inmunidades: tipos("veneno"),
     vulnerabilidades: tipos("contundente"),
@@ -636,6 +650,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Golem de piedra",
+    inmunidadesCondicion: ["asustado", "hechizado", "agotado"],
     resistencias: noMagico("cortante", "perforante"),
     inmunidades: tipos("veneno"),
     temple: "constructo",
@@ -664,6 +679,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Golem de carne",
+    inmunidadesCondicion: ["agotado"],
     inmunidades: tipos("veneno"),
     vulnerabilidades: tipos("fuego"),
     temple: "constructo",
@@ -694,7 +710,7 @@ export const BESTIARIO: Criatura[] = [
     nombre: "Elemental de fuego",
     resistencias: FISICO_NO_MAGICO.map((r) => ({ ...r, salvoMaterial: "agua" })),
     inmunidades: tipos("fuego", "veneno"),
-    vulnerabilidades: deMaterial("agua", "contundente"),
+    vulnerabilidades: [...deMaterial("agua", "contundente"), ...deMaterial("sal", "ácido")],
     temple: "elemental",
     categoria: "monstruo",
     peligro: 4,
@@ -708,7 +724,7 @@ export const BESTIARIO: Criatura[] = [
     ataques: ["Toque ardiente: +6, 2d8+3 fuego; prende lo inflamable"],
     rasgos: [
       "Fuego: inmune al fuego y al veneno; resistencia al daño no mágico (salvo el del agua)",
-      "Se apaga con agua: vulnerable al agua (doble daño; el agua cuenta como daño contundente de material «agua» y no la frena la resistencia); la sal en abundancia también le hace doble daño (solo prosa)",
+      "Se apaga con agua: vulnerable al agua (doble daño; el agua cuenta como daño contundente de material «agua» y no la frena la resistencia); la sal en abundancia también le hace doble daño (daño ácido de material «sal»)",
       "Ilumina y prende: a 3 m, las llamas se avivan y la ropa y la madera arden",
     ],
     habilidades: [
@@ -719,6 +735,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de agua",
+    inmunidadesCondicion: ["agotado"],
     resistencias: [...tipos("fuego"), ...FISICO_NO_MAGICO],
     inmunidades: tipos("veneno"),
     temple: "elemental",
@@ -745,6 +762,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de tierra",
+    inmunidadesCondicion: ["agotado"],
     resistencias: noMagico("cortante", "perforante"),
     inmunidades: tipos("veneno"),
     vulnerabilidades: tipos("trueno"),
@@ -774,6 +792,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Elemental de aire",
+    inmunidadesCondicion: ["agotado", "agarrado", "derribado"],
     resistencias: FISICO_NO_MAGICO,
     inmunidades: tipos("veneno"),
     temple: "elemental",
@@ -801,6 +820,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Djinn",
+    inmunidadesCondicion: ["agotado"],
     resistencias: tipos("eléctrico", "trueno"),
     inmunidades: tipos("veneno"),
     temple: "elemental",
@@ -909,6 +929,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Sirena",
+    vulnerabilidades: [...deMaterial("sal", "ácido"), ...deMaterial("hierro caliente", "fuego")],
     temple: "bestia",
     personalidad: ["calculador"],
     categoria: "monstruo",
@@ -925,7 +946,7 @@ export const BESTIARIO: Criatura[] = [
       "Anfibia: respira aire y agua; fuera del agua, velocidad 3 m",
       "Canto: los que lo oigan sin tapones en los oídos deben resistir o se acercan sin pensar",
       "Ventaja en Percepción y Sigilo en el agua",
-      "Vulnerable al hierro cálido y a la sal en abundancia (le quema la piel)",
+      "Vulnerable al hierro caliente y a la sal en abundancia (le quema la piel)",
       "Variante: los hombres pez, su otra cara, la sirven en bancos bajo el agua",
     ],
     habilidades: [
@@ -937,6 +958,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Hombre pez",
+    vulnerabilidades: [...deMaterial("sal", "ácido"), ...deMaterial("hierro caliente", "fuego")],
     alias: ["Hombres pez", "Pez-hombre"],
     temple: "bestia",
     personalidad: ["temerario"],
@@ -956,7 +978,7 @@ export const BESTIARIO: Criatura[] = [
       "Bancos: ventaja en ataques si hay otro hombre pez a 3 m del objetivo",
       "Sirviente de la sirena: obedece a la sirena que lo guía (ignora su canto) y la defiende antes que a sí mismo",
       "Ventaja en Percepción y Sigilo en el agua",
-      "Vulnerable a la sal en abundancia y al hierro cálido, como las sirenas",
+      "Vulnerable a la sal en abundancia y al hierro caliente, como las sirenas",
     ],
     habilidades: [
       { nombre: "Arrastrar", descripcion: "Agarra a un objetivo en la orilla y tira de él hacia el agua.", salvacion: "fue", cd: 12, dano: "1d6+2", tipo_dano: "contundente", condicion: "agarrado", recarga: 6 },
@@ -1077,6 +1099,8 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Bakunawa",
+    condicionadas: [{ cuando: "varada", vulnerabilidades: tipos("fuego") }],
+    inmunidadesCondicion: ["envenenado"],
     resistencias: tipos("frío", "eléctrico"),
     inmunidades: tipos("veneno"),
     alias: ["Devoralunas", "Serpiente de la luna"],
@@ -1321,6 +1345,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "La Madre de los Hambrientos",
+    inmunidadesCondicion: ["asustado"],
     inmunidades: tipos("veneno", "necrótico"),
     temple: "no-muerto",
     categoria: "jefe",
@@ -1531,6 +1556,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Kuru, el Cazador de Leyendas",
+    adaptacion: 3,
     artes: ["todos", "contracorriente"],
     temple: "cazador de leyendas",
     personalidad: ["calculador", "paranoico"],
@@ -1572,6 +1598,7 @@ export const BESTIARIO: Criatura[] = [
   },
   {
     nombre: "Hugin, el Pensamiento",
+    inmunidadesCondicion: ["asustado"],
     artes: ["cuervo"],
     temple: "Humano del Faro",
     personalidad: ["calculador", "prudente"],
@@ -1788,10 +1815,54 @@ export function perfilDeCriatura(c: Pick<Criatura, "resistencias" | "inmunidades
   const con = (rs: ReglaFicha[] | undefined, pre: string): ReglaDano[] => (rs ?? []).map((r) => ({ ...r, motivo: `${pre} ${textoRegla(r)}` }));
   return { resiste: con(c.resistencias, "resistencia a"), inmune: con(c.inmunidades, "inmune a"), vulnerable: con(c.vulnerabilidades, "vulnerable a") };
 }
+/** El perfil de una criatura EN ESCENA: su ficha más lo que cambia con su estado (defensas `condicionadas` por una condición, como «varada», y las adaptaciones de Kuru ya vigentes en este asalto). */
+export function perfilDeJefe(j: Pick<EstadoJefe, "definicion" | "condiciones" | "adaptaciones">, ronda = 0): PerfilDano {
+  const d = j.definicion;
+  const ids = efectos(j.condiciones ?? []).ids;
+  const extra = (d.condicionadas ?? []).filter((x) => ids.includes(x.cuando));
+  const p = perfilDeCriatura({
+    resistencias: [...(d.resistencias ?? []), ...extra.flatMap((x) => x.resistencias ?? [])],
+    inmunidades: [...(d.inmunidades ?? []), ...extra.flatMap((x) => x.inmunidades ?? [])],
+    vulnerabilidades: [...(d.vulnerabilidades ?? []), ...extra.flatMap((x) => x.vulnerabilidades ?? [])],
+  });
+  for (const x of j.adaptaciones ?? []) if (x.desde <= ronda) p.resiste = [...(p.resiste ?? []), { tipo: x.tipo, motivo: `Adaptación: resistencia a ${x.tipo}` }];
+  return p;
+}
+/** Qué defensas por tipo de daño tiene un PNJ del combate: las de la ficha de criatura del bestiario que lleve (`criatura`); sin ella, ninguna. */
+/** Condiciones a las que es inmune un PNJ o una criatura (de su ficha). */
+export function inmunidadesCondicionDe(x: { criatura?: string; definicion?: Criatura }): readonly CondicionInmune[] {
+  return (x.definicion ?? (x.criatura ? buscarCriatura(x.criatura) : undefined))?.inmunidadesCondicion ?? [];
+}
+export function perfilDePnj(n: { criatura?: string }): PerfilDano {
+  const c = n.criatura ? buscarCriatura(n.criatura) : undefined;
+  return c ? perfilDeCriatura(c) : {};
+}
+/** Daño a una criatura por su tipo: aplica su ficha (resistencias, inmunidades, vulnerabilidades, defensas por estado y adaptación de Kuru), resta los PV y
+ *  devuelve el daño final con la nota para el aviso. Sin tipo, el daño va tal cual (ya es final). */
+export function danarConTipo(j: EstadoJefe, cantidad: number, tipo?: TipoDano, fuente?: FuenteDano, ronda = 0): { final: number; nota: string; texto: string } {
+  let final = cantidad, nota = "";
+  if (tipo && cantidad > 0) {
+    const r = aplicarDano({ objetivo: perfilDeJefe(j, ronda), cantidad, tipo, fuente });
+    final = r.final; nota = notaDano(r.detalle);
+    adaptarse(j, tipo, final, ronda);
+  }
+  return { final, nota, texto: danar(j, final) + nota };
+}
+/** Adaptación (Kuru): el primer daño de un tipo nuevo le da resistencia a ese tipo desde su siguiente turno (hasta `adaptacion` tipos por combate). Solo los tipos NO físicos (propuesta a confirmar: el daño de armas no la endurece, o Kuru resistiría todo el acero). */
+export function adaptarse(j: EstadoJefe, tipo: TipoDano, final: number, ronda: number): void {
+  const max = j.definicion.adaptacion ?? 0;
+  if (!max || final <= 0 || esFisico(tipo)) return;
+  const lista = (j.adaptaciones ??= []);
+  if (lista.length >= max || lista.some((x) => x.tipo === tipo)) return;
+  lista.push({ tipo, desde: ronda + 1 });
+}
 /** Una línea para el DM con lo que el programa aplica solo a esta criatura (vacía si no tiene datos). */
-export function lineaResistencias(c: Pick<Criatura, "resistencias" | "inmunidades" | "vulnerabilidades">): string {
+export function lineaResistencias(c: Pick<Criatura, "resistencias" | "inmunidades" | "vulnerabilidades" | "inmunidadesCondicion" | "condicionadas" | "adaptacion">): string {
   const g = (rs: ReglaFicha[] | undefined, pre: string) => (rs?.length ? [`${pre} ${rs.map(textoRegla).join(", ")}`] : []);
-  return [...g(c.inmunidades, "inmune a"), ...g(c.resistencias, "resiste"), ...g(c.vulnerabilidades, "vulnerable a")].join("; ");
+  const cond = c.inmunidadesCondicion?.length ? [`inmune a las condiciones ${c.inmunidadesCondicion.join(", ")} (el programa las rechaza)`] : [];
+  const por = (c.condicionadas ?? []).map((x) => `mientras esté «${x.cuando}»: ${[...g(x.inmunidades, "inmune a"), ...g(x.resistencias, "resiste"), ...g(x.vulnerabilidades, "vulnerable a")].join(", ")}`);
+  const adap = c.adaptacion ? [`se adapta a ${c.adaptacion} tipos de daño por combate (resistencia desde su siguiente turno)`] : [];
+  return [...g(c.inmunidades, "inmune a"), ...g(c.resistencias, "resiste"), ...g(c.vulnerabilidades, "vulnerable a"), ...cond, ...por, ...adap].join("; ");
 }
 
 export function danar(e: EstadoJefe, cantidad: number): string {

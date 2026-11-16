@@ -11,9 +11,9 @@ import { actualizarPlano, distanciaPlano } from "./espacio.js";
 import { COMPETENCIAS_CLASE } from "./pruebas.js";
 import { infligir } from "./heridas.js";
 import { danoEnSuelo } from "./muerte.js";
-import { danar } from "./bestiario.js";
+import { danarConTipo, perfilDePnj } from "./bestiario.js";
 import { aplicarDanoAPersonaje } from "./rasgos.js";
-import { notaDano } from "./danos.js";
+import { aplicarDano, notaDano } from "./danos.js";
 import { arteDeCombatiente, maestriaDe } from "./estilos_base.js";
 import { competencia, marcarMuerto, mod, salvacion, signo, valor } from "./reglas.js";
 
@@ -223,12 +223,13 @@ export function caida(partida: Partida, d: { quien: string; metros: number; blan
     if (dn >= Math.ceil(p.pv_max / 2) || dn >= 10) lineas.push("Herida:\n" + infligir(p, { causa: dn >= Math.ceil(p.pv_max / 2) ? "golpe_masivo" : "menor", tipo: "contusion", descripcion: "caída" }));
     else if (dn >= 3) lineas.push("Herida:\n" + infligir(p, { causa: "menor", tipo: "contusion", descripcion: "caída" }));
   } else if (c.tipo === "criatura") {
-    lineas.push(danar(c.j, t.total));
+    lineas.push(danarConTipo(c.j, t.total, "contundente", { magico: false }, partida.combate?.ronda ?? 0).texto); // la ficha cuenta: un Gigante de hueso sufre doble
     if (c.j.pv <= 0) { retirarCaido(partida, c.j); return lineas.join("\n"); } // ya no está en escena: no hay nada más que derribar
   }
   else if (c.n.pv !== undefined) {
-    c.n.pv = Math.max(0, c.n.pv - t.total);
-    lineas.push(`${c.nombre}: −${t.total} PV → ${c.n.pv}/${c.n.pv_max ?? "?"}${c.n.pv === 0 ? " — CAE." : ""}`);
+    const fin = c.n.criatura ? aplicarDano({ objetivo: perfilDePnj(c.n), cantidad: t.total, tipo: "contundente" }).final : t.total;
+    c.n.pv = Math.max(0, c.n.pv - fin);
+    lineas.push(`${c.nombre}: −${fin} PV → ${c.n.pv}/${c.n.pv_max ?? "?"}${c.n.pv === 0 ? " — CAE." : ""}`);
   } else lineas.push(`${c.nombre} recibe ${t.total} de daño (lleva tú sus PV).`);
   if (!condsDe(c).some((x) => reconocer(x)?.id === "derribado")) lineas.push(aplicarCondicion(partida, { objetivo: c.nombre, accion: "aplicar", condicion: "derribado" }).split("\n")[0]);
   return lineas.join("\n");

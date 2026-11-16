@@ -4,7 +4,7 @@ Qué se encuentra, cuánto vale y cómo se pide. Datos en `src/tesoro.ts` (catá
 
 ## Categorías (12, cerradas)
 
-`moneda` (dientes de dios, lingotes, monedas antiguas), `gema_arte`, `material` (hierro frío, plata, baño de plata, sal, hueso de dios, escamas…), `ingrediente`, `comida_bebida`, `herramienta` (ganzúas, kit de sanador, sierra de huesos, cadenas, daga de plata…), `documento`, `llave_sello`, `curiosidad`, `trofeo` (piezas de criatura), `objeto_trama` (33 objetos únicos con historia, solo lo público de Velmora) y `nautico`. 191 entradas; casi todas de 1-50 po, lo raro (escamas de mar profundo, perlas de luna, el relicario de un lich…) de 60 a 400 po.
+`moneda` (dientes de dios, lingotes, monedas antiguas), `gema_arte`, `material` (hierro frío, plata, baño de plata, sal, hueso de dios, escamas…), `ingrediente`, `comida_bebida`, `herramienta` (ganzúas, kit de sanador, sierra de huesos, cadenas, daga de plata…), `documento`, `llave_sello`, `curiosidad`, `trofeo` (piezas de criatura), `objeto_trama` (33 objetos únicos con historia, solo lo público de Velmora) y `nautico`. 192 entradas; casi todas de 1-50 po, lo raro (escamas de mar profundo, perlas de luna, el relicario de un lich…) de 60 a 400 po.
 
 Los nombres de lo que consume el motor son exactos (`Raciones de viaje`, `Pan duro`, `Carne seca`, `Queso curado`, `Odre de agua`, `Frascos de sal`, `Hierbas medicinales`, `Ganzúas`, `Herramientas de ladrón`, `Herramientas de cirujano`, `Sierra de huesos`, `Cadenas de hierro`): los reconocen los regex de sustento, sal, enfermedades, barbero, degollador y flagelante, y `t-tesoro` vigila que ningún otro nombre los dispare. Formato de cantidad canónico: **«Nombre (N)»** («Frascos de sal (5)»).
 
