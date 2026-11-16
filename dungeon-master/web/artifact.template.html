@@ -1578,7 +1578,7 @@
     if (jugadores.some((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre))) return undefined;
     return [...new Set(fichas.map((f) => f.clase))];
   }
-  function instrucciones() { return V.sistemaWeb(clasesEnMesa(), { artes: V.hayArtes(partida) }) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(); }
+  function instrucciones() { return V.sistemaWeb(clasesEnMesa(), { artes: V.hayArtes(partida) }) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(clasesEnMesa()); }
 
   const textoAcciones = (as) => as.map((a) => T.lineaAccion(a)).join("\n");
 

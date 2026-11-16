@@ -4,7 +4,7 @@
 import { nuevaPartida, normalizarPartida } from "../../src/estado.ts";
 import { ejecutar } from "../../src/herramientas.ts";
 import { estadoParaDM } from "../../src/navegador.ts";
-import { sistemaWeb } from "../../src/prompt-web.ts";
+import { sistemaWeb, catalogoCompacto } from "../../src/prompt-web.ts";
 import { bloqueTurnos, siguienteEnCombate, textoReaccionesPreparadas, lineaAccion, REGLA_PREPARADA } from "../../src/turnos.ts";
 
 const P: any = nuevaPartida(); normalizarPartida(P);
@@ -18,7 +18,8 @@ E("ubicacion", { lugar: "Pozonegro", region: "Aldenmar", tipo: "aldea" });
 const nt = (s: string) => `${s.length} car. ≈ ${Math.round(s.length / 4)} tok`;
 const partes = (e: string) => e.split(/\n\n(?=## )/).map((s) => [s.length, s.split("\n")[0].slice(0, 50)] as [number, string]).sort((a, b) => b[0] - a[0]);
 const fijo = sistemaWeb(grupo.map((g) => g[1]), { artes: true });
-console.log(`Prompt fijo (sistemaWeb típico con estilos): ${nt(fijo)}\n`);
+console.log(`Prompt fijo (sistemaWeb típico con estilos): ${nt(fijo)}`);
+console.log(`Catálogo de acciones: completo ${nt(catalogoCompacto())} · con las clases de la mesa ${nt(catalogoCompacto(grupo.map((g) => g[1])))}\n`);
 
 const informe = (titulo: string, extra: string, foco = "Ana") => {
   const e = estadoParaDM(P, foco);

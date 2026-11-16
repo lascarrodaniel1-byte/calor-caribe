@@ -131,8 +131,21 @@ function tipo(s: Record<string, unknown> | undefined): string {
   return "texto";
 }
 
-export function catalogoCompacto(): string {
-  const lineas = herramientas.map((h) => {
+/** Acciones exclusivas de una clase (la descripción de cada una empieza por la clase). Si esa clase no está en la mesa, su línea no va en el catálogo. */
+export const ACCIONES_DE_CLASE: Record<string, string[]> = {
+  Flagelante: ["sangre_ajena", "paso_elusivo", "cadenas"],
+  "Barbero-Cirujano": ["diagnosticar", "amputar", "kit_sanador"],
+  Segador: ["guadana", "descarga", "sellar_alma", "liberar_alma", "entregar_almas", "hablar_con_muertos", "invocacion"],
+  Degollador: ["estudiar_presa", "dardos", "forzar_acceso"],
+  "Cazador de Brujas": ["papeles", "mascota", "rastro_magico"],
+  "Caballero Juramentado": ["juramento", "romper_juramento", "imposicion_manos"],
+};
+
+/** Catálogo de acciones. Con las clases de la mesa (como en sistemaWeb), las acciones exclusivas de las clases ausentes solo salen por nombre. */
+export function catalogoCompacto(clases?: string[]): string {
+  const presentes = clases ? new Set(clases) : undefined;
+  const omitidas = presentes ? Object.entries(ACCIONES_DE_CLASE).filter(([c]) => !presentes.has(c)).flatMap(([, a]) => a) : [];
+  const lineas = herramientas.filter((h) => !omitidas.includes(h.name)).map((h) => {
     const sch = h.input_schema as { properties?: Record<string, Record<string, unknown>>; required?: string[] };
     const req = new Set(sch.required ?? []);
     const campos = Object.entries(sch.properties ?? {})
@@ -141,8 +154,9 @@ export function catalogoCompacto(): string {
     const desc = (h.description ?? "").split(/(?<=\.)\s/)[0];
     return `- ${h.name}(${campos}) — ${desc}`;
   });
+  const aparte = omitidas.length ? `\n- Acciones de clases que ahora no están en la mesa (no se detallan para ahorrar espacio; su esquema: consultar_reglas {tema: "accion", nombre}): ${omitidas.join(", ")}.` : "";
   return `## Acciones del motor (herramienta "motor")
-${lineas.join("\n")}
+${lineas.join("\n")}${aparte}
 - actualizar_cronica(texto) — reescribe tu crónica completa (tu memoria).
 - consultar_reglas(tema, nombre?) — tema: ficha (con nombre: la ficha completa de un personaje) | ambientacion | razas_clases | combate | heridas | viales | equipo | tesoro | estados | behelits | bestiario | mapa | magia | artes | arcos | saber | clima | buscados | clase (con nombre: las reglas de esa clase) | criatura (con nombre) | accion (con nombre: esquema completo de esa acción, con la descripción de cada campo).
 Si una acción falla por los datos, el error dice qué falta; consulta su esquema con consultar_reglas {tema: "accion", nombre}.`;
