@@ -165,7 +165,11 @@ const VIALES_ORIGEN: Record<Origen, { prob: number; tabla: [number, NombreVial][
 };
 
 const deTabla = <T>(t: [number, T][], d: number) => t.find(([max]) => d <= max)![1];
-const elegir = <T>(lista: T[]) => lista[tirar(`1d${lista.length}`).total - 1];
+/** Elige al azar un elemento. Con uno solo no se tira dado (un `1d1` no existe); con la lista vacía es un error de datos. */
+const elegir = <T>(lista: readonly T[]): T => {
+  if (!lista.length) throw new Error("elegir: lista vacía (error de datos del equipo)");
+  return lista.length === 1 ? lista[0] : lista[tirar(`1d${lista.length}`).total - 1];
+};
 
 function nuevoId(partida: Partida) {
   return `O${Object.keys(partida.objetos).length + 1}`;
@@ -266,7 +270,7 @@ export function generarBotin(partida: Partida, b: PeticionBotin): { dm: string; 
   const PROB_CATALIZADOR: Record<Origen, number> = { compra: 30, saqueo: 5, hallazgo: 15, jefe: 35 };
   if (tirar("1d100").total <= PROB_CATALIZADOR[b.origen]) {
     const posibles = CATALIZADORES.filter((c) => (b.origen === "compra" || b.origen === "saqueo" ? c.precio !== null : true));
-    const c = posibles[tirar(`1d${posibles.length}`).total - 1];
+    const c = elegir(posibles);
     const raro = c.precio === null && tirar("1d100").total > 25;
     const elegido = raro ? posibles.filter((x) => x.precio !== null)[0] : c;
     const linea = `- Catalizador: ${elegido.nombre}${b.origen === "compra" && elegido.precio ? ` — ${elegido.precio} po` : ""} (${elegido.descripcion})`;
