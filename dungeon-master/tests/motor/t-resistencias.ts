@@ -100,10 +100,13 @@ function mk(criatura: string, inventario: string[] = ["Espada larga"]) {
   const j = Object.values(p.jefes)[0]; j.pv = j.pv_max = 5000;
   return { p, E, j, perdida: () => 5000 - j.pv };
 }
+// sin_estado: true por defecto. Este archivo comprueba resistencias/inmunidades/vulnerabilidades, no estados por tipo de daño. Sin él, el radiante
+// de la luz solar sobre Ysolde provoca una salvación (d20 NO fijado) que a veces la deja cegada; el siguiente golpe llega entonces con ventaja
+// (un segundo d20 aleatorio, que además puede ser crítico y doblar el daño) y la aserción del siguiente golpe fallaba de forma intermitente.
 function golpe(m: ReturnType<typeof mk>, tipo: string | undefined, extra: object = {}, dano = "2d6") {
   iniciarRegistroDados([...dados(20, 15), ...dados(6, 5, 5, 5, 5)]);
   const antes = m.j.pv;
-  const r = m.E("atacar", { atacante: "Aldo", objetivo: m.j.nombre, dano, bono: 50, ...(tipo ? { tipo_dano: tipo } : {}), apuntar: "torso", temerario: false, ...extra });
+  const r = m.E("atacar", { atacante: "Aldo", objetivo: m.j.nombre, dano, bono: 50, ...(tipo ? { tipo_dano: tipo, sin_estado: true } : {}), apuntar: "torso", temerario: false, ...extra });
   liberarDados(); return { r, d: antes - m.j.pv, s: txt(r) };
 }
 { // Banshee: sin blindaje; resiste lo físico no mágico
