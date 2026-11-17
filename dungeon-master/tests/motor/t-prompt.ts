@@ -118,6 +118,27 @@ t(/competencia/i.test(completo), "el prompt completo habla de competencia (regla
   t(r.herramientasMedia === 3 && r.conRepaso === 3 && r.sinNarracion === 1, "resumenConsumo: herramientas, repasos y red de seguridad");
   const v = resumenConsumo([]);
   t(v.turnos === 0 && v.entrada.media === 0 && v.salida.p90 === 0, "resumenConsumo: sin datos no falla");
+  // documentos antiguos (sin uso, partes ni vueltas): campos nuevos vacíos, lo demás igual
+  t(r.herramientas.media === 3 && r.herramientas.p90 === 4 && r.top.length === 0 && r.partes.n === 0 && r.partes.pct.reglas === 0 && r.vueltas.n === 0 && r.vueltas.media === 0, "resumenConsumo: documentos antiguos sin los campos nuevos no fallan", JSON.stringify([r.herramientas, r.top, r.partes.n, r.vueltas]));
+  t(v.top.length === 0 && v.partes.n === 0 && v.vueltas.n === 0 && v.herramientas.p90 === 0, "resumenConsumo: sin datos, los campos nuevos están vacíos");
+}
+// ---- resumenConsumo: herramientas llamadas, reparto de la entrada y vueltas
+{
+  const parte = (k: number) => ({ reglas: 1000 * k, catalogo: 500 * k, estado: 200 * k, historial: 100 * k, cronica: 100 * k, acciones: 100 * k });
+  const docs: any[] = [
+    { entrada: 2000, salida: 100, herramientas: 3, uso: { tiempo: 1, tirar_dados: 2, ubicacion: 1 }, partes: parte(1), vueltas: 2, acc: 4 },
+    { entrada: 4000, salida: 100, herramientas: 1, uso: { tiempo: 1, prueba: 1 }, partes: parte(3), vueltas: 1, acc: 2 },
+    { entrada: 100, salida: 10, herramientas: 0 }, // antiguo
+    { entrada: 100, salida: 10, herramientas: 2, uso: { atacar: 5, tiempo: 1, trama: 1, nota: 1, pnj: 1, x: 1 }, vueltas: 3, acc: 3 },
+  ];
+  const r = resumenConsumo(docs);
+  t(r.top[0].nombre === "atacar" && r.top[0].total === 5 && r.top[1].nombre === "tiempo" && r.top[1].total === 3 && r.top[1].turnos === 3, "resumenConsumo: top de herramientas por llamadas totales y turnos", JSON.stringify(r.top));
+  t(r.top.length === 5, "resumenConsumo: solo las 5 más llamadas", String(r.top.length));
+  t(r.herramientas.media === 1.5 && r.herramientas.p90 === 3, "resumenConsumo: herramientas por turno (media y p90)", JSON.stringify(r.herramientas));
+  t(r.partes.n === 2 && r.partes.media.reglas === 2000 && r.partes.media.catalogo === 1000 && r.partes.media.acciones === 200, "resumenConsumo: media del desglose solo con los turnos que lo traen", JSON.stringify(r.partes.media));
+  t(Math.abs(Object.values(r.partes.pct).reduce((a, b) => a + b, 0) - 100) < 0.6 && r.partes.pct.reglas === 50, "resumenConsumo: el reparto suma ≈ 100 % (reglas 50 %)", JSON.stringify(r.partes.pct));
+  t(r.vueltas.n === 3 && r.vueltas.media === 2 && r.vueltas.p90 === 3 && r.vueltas.accionesPorVuelta === 1.5, "resumenConsumo: vueltas de herramientas y acciones por vuelta", JSON.stringify(r.vueltas));
+  t(resumenConsumo([{ entrada: 1, uso: { a: "x" as any, b: -1 }, partes: { reglas: "no" as any }, vueltas: "q" as any }]).top.length === 0, "resumenConsumo: valores basura se ignoran sin fallar");
 }
 
 // ---- tamaños (umbrales: completo 67.600 y típico 49.880 tras la auditoría de integración)

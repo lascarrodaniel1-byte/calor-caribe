@@ -305,6 +305,10 @@
   .bestiario .bloqueada { color: #7a6a52; font-style: italic; }
   .bestiario .nota-grupo { border-left: 3px solid #b8873a; padding-left: 9px; }
   #ver-buscados { margin-top: 8px; width: 100%; }
+  .consumo #consumo-cuerpo { overflow-wrap: anywhere; }
+  .consumo table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .consumo th, .consumo td { text-align: left; padding: 2px 8px 2px 0; }
+  .consumo td.num, .consumo th.num { text-align: right; }
   .tablero #buscados-lista { display: flex; flex-direction: column; gap: 12px; }
   .tablero .cartel { border: 1px solid #8a6a3a; border-radius: 4px; background: #f4e8cc99; padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; min-width: 0; overflow-wrap: anywhere; }
   .tablero .cartel h3 { margin: 0; font: 400 22px/1.2 var(--f-letrero); color: #5a1d12; }
@@ -506,6 +510,7 @@
       <small class="nota-nivel" id="nota-nivel" hidden></small>
       <label class="control" for="repaso" title="Tras cada turno, el DM repasa si registró lo que narró y lo que el programa detecta que falta, y completa lo que falte. Gasta un poco más.">Repaso <input type="checkbox" id="repaso" checked></label>
       <button class="boton sobrio" id="ver-tutorial" type="button">Cómo jugar</button>
+      <button class="boton sobrio" id="ver-consumo" type="button" hidden title="Cuánto cuesta el DM: herramientas por turno, las más llamadas y de qué se compone lo que se le envía (solo lectura)">📊 Consumo del DM</button>
       <button class="boton sobrio" id="exportar-partida" type="button" hidden title="Guarda esta partida en un archivo para poder retomarla más tarde">📤 Exportar partida</button>
       <button class="boton sobrio" id="importar-partida" type="button" hidden title="Carga una partida exportada (reemplaza la actual)">📥 Importar partida</button>
       <input type="file" id="archivo-importar" accept=".json,application/json" hidden>
@@ -643,6 +648,16 @@
   <div class="mapa-grande">
     <div class="botonera"><button class="boton sobrio" id="cerrar-mapa" type="button">Cerrar el mapa</button></div>
     <div class="lienzo" id="mapa-grande"></div>
+  </div>
+</div>
+
+<div class="velo" id="velo-consumo" hidden>
+  <div class="bestiario consumo" role="dialog" aria-modal="true" aria-labelledby="titulo-consumo">
+    <div class="botonera cabecera-bestiario">
+      <h2 id="titulo-consumo">📊 Consumo del DM</h2>
+      <button class="boton sobrio" id="cerrar-consumo" type="button">Cerrar</button>
+    </div>
+    <div class="cuerpo" id="consumo-cuerpo"></div>
   </div>
 </div>
 
@@ -1578,7 +1593,9 @@
     if (jugadores.some((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre))) return undefined;
     return [...new Set(fichas.map((f) => f.clase))];
   }
-  function instrucciones() { return V.sistemaWeb(clasesEnMesa(), { artes: V.hayArtes(partida) }) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + V.catalogoCompacto(clasesEnMesa()); }
+  let longCatalogo = 0;     // caracteres del catálogo de acciones de la última entrada (para el desglose del consumo)
+  let desgloseEntrada = null; // caracteres de cada parte de la última entrada armada (consumo/: V.PARTES_CONSUMO)
+  function instrucciones() { const cat = V.catalogoCompacto(clasesEnMesa()); longCatalogo = cat.length; return V.sistemaWeb(clasesEnMesa(), { artes: V.hayArtes(partida) }) + INSTRUCCIONES_WEB + V.secuencia.REGLAS_SECUENCIA + "\n\n" + cat; }
 
   const textoAcciones = (as) => as.map((a) => T.lineaAccion(a)).join("\n");
 
@@ -1627,13 +1644,14 @@
     // Lo antiguo ya está en el diario; aquí van enteros los turnos que aún no se han compactado.
     // Nunca se descarta un turno sin compactar (si la compactación falló, van todos, los viejos más recortados).
     // Con la compactación al día son unos 8 o menos; el tope solo importa si lleva mucho tiempo fallando.
-    const final =
+    const memoriaTxt =
       `# ANALES DE LA AVENTURA (capítulos ya vividos, en orden; es canon, respétalo)\n${anales.length ? anales.map((c, i) => `${i + 1}. ${c}`).join("\n") : "(aún vacíos: la aventura acaba de empezar)"}\n\n` +
       `# SITUACIÓN ACTUAL (antes de los turnos recientes)\n${diario || "(aún vacía)"}\n\n` +
       (detalles.length ? `# DETALLES MENORES (nombres, precios, objetos, aspecto, frases; respétalos)\n${detalles.map((x) => `- ${x}`).join("\n")}\n\n` : "") +
       (aventurasPrevias.length ? `${V.aventuras.textoAventurasPrevias(aventurasPrevias)}\n\n` : "") +
-      `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n` +
-      `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida, focoDe(infoTurno), (jugadores.length ? jugadores.filter((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre)).map((j) => j.nombre) : (nombre && !tieneFicha(partida, nombre) ? [nombre] : [])))}\n\n` +
+      `# CRÓNICA (tus notas privadas de DM)\n${cronicaDM || "(vacía)"}\n\n`;
+    const estadoTxt = `# ESTADO ACTUAL DEL JUEGO\n${V.estadoParaDM(partida, focoDe(infoTurno), sinFichaAhora())}\n\n`;
+    const final = memoriaTxt + estadoTxt +
       (() => {
         const f = frasesDichas();
         return f.length ? `# FRASES QUE YA HAS USADO (no las repitas; si un PNJ vuelve sobre lo mismo, que lo diga distinto y añada algo nuevo o reaccione a la insistencia)\n${f.map((x) => `- ${x}`).join("\n")}\n\n` : "";
@@ -1645,8 +1663,16 @@
         : "") +
       `# ACCIONES NUEVAS\n${textoAcciones(acciones)}`;
     // Los mensajes del DM llevan SOLO su narración; los resultados del motor van aparte, en un mensaje del programa (ver armarHistorial).
-    return V.secuencia.armarHistorial(turnos, { compactadoHasta, instrucciones: instrucciones(), textoAcciones, final });
+    const msgs = V.secuencia.armarHistorial(turnos, { compactadoHasta, instrucciones: instrucciones(), textoAcciones, final });
+    // Desglose del tamaño de la entrada (solo medición): reglas, catálogo, estado, historial, crónica+diario+anales y acciones del turno (con lo demás del último mensaje).
+    try {
+      const largo = (m) => String(m?.content ?? "").length;
+      desgloseEntrada = { reglas: Math.max(0, largo(msgs[0]) - longCatalogo), catalogo: longCatalogo, estado: estadoTxt.length, historial: msgs.slice(1, -1).reduce((n, m) => n + largo(m), 0), cronica: memoriaTxt.length, acciones: Math.max(0, largo(msgs[msgs.length - 1]) - memoriaTxt.length - estadoTxt.length) };
+    } catch { desgloseEntrada = null; }
+    return msgs;
   }
+  /** Jugadores activos sin ficha (o, sin lista de jugadores, yo): lo que el estado del DM llama «aún sin ficha». */
+  const sinFichaAhora = () => (jugadores.length ? jugadores.filter((j) => T.activo(j, ahora()) && !tieneFicha(partida, j.nombre)).map((j) => j.nombre) : (nombre && !tieneFicha(partida, nombre) ? [nombre] : []));
 
   // Salen del motor, para que ninguna acción nueva se quede fuera.
   const NOMBRES_ACCIONES = [...V.NOMBRES_ACCIONES, "actualizar_cronica", "consultar_reglas"];
@@ -1807,7 +1833,13 @@
     try {
       if (!db || soloLectura || !nombre) return;
       const t = Date.now();
-      db.doc("consumo/c" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set({ ts: t, jugador: String(d.jugador || nombre), entrada: d.entrada | 0, salida: d.salida | 0, herramientas: d.herramientas | 0, repaso: !!d.repaso, sinNarracion: !!d.sinNarracion, nivel: String(d.nivel || ""), origen: String(d.origen || "") }).catch(() => {});
+      const doc = { ts: t, jugador: String(d.jugador || nombre), entrada: d.entrada | 0, salida: d.salida | 0, herramientas: d.herramientas | 0, repaso: !!d.repaso, sinNarracion: !!d.sinNarracion, nivel: String(d.nivel || ""), origen: String(d.origen || "") };
+      // Medición ampliada (≈ 300 bytes): acciones llamadas (las 12 más frecuentes), caracteres de cada parte de la entrada y vueltas de herramientas de la narración.
+      const uso = Object.entries(d.uso || {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 12);
+      if (uso.length) doc.uso = Object.fromEntries(uso.map(([k, n]) => [String(k).slice(0, 30), n | 0]));
+      if (d.partes) doc.partes = Object.fromEntries(V.PARTES_CONSUMO.map((k) => [k, d.partes[k] | 0]));
+      if (Number.isFinite(d.vueltas)) { doc.vueltas = d.vueltas | 0; doc.acc = d.acc | 0; }
+      db.doc("consumo/c" + t.toString(36) + Math.random().toString(36).slice(2, 5)).set(doc).catch(() => {});
       // Poda: cada 20 anotaciones se conservan como mucho ~200 documentos.
       if (++consumoEscrito % 20 === 0) {
         db.collection("consumo").orderBy("ts", "desc").limit(260).get()
@@ -2169,7 +2201,8 @@
     let cronicaNueva = cronicaDM;
     const llamadasTurno = []; // qué herramientas usó el DM en este turno (para el repaso)
     let texto = "";
-    const consumo = { entrada: 0, salida: 0, repaso: false, sinNarracion: false }; // para registrarConsumo
+    const consumo = { entrada: 0, salida: 0, repaso: false, sinNarracion: false, uso: {}, vueltas: 0, acc: 0, partes: null }; // para registrarConsumo (vueltas = llamadas a `motor` de la narración; acc = acciones que llevaron)
+    let enRepaso = false;
     const avisos = [];
     const vivo = { narrando: true, por: infoTurno?.actuante || nombre, ids: cola.map((a) => a.id), acciones, texto: "", avisos: [], latido: Date.now() };
     enCadenaVivo(() => ref.set(vivo)); // no se espera: el modelo empieza ya
@@ -2219,7 +2252,9 @@
       execute(input) {
         const lista = Array.isArray(input?.acciones) ? input.acciones : [];
         if (!lista.length) throw new Error("Pasa al menos una acción en 'acciones'.");
+        if (!enRepaso) { consumo.vueltas++; consumo.acc += lista.length; }
         return lista.map(({ accion, datos }) => {
+          try { const k = String(accion).slice(0, 30); consumo.uso[k] = (consumo.uso[k] || 0) + 1; } catch { /* medición: nunca rompe el turno */ }
           if (accion === "consultar_reglas") {
             if (String(datos?.tema).toLowerCase() === "ficha") return { accion, resultado: V.fichaPorNombre(copia, datos?.nombre) };
             try { return { accion, resultado: V.consultarReglas(datos?.tema, datos?.nombre) }; }
@@ -2263,6 +2298,7 @@
       const entradaDM = construirEntrada(acciones, infoTurno, correccion);
       if (copia.combate) delete copia.combate.avisoAsalto; // el aviso del asalto anterior ya le llegó al DM en esta entrada
       consumo.entrada = tamanoEntrada(entradaDM);
+      consumo.partes = desgloseEntrada;
       const nivelT = await nivelAhora();
       const res = await conCorte(sample(entradaDM, {
         tools: [motor],
@@ -2316,6 +2352,7 @@
         const limite = setTimeout(() => ctlR.abort(), 40000); // el repaso nunca puede retener el turno más de 40 s
         try {
           const antesRepaso = llamadasTurno.length;
+          enRepaso = true;
           await conCorte(sample(V.promptRepaso({ acciones: acciones.map((a) => `${a.nombre}: ${a.texto}`).join("\n"), texto, llamadas: [...new Set(llamadasTurno)], pistas, estado: V.estadoParaDM(copia, focoDe(infoTurno)) }), { tools: [motor], modelTier: "quick", signal: ctlR.signal, repaso: true }), ctlR.signal);
           // Queda anotado cuándo el repaso tuvo que completar el registro: así se ve cuánto se le olvida al DM.
           if (llamadasTurno.length > antesRepaso && db) db.doc("repasos/r" + Date.now().toString(36)).set({ ts: Date.now(), pistas, completo: llamadasTurno.slice(antesRepaso) }).catch(() => {});
@@ -2324,7 +2361,7 @@
       }
       if (ctl.signal.aborted) throw { code: "cancelled" }; // «Detener al DM» durante el repaso: el turno no se guarda
       const deshacerOk = await guardarCopia;
-      registrarConsumo({ jugador: infoTurno?.actuante || [...new Set(acciones.map((a) => a.nombre))].join(", "), entrada: consumo.entrada, salida: consumo.salida, herramientas: llamadasTurno.length, repaso: consumo.repaso, sinNarracion: consumo.sinNarracion, nivel: res.modelTierApplied || nivelT.nivel, origen: nivelT.origen });
+      registrarConsumo({ jugador: infoTurno?.actuante || [...new Set(acciones.map((a) => a.nombre))].join(", "), entrada: consumo.entrada, salida: consumo.salida, herramientas: llamadasTurno.length, uso: consumo.uso, partes: consumo.partes, vueltas: consumo.vueltas, acc: consumo.acc, repaso: consumo.repaso, sinNarracion: consumo.sinNarracion, nivel: res.modelTierApplied || nivelT.nivel, origen: nivelT.origen });
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
@@ -2732,6 +2769,40 @@
   $("cerrar-buscados").onclick = () => { $("velo-buscados").hidden = true; $("ver-buscados").focus(); };
   $("velo-buscados").onclick = (ev) => { if (ev.target === $("velo-buscados")) $("velo-buscados").hidden = true; };
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !$("velo-buscados").hidden) $("velo-buscados").hidden = true; });
+  // Consumo del DM (solo lectura): resumen de la colección consumo/ (los últimos ~200 turnos) con V.resumenConsumo. No escribe nada.
+  const NOMBRES_PARTE = { reglas: "Reglas del sistema", catalogo: "Catálogo de acciones", estado: "Estado del DM", historial: "Historial reciente", cronica: "Crónica + diario + anales", acciones: "Acciones del turno" };
+  async function pintarConsumo() {
+    const cont = $("consumo-cuerpo");
+    const el = (tag, cls, txt) => { const x = document.createElement(tag); if (cls) x.className = cls; if (txt !== undefined) x.textContent = txt; return x; };
+    const fila = (...celdas) => { const tr = document.createElement("tr"); celdas.forEach((c, i) => tr.append(el(i ? "td" : "th", i ? "num" : "", String(c)))); return tr; };
+    const num = (n) => Number(n).toLocaleString("es-ES");
+    cont.textContent = "Leyendo el registro…";
+    let docs = [];
+    try { const snap = await db.collection("consumo").orderBy("ts", "desc").limit(200).get(); docs = snap.docs.map((d) => d.data()); }
+    catch { cont.textContent = "No se pudo leer el registro de consumo."; return; }
+    const r = V.resumenConsumo(docs);
+    cont.textContent = "";
+    if (!r.turnos) { cont.append(el("p", "nota", "Aún no hay turnos registrados.")); return; }
+    cont.append(el("p", "nota", `${r.turnos} turnos registrados (los últimos 200 como mucho). Caracteres: aproximadamente 4 por cada token. Con repaso: ${r.conRepaso} · red de seguridad: ${r.sinNarracion}.`));
+    const t1 = document.createElement("table");
+    t1.append(fila("", "media", "p90"), fila("Entrada (car.)", num(r.entrada.media), num(r.entrada.p90)), fila("Salida (car.)", num(r.salida.media), num(r.salida.p90)), fila("Herramientas por turno", r.herramientas.media, r.herramientas.p90));
+    if (r.vueltas.n) t1.append(fila("Vueltas de herramientas", r.vueltas.media, r.vueltas.p90), fila("Acciones por vuelta", r.vueltas.accionesPorVuelta, ""));
+    cont.append(t1);
+    cont.append(el("h4", "", "Las 5 herramientas más llamadas"));
+    if (r.top.length) { const ul = el("ul"); for (const x of r.top) ul.append(el("li", "", `${x.nombre}: ${x.total} llamadas en ${x.turnos} turnos`)); cont.append(ul); }
+    else cont.append(el("p", "nota", "Los turnos antiguos no guardan qué herramientas se llamaron."));
+    cont.append(el("h4", "", "De qué se compone la entrada"));
+    if (r.partes.n) {
+      const t2 = document.createElement("table");
+      t2.append(fila("", "car.", "%"));
+      for (const k of V.PARTES_CONSUMO) t2.append(fila(NOMBRES_PARTE[k] || k, num(r.partes.media[k]), r.partes.pct[k] + " %"));
+      cont.append(t2, el("p", "nota", `Media de ${r.partes.n} turnos con desglose.`));
+    } else cont.append(el("p", "nota", "Los turnos antiguos no guardan el desglose de la entrada."));
+  }
+  $("ver-consumo").onclick = () => { $("velo-consumo").hidden = false; pintarConsumo(); $("cerrar-consumo").focus(); };
+  $("cerrar-consumo").onclick = () => { $("velo-consumo").hidden = true; $("ver-consumo").focus(); };
+  $("velo-consumo").onclick = (ev) => { if (ev.target === $("velo-consumo")) $("velo-consumo").hidden = true; };
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !$("velo-consumo").hidden) $("velo-consumo").hidden = true; });
   $("ver-bestiario").onclick = () => { pintarBestiario(); $("velo-bestiario").hidden = false; $("bestiario-buscar").focus(); };
   $("cerrar-bestiario").onclick = () => { $("velo-bestiario").hidden = true; };
   $("velo-bestiario").onclick = (ev) => { if (ev.target === $("velo-bestiario")) $("velo-bestiario").hidden = true; };
@@ -3210,6 +3281,7 @@
     sample = sampleNs;
     descargas = await usar("downloads");
     $("exportar-partida").hidden = !(dbNs && descargas);
+    $("ver-consumo").hidden = !dbNs;
     uid = (await userNs?.id?.().catch?.(() => "")) || "";
     // Solo quien puede editar la página (dueño o editores) ve el botón de reiniciar.
     const puedeReiniciar = !!((await userNs?.isOwner?.().catch?.(() => false)) || (await userNs?.canEdit?.().catch?.(() => false)));

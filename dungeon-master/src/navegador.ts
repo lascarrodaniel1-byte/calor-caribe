@@ -208,12 +208,30 @@ function percentil(orden: number[], q: number): number {
   return orden[Math.min(orden.length - 1, Math.max(0, Math.ceil(q * orden.length) - 1))];
 }
 
-/** Resumen del registro de consumo (colección consumo/): media, p50, p90 y máximo de lo enviado y lo recibido, más cuántos turnos llevaron repaso o red de seguridad. */
-export function resumenConsumo(docs: { entrada?: number; salida?: number; herramientas?: number; repaso?: boolean; sinNarracion?: boolean }[]): {
+/** Un documento del registro de consumo (colección consumo/). Los campos nuevos (`uso`, `partes`, `vueltas`, `acc`) faltan en los documentos antiguos. */
+interface DocConsumo {
+  entrada?: number; salida?: number; herramientas?: number; repaso?: boolean; sinNarracion?: boolean;
+  /** Veces que se llamó a cada acción en el turno (las 12 más frecuentes). */
+  uso?: Record<string, number>;
+  /** Caracteres de cada parte de la entrada del DM. */
+  partes?: Partial<Record<ParteConsumo, number>>;
+  /** Vueltas de herramientas de la narración (llamadas a `motor`) y acciones que llevaron en total. */
+  vueltas?: number; acc?: number;
+}
+export const PARTES_CONSUMO = ["reglas", "catalogo", "estado", "historial", "cronica", "acciones"] as const;
+type ParteConsumo = (typeof PARTES_CONSUMO)[number];
+
+/** Resumen del registro de consumo (colección consumo/): media, p50, p90 y máximo de lo enviado y lo recibido, más cuántos turnos llevaron repaso o red de seguridad,
+ *  las herramientas por turno (media y p90), las 5 más llamadas, el reparto medio de la entrada por parte y las vueltas de herramientas. Tolera documentos antiguos. */
+export function resumenConsumo(docs: DocConsumo[]): {
   turnos: number;
   entrada: { media: number; p50: number; p90: number; max: number };
   salida: { media: number; p50: number; p90: number; max: number };
   herramientasMedia: number;
+  herramientas: { media: number; p90: number };
+  top: { nombre: string; total: number; turnos: number }[];
+  partes: { n: number; media: Record<ParteConsumo, number>; pct: Record<ParteConsumo, number> };
+  vueltas: { n: number; media: number; p90: number; accionesPorVuelta: number };
   conRepaso: number;
   sinNarracion: number;
 } {
@@ -222,12 +240,39 @@ export function resumenConsumo(docs: { entrada?: number; salida?: number; herram
     const media = v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0;
     return { media, p50: percentil(v, 0.5), p90: percentil(v, 0.9), max: v.length ? v[v.length - 1] : 0 };
   };
+  const dec = (n: number) => Math.round(n * 10) / 10;
   const h = docs.map((d) => Number(d.herramientas)).filter((n) => Number.isFinite(n));
+  const hOrd = [...h].sort((a, b) => a - b);
+  const hMedia = h.length ? dec(h.reduce((a, b) => a + b, 0) / h.length) : 0;
+  // Las más llamadas: total de llamadas y en cuántos turnos aparece.
+  const cuenta = new Map<string, { total: number; turnos: number }>();
+  for (const d of docs) for (const [n, c] of Object.entries(d.uso ?? {})) {
+    const k = Number(c);
+    if (!Number.isFinite(k) || k <= 0) continue;
+    const x = cuenta.get(n) ?? { total: 0, turnos: 0 };
+    x.total += k; x.turnos++;
+    cuenta.set(n, x);
+  }
+  const top = [...cuenta.entries()].map(([nombre, x]) => ({ nombre, ...x })).sort((a, b) => b.total - a.total || a.nombre.localeCompare(b.nombre)).slice(0, 5);
+  // Reparto medio de la entrada: solo con los turnos que traen el desglose.
+  const conPartes = docs.filter((d) => d.partes && PARTES_CONSUMO.some((k) => Number.isFinite(Number(d.partes?.[k]))));
+  const media = {} as Record<ParteConsumo, number>, pct = {} as Record<ParteConsumo, number>;
+  for (const k of PARTES_CONSUMO) media[k] = conPartes.length ? Math.round(conPartes.reduce((a, d) => a + (Number(d.partes?.[k]) || 0), 0) / conPartes.length) : 0;
+  const suma = PARTES_CONSUMO.reduce((a, k) => a + media[k], 0);
+  for (const k of PARTES_CONSUMO) pct[k] = suma ? dec((media[k] / suma) * 100) : 0;
+  // Vueltas de herramientas de la narración (solo los turnos que las traen).
+  const conV = docs.filter((d) => Number.isFinite(Number(d.vueltas)));
+  const v = conV.map((d) => Number(d.vueltas)).sort((a, b) => a - b);
+  const acc = conV.reduce((a, d) => a + (Number(d.acc) || 0), 0), vt = v.reduce((a, b) => a + b, 0);
   return {
     turnos: docs.length,
     entrada: de("entrada"),
     salida: de("salida"),
-    herramientasMedia: h.length ? Math.round((h.reduce((a, b) => a + b, 0) / h.length) * 10) / 10 : 0,
+    herramientasMedia: hMedia,
+    herramientas: { media: hMedia, p90: percentil(hOrd, 0.9) },
+    top,
+    partes: { n: conPartes.length, media, pct },
+    vueltas: { n: conV.length, media: v.length ? dec(vt / v.length) : 0, p90: percentil(v, 0.9), accionesPorVuelta: vt ? dec(acc / vt) : 0 },
     conRepaso: docs.filter((d) => d.repaso).length,
     sinNarracion: docs.filter((d) => d.sinNarracion).length,
   };
