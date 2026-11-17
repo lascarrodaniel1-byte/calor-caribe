@@ -30,7 +30,9 @@
     if (!opts.tools) { window.__llamadas.push("narrar"); const t2 = window.__textoNarrar ?? ""; opts.onText?.({ text: t2 }); return { text: t2, truncated: false }; }
     const motor = opts.tools[0];
     opts.onText?.({ text: "Narración. " });
-    if (window.__accionesDM) await motor.execute({ acciones: window.__accionesDM });
+    if (window.__accionesDM) (window.__resultadosMotor = window.__resultadosMotor || []).push(await motor.execute({ acciones: window.__accionesDM }));
+    // Varias vueltas de herramientas, una llamada a `motor` por vuelta (un DM que no agrupa): window.__vueltasDM = [[acciones de la vuelta 1], [vuelta 2], …]
+    if (window.__vueltasDM) for (const v of window.__vueltasDM) (window.__resultadosMotor = window.__resultadosMotor || []).push(await motor.execute({ acciones: v }));
     const texto = window.__sinTexto ? "" : (window.__textoDM || "La posada huele a cerveza.");
     opts.onText?.({ text: texto });
     return { text: texto, truncated: false };

@@ -21,8 +21,8 @@ for (const [w, h, n] of [[1280, 860, "escritorio"], [390, 844, "móvil"]]) {
   await pg.evaluate(() => {
     window.__textoDM = "La lluvia de ceniza cae sobre Aldenmar.";
     window.__accionesDM = [
-      { accion: "tirar_dados", datos: { dados: "1d20" } },
-      { accion: "tirar_dados", datos: { dados: "1d6" } },
+      { accion: "tirar_dados", datos: { expresion: "1d8", motivo: "daño del hacha" } },
+      { accion: "tirar_dados", datos: { expresion: "1d6", motivo: "daño de la daga" } },
       { accion: "consultar_reglas", datos: { tema: "clima" } },
     ];
   });
