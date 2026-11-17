@@ -110,3 +110,50 @@ Prompt fijo `sistemaWeb()`: **sin cambios** (67.231 car., umbral 67.600 de `t-pr
 - Una acción exclusiva de una clase ausente solo se llama por nombre sin firma: si el DM tuviera que usarla (p. ej. un PNJ de esa clase) puede consultar el esquema con `consultar_reglas {tema: "accion", nombre}`; el motor además devuelve «qué falta» si los datos fallan, y el enum de `motor` incluye todos los nombres. Esas acciones operan sobre personajes jugadores de su clase, que por definición no están en esa mesa.
 - Cuando entra un jugador con una clase nueva el prefijo cambia una vez (igual que `sistemaWeb`).
 - El simulador de balance (`tests/balance/simular.ts --n 40 --rapido`) da salida idéntica (el cambio no toca el motor).
+
+## 7. Segunda ronda: medir mejor, tiempo automático y varias acciones por vuelta
+
+**Encargo (dueño).** Reducir los usos del DM sin quitarle responsabilidades: los jugadores siguen sin tirar a mano y no se toca el nivel del modelo de narración. Tres bloques, cada uno con su commit.
+
+### 7.1 Bloque 4 (primero): medición en `consumo/*`
+
+Cada turno anota, además de lo anterior (`ts`, `jugador`, `entrada`, `salida`, `herramientas`, `repaso`, `sinNarracion`, `nivel`, `origen`):
+
+| Campo | Qué es |
+|---|---|
+| `uso` | `{acción: veces}` de las acciones llamadas en el turno (narración y repaso; incluye `consultar_reglas` y `actualizar_cronica`, que `herramientas` no cuenta), truncado a las 12 más frecuentes |
+| `partes` | caracteres de cada parte de la entrada: `reglas` (sistema + instrucciones de la mesa + secuencia), `catalogo`, `estado` (estado del DM), `historial` (mensajes intermedios), `cronica` (anales + situación + detalles + aventuras previas + crónica), `acciones` (acciones del turno y lo demás del último mensaje: frases usadas, bloque de turnos, ausentes, corrección). Suman exactamente `entrada` |
+| `vueltas`, `acc` | llamadas a `motor` de la narración (sin el repaso) y acciones que llevaron en total |
+
+El documento engorda ≈ 165 bytes (315 bytes en total con tres acciones distintas). `V.resumenConsumo(docs)` añade `herramientas {media, p90}`, `top` (las 5 más llamadas, con total y turnos), `partes {n, media, pct}` (reparto medio) y `vueltas {n, media, p90, accionesPorVuelta}`; con documentos antiguos esos campos salen vacíos (`n: 0`). La página tiene ahora un panel de solo lectura: menú ☰ → «📊 Consumo del DM» (últimos 200 turnos); no ensancha la barra ni desborda a 390 px.
+
+**Lo que NO se puede medir desde la página.** `sample()` devuelve solo `{text, truncated, modelTierApplied}` (contrato 0.2.74): no expone tokens, uso de caché, ni el número de rondas, ni si el modelo emite varias llamadas a herramientas en paralelo («nada de las rondas se devuelve: tu propio `execute` es el evento»). Lo que sí se mide: cada ejecución de `motor` es una vuelta con herramientas, así que `vueltas` es el número de rondas con herramientas y las rondas totales de la narración son `vueltas + 1` (la última es la que escribe), salvo que el modelo llame a `motor` varias veces en paralelo en una misma ronda (entonces `vueltas` sobrestima las rondas y no se puede distinguir). Los tokens siguen siendo ≈ caracteres / 4.
+
+**Valor en el mock** (8 turnos de diálogo, 2 acciones por turno en una sola vuelta; fixture `partida-mesa.json`, un jugador con ficha): entrada media 86.855 car. (p90 90.444); herramientas por turno 2 (p90 2); vueltas 1 (2 acciones por vuelta). Reparto medio: reglas 51.957 (59,8 %), catálogo 25.221 (29,0 %), estado 6.296 (7,2 %), historial 1.945 (2,2 %; crece hasta ≈ 4.000 con 8 turnos), crónica + diario + anales 232 (0,3 %), acciones del turno 1.204 (1,4 %). Es decir, **≈ 89 % de la entrada es el bloque fijo (reglas + catálogo)**, en línea con el 83-89 % de §2. Los datos reales (herramientas más llamadas, vueltas por turno) aparecerán en el panel cuando la mesa juegue unos turnos con esta versión.
+
+### 7.2 Bloque 1: tiempo automático (3 minutos por turno; **propuesta a confirmar**)
+
+**Hallazgo.** El programa ya avanzaba el reloj solo (`tiempoDeTurno`: +600 s si el DM no lo movía), pero sin distinguir combate ni creación, sin aviso público y con la regla del prompt «avánzalo cada turno (conversar, 10 min; registrar una sala, 5…)»: por eso el DM llamaba a `tiempo` casi cada turno (19 de 24 en una partida real).
+
+**Aplicado** (`src/herramientas.ts`, `web/artifact.template.html`, `src/espacio.ts`):
+- `segundosAutomaticos(partida, {relojAntes, enCombate, creando})` (función pura): **180 s** (`SEGUNDOS_TURNO_AUTOMATICO`) solo si hay reloj, el DM no lo movió en el turno (`reloj.segundos === relojAntes`: cubre `tiempo`, `pasar_tiempo`, `viajar`, `descanso`, `avanzar_asaltos`, `siguiente_asalto`…), no hay combate (ni al empezar ni al acabar el turno) y no se están creando personajes (algún jugador activo sin ficha, o ninguno con ficha). Si no, 0.
+- `tiempoDeTurno` aplica esa decisión y pasa por el mismo camino que las herramientas: aviso público **«🕒 Día N, HH:MM (momento) · ⏱ automático»** (uno por turno), cambio de estación/anomalía, estados que caducan por reloj (`caducarEstadosFuera`; antes el avance automático no los contaba), sustento (hambre y sed), enfermedades y fuego/agua.
+- Enganche en la página: justo donde ya estaba (tras la narración, las herramientas y el repaso; antes de armar `turnoDoc` y de la escritura única de `mesa/estado` con `pendiente`). El aviso y el reloj nuevo viajan en esa misma escritura atómica: no se toca el lease ni el versionado.
+- Prompt: la línea del reloj ya no pide avanzar a pasos pequeños («El programa suma solo 3 min por turno (0 en combate…): usa tiempo avanzar solo para lo que dure bastante más»). Prompt fijo 67.270 (antes 67.254; tope 67.600). Los saltos de ≥ 6 h siguen exigiendo `cita`.
+- Pista de repaso «la narración hace pasar horas y el reloj no se movió»: sin cambios (se calcula antes del avance automático y su umbral es ≤ 600 s); prueba nueva de que sigue detectando saltos narrados con y sin los 3 minutos.
+- Decisión sobre «sin reloj fijado»: `partida.reloj` ausente → 0 (motor). La página siempre lo tiene (`normalizarPartida` lo crea en modo `auto`, día 1 08:00, para que hambre y sed corran) y ese reloj automático sí avanza; solo se omite en creación y combate.
+
+**Ahorro estimado.** El programa ya sumaba tiempo; lo que se evita es la **llamada del DM a `tiempo`** (una acción más en su lista de `motor`, ≈ 100-150 tokens de salida y de resultado) y, cuando era la única acción del turno, **una vuelta entera** (≈ 21.000 tokens de entrada leída de caché). Rango: de ≈ 0,2 % a ≈ 25 % de los tokens de un turno, según cuántas veces estuviera sola. No es medible hoy; el panel de consumo dirá cuántos turnos llaman todavía a `tiempo` (`uso`).
+**Riesgos.** El DM podría seguir narrando horas sin avanzar (lo cubre la pista de repaso); en la fase de introducción el reloj sí avanza 3 min (solo la creación lo omite); el aviso 🕒 en cada turno entra también en el historial del DM (≈ 50 caracteres por turno). Los 3 minutos son una **propuesta a confirmar**: se cambian en `SEGUNDOS_TURNO_AUTOMATICO`.
+
+### 7.3 Bloque 2: varias acciones por vuelta
+
+**Comprobado.** Ya se puede: `motor` es una sola herramienta con `acciones: [{accion, datos}, …]` que se ejecutan **en orden** con `ejecutar`; devuelve el resultado de cada una (`error: true` en la que falla, con su mensaje) y sigue con las demás; los avisos se publican en orden; no hay regla que lo impida (al contrario: las instrucciones de la mesa ya decían «mete en una sola llamada todo lo que no dependa de un resultado anterior» y la descripción de la herramienta, «mete en una sola llamada todas las acciones independientes»). Por eso **no se cambia el esquema** ni el guardado compartido. Si el modelo emite además varias llamadas a `motor` en paralelo no se puede saber (ver 7.1).
+**Aplicado** (reemplazo, +32 caracteres, en las instrucciones de la mesa, no en `sistemaWeb`): «Cada ronda cuesta: lo ideal es UNA por turno; mete en una sola llamada todo lo que no dependa de un resultado anterior (tirada + pista + ubicación, todos los ataques enemigos…)».
+**Medido con el mock** (`tests/ui/agrupar.mjs`): el mismo turno con 3 acciones (una con datos inválidos) hace **1 vuelta** si se agrupa y **3 vueltas** si se reparte; el estado guardado y los avisos son los mismos; `consumo/` lo anota (`vueltas`, `acc`).
+**Ahorro estimado.** Cada vuelta evitada es una petición que reenvía todo el contexto (≈ 21.000-22.000 tokens, normalmente de caché): 2 vueltas menos por turno en el caso del mock (3 → 1). El ahorro real depende de cuántas rondas hacía el DM, que hasta ahora no se medía: el panel lo dirá (`vueltas` y acciones por vuelta).
+**Riesgo.** Bajo: no cambia el motor. Agrupar mal acciones que dependen unas de otras (p. ej. una tirada y el daño según el resultado) haría que la segunda se ejecute sin conocer la primera; el texto exige «lo que no dependa de un resultado anterior».
+
+### 7.4 Comprobaciones
+
+`npx tsc --noEmit --noUnusedLocals -p .` limpio; `npm test` 54/54; `npm run audit` sin problemas (prompt 67.270); `npm run dead-exports` sin exports muertos; simulador `--n 40 --rapido` idéntico (md5 de la salida igual antes y después de cada bloque); `npm run test:ui` 20/20 con 0 errores de página (nuevos: `consumo`, `tiempo-auto`, `agrupar`). Nota: `t-resistencias` falla de forma intermitente por dados aleatorios en una comprobación de Ysolde (ya ocurría antes de estos cambios).
