@@ -6,7 +6,7 @@ import { cargarPlaywright, chromiumDisponible } from "./ui/_comun.mjs";
 import { construirPagina } from "./ui/construir.mjs";
 
 const AQUI = fileURLToPath(new URL(".", import.meta.url));
-const SCRIPTS = ["flujo", "bestiario", "run", "control", "genero", "sinnarracion", "clima", "combate", "combate-libres", "programada", "mesa-completa", "relato-limpio", "barra-compacta", "buscados", "avisos-ataque", "reaccion-preparada", "nivel-mesa", "consumo"];
+const SCRIPTS = ["flujo", "bestiario", "run", "control", "genero", "sinnarracion", "clima", "combate", "combate-libres", "programada", "mesa-completa", "relato-limpio", "barra-compacta", "buscados", "avisos-ataque", "reaccion-preparada", "nivel-mesa", "consumo", "tiempo-auto"];
 const LIMITE_MS = 150_000;
 
 if (!(await cargarPlaywright())) {

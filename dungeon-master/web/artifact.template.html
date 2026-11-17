@@ -2285,7 +2285,8 @@
     // Al repetir un turno corregido, los dados que ya salieron vuelven a salir igual (salvo que el DM los reabra con motivo).
     V.dados.iniciarRegistroDados(correccion?.tiradas);
     V.activarCalendario(copia); // estaciones y clima: se activan solas la primera vez que hay reloj (idempotente)
-    const relojAntes = copia.reloj?.segundos; // si el DM no lo mueve, pasan 10 minutos de escena
+    const relojAntes = copia.reloj?.segundos; // si el DM no lo mueve, el programa suma 3 minutos de escena al final del turno (propuesta a confirmar; 0 en combate y en la creación de personajes)
+    const creandoAntes = sinFichaAhora().length > 0 || !Object.keys(copia.personajes || {}).length; // fase previa: alguien aún sin ficha
     ctl = new AbortController();
     cortadoPor = "";
     repasoCerrado = false;
@@ -2365,7 +2366,9 @@
       const turnoDoc = { ts: siguienteTs(), deshacer: deshacerOk, ids: cola.map((a) => a.id), acciones, texto, avisos, tiradas: V.dados.registroDados().slice(0, 300), ...(infoTurno ? { jugador: infoTurno.actuante, ronda: infoTurno.ronda } : {}), ...(nota ? { nota } : {}), nivel: res.modelTierApplied };
       // Si en este turno la trama no avanzó, se cuenta: a los 3 turnos, el DM recibe un aviso.
       if (copia.trama && (copia.trama.avances ?? 0) === avancesAntes) copia.trama.sin_avance = (copia.trama.sin_avance ?? 0) + 1;
-      for (const t of V.tiempoDeTurno(copia, relojAntes)) avisos.push({ pos: texto.length, texto: t }); // el tiempo corre aunque el DM no lo avance: hambre, sed, enfermedades…
+      // El tiempo corre aunque el DM no lo avance (avance automático, antes de guardar el turno): 🕒 «⏱ automático», hambre, sed, enfermedades, estados que caducan…
+      // Sin avance si el DM ya movió el reloj, hay combate (en este turno o ya antes) o se están creando personajes; el aviso entra en el mismo guardado atómico del turno.
+      for (const t of V.tiempoDeTurno(copia, relojAntes, { enCombate: !!(combateAntes || copia.combate), creando: creandoAntes })) avisos.push({ pos: texto.length, texto: t });
       V.regentes.contarTurno(copia);
       V.narrativa.contarTurno(copia); // los arcos envejecen en su fase y los PNJ fuera de escena llevan un turno más sin moverse
       // Cierre de la ronda de iniciativa: el programa avanza el asalto (una vez; si el DM ya lo hizo, o el combate acabó o es otro, no se toca).

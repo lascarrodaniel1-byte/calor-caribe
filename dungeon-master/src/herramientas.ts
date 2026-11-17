@@ -46,7 +46,7 @@ import {
 import { aprenderTipo, avisoLicencia, comprenderMagia } from "./hechicero.js";
 import { ajustarMaestriaHechicero, consumirTirada, historialDones, registrarDonForzado, tiradaPendiente, tirarDonJugador, buscarHechizo, TIPOS_IDS, descansar, despertarMagia, enfriar, ESCUELAS, lanzar, MAESTRIAS, magiaInicial, TRIBUTOS } from "./magia.js";
 import { DIRECCIONES, DISTANCIAS, moverGrupo, NOMBRE_DIRECCION as NOMBRES_DIR, NOMBRES_REGIONES, TIPOS_LUGAR } from "./mapa.js";
-import { actualizarPlano, actualizarReloj, adelantoDeFijar, avanzarSiHay, distanciaPlano } from "./espacio.js";
+import { actualizarPlano, actualizarReloj, adelantoDeFijar, avanzarSiHay, distanciaPlano, textoReloj } from "./espacio.js";
 import { pasarAsaltoFuria, redirigirTrance, terminarFuria, terminarTodas } from "./furia.js";
 import { ajustarAtaque, empunar, ESTILOS, estiloCombate } from "./manos.js";
 import { curarConRunas, esMagiaNegra, mascota, mitigacion, papeles, rastroMagico, registrarMagia } from "./cazador.js";
@@ -1242,16 +1242,32 @@ function ataqueCompletoInterno(partida: Partida, e: DatosAtaque): { texto: strin
   return r;
 }
 
+/** Segundos que el programa suma solo a un turno de exploración o diálogo si el DM no movió el reloj. PROPUESTA A CONFIRMAR (antes eran 600). */
+export const SEGUNDOS_TURNO_AUTOMATICO = 180;
+
 /**
- * Al acabar un turno de narración: si el DM no movió el reloj, pasan 10 minutos de escena (una conversación, un registro rápido) y se cuentan
- * las consecuencias del tiempo (hambre, sed, enfermedades, fuego y agua). Así el tiempo corre aunque el DM se olvide de avanzarlo.
+ * Cuánto avanza el programa el reloj al acabar un turno (función pura; 0 = no toca nada).
+ * Solo avanza si hay reloj, si el DM no lo movió en el turno (`relojAntes` distinto del actual), si no hay combate (los asaltos ya cuentan 6 s con
+ * siguiente_asalto) y si el turno no es de creación de personaje (la fase previa, con jugadores sin ficha).
  */
-export function tiempoDeTurno(partida: Partida, relojAntes?: number): string[] {
-  if (!partida.reloj) return [];
-  if (relojAntes !== undefined && partida.reloj.segundos !== relojAntes) return []; // el DM ya lo movió: las herramientas lo contaron
+export function segundosAutomaticos(partida: Pick<Partida, "reloj">, c: { relojAntes?: number; enCombate?: boolean; creando?: boolean } = {}): number {
+  if (!partida.reloj) return 0;
+  if (c.relojAntes !== undefined && partida.reloj.segundos !== c.relojAntes) return 0; // el DM ya lo movió: las herramientas lo contaron
+  if (c.enCombate || c.creando) return 0;
+  return SEGUNDOS_TURNO_AUTOMATICO;
+}
+
+/**
+ * Al acabar un turno de narración: si el DM no movió el reloj (ni hay combate ni creación de personajes), pasan 3 minutos de escena y se cuentan
+ * las consecuencias del tiempo (hambre, sed, enfermedades, fuego y agua, estados que caducan), con el mismo paso que usan las herramientas.
+ * Devuelve el aviso público «🕒 … · ⏱ automático» seguido de esas consecuencias. El DM conserva `tiempo` para los saltos mayores.
+ */
+export function tiempoDeTurno(partida: Partida, relojAntes?: number, c: { enCombate?: boolean; creando?: boolean } = {}): string[] {
+  const seg = segundosAutomaticos(partida, { relojAntes, ...c });
+  if (!seg || !partida.reloj) return [];
   const antes = partida.reloj.segundos;
-  partida.reloj.segundos += 600;
-  return [...avisosDeCalendario(partida, antes), ...revisarSustento(partida), ...procesarEnfermedades(partida), ...procesarTiempo(partida)];
+  partida.reloj.segundos += seg;
+  return [`🕒 ${textoReloj(partida.reloj)} · ⏱ automático`, ...avisosDeCalendario(partida, antes), ...caducarEstadosFuera(partida, seg), ...revisarSustento(partida), ...procesarEnfermedades(partida), ...procesarTiempo(partida)];
 }
 
 // Contexto del turno (solo en memoria, fuera de `partida`: no se guarda ni se exporta). null = sin contexto (suites, CLI): sin guardas.

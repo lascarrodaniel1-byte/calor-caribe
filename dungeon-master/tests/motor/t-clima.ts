@@ -215,9 +215,9 @@ function horas(p: any, nombre: string, h = 12) {
   const r2 = E("tiempo", { avanzar: { horas: 2 } });
   t(!/Llega/.test(r2.contenido), "el aviso no se repite");
   const q = mesa([["Ana", "Humano del Faro", "Mercenario del Cuervo"]], { inicio: 1, region: ALD, dia: 90, hora: 23.99 });
-  q.p.reloj.segundos = 90 * DIA - 300;
+  q.p.reloj.segundos = 90 * DIA - 100;
   const av = tiempoDeTurno(q.p);
-  t(av.some((x) => /Llega el Sol Pálido/.test(x)), "también lo da el paso de los 10 minutos de turno", av.join(" | ").slice(0, 100));
+  t(av.some((x) => /Llega el Sol Pálido/.test(x)), "también lo da el avance automático de turno (3 minutos)", av.join(" | ").slice(0, 100));
   const w = mesa([["Ana", "Humano del Faro", "Mercenario del Cuervo"]], { inicio: 1, region: ALD, dia: 360, hora: 20 });
   w.p.reloj.segundos = 360 * DIA - 60;
   t(tiempoDeTurno(w.p).some((x) => /Llega la Primavera|Llegan|Llega el Deshielo Gris/.test(x)), "del día 360 al 361: llega la Primavera (el Deshielo Gris)");
